@@ -1,0 +1,110 @@
+# Provider and model integration notes
+
+**Documentation checked: 2026-10-19. No authenticated model calls were made while preparing this package.** Published identifiers are not proof of the owner's account access. Recheck capabilities, exact rates and privacy-compatible endpoints during Milestone 0.
+
+## 1. Selected role mapping
+
+| Role | Identifier to test | Provider/API family | Reference |
+|---|---|---|---|
+| Everyday | `openai/gpt-6-luna` | OpenRouter Responses | [S08](SOURCES.md#s08) |
+| Intermediate | `gemini-3.8-flash` | Vertex/Google Cloud GenerateContent | [S10](SOURCES.md#s10) |
+| Advanced | `gemini-4-argon` | Vertex/Google Cloud GenerateContent | [S11](SOURCES.md#s11) |
+| Decision | `microsoft/microsoft-decision-1` | OpenRouter Alpha Decisions | [S13](SOURCES.md#s13) |
+
+Preserve these product selections. An unavailable model becomes a visible configuration issue; do not silently substitute a different model or switch Vertex to AI Studio. Google documentation may use updated platform naming; bind the implementation to the documented Google Cloud project/endpoint, not a marketing label.
+
+## 2. Luna: Responses rather than a universal chat adapter
+
+OpenAI's model page documents that Luna tool calling on Chat Completions has a reasoning-effort restriction. Use the OpenRouter Responses route for the intended reasoning-plus-tools integration and verify the actual routed endpoint. [S09](SOURCES.md#s09)
+
+OpenRouter's Responses API is stateless: send the needed history on each request; `store: true` and a non-null previous-response ID are not an acceptable persistence strategy. [S15](SOURCES.md#s15)
+
+Use a server key and a privacy-compatible route. Add documented `provider.zdr: true` preferences and do not relax them on failure. Retain necessary function call/result identifiers and opaque provider continuation items in Vulpes's private state. Suppress unneeded external plugins/tools. Verify streaming final usage, structured tool calls and cancellation before enabling live users.
+
+## 3. Flash and Argon: provider-specific controls
+
+The selected Google models document Low/Medium/High thinking levels; their control conventions differ from a generic numeric thinking budget. In particular, do not send `MINIMAL` or blindly copy temperature/top-p/penalty controls from an OpenAI adapter. [S10](SOURCES.md#s10) [S11](SOURCES.md#s11)
+
+Use Google Cloud authentication, an operator-supplied project and an explicitly selected supported location. `global` is a candidate documented location, not a promise of US-only processing. Confirm model access, quotas and billing in that project.
+
+For the initial adapter, use bounded GenerateContent calls with explicit `maxOutputTokens`, validated JSON tools and a known stream parser. Preserve required thought signatures/opaque call-continuation fields when returning tool results. Log the observable fields, not an invented internal chain of thought.
+
+Disable/avoid automatic long-decode continuations. Each actual request would need independent cost reservation and logging; the MVP does not need million-token outputs. Smoke-test the configured small output cap rather than assuming an SDK default will honor Vulpes's budget.
+
+Argon's current model page documents implicit-only caching and a minimum context size for cache eligibility; explicit context-cache APIs are not a universal optimization for this model. It also documents durable caching behavior. Review that setting with the accepted Google data policy, and never pad personal context solely to obtain a cache hit. [S12](SOURCES.md#s12)
+
+## 4. Decision Engine is a different endpoint
+
+Microsoft-Decision-1 returns scores over supplied choices rather than conversational text. OpenRouter exposes it through `/api/alpha/decisions`; do not pass it through a chat-completion SDK and expect a prose answer. [S13](SOURCES.md#s13)
+
+Implement `DecisionAdapter.score({state, questions, policy})` separately from `GenerationAdapter.generate(...)`. Use documented typed choices, validate result keys and finite score ranges, preserve the raw response and map it to an internal routing result. The official SDK documentation exposes provider preferences, but runtime endpoint availability under enforced ZDR must still be tested. [S14](SOURCES.md#s14)
+
+Keep it disabled by default. Once privacy-compatible smoke tests and routing evaluations pass, the operator may enable it. It cannot approve writes, judge clinical safety alone, authorize spending, or decide that another user's records may be accessed.
+
+## 5. Credentials and environment policy
+
+Root `.env.example` is the authoritative environment template. Keep credentials and deployment identities in environment variables, and model parameters in versioned code:
+
+- **OpenRouter:** Server-only `OPENROUTER_API_KEY`. Set provider-compatible privacy constraints (`provider.zdr: true`) and disable optional prompt logging or external broadcast destinations.
+- **Vertex / Google Cloud:** Authenticate locally via Google Application Default Credentials (`gcloud auth application-default login` or `GOOGLE_APPLICATION_CREDENTIALS`). In production on Vercel, prefer Workload Identity Federation (WIF) with Vercel OIDC tokens, binding pool/provider/service-account to the specific project. A service-account JSON key is an owner-approved fallback for prototyping only; never commit keys or expose them in client bundles. [S18](SOURCES.md#s18)
+- **Supabase:** `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are browser-safe. `SUPABASE_SERVICE_ROLE_KEY` is optional, highly privileged, and strictly server-only.
+- **Live AI switch:** `VULPES_LIVE_AI_ENABLED=false` is a fail-closed operator defense-in-depth gate. It does not replace consent, verified rates, or budget reservations.
+- **No model environment overrides:** Do not add `VULPES_*_MODEL` variables or reasoning parameters to `.env`. Model configuration belongs in the typed server-side catalog.
+
+Never place provider secrets in `VITE_` variables. No actual credentials belong in the repository, fixtures, inspector, build logs, or transcripts.
+
+## 6. Server-side typed model catalog
+
+Implement exactly one authoritative configuration module at `server/config/models.ts` (or equivalent). Define distinct types for each provider API family:
+
+- **OpenRouter Responses generation (`everyday`):** Selected `openai/gpt-6-luna`, low default reasoning, output/context limits, streaming and tool capability checks, enforced ZDR routing.
+- **Vertex GenerateContent (`intermediate`, `advanced`):** Selected `gemini-3.8-flash` and `gemini-4-argon`, provider-supported thinking levels, tool/stream/cache configuration, location and privacy constraints.
+- **OpenRouter Decisions (`decision`):** Selected `microsoft/microsoft-decision-1`, typed choices/scoring instead of a chat/reasoning model; off until evaluated.
+
+Illustrative shape:
+
+```ts
+export const models = {
+  everyday: {
+    provider: 'openrouter', apiFamily: 'responses',
+    modelId: 'openai/gpt-6-luna',
+    reasoning: { effort: 'low' },
+    maxOutputTokens: 3072, zdrRequired: true,
+  },
+  intermediate: {
+    provider: 'vertex', apiFamily: 'generateContent',
+    modelId: 'gemini-3.8-flash',
+    thinking: { level: 'MEDIUM' }, maxOutputTokens: 8192,
+  },
+  advanced: {
+    provider: 'vertex', apiFamily: 'generateContent',
+    modelId: 'gemini-4-argon',
+    thinking: { level: 'MEDIUM' }, maxOutputTokens: 12288,
+  },
+  decision: {
+    provider: 'openrouter', apiFamily: 'decisions',
+    modelId: 'microsoft/microsoft-decision-1',
+    enabled: false,
+  },
+} as const;
+```
+
+The implementation must validate API model IDs, supported reasoning/thinking controls, privacy routing, context/output limits, and availability against live provider documentation before enabling paid requests. Do not infer a uniform effort parameter across providers. No silent model replacement.
+
+**Avoid configuration drift:** Do not maintain a separately edited JSON runtime registry, per-role model environment variables, and TypeScript defaults simultaneously. The template at `config/model-registry.example.json` serves only as a design reference. Price fields in reference templates are unverified/null; **null means unverified, not free.** Live calls remain disabled until complete rates and conservative budget bounds are configured.
+
+## 7. Smoke-test matrix to complete during build
+
+| Test | Everyday | Intermediate | Advanced | Decision |
+|---|---|---|---|---|
+| Auth and actual identifier access | Required | Required when enabled | Required when enabled | Required before enabling |
+| Privacy-compatible route | Required | Accepted Google policy | Accepted Google policy | Enforced ZDR test |
+| Small bounded output/score | Required | Required | Required | Required |
+| Streaming with terminal usage | Required | Required | Required | Not assumed; nonstream is fine |
+| One read tool and continuation | Required | Required | Required | Not a generative tool loop |
+| Requested effort is accepted/effective | Required | Required | Required | Not applicable |
+| Exact request capture | Required | Required | Required | Required |
+| Cost reservation/reconciliation | Required | Required | Required | Required |
+| Failure/cancellation behavior | Required | Required | Required | Required |
+
+All fixtures here use synthetic text. Do not use the owner's health measurements for initial provider debugging. Record tested versions, time, account region and limitations in a build-created `PROVIDER_SMOKE_TESTS.md`; do not fill it with fabricated PASS entries.

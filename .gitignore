@@ -1,0 +1,47 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+credentials*.json
+secrets/
+
+# Application build and local services
+node_modules/
+dist/
+.vercel/
+.supabase/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Private material; never commit real health data or prompt logs
+private-data/
+private-exports/
+backups/
+local-traces/
+*.log
+.DS_Store
+
+# Extra local-only data and backups
+data/private/
+data/exports/
+data/raw/
+exports/
+downloads/
+tmp/
+.cache/
+*.sqlite
+*.sqlite3
+*.db
+*.p12
+*.pfx
+*.jks
+.npmrc
+
+# Local cloud and IDE auth/session files
+.google/
+.gcloud/

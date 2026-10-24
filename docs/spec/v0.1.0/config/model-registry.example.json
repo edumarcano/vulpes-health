@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "documentation_checked_at": "2026-10-19",
+  "template_only": true,
+  "live_ai_enabled": false,
+  "notes": [
+    "Design reference only. Model catalog defaults are implemented in the server-side typed module (server/config/models.ts).",
+    "The global live flag, verified prices, user consent and successful smoke tests are additional activation gates.",
+    "Output caps are Vulpes defaults to test, not claims of provider-enforced minimum/maximum values.",
+    "A role whose maximum conservative reservation exceeds the allowed run budget must not be silently enabled."
+  ],
+  "roles": {
+    "everyday": {
+      "display_name": "GPT-6 Luna",
+      "provider": "openrouter",
+      "model_id": "openai/gpt-6-luna",
+      "api_family": "openrouter_responses",
+      "configured": true,
+      "enabled_by_default": true,
+      "default_effort": "low",
+      "max_input_tokens": 12000,
+      "max_output_tokens": 3072,
+      "privacy_policy": "openrouter_zdr_required",
+      "source_reference": "s08",
+      "live_smoke_test_status": "not_run",
+      "price": {
+        "status": "unverified",
+        "currency": "USD",
+        "checked_at": null,
+        "source_url": null,
+        "input_per_million": null,
+        "output_per_million": null,
+        "cache_read_per_million": null,
+        "cache_write_per_million": null,
+        "other_fees": [],
+        "notes": "Configure applicable billable categories and documented unsupported categories before activation. Null is not zero."
+      }
+    },
+    "intermediate": {
+      "display_name": "Gemini 3.8 Flash",
+      "provider": "vertex_ai",
+      "model_id": "gemini-3.8-flash",
+      "api_family": "vertex_generate_content",
+      "configured": true,
+      "enabled_by_default": true,
+      "default_effort": "medium",
+      "max_input_tokens": 24000,
+      "max_output_tokens": 8192,
+      "privacy_policy": "google_cloud_accepted_retention",
+      "source_reference": "s10",
+      "live_smoke_test_status": "not_run",
+      "price": {
+        "status": "unverified",
+        "currency": "USD",
+        "checked_at": null,
+        "source_url": null,
+        "input_per_million": null,
+        "output_per_million": null,
+        "cache_read_per_million": null,
+        "cache_write_per_million": null,
+        "other_fees": [],
+        "notes": "Configure applicable billable categories and documented unsupported categories before activation. Null is not zero."
+      }
+    },
+    "advanced": {
+      "display_name": "Gemini 4 Argon",
+      "provider": "vertex_ai",
+      "model_id": "gemini-4-argon",
+      "api_family": "vertex_generate_content",
+      "configured": true,
+      "enabled_by_default": true,
+      "default_effort": "medium",
+      "max_input_tokens": 48000,
+      "max_output_tokens": 12288,
+      "privacy_policy": "google_cloud_accepted_retention",
+      "source_reference": "s11",
+      "live_smoke_test_status": "not_run",
+      "price": {
+        "status": "unverified",
+        "currency": "USD",
+        "checked_at": null,
+        "source_url": null,
+        "input_per_million": null,
+        "output_per_million": null,
+        "cache_read_per_million": null,
+        "cache_write_per_million": null,
+        "other_fees": [],
+        "notes": "Configure applicable billable categories and documented unsupported categories before activation. Null is not zero."
+      }
+    },
+    "decision": {
+      "display_name": "Microsoft-Decision-1",
+      "provider": "openrouter",
+      "model_id": "microsoft/microsoft-decision-1",
+      "api_family": "openrouter_decisions",
+      "configured": true,
+      "enabled_by_default": false,
+      "default_effort": null,
+      "max_input_tokens": 2048,
+      "max_output_tokens": null,
+      "privacy_policy": "openrouter_zdr_required",
+      "source_reference": "s13",
+      "live_smoke_test_status": "not_run",
+      "price": {
+        "status": "unverified",
+        "currency": "USD",
+        "checked_at": null,
+        "source_url": null,
+        "input_per_million": null,
+        "output_per_million": null,
+        "cache_read_per_million": null,
+        "cache_write_per_million": null,
+        "other_fees": [],
+        "notes": "Configure applicable billable categories and documented unsupported categories before activation. Null is not zero."
+      }
+    }
+  }
+}

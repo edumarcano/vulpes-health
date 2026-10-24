@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "source": "Synthetic Scale A",
+  "timezone": "UTC",
+  "total_observations": 28,
+  "per_metric_observations": 14,
+  "algorithm": "daily_median_mean_7d_v1",
+  "baseline_window": {
+    "from": "2026-09-01T00:00:00Z",
+    "to": "2026-09-08T00:00:00Z"
+  },
+  "current_window": {
+    "from": "2026-09-08T00:00:00Z",
+    "to": "2026-09-15T00:00:00Z"
+  },
+  "weight": {
+    "unit": "kg",
+    "baseline": 69.7,
+    "current": 69.0,
+    "absolute_change": -0.7,
+    "relative_change_percent": -1.0043041606886658
+  },
+  "body_fat_percent": {
+    "unit": "%",
+    "baseline": 19.7,
+    "current": 19.0,
+    "absolute_change_percentage_points": -0.7
+  },
+  "hypothetical_goal": {
+    "metric": "weight",
+    "baseline": 69.7,
+    "target": 68.0,
+    "current": 69.0,
+    "raw_progress_percent": 41.1764705882353,
+    "not_a_recommended_target": true
+  },
+  "conversion_check": {
+    "input_lb": 150.0,
+    "expected_kg": 68.0388555
+  }
+}

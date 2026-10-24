@@ -1,0 +1,155 @@
+{
+  "checked_at": "2026-10-19",
+  "sources": [
+    {
+      "id": "s01",
+      "title": "Vite on Vercel",
+      "url": "https://vercel.com/docs/frameworks/frontend/vite",
+      "use": "Vite deployment and explicit SPA deep-link routing."
+    },
+    {
+      "id": "s02",
+      "title": "assistant-ui ExternalStoreRuntime",
+      "url": "https://www.assistant-ui.com/docs/runtimes/custom/external-store",
+      "use": "Externally owned conversation state and runtime callbacks."
+    },
+    {
+      "id": "s03",
+      "title": "shadcn/ui Vite installation",
+      "url": "https://ui.shadcn.com/docs/installation/vite",
+      "use": "Supported Vite component-installation path."
+    },
+    {
+      "id": "s04",
+      "title": "Supabase Row Level Security",
+      "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+      "use": "RLS ownership enforcement and privileged-key caveats."
+    },
+    {
+      "id": "s05",
+      "title": "Capacitor Web/PWA plugin guide",
+      "url": "https://capacitorjs.com/docs/plugins/web",
+      "use": "Web/native capability boundary and unavailable web implementations."
+    },
+    {
+      "id": "s06",
+      "title": "Android Health Connect: read data",
+      "url": "https://developer.android.com/health-and-fitness/health-connect/read-data",
+      "use": "Foreground/background permission and history-access requirements."
+    },
+    {
+      "id": "s07",
+      "title": "Vercel Functions limits",
+      "url": "https://vercel.com/docs/functions/limitations",
+      "use": "Duration, request size and other deployment constraints."
+    },
+    {
+      "id": "s08",
+      "title": "OpenRouter GPT-6 Luna model page",
+      "url": "https://openrouter.ai/openai/gpt-6-luna",
+      "use": "Selected OpenRouter identifier and API surfaces; account access still untested."
+    },
+    {
+      "id": "s09",
+      "title": "OpenAI GPT-6 Luna model documentation",
+      "url": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+      "use": "Reasoning/tool-calling API compatibility distinction."
+    },
+    {
+      "id": "s10",
+      "title": "Google Cloud Gemini 3.8 Flash developer guide",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/guides/gemini-3-8-flash",
+      "use": "Identifier, thinking levels and mandatory API conventions."
+    },
+    {
+      "id": "s11",
+      "title": "Google Cloud Gemini 4 Argon developer guide",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/guides/gemini-4-argon",
+      "use": "Identifier, thinking controls and continuation behavior."
+    },
+    {
+      "id": "s12",
+      "title": "Google Cloud Gemini 4 Argon model page",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/4-argon",
+      "use": "Model-specific implicit caching and related limits."
+    },
+    {
+      "id": "s13",
+      "title": "OpenRouter Microsoft-Decision-1 model page",
+      "url": "https://openrouter.ai/microsoft/microsoft-decision-1",
+      "use": "Structured scoring model and alpha decisions API; not chat generation."
+    },
+    {
+      "id": "s14",
+      "title": "OpenRouter Alpha Decisions SDK reference",
+      "url": "https://openrouter.ai/docs/client-sdks/python/sdks/decisions/README",
+      "use": "Typed questions, state and provider preferences for the decision API."
+    },
+    {
+      "id": "s15",
+      "title": "OpenRouter Responses overview",
+      "url": "https://openrouter.ai/docs/api_reference/responses/overview",
+      "use": "Stateless Responses requests; no provider-side conversation persistence."
+    },
+    {
+      "id": "s16",
+      "title": "OpenRouter zero data retention guide",
+      "url": "https://openrouter.ai/docs/guides/features/zdr",
+      "use": "Per-request provider ZDR policy, endpoint eligibility and tool/cache caveats."
+    },
+    {
+      "id": "s17",
+      "title": "Google Cloud zero data retention guidance",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/zero-data-retention",
+      "use": "No-training commitment versus retention exceptions and feature-specific behavior."
+    },
+    {
+      "id": "s18",
+      "title": "Vercel OIDC connection to Google Cloud",
+      "url": "https://vercel.com/docs/oidc/gcp",
+      "use": "Workload Identity Federation configuration and short-lived credentials."
+    },
+    {
+      "id": "s19",
+      "title": "Supabase custom SMTP guide",
+      "url": "https://supabase.com/docs/guides/auth/auth-smtp",
+      "use": "Default SMTP recipient restrictions and production email setup."
+    },
+    {
+      "id": "s20",
+      "title": "Supabase JavaScript admin createUser",
+      "url": "https://supabase.com/docs/reference/javascript/auth-admin-createuser",
+      "use": "Trusted server-side user provisioning and secret-key restriction."
+    },
+    {
+      "id": "s21",
+      "title": "Vercel Hobby plan",
+      "url": "https://vercel.com/docs/plans/hobby",
+      "use": "Personal/noncommercial plan scope and current limitations."
+    },
+    {
+      "id": "s22",
+      "title": "Supabase pricing",
+      "url": "https://supabase.com/pricing",
+      "use": "Free-tier quotas, pausing and automatic-backup plan distinction."
+    },
+    {
+      "id": "s23",
+      "title": "Android Health Connect: synchronize data",
+      "url": "https://developer.android.com/health-and-fitness/health-connect/sync-data",
+      "use": "Change tokens, upsert/deletion synchronization and resync considerations."
+    },
+    {
+      "id": "s24",
+      "title": "W3C WCAG 2.2 contrast minimum",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html",
+      "use": "Text contrast criterion; not proof of full accessibility conformance."
+    },
+    {
+      "id": "s25",
+      "title": "Vercel March 2026 terms update",
+      "url": "https://vercel.com/changelog/updates-to-terms-of-service-march-2026",
+      "use": "Optional platform AI-training data preferences and stated scope."
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+Recorded At,Mass (lb),Fat (%),Notes
+2026-09-01T08:00:00+00:00,150.0,20.0,Synthetic example only
+2026-09-02T08:00:00+00:00,149.8,19.9,Synthetic example only
+2026-09-03T08:00:00+00:00,149.6,,Blank fat value must remain missing

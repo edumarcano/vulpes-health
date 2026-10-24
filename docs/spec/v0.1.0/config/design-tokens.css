@@ -1,0 +1,33 @@
+/* Vulpes UI seed tokens. Adapt to the installed shadcn theme conventions.
+   Logo colors are preserved; semantic interface colors are proposals. */
+:root {
+  --vulpes-brand-orange: #f15a24;
+  --vulpes-brand-charcoal: #1f2937;
+  --vulpes-bg: #f7f3ec;
+  --vulpes-surface: #ffffff;
+  --vulpes-text: #1f2937;
+  --vulpes-text-muted: #53616f;
+  --vulpes-border: #d8d5ce;
+  --vulpes-action: #b93f13;
+  --vulpes-action-text: #ffffff;
+  --vulpes-focus: #b93f13;
+  --vulpes-radius-sm: 0.5rem;
+  --vulpes-radius-md: 0.875rem;
+  --vulpes-radius-lg: 1.25rem;
+  --vulpes-space-unit: 0.25rem;
+  --vulpes-font-ui: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vulpes-chat-width: 47.5rem;
+  --vulpes-data-width: 70rem;
+}
+[data-theme="dark"] {
+  --vulpes-bg: #14212b;
+  --vulpes-surface: #1b2834;
+  --vulpes-text: #f7f3ec;
+  --vulpes-text-muted: #bec8d1;
+  --vulpes-border: #3e4b57;
+  --vulpes-action: #f15a24;
+  --vulpes-action-text: #14212b;
+  --vulpes-focus: #ffad87;
+}
+/* Motion is opt-in per component; reduced motion must be respected there.
+   Do not use a global rule that breaks component accessibility behavior. */

@@ -1,0 +1,228 @@
+{
+  "source_archive": "vulpes-brand-assets.zip",
+  "original_files_unchanged": true,
+  "files": [
+    {
+      "path": "assets/brand/stacked-logos/vulpes-stacked-logo-reverse-transparent.png",
+      "original_member": "vulpes-brand-assets/stacked-logos/vulpes-stacked-logo-reverse-transparent.png",
+      "bytes": 172002,
+      "sha256": "423274c2d74c1758c09f184b0448fdf0595f49f816ff22d2cae3407ed7e6d71d",
+      "width": 2400,
+      "height": 2400,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/stacked-logos/vulpes-stacked-logo-transparent.png",
+      "original_member": "vulpes-brand-assets/stacked-logos/vulpes-stacked-logo-transparent.png",
+      "bytes": 203400,
+      "sha256": "21b5733407c00fe9bd407c5c462af97e12cafd1139a9271d5c12f01bcf2fcb34",
+      "width": 2400,
+      "height": 2400,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/proofs/vulpes-batch-01-corrected-proof.png",
+      "original_member": "vulpes-brand-assets/proofs/vulpes-batch-01-corrected-proof.png",
+      "bytes": 192864,
+      "sha256": "b96983ace2e73583445e4ca1d709cc6f1a028e8872b36838b1c885581a4af96f",
+      "width": 1980,
+      "height": 1260,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/proofs/vulpes-batch-02-proof.png",
+      "original_member": "vulpes-brand-assets/proofs/vulpes-batch-02-proof.png",
+      "bytes": 328350,
+      "sha256": "7e42f713befd2ed526e95be6836d6423c56e1a4f76e442f1508449549fa3e471",
+      "width": 2200,
+      "height": 1800,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/core-logos/vulpes-horizontal-transparent.png",
+      "original_member": "vulpes-brand-assets/core-logos/vulpes-horizontal-transparent.png",
+      "bytes": 95743,
+      "sha256": "aba293d8ce0f93945b7994e0e9442eaea58bad6ab710a45e0303cfcca58a4bc5",
+      "width": 3200,
+      "height": 800,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/core-logos/vulpes-wordmark-charcoal-transparent.png",
+      "original_member": "vulpes-brand-assets/core-logos/vulpes-wordmark-charcoal-transparent.png",
+      "bytes": 61589,
+      "sha256": "103673bf8f107b539ed48957ea1df033db651629a4e69df4292e60ecced35591",
+      "width": 2500,
+      "height": 720,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/core-logos/vulpes-horizontal-with-descriptor-transparent.png",
+      "original_member": "vulpes-brand-assets/core-logos/vulpes-horizontal-with-descriptor-transparent.png",
+      "bytes": 130299,
+      "sha256": "e429988e70d0721c5425b70a0c0f2c6f84984cb95aa18d417203d61b872bed16",
+      "width": 3200,
+      "height": 1060,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/core-logos/vulpes-symbol-orange-2048-transparent.png",
+      "original_member": "vulpes-brand-assets/core-logos/vulpes-symbol-orange-2048-transparent.png",
+      "bytes": 108565,
+      "sha256": "728f0f5f3bb9cc1988ad3372c4e277578d4f7908a3f8db623271966b44b5852b",
+      "width": 2048,
+      "height": 2048,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/favicons/vulpes-favicon-128.png",
+      "original_member": "vulpes-brand-assets/favicons/vulpes-favicon-128.png",
+      "bytes": 8257,
+      "sha256": "84560a1b9d9eec0adb9a4d336e6abc7e728221ec5fd279a8cd8e38c5661261f7",
+      "width": 128,
+      "height": 128,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/favicons/vulpes-favicon-16.png",
+      "original_member": "vulpes-brand-assets/favicons/vulpes-favicon-16.png",
+      "bytes": 649,
+      "sha256": "4f634bbdf3c70e6bd73b172af141721dbae79eb6bd97fd57cc8a444125f34219",
+      "width": 16,
+      "height": 16,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/favicons/vulpes-favicon-32.png",
+      "original_member": "vulpes-brand-assets/favicons/vulpes-favicon-32.png",
+      "bytes": 1492,
+      "sha256": "05c6b1da4fb9e2bcf73d3ce5829772a9d74cbb7d87b0dc08417648631fdca2f9",
+      "width": 32,
+      "height": 32,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/favicons/vulpes-favicon-512.png",
+      "original_member": "vulpes-brand-assets/favicons/vulpes-favicon-512.png",
+      "bytes": 36995,
+      "sha256": "6b952bc16888515135ba9f24388ae05eab03b3ebd5709a44816d7778344f714f",
+      "width": 512,
+      "height": 512,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/favicons/vulpes-favicon-64.png",
+      "original_member": "vulpes-brand-assets/favicons/vulpes-favicon-64.png",
+      "bytes": 3371,
+      "sha256": "ac5b3bb44a5e5dba8b8ac2c2332f828c254f0c2be08f4917998eadb35517a814",
+      "width": 64,
+      "height": 64,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/favicons/vulpes-favicon-256.png",
+      "original_member": "vulpes-brand-assets/favicons/vulpes-favicon-256.png",
+      "bytes": 17633,
+      "sha256": "55ec509f97082ad510860d74ed38fa53341545f3b7e3cdb1254e3be6101ced7a",
+      "width": 256,
+      "height": 256,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/app-icons/vulpes-app-icon-dark-1024.png",
+      "original_member": "vulpes-brand-assets/app-icons/vulpes-app-icon-dark-1024.png",
+      "bytes": 66242,
+      "sha256": "195314c28be38359dd4c1f4af3e0903b81d2b3760f9b877c65dd06d6e91d0e27",
+      "width": 1024,
+      "height": 1024,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/app-icons/vulpes-app-icon-light-1024.png",
+      "original_member": "vulpes-brand-assets/app-icons/vulpes-app-icon-light-1024.png",
+      "bytes": 67663,
+      "sha256": "4da0e8e308216f219466f5c3b574d424cebbccea551944200040ac991a5e47d4",
+      "width": 1024,
+      "height": 1024,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/app-icons/vulpes-app-icon-color-1024.png",
+      "original_member": "vulpes-brand-assets/app-icons/vulpes-app-icon-color-1024.png",
+      "bytes": 55754,
+      "sha256": "997634782b0000843b9b01b67968e22fbed4df930fa33acf234cd6e5148b9544",
+      "width": 1024,
+      "height": 1024,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/monochrome/vulpes-logo-monochrome-light-transparent.png",
+      "original_member": "vulpes-brand-assets/monochrome/vulpes-logo-monochrome-light-transparent.png",
+      "bytes": 152542,
+      "sha256": "793ee0a3d29da17bc9c6b54b18a9a7d641831dd79b3cc3853153666e65d9a856",
+      "width": 3200,
+      "height": 1060,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/monochrome/vulpes-logo-monochrome-dark-transparent.png",
+      "original_member": "vulpes-brand-assets/monochrome/vulpes-logo-monochrome-dark-transparent.png",
+      "bytes": 222122,
+      "sha256": "2f133499afc890931c475d91da92b9353c609bf2b0784d4ac337735f69e33d3f",
+      "width": 3200,
+      "height": 1060,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/monochrome/vulpes-symbol-monochrome-light-transparent.png",
+      "original_member": "vulpes-brand-assets/monochrome/vulpes-symbol-monochrome-light-transparent.png",
+      "bytes": 83319,
+      "sha256": "591ae5c01cf0a89fb9ca55af09d7be479995e51694ef488a2194956fd30b1c1c",
+      "width": 2048,
+      "height": 2048,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/monochrome/vulpes-symbol-monochrome-dark-transparent.png",
+      "original_member": "vulpes-brand-assets/monochrome/vulpes-symbol-monochrome-dark-transparent.png",
+      "bytes": 82734,
+      "sha256": "3e58f49b78923e2d768b8698368c24ddafd5bc933da59527143e806c46f7bda5",
+      "width": 2048,
+      "height": 2048,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/README.txt",
+      "original_member": "vulpes-brand-assets/README.txt",
+      "bytes": 644,
+      "sha256": "54f58549ebccf931f8950bf47e0be2970ccca07f99f76d06b107bfe13245ea1b"
+    },
+    {
+      "path": "assets/brand/source-extractions/source-fox-native.png",
+      "original_member": "vulpes-brand-assets/source-extractions/source-fox-native.png",
+      "bytes": 16614,
+      "sha256": "92e19e9774320f2473b904e46110e286090394649ae62ba3666fe86bce723e26",
+      "width": 213,
+      "height": 205,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/source-extractions/source-descriptor-native.png",
+      "original_member": "vulpes-brand-assets/source-extractions/source-descriptor-native.png",
+      "bytes": 6059,
+      "sha256": "7969e174ff8e7f56e4e656459625fdc8dc9fd0c9192edf10c1264576a6bf4483",
+      "width": 520,
+      "height": 22,
+      "format": "PNG"
+    },
+    {
+      "path": "assets/brand/source-extractions/source-wordmark-native-COMPLETE.png",
+      "original_member": "vulpes-brand-assets/source-extractions/source-wordmark-native-COMPLETE.png",
+      "bytes": 22503,
+      "sha256": "5359187d0eaac6a84de05669013b6fea9d4fa8f07aadc085ac851bf51d847a37",
+      "width": 534,
+      "height": 157,
+      "format": "PNG"
+    }
+  ]
+}

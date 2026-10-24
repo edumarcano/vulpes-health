@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "canonical_csv": true,
+  "mapped_csv": true,
+  "manual_measurements": true,
+  "numeric_goals": true,
+  "conversation_history": true,
+  "execution_inspector": true,
+  "decision_engine": false,
+  "health_connect": false,
+  "direct_scale_ble": false,
+  "scientific_rag": false,
+  "reference_document_uploads": false,
+  "web_research": false,
+  "automatic_memory": false,
+  "proactive_goal_discovery": false,
+  "scheduled_reviews": false,
+  "push_notifications": false,
+  "household_data_sharing": false,
+  "voice": false
+}

@@ -1,0 +1,126 @@
+# API contracts
+
+## 1. General conventions
+
+Use nine thin Node function entry points. Group operations by a validated `action` discriminant rather than creating many independently deployed endpoints. Every route except a minimal unauthenticated liveness response requires a verified Supabase session.
+
+Requests use `Authorization: Bearer <access token>`. Never send provider credentials from the browser. JSON body limit: 2 MiB. Mutations carry a client-generated UUID idempotency key. Query ranges are `[from,to)` with explicit timezone. Paginate lists; maximum page size 200. Cursors are owner-bound and validated, not raw SQL fragments.
+
+Success envelope: `{ "data": ..., "request_id": "..." }`. Error envelope: `{ "error": { "code": "...", "message": "safe user-facing text", "retryable": false }, "request_id": "..." }`.
+
+Use 400 for invalid input, 401 for missing/invalid auth, 403 for denied consent/policy, 404 for absent or foreign owned objects, 409 for stale versions/idempotency conflicts, 413 for oversized requests, 429 for limits, and 503 for a disabled/unavailable provider. Never return another user's object existence through a detailed error.
+
+## 2. HTTP surface
+
+| Route | Method and operation | Contract |
+|---|---|---|
+| `/api/status` | GET | Public liveness has no config; authenticated response lists feature and provider availability, never secrets |
+| `/api/conversations` | GET | List own threads or `id=<id>&view=messages` with pagination |
+| `/api/conversations` | POST `create`, `archive`, `delete` | Explicit user mutations; delete uses confirmation and purges owned trace references |
+| `/api/chat` | POST `send` | Starts one bounded streamed run, or returns existing idempotent run |
+| `/api/chat` | POST `cancel` | Mark owned run cancellation requested; best-effort upstream abort |
+| `/api/data` | GET | Measurements, sources or deterministic summary by `view`, metric/source/range |
+| `/api/data` | POST `preview_csv`, `commit_import` | Encrypted staging and explicit validated commit |
+| `/api/data` | POST `add_measurement`, `correct_measurement`, `delete_measurement` | Manual, owner-confirmed UI actions; expected version for correction/deletion |
+| `/api/data` | GET `view=export` | Owned canonical CSV; spreadsheet-safe escaping; authenticated no-store response |
+| `/api/goals` | GET | Owned goal list/detail/progress |
+| `/api/goals` | POST `propose_create`, `propose_revision`, `propose_state` | Returns a persisted proposal, not an active mutation |
+| `/api/approvals` | POST `approve`, `reject` | Consume an owned proposal with exact hash/version checks |
+| `/api/settings` | GET / PATCH | User-owned preferences/consent; explicit user action; server enforces operator caps |
+| `/api/executions` | GET | Owned run/steps; `view=payload` or `view=export` for available private trace content |
+| `/api/account` | POST `export`, `delete` | Reauthentication and explicit confirmation for delete; app operation, never an AI tool |
+
+No `/web-search`, `/rag`, `/memory/auto-save`, `/health-connect/sync` or `/scale/connect` endpoint is shipped in v0.1.0.
+
+## 3. Chat input
+
+```json
+{
+  "action": "send",
+  "client_request_id": "11111111-1111-4111-8111-111111111111",
+  "conversation_id": "22222222-2222-4222-8222-222222222222",
+  "message": { "id": "33333333-3333-4333-8333-333333333333", "text": "How is my weight trend?" },
+  "depth": "auto",
+  "context_selection": {
+    "metric": "weight",
+    "source_id": null,
+    "goal_id": null,
+    "from": "2026-09-01T00:00:00Z",
+    "to": "2026-09-15T00:00:00Z",
+    "timezone": "UTC"
+  }
+}
+```
+
+Accept only `auto`, `everyday`, `intermediate`, `advanced`. Validate all referenced IDs against the authenticated user. The server loads the authoritative transcript and data. Ignore/reject injected system messages, tool results, arbitrary model IDs, budgets, user IDs and provider URLs in client input.
+
+A repeated request ID with identical input returns the same run status, not another paid call. Same ID with different input returns 409. An already-running user receives the current run link rather than an implicit parallel run. An unavailable explicit depth is reported; it is not silently downgraded.
+
+## 4. Streaming protocol: Vulpes event stream v1
+
+POST via `fetch`; response is `text/event-stream`, `Cache-Control: no-store`. Do not use an unauthenticated EventSource URL with a bearer token in its query string. The server normalizes provider-specific streaming events.
+
+Each event has a monotonically increasing `seq`, a run ID and a version. Example:
+
+```text
+event: text.delta
+data: {"v":1,"run_id":"run-uuid","seq":5,"payload":{"message_id":"message-uuid","text":"Your seven-day average"}}
+
+```
+
+Allowed event types:
+
+| Event | Payload |
+|---|---|
+| `run.started` | Canonical run and assistant-message IDs |
+| `route.selected` | Effective role/model/provider/effort, safe route reason |
+| `step.started` | Step ID/type and user-friendly status label |
+| `tool.result` | Tool name, validated result reference, safe summary |
+| `card.ready` | Predefined card type and validated props/result reference |
+| `text.delta` | Assistant message ID and new text only |
+| `run.usage` | Known usage and actual/estimated/pending cost state |
+| `run.completed` | Final message ID and inspectable run ID |
+| `run.failed` | Safe error code, partial-output flag, retry guidance |
+| `run.cancelled` | Partial-output flag and cost reconciliation state |
+
+Exactly one terminal state is persisted. In a process crash the next authorized status check closes a stale run as interrupted, without replaying inference. Stream sequence numbers prevent duplicate client rendering. Full token deltas need not be stored separately if the final/partial message and request steps are retained; do not claim token-level replay of an interrupted stream.
+
+Before headers are sent, return standard HTTP errors. After streaming starts, emit a terminal error event when possible. The client preserves received text as incomplete and refetches stored status. No automatic paid retry on a lost stream.
+
+## 5. Proposal contract
+
+```json
+{
+  "id": "proposal-uuid",
+  "kind": "goal.create",
+  "target_id": null,
+  "expected_version": null,
+  "payload_hash": "sha256-of-canonical-payload",
+  "status": "pending",
+  "expires_at": "2026-10-20T12:00:00Z",
+  "summary": "Create a draft numeric goal with the displayed target and source policy.",
+  "payload": { "schema_version": 1 }
+}
+```
+
+A real payload is fully schema-validated; the abbreviated example is not sufficient to create a goal. The approval request contains only `action`, `proposal_id`, `payload_hash`, `expected_version` and `client_request_id`. It cannot supply a replacement target or changed plan. Show the exact material fields before approval.
+
+The server rechecks safety/policy, owner, version, pending state and expiry within the same transaction as the mutation. Repeated approvals return the existing outcome. Expired, altered or conflicting proposals fail and require a new proposal. A conversational "yes" can open the matching approval card; v0.1.0 does not apply a persistent change from an ambiguous short reply.
+
+## 6. Import contract
+
+`preview_csv` accepts CSV text, source selection and a versioned mapping object. The server validates format/limits, stages normalized observations privately and returns `batch_id`, `payload_hash`, `expires_at`, counts, errors and a bounded preview.
+
+`commit_import` accepts the owned batch ID, hash and idempotency key. Committing a preview from another account is 404. Changed mappings require a new preview. All-or-nothing commit for valid staged observations; rejected rows are explicitly excluded in the approved preview rather than silently skipped during commit.
+
+## 7. Read tool result references
+
+An analytical result contains stable source references such as `measurement:<uuid>`, `goal_revision:<uuid>` and `analysis:<step-id>`, all resolved through authenticated APIs. The model can cite only references included in its context or tool results. A valid-looking invented ID is rejected by the renderer.
+
+Future evidence references may add document passages and web snapshots. Do not create fake source entries for model background knowledge.
+
+## 8. Export and deletion
+
+Exports contain only the authenticated user's data, a schema version, units/source metadata and available traces chosen by the user. For large exports, stream owned table pages or use a private short-lived artifact; never create a public Storage bucket. Trace export warns that it may include sensitive health content.
+
+Account deletion requires a recently reauthenticated session, an explicit confirmation string and cancellation of new inference admission. Return a completion receipt only after owned app data and identity removal succeed. Failed partial deletion remains a visible actionable state. Export/delete endpoints do not allow an arbitrary `user_id` parameter.

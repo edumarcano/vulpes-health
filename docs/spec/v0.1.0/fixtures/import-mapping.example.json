@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "source_label": "Synthetic Wide Scale",
+  "timestamp_column": "Recorded At",
+  "timezone": "UTC",
+  "granularity": "instant",
+  "metrics": [
+    {
+      "column": "Mass (lb)",
+      "metric": "weight",
+      "unit": "lb",
+      "method": "device_reported"
+    },
+    {
+      "column": "Fat (%)",
+      "metric": "body_fat_percent",
+      "unit": "%",
+      "method": "device_estimate"
+    }
+  ],
+  "ignored_columns": [
+    "Notes"
+  ],
+  "expected_observations": 5,
+  "not_a_renpho_export_format": true
+}
