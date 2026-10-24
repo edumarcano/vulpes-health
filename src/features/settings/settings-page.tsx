@@ -1,15 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { LivenessResponseSchema } from '../../../shared/api';
 
 async function getLiveness({ signal }: { signal: AbortSignal }): Promise<'ok'> {
   const response = await fetch('/api/status', { signal, cache: 'no-store' });
   if (!response.ok) throw new Error('The local API could not be reached.');
   const result: unknown = await response.json();
-  if (!result || typeof result !== 'object' || !('data' in result)
-    || !result.data || typeof result.data !== 'object' || !('status' in result.data)
-    || result.data.status !== 'ok') throw new Error('The local API returned an unexpected response.');
-  return 'ok';
+  const parsed = LivenessResponseSchema.safeParse(result);
+  if (!parsed.success) throw new Error('The local API returned an unexpected response.');
+  return parsed.data.data.status;
 }
 
 export function SettingsPage() {

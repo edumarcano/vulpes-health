@@ -1,0 +1,72 @@
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { describe, expect, it } from 'vitest';
+import { renderSmokeReport, runSmoke } from '../../scripts/provider-smoke.js';
+
+const canary = 'synthetic-credential-canary-not-a-real-key';
+async function cli(args: string[], liveSwitch = 'false') {
+  const npm = process.env.npm_execpath;
+  if (!npm) throw new Error('Run through npm test.');
+  const child = spawn(process.execPath, [npm, 'run', 'test:providers', '--', ...args], {
+    env: { ...process.env, VULPES_LIVE_AI_ENABLED: liveSwitch, OPENROUTER_API_KEY: canary, GOOGLE_APPLICATION_CREDENTIALS: canary },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stdout = ''; let stderr = '';
+  child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+  child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+  const [code] = await once(child, 'exit');
+  expect(stdout + stderr).not.toContain(canary);
+  return { code, stdout, stderr };
+}
+
+describe('real provider-smoke CLI', () => {
+  it('runs all four synthetic roles with zero provider requests even when the live switch is true', async () => {
+    const output = await cli([], 'true');
+    expect(output.code).toBe(0);
+    const report = JSON.parse(output.stdout.slice(output.stdout.indexOf('{')));
+    expect(report.mode).toBe('synthetic');
+    expect(report.actualProviderRequests).toBe(0);
+    expect(report.inferenceSpendUSD).toBe('0');
+    expect(report.rows).toHaveLength(4);
+    expect(report.rows.map((row: { synthetic: string; liveSmoke: string }) => [row.synthetic, row.liveSmoke])).toEqual(Array.from({ length: 4 }, () => ['passed', 'not_run']));
+    expect(report.rows.map((row: { availability: { state: string } }) => row.availability.state)).toEqual(['unavailable', 'unavailable', 'unavailable', 'disabled']);
+  });
+  it.each([
+    [[], 'live_opt_in_required'], [['--role=everyday'], 'live_opt_in_required'],
+    [['--role=everyday', '--allow-spend'], 'live_opt_in_required'],
+    [['--allow-spend', '--max-cost-usd=0.01'], 'live_opt_in_required'],
+    [['--role=everyday', '--allow-spend', '--max-cost-usd=0'], 'invalid_spend_limit'],
+    [['--role=everyday', '--allow-spend', '--max-cost-usd=-1'], 'invalid_spend_limit'],
+    [['--role=everyday', '--allow-spend', '--max-cost-usd=1e3'], 'invalid_spend_limit'],
+  ] as Array<[string[], string]>)('denies live mode before transport: %j', async (args, expected) => {
+    const output = await cli(['--mode=live', ...args]);
+    expect(output.code).toBe(1);
+    expect(JSON.parse(output.stderr)).toEqual({ mode: 'blocked', code: expected, actualProviderRequests: 0, inferenceSpendUSD: '0' });
+  });
+  it.each([
+    ['false', 'live_ai_disabled'], ['true', 'live_smoke_not_implemented'], ['TRUE', 'invalid_live_switch'],
+  ])('denies fully supplied live flags with switch %s', async (liveSwitch, expected) => {
+    const output = await cli(['--mode=live', '--role=everyday', '--allow-spend', '--max-cost-usd=0.01'], liveSwitch);
+    expect(output.code).toBe(1);
+    expect(JSON.parse(output.stderr).code).toBe(expected);
+  });
+  it.each([
+    '--mode=unexpected', '--role=unknown', '--allow-spend', '--unknown-flag',
+  ])('rejects malformed or ambiguous invocation %j', async (arg) => {
+    const output = await cli([arg]);
+    expect(output.code).toBe(1);
+    expect(JSON.parse(output.stderr).actualProviderRequests).toBe(0);
+  });
+  it('never discovers credentials and renders a report without writing files', async () => {
+    const env = new Proxy({}, { get() { throw new Error('Synthetic mode must not inspect environment.'); } });
+    const { report, writeReport } = await runSmoke([], env);
+    expect(writeReport).toBe(false);
+    const text = renderSmokeReport(report);
+    expect(text).toContain('not_run');
+    expect(text).toContain('disabled: optional_decision_disabled');
+    expect(text).toContain('Actual provider requests: **0**');
+    expect(text).not.toContain('synthetic-opaque');
+    expect(text).not.toContain('mean is');
+    expect((await runSmoke(['--role=decision'], env)).report.rows).toHaveLength(1);
+  });
+});

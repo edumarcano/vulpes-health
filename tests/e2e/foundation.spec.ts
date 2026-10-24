@@ -92,6 +92,12 @@ test('Settings reports interrupted API access honestly', async ({ page }) => {
   await expect(page.getByRole('status')).toHaveText('Local API unavailable. Check that the full local stack is running.');
 });
 
+test('Settings rejects a malformed liveness envelope through the shared schema', async ({ page }) => {
+  await page.route('**/api/status', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { status: 'ok' } }) }));
+  await page.goto('/settings');
+  await expect(page.getByRole('status')).toHaveText('Local API unavailable. Check that the full local stack is running.');
+});
+
 test('built HTTP surface preserves JSON errors and security headers', async ({ request }) => {
   for (const [path, method, expectedStatus] of [
     ['/api/status', 'GET', 200], ['/api/status', 'POST', 405], ['/api', 'GET', 404],

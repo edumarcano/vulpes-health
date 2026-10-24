@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import status from '../../api/status.js';
+import { ErrorEnvelopeSchema, LivenessResponseSchema } from '../../shared/api.js';
 import { readServerEnvironment } from '../../server/config/environment.js';
 import { securityHeaders } from '../../server/http/security.js';
 
@@ -37,7 +38,7 @@ describe('real Node HTTP entry point', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(response.headers.get('content-type')).toContain('application/json');
-      expect(await response.json()).toEqual({ data: { status: 'ok' }, request_id: expect.any(String) });
+      expect(LivenessResponseSchema.parse(await response.json())).toEqual({ data: { status: 'ok' }, request_id: expect.any(String) });
     } finally { vi.unstubAllEnvs(); }
   });
 
@@ -45,7 +46,7 @@ describe('real Node HTTP entry point', () => {
     for (const method of ['GET', 'POST']) {
       const response = await fetch(origin + route, { method });
       expect(response.status).toBe(404);
-      expect(await response.json()).toMatchObject({ error: { code: 'not_found', retryable: false } });
+      expect(ErrorEnvelopeSchema.parse(await response.json())).toMatchObject({ error: { code: 'not_found', retryable: false } });
     }
   });
 

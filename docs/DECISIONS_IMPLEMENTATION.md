@@ -4,6 +4,21 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and owner approval when required.
 
+## 2026-10-24: PR 02 contracts and offline replaceability
+
+**Status:** Implemented within the approved PR 02 scope; local evidence and review outcomes are recorded in [PR 02 evidence](evidence/pr02-contracts.md). No live provider request, deployment, or activation.
+
+| Area | Choice and reason |
+|---|---|
+| Contract coverage | The owner selected fully specified contracts during planning. Implement complete DTOs, SSE, envelopes, chat send, approval, and import commit; inventory every route/action. Return `not_implemented` for incomplete operation payloads. Reject unfinished revision/state proposals and cards until PR 11 defines them. No arbitrary-object success schemas. |
+| Schema dependency and CSP | Promote the already locked Zod `4.6.7` to an exact direct dependency. Disable its JIT/eval probe before constructing shared schemas: the first browser run reproduced ten production-CSP violations. Preserve `script-src 'self'`; the same browser checks pass after the repair. |
+| Provider boundary | Generation, typed decision scoring, and normalized usage have separate contracts. Synthetic transports remain in the test/tool graph; no provider SDK, real HTTP transport, or orchestration framework is introduced. Fixtures establish the normalized protocol, not vendor wire compatibility. |
+| Usage and continuation | Preserve nullable unknown usage, raw usage, and reasoning/cache subset metadata without money arithmetic. Keep continuation JSON tagged to its API family and tool call/result IDs matched. No provider state is exposed through public liveness. |
+| Catalog and availability | Keep approved identities, effort controls, ceilings, and required privacy policies in one typed server-side catalog. Prices remain unverified/null and live smokes `not_run`; configuration intent never makes a role available. Decision scoring remains disabled. |
+| Smoke safety | Synthetic mode does not inspect credentials. Live mode checks explicit role/spend inputs and the global switch, then always denies because required services/transports are absent. Full opt-in cannot activate inference in PR 02. |
+
+**Approval boundary:** These choices implement the approved plan. They do not approve provider substitution, prices, Google region/retention, real-data use, or inference. No approved scope deviation.
+
 ## 2026-10-24: PR 01 application foundation
 
 **Status:** Implemented within the approved PR 01 plan; local verification is recorded in [PR 01 evidence](evidence/pr01-foundation.md). No deployment or inference activation.
