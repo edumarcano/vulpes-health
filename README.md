@@ -6,9 +6,9 @@ Vulpes turns personal health data and goals into transparent, auditable conversa
 
 ## Current status
 
-**Application shell, contracts, and offline provider harness (PRs 01–02).** The local application has a branded, responsive shell for Ask Vulpes, Goals, Data, and Settings, plus a public API liveness endpoint. Shared runtime schemas, the server-side typed catalog, and synthetic provider contract tests are available. Authentication, health-data storage/imports, working goals, and AI conversations are not implemented. The preview and smoke CLI cannot make model calls, even when the live-AI environment switch is set to true.
+**Application shell, contracts, and local database foundation (PRs 01–03).** The local application has a branded, responsive shell and public API liveness endpoint. Shared schemas, the typed model catalog, the offline provider harness, and reviewed SQL migrations for all 15 specified tables are available. Local Supabase tests verify ownership constraints, RLS and direct client-write denial using synthetic accounts. Application sign-in, health workflows, working goals, and AI conversations are not implemented. The preview and smoke CLI cannot make model calls, even when the live-AI environment switch is true.
 
-Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). Milestone 0's local foundation checks are verified; PR 02 awaits review and integration before Milestone 1 starts. See [PR 01 evidence](docs/evidence/pr01-foundation.md), [PR 02 evidence](docs/evidence/pr02-contracts.md), and the [generated provider report](docs/evidence/PROVIDER_SMOKE_TESTS.md). Synthetic tests do not establish live provider support.
+Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). PRs 01–02 are merged and Milestone 0's local gates pass. PR 03 verifies the schema foundation; Milestone 1 remains open for PR 04's authenticated shell, encryption and privacy gates. See [PR 01 evidence](docs/evidence/pr01-foundation.md), [PR 02 evidence](docs/evidence/pr02-contracts.md), [PR 03 evidence](docs/evidence/pr03-schema-isolation.md), and the [provider report](docs/evidence/PROVIDER_SMOKE_TESTS.md). Synthetic tests do not establish live provider support.
 
 ## Planned technology stack
 
@@ -116,7 +116,31 @@ For manual inspection of the built client and compiled API:
 npm run preview:full
 ```
 
-Open `http://127.0.0.1:4173`. No service worker or persistent health-data cache is registered. Database, provider, retention, and backup commands will be added with their owning features. Local preview does not prove deployed Vercel routing or function behavior.
+Open `http://127.0.0.1:4173`. No service worker or persistent health-data cache is registered. Retention and backup commands remain with their owning features. Local preview does not prove deployed Vercel routing or function behavior.
+
+### Verify the local database foundation
+
+Install and start a Docker-compatible local runtime first. `npm ci` installs the pinned Supabase CLI; no Supabase login, linked project, cloud keys or populated environment file is needed.
+
+```sh
+npm run db:start
+npm run db:reset:test
+npm run db:lint
+npm run test:db
+npm run db:types:check
+npm run test:integration
+npm run db:stop
+```
+
+These commands target only `vulpes-health-pr03-test`, a disposable synthetic stack at `http://127.0.0.1:54321` with PostgreSQL on port 54322. **`db:reset:test` deletes that stack's database contents.** The wrappers reject linked projects, remote Docker contexts, altered project/port settings, and connection overrides. `db:stop` preserves local volumes and does not stop unrelated projects. A missing runtime fails explicitly; database tests are not replaced with mocks.
+
+The first start applies the SQL migrations. The integration suite provisions two temporary synthetic accounts, obtains real password sessions, tests direct PostgREST access, and removes its records/accounts even on failure. Administrative keys stay in process memory and are not printed. The global signup switch is false; the email provider remains enabled so provisioned accounts can sign in. Both behaviors are tested. Do not use this test stack for operator data.
+
+The wrappers restrict which Docker engine and database project they use; they do not guarantee host-network isolation. On the tested Docker Desktop installation, Supabase publishes ports 54321/54322 on host interfaces, and the documented custom-network loopback option did not prevent non-loopback connections. Use a trusted network or owner-managed host restrictions, keep this stack synthetic, and stop it when finished. No global Docker or firewall settings are changed by these scripts.
+
+`test:db` runs pgTAP schema, grants and constraint tests. `test:integration` runs the real Auth/PostgREST suite; ordinary `npm test` remains offline and Docker-independent. After a migration change, run `npm run db:types` to regenerate `server/db/database.types.ts`; `db:types:check` detects drift without rewriting it. Generated database types describe storage, not authorization, validated DTOs or exact monetary serialization.
+
+All client writes are denied in this foundation. Four protected stores (private payloads, usage buckets/reservations and audit events) also deny direct client reads. Business RPCs and application authentication arrive with their owning PRs; no working health workflow or encryption implementation is implied by the schema.
 
 ### Contracts and provider harness
 

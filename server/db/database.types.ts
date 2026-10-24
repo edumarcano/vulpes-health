@@ -1,0 +1,556 @@
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export type Database = {
+
+  "public": {
+          Tables: {
+            "action_proposals": {
+                  Row: {
+                    "canonical_payload": NonNullable<Json>,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"source_run_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "canonical_payload": NonNullable<Json>,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"source_run_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
+                  }
+                  Update: {
+                    "canonical_payload"?: NonNullable<Json>,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"source_run_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "action_proposals_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "action_proposals_user_id_source_run_id_fkey"
+      columns: ["user_id","source_run_id"]
+isOneToOne: false
+      referencedRelation: "ai_runs"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "action_proposals_user_id_target_id_fkey"
+      columns: ["user_id","target_id"]
+isOneToOne: false
+      referencedRelation: "goals"
+      referencedColumns: ["user_id","id"]
+    }
+                  ]
+                },"ai_runs": {
+                  Row: {
+                    "admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string,"cost_status": string,"cost_usd": number | null,"expires_at": string,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"limits": NonNullable<Json>,"output_tokens": number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id": string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id": string
+                  }
+                  Update: {
+                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ai_runs_user_id_conversation_id_fkey"
+      columns: ["user_id","conversation_id"]
+isOneToOne: false
+      referencedRelation: "conversations"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "ai_runs_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"ai_steps": {
+                  Row: {
+                    "adapter_version": string | null,"cache_read_tokens": number | null,"cache_write_tokens": number | null,"cost_status": string,"cost_usd": number | null,"effective_effort": string | null,"finish_reason": string | null,"finished_at": string | null,"id": string,"input_payload_id": string | null,"input_tokens": number | null,"model_id": string | null,"output_payload_id": string | null,"output_tokens": number | null,"price_snapshot": Json | null,"provider": string | null,"provider_request_id": string | null,"raw_usage": Json | null,"reasoning_tokens": number | null,"requested_effort": string | null,"run_id": string,"sequence": number,"source_references": NonNullable<Json>,"started_at": string,"status": string,"step_type": string,"tool_name": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "adapter_version"?: string | null,"cache_read_tokens"?: number | null,"cache_write_tokens"?: number | null,"cost_status"?: string,"cost_usd"?: number | null,"effective_effort"?: string | null,"finish_reason"?: string | null,"finished_at"?: string | null,"id"?: string,"input_payload_id"?: string | null,"input_tokens"?: number | null,"model_id"?: string | null,"output_payload_id"?: string | null,"output_tokens"?: number | null,"price_snapshot"?: Json | null,"provider"?: string | null,"provider_request_id"?: string | null,"raw_usage"?: Json | null,"reasoning_tokens"?: number | null,"requested_effort"?: string | null,"run_id": string,"sequence": number,"source_references"?: NonNullable<Json>,"started_at"?: string,"status": string,"step_type": string,"tool_name"?: string | null,"user_id": string
+                  }
+                  Update: {
+                    "adapter_version"?: string | null,"cache_read_tokens"?: number | null,"cache_write_tokens"?: number | null,"cost_status"?: string,"cost_usd"?: number | null,"effective_effort"?: string | null,"finish_reason"?: string | null,"finished_at"?: string | null,"id"?: string,"input_payload_id"?: string | null,"input_tokens"?: number | null,"model_id"?: string | null,"output_payload_id"?: string | null,"output_tokens"?: number | null,"price_snapshot"?: Json | null,"provider"?: string | null,"provider_request_id"?: string | null,"raw_usage"?: Json | null,"reasoning_tokens"?: number | null,"requested_effort"?: string | null,"run_id"?: string,"sequence"?: number,"source_references"?: NonNullable<Json>,"started_at"?: string,"status"?: string,"step_type"?: string,"tool_name"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ai_steps_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "ai_steps_user_id_input_payload_id_fkey"
+      columns: ["user_id","input_payload_id"]
+isOneToOne: false
+      referencedRelation: "private_payloads"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "ai_steps_user_id_output_payload_id_fkey"
+      columns: ["user_id","output_payload_id"]
+isOneToOne: false
+      referencedRelation: "private_payloads"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "ai_steps_user_id_run_id_fkey"
+      columns: ["user_id","run_id"]
+isOneToOne: false
+      referencedRelation: "ai_runs"
+      referencedColumns: ["user_id","id"]
+    }
+                  ]
+                },"audit_events": {
+                  Row: {
+                    "created_at": string,"event_type": string,"id": string,"metadata_version": number,"object_id": string | null,"safe_metadata": NonNullable<Json>,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"event_type": string,"id"?: string,"metadata_version"?: number,"object_id"?: string | null,"safe_metadata"?: NonNullable<Json>,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"event_type"?: string,"id"?: string,"metadata_version"?: number,"object_id"?: string | null,"safe_metadata"?: NonNullable<Json>,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "audit_events_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"conversations": {
+                  Row: {
+                    "archived": boolean,"created_at": string,"id": string,"title": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived"?: boolean,"created_at"?: string,"id"?: string,"title": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "archived"?: boolean,"created_at"?: string,"id"?: string,"title"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "conversations_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"data_sources": {
+                  Row: {
+                    "created_at": string,"device_label": string | null,"id": string,"kind": string,"label": string,"measurement_method": string,"origin_app": string | null,"source_namespace": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"device_label"?: string | null,"id"?: string,"kind": string,"label": string,"measurement_method"?: string,"origin_app"?: string | null,"source_namespace": string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"device_label"?: string | null,"id"?: string,"kind"?: string,"label"?: string,"measurement_method"?: string,"origin_app"?: string | null,"source_namespace"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "data_sources_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"goal_revisions": {
+                  Row: {
+                    "approved_at": string,"approved_proposal_id": string,"goal_id": string,"id": string,"payload": NonNullable<Json>,"payload_version": number,"previous_revision_id": string | null,"revision_number": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string,"approved_proposal_id": string,"goal_id": string,"id"?: string,"payload": NonNullable<Json>,"payload_version"?: number,"previous_revision_id"?: string | null,"revision_number": number,"user_id": string
+                  }
+                  Update: {
+                    "approved_at"?: string,"approved_proposal_id"?: string,"goal_id"?: string,"id"?: string,"payload"?: NonNullable<Json>,"payload_version"?: number,"previous_revision_id"?: string | null,"revision_number"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "goal_revisions_user_id_approved_proposal_id_fkey"
+      columns: ["user_id","approved_proposal_id"]
+isOneToOne: true
+      referencedRelation: "action_proposals"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "goal_revisions_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "goal_revisions_user_id_goal_id_fkey"
+      columns: ["user_id","goal_id"]
+isOneToOne: false
+      referencedRelation: "goals"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "goal_revisions_user_id_previous_revision_id_goal_id_fkey"
+      columns: ["user_id","previous_revision_id","goal_id"]
+isOneToOne: false
+      referencedRelation: "goal_revisions"
+      referencedColumns: ["user_id","id","goal_id"]
+    }
+                  ]
+                },"goals": {
+                  Row: {
+                    "baseline_snapshot": Json | null,"canonical_unit": string,"constraints": NonNullable<Json>,"created_at": string,"current_revision_id": string | null,"direction": string,"id": string,"metric_key": string,"review_status": string,"source_id": string,"source_policy": NonNullable<Json>,"state": string,"target_date": string | null,"target_lower": number | null,"target_upper": number | null,"target_value": number | null,"title": string,"updated_at": string,"user_id": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "baseline_snapshot"?: Json | null,"canonical_unit": string,"constraints"?: NonNullable<Json>,"created_at"?: string,"current_revision_id"?: string | null,"direction": string,"id"?: string,"metric_key": string,"review_status"?: string,"source_id": string,"source_policy"?: NonNullable<Json>,"state"?: string,"target_date"?: string | null,"target_lower"?: number | null,"target_upper"?: number | null,"target_value"?: number | null,"title": string,"updated_at"?: string,"user_id": string,"version"?: number
+                  }
+                  Update: {
+                    "baseline_snapshot"?: Json | null,"canonical_unit"?: string,"constraints"?: NonNullable<Json>,"created_at"?: string,"current_revision_id"?: string | null,"direction"?: string,"id"?: string,"metric_key"?: string,"review_status"?: string,"source_id"?: string,"source_policy"?: NonNullable<Json>,"state"?: string,"target_date"?: string | null,"target_lower"?: number | null,"target_upper"?: number | null,"target_value"?: number | null,"title"?: string,"updated_at"?: string,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "goals_current_revision_fkey"
+      columns: ["user_id","current_revision_id","id"]
+isOneToOne: false
+      referencedRelation: "goal_revisions"
+      referencedColumns: ["user_id","id","goal_id"]
+    },{
+      foreignKeyName: "goals_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "goals_user_id_source_id_fkey"
+      columns: ["user_id","source_id"]
+isOneToOne: false
+      referencedRelation: "data_sources"
+      referencedColumns: ["user_id","id"]
+    }
+                  ]
+                },"import_batches": {
+                  Row: {
+                    "committed_at": string | null,"conflict_count": number,"created_at": string,"duplicate_count": number,"expires_at": string,"file_hash": string,"id": string,"mapping_hash": string,"new_count": number,"observation_count": number,"payload_hash": string,"source_id": string,"staging_payload_id": string | null,"status": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash": string,"id"?: string,"mapping_hash": string,"new_count"?: number,"observation_count"?: number,"payload_hash": string,"source_id": string,"staging_payload_id"?: string | null,"status"?: string,"user_id": string
+                  }
+                  Update: {
+                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash"?: string,"id"?: string,"mapping_hash"?: string,"new_count"?: number,"observation_count"?: number,"payload_hash"?: string,"source_id"?: string,"staging_payload_id"?: string | null,"status"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "import_batches_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "import_batches_user_id_source_id_fkey"
+      columns: ["user_id","source_id"]
+isOneToOne: false
+      referencedRelation: "data_sources"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "import_batches_user_id_staging_payload_id_fkey"
+      columns: ["user_id","staging_payload_id"]
+isOneToOne: false
+      referencedRelation: "private_payloads"
+      referencedColumns: ["user_id","id"]
+    }
+                  ]
+                },"measurements": {
+                  Row: {
+                    "canonical_unit": string,"canonical_value": number,"created_at": string,"deleted_at": string | null,"end_at": string | null,"external_record_id": string | null,"fingerprint": string,"granularity": string,"id": string,"import_batch_id": string | null,"local_date": string | null,"measurement_method": string,"metric_key": string,"observed_at": string,"original_offset_minutes": number | null,"original_unit": string,"original_value": string,"provenance": NonNullable<Json>,"quality_flags": (string)[],"source_id": string,"start_at": string | null,"timezone": string | null,"user_id": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "canonical_unit": string,"canonical_value": number,"created_at"?: string,"deleted_at"?: string | null,"end_at"?: string | null,"external_record_id"?: string | null,"fingerprint": string,"granularity": string,"id"?: string,"import_batch_id"?: string | null,"local_date"?: string | null,"measurement_method"?: string,"metric_key": string,"observed_at": string,"original_offset_minutes"?: number | null,"original_unit": string,"original_value": string,"provenance"?: NonNullable<Json>,"quality_flags"?: (string)[],"source_id": string,"start_at"?: string | null,"timezone"?: string | null,"user_id": string,"version"?: number
+                  }
+                  Update: {
+                    "canonical_unit"?: string,"canonical_value"?: number,"created_at"?: string,"deleted_at"?: string | null,"end_at"?: string | null,"external_record_id"?: string | null,"fingerprint"?: string,"granularity"?: string,"id"?: string,"import_batch_id"?: string | null,"local_date"?: string | null,"measurement_method"?: string,"metric_key"?: string,"observed_at"?: string,"original_offset_minutes"?: number | null,"original_unit"?: string,"original_value"?: string,"provenance"?: NonNullable<Json>,"quality_flags"?: (string)[],"source_id"?: string,"start_at"?: string | null,"timezone"?: string | null,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "measurements_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "measurements_user_id_import_batch_id_fkey"
+      columns: ["user_id","import_batch_id"]
+isOneToOne: false
+      referencedRelation: "import_batches"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "measurements_user_id_source_id_fkey"
+      columns: ["user_id","source_id"]
+isOneToOne: false
+      referencedRelation: "data_sources"
+      referencedColumns: ["user_id","id"]
+    }
+                  ]
+                },"messages": {
+                  Row: {
+                    "content_parts": NonNullable<Json>,"conversation_id": string,"created_at": string,"id": string,"role": string,"run_id": string | null,"status": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content_parts": NonNullable<Json>,"conversation_id": string,"created_at"?: string,"id"?: string,"role": string,"run_id"?: string | null,"status": string,"user_id": string
+                  }
+                  Update: {
+                    "content_parts"?: NonNullable<Json>,"conversation_id"?: string,"created_at"?: string,"id"?: string,"role"?: string,"run_id"?: string | null,"status"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "messages_user_id_conversation_id_fkey"
+      columns: ["user_id","conversation_id"]
+isOneToOne: false
+      referencedRelation: "conversations"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "messages_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "messages_user_id_run_id_conversation_id_fkey"
+      columns: ["user_id","run_id","conversation_id"]
+isOneToOne: false
+      referencedRelation: "ai_runs"
+      referencedColumns: ["user_id","id","conversation_id"]
+    }
+                  ]
+                },"private_payloads": {
+                  Row: {
+                    "content_hash": string,"created_at": string,"encoding": string,"encrypted_bytes": string,"encryption_algorithm": string,"expires_at": string,"id": string,"key_id": string,"nonce": string,"payload_version": number,"purpose": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content_hash": string,"created_at"?: string,"encoding": string,"encrypted_bytes": string,"encryption_algorithm"?: string,"expires_at": string,"id"?: string,"key_id": string,"nonce": string,"payload_version"?: number,"purpose": string,"user_id": string
+                  }
+                  Update: {
+                    "content_hash"?: string,"created_at"?: string,"encoding"?: string,"encrypted_bytes"?: string,"encryption_algorithm"?: string,"expires_at"?: string,"id"?: string,"key_id"?: string,"nonce"?: string,"payload_version"?: number,"purpose"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "private_payloads_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"profiles": {
+                  Row: {
+                    "account_state": string,"consent_versions": NonNullable<Json>,"created_at": string,"data_revision": number,"deletion_progress": NonNullable<Json>,"display_name": string | null,"preferences": NonNullable<Json>,"timezone": string,"units": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_state"?: string,"consent_versions"?: NonNullable<Json>,"created_at"?: string,"data_revision"?: number,"deletion_progress"?: NonNullable<Json>,"display_name"?: string | null,"preferences"?: NonNullable<Json>,"timezone"?: string,"units"?: string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "account_state"?: string,"consent_versions"?: NonNullable<Json>,"created_at"?: string,"data_revision"?: number,"deletion_progress"?: NonNullable<Json>,"display_name"?: string | null,"preferences"?: NonNullable<Json>,"timezone"?: string,"units"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+
+                  ]
+                },"usage_buckets": {
+                  Row: {
+                    "allocated_ceiling_usd": number,"id": string,"lower_preference_usd": number | null,"period_start": string,"reserved_usd": number,"scope": string,"spent_usd": number,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "allocated_ceiling_usd": number,"id"?: string,"lower_preference_usd"?: number | null,"period_start": string,"reserved_usd"?: number,"scope": string,"spent_usd"?: number,"user_id"?: string | null
+                  }
+                  Update: {
+                    "allocated_ceiling_usd"?: number,"id"?: string,"lower_preference_usd"?: number | null,"period_start"?: string,"reserved_usd"?: number,"scope"?: string,"spent_usd"?: number,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "usage_buckets_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"usage_reservations": {
+                  Row: {
+                    "amount_usd": number,"created_at": string,"household_bucket_id": string,"household_scope": string | null,"id": string,"known_cost_usd": number | null,"period_start": string,"run_id": string,"settled_at": string | null,"status": string,"step_id": string,"unknown_cost": boolean,"user_bucket_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount_usd": number,"created_at"?: string,"household_bucket_id": string,"household_scope"?: never,"id"?: string,"known_cost_usd"?: number | null,"period_start": string,"run_id": string,"settled_at"?: string | null,"status"?: string,"step_id": string,"unknown_cost"?: boolean,"user_bucket_id": string,"user_id": string
+                  }
+                  Update: {
+                    "amount_usd"?: number,"created_at"?: string,"household_bucket_id"?: string,"household_scope"?: never,"id"?: string,"known_cost_usd"?: number | null,"period_start"?: string,"run_id"?: string,"settled_at"?: string | null,"status"?: string,"step_id"?: string,"unknown_cost"?: boolean,"user_bucket_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "usage_reservations_household_bucket_id_household_scope_per_fkey"
+      columns: ["household_bucket_id","household_scope","period_start"]
+isOneToOne: false
+      referencedRelation: "usage_buckets"
+      referencedColumns: ["id","scope","period_start"]
+    },{
+      foreignKeyName: "usage_reservations_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "usage_reservations_user_id_run_id_fkey"
+      columns: ["user_id","run_id"]
+isOneToOne: false
+      referencedRelation: "ai_runs"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "usage_reservations_user_id_step_id_run_id_fkey"
+      columns: ["user_id","step_id","run_id"]
+isOneToOne: false
+      referencedRelation: "ai_steps"
+      referencedColumns: ["user_id","id","run_id"]
+    },{
+      foreignKeyName: "usage_reservations_user_id_user_bucket_id_period_start_fkey"
+      columns: ["user_id","user_bucket_id","period_start"]
+isOneToOne: false
+      referencedRelation: "usage_buckets"
+      referencedColumns: ["user_id","id","period_start"]
+    }
+                  ]
+                }
+          }
+          Views: {
+            [_ in never]: never
+          }
+          Functions: {
+            [_ in never]: never
+          }
+          Enums: {
+            [_ in never]: never
+          }
+          CompositeTypes: {
+            [_ in never]: never
+          }
+        }
+}
+
+type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
+
+export const Constants = {
+  "public": {
+          Enums: {
+
+          }
+        }
+} as const

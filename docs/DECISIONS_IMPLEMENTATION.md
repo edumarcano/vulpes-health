@@ -4,6 +4,24 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and owner approval when required.
 
+## 2026-10-24: PR 03 schema and isolation foundation
+
+**Status:** Implemented within the approved PR 03 scope; actual local database, HTTP and regression evidence is recorded in [PR 03 evidence](evidence/pr03-schema-isolation.md). No deployment, hosted database, inference or real records.
+
+| Area | Choice and reason |
+|---|---|
+| Local tooling | Exact development-only Supabase CLI `2.122.0`, PostgreSQL 17, bundled pgTAP, existing Vitest and native `fetch`. No ORM, application Supabase client, additional database driver or runtime framework. |
+| Access | All 15 tables enable RLS and revoke client access in the schema transaction before the grants migration. Authenticated clients receive owned reads only on 11 tables; private payloads, usage buckets/reservations and audit events remain server-only. All direct client mutations are denied. Feature RPCs will grant only their required operations. |
+| Ownership | Auth-linked profiles, composite owner-parent keys, same-goal revision and same-conversation run constraints. Household budget rows have null owners and no client access; reservation keys enforce user ownership, bucket scope and original accounting month. |
+| Storage | PostgreSQL `numeric` preserves measurement/money storage. Unknown usage and cost remain nullable/pending. Generated TypeScript database types are structural; later services still own exact decimal arithmetic, money-string serialization and public validation. |
+| Lifecycle seams | Data revision, account deletion progress, active-run uniqueness and budget allocations live in existing specified tables. Goal revisions deny service-role UPDATE. Payload deletion clears nullable references without clearing ownership. Business transitions, deletion coordination and accounting transactions remain deferred. |
+| Configuration correction | CLI `2.122.0` maps `auth.email.enable_signup=false` to a disabled email provider, causing real password login to fail with `email_provider_disabled`. Keep that field true and global `auth.enable_signup=false`. Real provisioned-user login and denied public signup both pass. This corrects a configuration detail of the approved plan without changing the private-account policy. |
+| Default grants | PostgreSQL's built-in function `PUBLIC EXECUTE` default must be revoked globally for the migration role; schema-local revocation cannot subtract it. A reproduced future-function test failed before the correction and passes afterward. Existing managed functions and other migration roles are unchanged. |
+| Host networking | Docker Desktop still exposed the synthetic ports through non-loopback addresses with the documented custom bridge option. Removed that ineffective workaround, documented the host limitation and stopped the stack after verification. No global Docker/firewall modification or custom container runtime was introduced. |
+| Scope boundary | The schema stores encrypted envelopes but implements no encryption/decryption, authenticated app route or business RPC. Synthetic envelope bytes prove ownership/reference behavior only. PR 04 owns application auth, consent and encrypted payload behavior. |
+
+**Approval boundary:** The owner approved PR 03 implementation and PR publication, installed Docker Desktop, and authorized real local Supabase tests. No cloud resource, provider activation, real-data use or system installation by the implementation agent was authorized or performed.
+
 ## 2026-10-24: PR 02 contracts and offline replaceability
 
 **Status:** Implemented within the approved PR 02 scope; local evidence and review outcomes are recorded in [PR 02 evidence](evidence/pr02-contracts.md). No live provider request, deployment, or activation.
