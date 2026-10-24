@@ -6,6 +6,7 @@
   "functions": { "api/*.ts": { "maxDuration": 240 } },
   "rewrites": [
     { "source": "/api/status", "destination": "/api/status" },
+    { "source": "/api/settings", "destination": "/api/settings" },
     { "source": "/api", "destination": "/api/status?__vulpes_unmatched=1" },
     { "source": "/api/:path*", "destination": "/api/status?__vulpes_unmatched=1" },
     { "source": "/ask/:path*", "destination": "/index.html" },

@@ -124,3 +124,9 @@ Future evidence references may add document passages and web snapshots. Do not c
 Exports contain only the authenticated user's data, a schema version, units/source metadata and available traces chosen by the user. For large exports, stream owned table pages or use a private short-lived artifact; never create a public Storage bucket. Trace export warns that it may include sensitive health content.
 
 Account deletion requires a recently reauthenticated session, an explicit confirmation string and cancellation of new inference admission. Return a completion receipt only after owned app data and identity removal succeed. Failed partial deletion remains a visible actionable state. Export/delete endpoints do not allow an arbitrary `user_id` parameter.
+
+## 9. Settings foundation
+
+PR 04 defines executable settings/status shapes in [`shared/auth.ts`](../../../shared/auth.ts). Settings PATCH requires `client_request_id`, `expected_updated_at` (the unchanged token returned by GET), and a nonempty `changes` object. Allowed changes are `display_name`, `timezone`, `units`, and one `provider_consent` containing `provider`, `accepted`, and `policy_version`. Unknown or privileged fields are rejected.
+
+The transaction binds changes to the authenticated owner and current update token. Repeating the latest identical request returns its result; changed input under the same key or an older stale retry returns 409 without changing settings. Responses expose the owned profile, provider policy/consent states and fixed retention defaults; internal write receipts are not returned. Google acceptance remains unavailable until the separate region/retention decision. Consent never establishes live provider availability.

@@ -27,7 +27,7 @@ export class LocalSupabase {
     return response;
   }
 
-  async createUser(): Promise<{ id: string; token: string }> {
+  async createUser(): Promise<{ id: string; token: string; email: string; password: string }> {
     const email = `pr03-${randomUUID()}@example.test`;
     const password = randomBytes(24).toString('base64url');
     const created = await this.admin('/auth/v1/admin/users', 'POST', { email, password, email_confirm: true });
@@ -42,7 +42,7 @@ export class LocalSupabase {
     const session = await signedIn.json() as { access_token: string; user: { id: string } };
     assert.equal(session.user.id, user.id);
     assert(typeof session.access_token === 'string');
-    return { id: user.id, token: session.access_token };
+    return { id: user.id, token: session.access_token, email, password };
   }
 
   async seed(userId: string): Promise<DatabaseGraph> {

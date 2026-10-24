@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SettingsPatchSchema } from './auth.js';
 import { MetricKeySchema } from './domain.js';
 import { AnalysisDepthSchema, HashSchema, IanaTimezoneSchema, ISOInstantSchema, UUIDSchema, VersionSchema } from './primitives.js';
 
@@ -62,7 +63,7 @@ export const apiOperations = {
     { method: 'POST', selector: 'action=approve', owningPR: 11, schema: ApprovalRequestSchema },
     { method: 'POST', selector: 'action=reject', owningPR: 11, schema: ApprovalRequestSchema },
   ],
-  '/api/settings': [{ method: 'GET', selector: 'default', owningPR: 4 }, { method: 'PATCH', selector: 'default', owningPR: 4 }],
+  '/api/settings': [{ method: 'GET', selector: 'default', owningPR: 4, schema: z.strictObject({}) }, { method: 'PATCH', selector: 'default', owningPR: 4, schema: SettingsPatchSchema }],
   '/api/executions': [
     { method: 'GET', selector: 'default', owningPR: 10 }, { method: 'GET', selector: 'view=payload', owningPR: 10 }, { method: 'GET', selector: 'view=export', owningPR: 10 },
   ],

@@ -431,7 +431,32 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "cleanup_private_payloads_v1":
+{ Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: number
+                           },
+"store_private_payload_v1":
+{ Args: { "p_payload": Json }; Returns: string
+                           },
+"update_settings_v1":
+{ Args: { "p_request": Json }; Returns: {
+              "account_state": string,
+"consent_versions": NonNullable<Json>,
+"created_at": string,
+"data_revision": number,
+"deletion_progress": NonNullable<Json>,
+"display_name": string | null,
+"preferences": NonNullable<Json>,
+"timezone": string,
+"units": string,
+"updated_at": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "profiles"
+        isOneToOne: true
+        isSetofReturn: false
+      } }
           }
           Enums: {
             [_ in never]: never

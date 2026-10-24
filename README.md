@@ -6,9 +6,9 @@ Vulpes turns personal health data and goals into transparent, auditable conversa
 
 ## Current status
 
-**Application shell, contracts, and local database foundation (PRs 01–03).** The local application has a branded, responsive shell and public API liveness endpoint. Shared schemas, the typed model catalog, the offline provider harness, and reviewed SQL migrations for all 15 specified tables are available. Local Supabase tests verify ownership constraints, RLS and direct client-write denial using synthetic accounts. Application sign-in, health workflows, working goals, and AI conversations are not implemented. The preview and smoke CLI cannot make model calls, even when the live-AI environment switch is true.
+**Authenticated foundation (PRs 01–04).** The application supports private email/password sign-in, owned profile/settings and explicit provider consent. Reviewed migrations cover all 15 specified tables, RLS, narrow settings transactions, and server-only encrypted payloads with expiry enforcement. Account switching clears private in-memory state. Health workflows, working goals, AI conversations, and account export/deletion are not implemented. The preview and smoke CLI cannot make model calls, even when the live-AI environment switch is true.
 
-Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). PRs 01–02 are merged and Milestone 0's local gates pass. PR 03 verifies the schema foundation; Milestone 1 remains open for PR 04's authenticated shell, encryption and privacy gates. See [PR 01 evidence](docs/evidence/pr01-foundation.md), [PR 02 evidence](docs/evidence/pr02-contracts.md), [PR 03 evidence](docs/evidence/pr03-schema-isolation.md), and the [provider report](docs/evidence/PROVIDER_SMOKE_TESTS.md). Synthetic tests do not establish live provider support.
+Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). PRs 01–03 are merged. See [PR 04 evidence](docs/evidence/pr04-auth-private-payloads.md) for current M1 verification/review status, [PR 03 schema evidence](docs/evidence/pr03-schema-isolation.md), and the [provider report](docs/evidence/PROVIDER_SMOKE_TESTS.md). Local evidence does not establish hosted authentication, family readiness, or live provider support.
 
 ## Planned technology stack
 
@@ -91,7 +91,9 @@ Open `http://127.0.0.1:5173`. The API listens only on `127.0.0.1:3001`; Vite pro
 
 The frontend supports Vite hot reload. Restart the stack after server/API code or environment changes.
 
-`GET /api/status` returns public liveness only. Other API routes return JSON 404; the response contains no account or provider configuration. Settings displays this liveness result without triggering inference.
+Without configuration, the app shows an honest sign-in-unavailable state. Configure Supabase and provision private accounts using the [account setup guide](docs/setup/private-accounts.md). Protected routes redirect to `/login`; there is no signup interface. Supabase manages the persisted authentication session; app settings and health content remain memory-only.
+
+`GET /api/status` without authorization returns minimal public liveness. With a valid bearer it returns safe feature/role availability; invalid authorization is denied. `/api/settings` GET/PATCH verifies the bearer against Auth and uses owned reads/narrow transactions. Other API routes remain JSON 404. None of these operations invokes a model.
 
 ### Verify the foundation
 
@@ -104,11 +106,10 @@ npm run typecheck
 npm test
 npm run build
 npm run test:bundle
-npm run test:e2e
 npm run test:providers
 ```
 
-`build` writes the public client to `dist/` and the local Node/API output to `.build/`. `test:bundle` rebuilds with synthetic server-secret canaries and scans public output for secrets, the server catalog, and synthetic harness markers. `test:e2e` starts its own compiled preview, checks HTTP and browser behavior, and writes screenshots/report files to ignored `test-results/` and `playwright-report/` directories. It rejects browser requests outside the loopback test server.
+`build` writes the public client to `dist/` and the local Node/API output to `.build/`. `test:bundle` rebuilds with synthetic server-secret canaries and scans public output for secrets, the server catalog, and synthetic harness markers. Unit tests remain offline and Docker-independent.
 
 For manual inspection of the built client and compiled API:
 
@@ -116,7 +117,7 @@ For manual inspection of the built client and compiled API:
 npm run preview:full
 ```
 
-Open `http://127.0.0.1:4173`. No service worker or persistent health-data cache is registered. Retention and backup commands remain with their owning features. Local preview does not prove deployed Vercel routing or function behavior.
+Open `http://127.0.0.1:4173`; configure that exact `VULPES_APP_ORIGIN` when using authenticated preview mutations. No service worker or persistent health-data cache is registered. Local preview does not prove deployed Vercel routing or function behavior.
 
 ### Verify the local database foundation
 
@@ -129,18 +130,25 @@ npm run db:lint
 npm run test:db
 npm run db:types:check
 npm run test:integration
+npm run test:e2e
+npm run test:dev
+npm run maintenance:cleanup
 npm run db:stop
 ```
 
 These commands target only `vulpes-health-pr03-test`, a disposable synthetic stack at `http://127.0.0.1:54321` with PostgreSQL on port 54322. **`db:reset:test` deletes that stack's database contents.** The wrappers reject linked projects, remote Docker contexts, altered project/port settings, and connection overrides. `db:stop` preserves local volumes and does not stop unrelated projects. A missing runtime fails explicitly; database tests are not replaced with mocks.
 
-The first start applies the SQL migrations. The integration suite provisions two temporary synthetic accounts, obtains real password sessions, tests direct PostgREST access, and removes its records/accounts even on failure. Administrative keys stay in process memory and are not printed. The global signup switch is false; the email provider remains enabled so provisioned accounts can sign in. Both behaviors are tested. Do not use this test stack for operator data.
+Use a clean reset to verify all migrations, including after upgrading an existing test volume. Integration tests provision temporary synthetic accounts, obtain real password sessions, exercise the Node API and direct PostgREST, and clean up their records/accounts in `finally`. The global signup switch is false; the email provider remains enabled so provisioned accounts can sign in. Do not use this test stack for operator data.
+
+`test:e2e` requires the running local stack. Its guarded runner provisions temporary synthetic accounts, supplies configuration in child-process memory, rebuilds the app, and starts its own compiled preview. `test:dev` uses the same guard to demonstrate sign-in, profile/consent saves and reload through `dev:full` instead. They reject browser requests outside the exact loopback app/Auth ports. Traces, video, and automatic failure screenshots are disabled to avoid capturing credentials; explicit synthetic screenshots/reports are ignored under `test-results/` and `playwright-report/`. Credentials are not written to configuration files. Account fixtures are removed in `finally`; an interrupted runner may require a disposable reset.
 
 The wrappers restrict which Docker engine and database project they use; they do not guarantee host-network isolation. On the tested Docker Desktop installation, Supabase publishes ports 54321/54322 on host interfaces, and the documented custom-network loopback option did not prevent non-loopback connections. Use a trusted network or owner-managed host restrictions, keep this stack synthetic, and stop it when finished. No global Docker or firewall settings are changed by these scripts.
 
 `test:db` runs pgTAP schema, grants and constraint tests. `test:integration` runs the real Auth/PostgREST suite; ordinary `npm test` remains offline and Docker-independent. After a migration change, run `npm run db:types` to regenerate `server/db/database.types.ts`; `db:types:check` detects drift without rewriting it. Generated database types describe storage, not authorization, validated DTOs or exact monetary serialization.
 
-All client writes are denied in this foundation. Four protected stores (private payloads, usage buckets/reservations and audit events) also deny direct client reads. Business RPCs and application authentication arrive with their owning PRs; no working health workflow or encryption implementation is implied by the schema.
+All direct client table writes remain denied. The authenticated settings RPC can change only the caller's allowed profile fields and consent; it cannot alter ownership, account state, operator budgets, or arbitrary preferences. Private payloads, usage buckets/reservations and audit events deny direct client reads. The private-payload module uses authenticated AES-256-GCM envelopes with owner/purpose/version-bound metadata; it has no public endpoint.
+
+`maintenance:cleanup` accepts no connection overrides and targets only the disposable local stack. Each transaction removes at most 100 expired private payloads; one invocation stops after at most 100 batches and reports counts. Reads enforce expiry even if cleanup has not run. This command does not yet clean future export artifacts, usage metadata, or entire accounts. Keep required key versions recoverable as described in the setup guide.
 
 ### Contracts and provider harness
 

@@ -50,7 +50,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 0; }
-button, input, textarea { font: inherit; }
+button, input, textarea, select { font: inherit; }
 a { text-decoration: none; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 h1, h2, p { margin: 0; }
@@ -101,6 +101,17 @@ p { line-height: 1.65; }
 .settings-facts dt { font-size: 0.8rem; font-weight: 600; }
 .settings-facts dd { margin: 0.3rem 0 0; color: var(--muted-foreground); font-size: 0.875rem; overflow-wrap: anywhere; }
 .connection-status { border-top: 1px solid var(--border); padding-top: 1rem; font-size: 0.8rem; }
+.settings-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; min-width: 0; }
+.settings-card { min-width: 0; overflow-wrap: anywhere; }
+.settings-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin: 1rem 0; min-width: 0; }
+.settings-form label { display: grid; gap: 0.5rem; font-size: 0.875rem; font-weight: 550; }
+.settings-form input, .settings-form select { width: 100%; min-width: 0; min-height: 44px; padding: 0.7rem; background: var(--background); color: var(--foreground); border: 1px solid var(--border); border-radius: 0.5rem; }
+.settings-form [data-slot="button"] { justify-self: start; }
+.settings-card > [data-slot="button"] { margin-top: 1rem; }
+.field-hint { font-size: 0.8rem; font-weight: 400; color: var(--muted-foreground); }
+.consent-section { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1.25rem; }
+.consent-section h3 { font-size: 1rem; margin: 0 0 0.75rem; }
+.consent-section p { margin-bottom: 0.75rem; }
 .skip-link { position: fixed; z-index: 20; top: 0.5rem; left: 0.5rem; padding: 0.75rem; border-radius: 0.5rem; background: var(--card); color: var(--foreground); transform: translateY(-200%); }
 .skip-link:focus { transform: translateY(0); }
 @media (prefers-color-scheme: dark) {

@@ -32,7 +32,12 @@ select ok(not has_table_privilege(role_name, format('public.%I', name), privileg
 from expected_tables cross join (values ('anon'), ('authenticated')) roles(role_name)
 cross join (values ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) privileges(privilege);
 select ok(not has_schema_privilege('authenticated', 'public', 'CREATE'), 'clients cannot create public objects');
-select is((select count(*) from pg_proc p join pg_namespace n on p.pronamespace = n.oid where n.nspname = 'public' and p.prosecdef), 0::bigint, 'no public security-definer functions');
+select is((select count(*) from pg_proc p join pg_namespace n on p.pronamespace = n.oid where n.nspname = 'public' and p.prosecdef and p.proname not in ('update_settings_v1','store_private_payload_v1','cleanup_private_payloads_v1')), 0::bigint, 'only reviewed feature security-definer functions exist');
+select ok(not has_function_privilege(role_name,signature,'EXECUTE'), signature || ' denies ' || role_name) from unnest(array['anon','authenticated']) role_name cross join unnest(array['public.store_private_payload_v1(jsonb)','public.cleanup_private_payloads_v1(uuid,integer)']) signature;
+select ok(has_function_privilege('service_role',signature,'EXECUTE'), signature || ' allows service role') from unnest(array['public.store_private_payload_v1(jsonb)','public.cleanup_private_payloads_v1(uuid,integer)']) signature;
+select ok(has_function_privilege('authenticated','public.update_settings_v1(jsonb)','EXECUTE'), 'authenticated can execute owned settings transaction');
+select ok(not has_function_privilege(role_name,'public.update_settings_v1(jsonb)','EXECUTE'), 'settings transaction denies ' || role_name) from unnest(array['anon','service_role']) role_name;
+select is((select proconfig[1] from pg_proc where oid = 'public.update_settings_v1(jsonb)'::regprocedure), 'search_path=""', 'settings transaction pins empty search path');
 select ok(not has_table_privilege('service_role', 'public.goal_revisions', 'UPDATE'), 'trusted client cannot rewrite immutable revisions');
 
 create temporary table expected_links(child text, child_columns text[], parent text, parent_columns text[]);

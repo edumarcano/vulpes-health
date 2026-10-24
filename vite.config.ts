@@ -1,23 +1,29 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { publicAuthConfig } from './shared/auth.js';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { securityHeaders } from './server/http/security.js';
 import { apiProxy, localLogger } from './scripts/local-proxy.js';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+ const env = loadEnv(mode, process.cwd(), 'VITE_SUPABASE_');
+ const auth = publicAuthConfig(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY);
+ const headers = { ...securityHeaders, 'Content-Security-Policy': auth ? securityHeaders['Content-Security-Policy'].replace("connect-src 'self'", `connect-src 'self' ${auth.url}`) : securityHeaders['Content-Security-Policy'] };
+ return {
   customLogger: localLogger,
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
     headers: {
-      ...securityHeaders,
-      'Content-Security-Policy': securityHeaders['Content-Security-Policy']
+      ...headers,
+      'Content-Security-Policy': headers['Content-Security-Policy']
         .replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")
         .replace("connect-src 'self'", "connect-src 'self' ws://127.0.0.1:5173"),
     },
     proxy: { '/api': apiProxy },
   },
-  preview: { headers: securityHeaders, proxy: { '/api': apiProxy } },
+  preview: { headers, proxy: { '/api': apiProxy } },
   build: { sourcemap: false },
+};
 });

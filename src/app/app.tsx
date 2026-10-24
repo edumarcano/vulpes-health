@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { Database, MessageCircle, Settings, Target } from 'lucide-react';
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { LoginPage } from '@/features/auth/login-page';
+import { useAuth } from '@/lib/auth/auth-context';
+import type { ReactNode } from 'react';
 import { AskPage } from '@/features/ask/ask-page';
 import { DataPage } from '@/features/data/data-page';
 import { GoalsPage } from '@/features/goals/goals-page';
 import { SettingsPage } from '@/features/settings/settings-page';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 
 const destinations = [
   { to: '/ask', label: 'Ask', icon: MessageCircle },
@@ -15,8 +17,12 @@ const destinations = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
-function UnavailablePage() {
-  return <><header className="page-heading"><h1 tabIndex={-1}>Sign-in unavailable</h1></header><Card><h2>Accounts are not connected yet</h2><p>Authentication is not available in this foundation preview. No account has been created or signed in.</p></Card></>;
+function Protected({ children }: { children: ReactNode }) {
+  const { state,scope } = useAuth();
+  const { pathname } = useLocation();
+  if (state.kind === 'restoring') return <p role="status">Restoring your session…</p>;
+  if (state.kind !== 'signed_in') return <Navigate to={`/login?returnTo=${encodeURIComponent(pathname)}`} replace />;
+  return <div key={`${state.session.user.id}:${scope.epoch}`}>{children}</div>;
 }
 
 function NotFoundPage() {
@@ -24,6 +30,7 @@ function NotFoundPage() {
 }
 
 export function App() {
+  const { state } = useAuth();
   const { pathname } = useLocation();
   const previousPath = useRef(pathname);
   const main = useRef<HTMLElement>(null);
@@ -47,18 +54,17 @@ export function App() {
         </NavLink>
         <span className="preview-label">Foundation preview</span>
       </header>
-      <nav className="primary-nav" aria-label="Primary">
+      {state.kind === 'signed_in' && <nav className="primary-nav" aria-label="Primary">
         {destinations.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}><Icon size={20} aria-hidden="true" /><span>{label}</span></NavLink>)}
-      </nav>
+      </nav>}
       <main id="main" ref={main} tabIndex={-1} className={`main-content${pathname === '/ask' ? ' main-ask' : ''}`}>
         <Routes>
           <Route path="/" element={<Navigate to="/ask" replace />} />
-          <Route path="/ask" element={<AskPage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/data" element={<DataPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/login/*" element={<UnavailablePage />} />
-          <Route path="/auth/*" element={<UnavailablePage />} />
+          <Route path="/ask" element={<Protected><AskPage /></Protected>} />
+          <Route path="/goals" element={<Protected><GoalsPage /></Protected>} />
+          <Route path="/data" element={<Protected><DataPage /></Protected>} />
+          <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>

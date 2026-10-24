@@ -4,6 +4,23 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and owner approval when required.
 
+## 2026-10-24: PR 04 authenticated shell and private payloads
+
+**Status:** Implemented within the approved PR 04 plan; checkpoint evidence and final self-review are recorded in [PR 04 evidence](evidence/pr04-auth-private-payloads.md). Local synthetic accounts only; no live provider, hosted resource, or real data.
+
+| Area | Choice and reason |
+|---|---|
+| Authentication | Exact Supabase JS `2.118.0`, compatible with Node 24. Server `getUser(token)` establishes identity; ordinary reads and the settings RPC retain user-scoped RLS. No JWT-text authorization or app signup route. |
+| Settings | Strict patches, profile row lock, unchanged update token and one bounded last-write receipt. Latest identical retries succeed; stale replays conflict, preventing an old acceptance from undoing revocation. No generic idempotency table or arbitrary preferences writer. |
+| Consent | Current OpenRouter policy can be explicitly accepted/revoked; Google acceptance remains unavailable pending its separate region/retention decision. Neither consent nor the live flag makes inference available. |
+| Browser state | Supported SDK session persistence is separate from app data. Tenant/epoch query keys, abort controllers, cache clearing and subtree remounting protect account changes; late responses are discarded even when transport ignores abort. Local sign-out does not promise immediate JWT invalidation. |
+| Payloads | Native Node AES-256-GCM, gzip before encryption, random nonces, original-byte hash and authenticated owner/purpose/version/expiry metadata. Active/previous keys remain server secrets. A narrow service-role RPC checks active account state and retention before writes. No browser payload endpoint or Storage bucket. |
+| Retention | Read-time expiry is independent of physical deletion. Owned opportunistic batches and the guarded local cleanup command remove expired envelopes with existing reference-clearing constraints. Other stores and hosted maintenance remain later operations work. |
+| Validation repairs | Browser failures established label-association defects; real direct-RPC testing established the PostgreSQL-only `Factory` timezone gap; a failing unit test established the malformed-router error gap. Repaired without weakening the acceptance assertions. |
+| Boundaries | Spending controls, editable retention, health workflows, inspector routes, export/delete and recovery remain with their owning PRs. Exact production Auth-origin CSP configuration is an explicit deployment prerequisite. |
+
+**Approval boundary:** The owner approved implementation on a dedicated branch and opening the PR. Local dependency installation and disposable synthetic database/browser verification implement that scope. No additional product/persistence policy deviation or external activation was introduced.
+
 ## 2026-10-24: PR 03 schema and isolation foundation
 
 **Status:** Implemented within the approved PR 03 scope; actual local database, HTTP and regression evidence is recorded in [PR 03 evidence](evidence/pr03-schema-isolation.md). No deployment, hosted database, inference or real records.

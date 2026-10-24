@@ -1,6 +1,6 @@
 # Agent instructions — Vulpes
 
-You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification and assets. PR 01 adds the runnable application shell and public liveness API; authentication, persistence, health workflows, and inference are not implemented yet.
+You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification, assets, application shell, owned settings, Supabase authentication, and encrypted private-payload foundation. Health workflows, goals, conversations, and inference are not implemented yet.
 
 ## Core documentation references
 
