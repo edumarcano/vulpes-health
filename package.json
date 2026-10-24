@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "packageManager": "npm@11.18.0",
   "scripts": {
     "dev:client": "vite --host 127.0.0.1 --port 5173 --strictPort",
@@ -18,7 +20,15 @@
     "test": "vitest run",
     "test:bundle": "tsx scripts/check-bundle.ts",
     "test:e2e": "playwright test",
-    "test:providers": "tsx scripts/provider-smoke.ts"
+    "test:providers": "tsx scripts/provider-smoke.ts",
+    "db:start": "tsx scripts/database.ts start",
+    "db:stop": "tsx scripts/database.ts stop",
+    "db:reset:test": "tsx scripts/database.ts reset",
+    "db:lint": "tsx scripts/database.ts lint",
+    "db:types": "tsx scripts/database.ts types",
+    "db:types:check": "tsx scripts/database.ts types-check",
+    "test:db": "tsx scripts/database.ts test",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.31",
@@ -46,6 +56,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
+    "supabase": "2.122.0",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
