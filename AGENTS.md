@@ -18,8 +18,9 @@ You are working in `vulpes-health`, which contains the authoritative v0.1.0 spec
    - [`DEPLOYMENT.md`](docs/spec/v0.1.0/DEPLOYMENT.md) — Local development, Vercel/Supabase environment, and operational runbook.
    - [`IMPLEMENTATION_PLAN.md`](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md) — Ordered, testable milestones starting with Milestone 0.
    - [`ACCEPTANCE_TESTS.md`](docs/spec/v0.1.0/ACCEPTANCE_TESTS.md) — Functional, numerical, security, modularity, and release acceptance gates.
-3. **[`docs/DECISIONS_IMPLEMENTATION.md`](docs/DECISIONS_IMPLEMENTATION.md)** — Dated decisions, trade-offs, and approved deviations during implementation.
-4. **[`.remora/standards/`](.remora/standards/)** — Engineering baseline, testing, and documentation standards:
+3. **[`docs/plans/v0.1.0-execution.md`](docs/plans/v0.1.0-execution.md)** — Canonical execution sequence, PR boundaries, dependencies, verification gates, and session-resilient progress tracking for v0.1.0.
+4. **[`docs/DECISIONS_IMPLEMENTATION.md`](docs/DECISIONS_IMPLEMENTATION.md)** — Dated decisions, trade-offs, and approved deviations during implementation.
+5. **[`.remora/standards/`](.remora/standards/)** — Engineering baseline, testing, and documentation standards:
    - Before applying shared guidance, read [`engineering.md`](.remora/standards/engineering.md) and any applicable scoped project instructions.
    - [`testing.md`](.remora/standards/testing.md) — Empirical verification and testing harness requirements.
    - [`documentation.md`](.remora/standards/documentation.md) — Documentation freshness, ownership, and structure.
@@ -36,8 +37,8 @@ You are working in `vulpes-health`, which contains the authoritative v0.1.0 spec
 
 ## Work process
 
-1. Start with **Milestone 0 only** from [`IMPLEMENTATION_PLAN.md`](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). Read [`PROVIDER_SETUP.md`](docs/spec/v0.1.0/PROVIDER_SETUP.md), [`ARCHITECTURE.md`](docs/spec/v0.1.0/ARCHITECTURE.md), and [`.remora/standards/engineering.md`](.remora/standards/engineering.md) before scaffolding.
-2. Build and test one milestone at a time; preserve unrelated work. Application code belongs outside `docs/spec/v0.1.0/`, typically under `src/`, `server/`, `api/`, `shared/`, etc.
+1. Start with **Milestone 0**, then verify Milestones 0 and 1 independently. After those foundation gates pass, use the dependency-bounded PR stacks in [`docs/plans/v0.1.0-execution.md`](docs/plans/v0.1.0-execution.md). The PR plan decomposes the milestone requirements; it does not replace them. Read [`PROVIDER_SETUP.md`](docs/spec/v0.1.0/PROVIDER_SETUP.md), [`ARCHITECTURE.md`](docs/spec/v0.1.0/ARCHITECTURE.md), and [`.remora/standards/engineering.md`](.remora/standards/engineering.md) before scaffolding.
+2. Implement one verified packet at a time per work lane, keeping dependent work to approximately 2–3 open PRs. Preserve milestone acceptance gates and unrelated work. Application code belongs outside `docs/spec/v0.1.0/`, typically under `src/`, `server/`, `api/`, `shared/`, etc. Optional PR 14 (decision scoring) may be deferred without blocking downstream product work; it remains disabled until its separate evidence and activation gates pass.
 3. Record material implementation trade-offs or approved deviations in [`docs/DECISIONS_IMPLEMENTATION.md`](docs/DECISIONS_IMPLEMENTATION.md).
 4. Verify specifications and fixtures using:
    ```sh

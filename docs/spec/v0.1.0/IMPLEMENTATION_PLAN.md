@@ -2,7 +2,9 @@
 
 ## Working rule
 
-Implement one testable milestone at a time, with small commits and a short completion report. The target is a small working product, not all future architecture at once. The existing estimate of a few days is an aspiration for a prototype, not permission to skip security or report tests that were not run.
+Use [`../../plans/v0.1.0-execution.md`](../../plans/v0.1.0-execution.md) as the canonical execution sequence and PR decomposition. Verify Milestones 0 and 1 independently; after both foundation gates pass, deliver dependency-bounded packets in small PR stacks, with approximately 2–3 dependent PRs open at a time. Preserve every milestone exit criterion. The target is a small working product, not all future architecture at once. The existing estimate of a few days is an aspiration for a prototype, not permission to skip security or report tests that were not run.
+
+Track PR progress in the execution plan so work can resume in a fresh session. Keep the states distinct: proposed, in progress, locally verified, and fully accepted. A local pass does not satisfy a required live-provider or pilot gate. Optional decision scoring (execution-plan PR 14) can be deferred without blocking downstream work and remains disabled unless its own gates pass.
 
 No cloud deployment, paid plan upgrade, production migration, account creation, provider privacy change or real-data upload without explicit owner authorization. Local repository files and synthetic tests are the default workspace.
 
