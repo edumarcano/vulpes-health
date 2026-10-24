@@ -8,6 +8,7 @@ const canaries = {
   OPENROUTER_API_KEY: 'synthetic-provider-secret-canary-01',
   SUPABASE_SERVICE_ROLE_KEY: 'synthetic-admin-secret-canary-01',
   VULPES_TRACE_ENCRYPTION_KEY_B64: 'synthetic-encryption-secret-canary-01',
+  VULPES_TRACE_PREVIOUS_KEYS_JSON: '{"synthetic-old":"synthetic-previous-encryption-secret-canary-01"}',
   GOOGLE_APPLICATION_CREDENTIALS: 'synthetic-private-credential-path-canary-01',
 };
 const npm = process.env.npm_execpath;

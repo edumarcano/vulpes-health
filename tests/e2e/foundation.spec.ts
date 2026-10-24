@@ -1,16 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { restrictNetwork, signIn } from './auth-helpers';
 
-test.beforeEach(async ({ context, page }) => {
-  await context.route('**/*', async (route) => {
-    const url = new URL(route.request().url());
-    if (url.protocol === 'http:' && url.hostname === '127.0.0.1') await route.continue();
-    else { await route.abort(); throw new Error(`Unexpected external request to ${url.hostname}`); }
-  });
+test.beforeEach(async ({ page }) => {
+  await restrictNetwork(page);
   await page.addInitScript(() => {
     document.addEventListener('securitypolicyviolation', (event) => {
       document.documentElement.dataset.cspViolation = event.violatedDirective;
     });
   });
+  await signIn(page);
 });
 
 for (const colorScheme of ['light', 'dark'] as const) {
@@ -30,6 +28,14 @@ for (const colorScheme of ['light', 'dark'] as const) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         expect(await page.locator('html').getAttribute('data-csp-violation')).toBeNull();
         await page.screenshot({ path: testInfo.outputPath(`${route!.slice(1)}.png`), fullPage: true });
+        if (route === '/settings') {
+          await expect(page.getByLabel('Timezone',{ exact:true })).toBeVisible();
+          await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+          await page.getByRole('button',{ name:'Save profile',exact:true }).scrollIntoViewIfNeeded();
+          await expect(page.getByRole('button',{ name:'Save profile',exact:true })).toBeInViewport();
+          await page.screenshot({ path:testInfo.outputPath('settings-zoom.png'),fullPage:true });
+        }
       }
       expect(errors).toEqual([]);
     });
@@ -44,11 +50,10 @@ test('root, deep links, unknown pages, and navigation focus', async ({ page }) =
   await expect(page.getByRole('navigation').getByRole('link', { name: 'Goals' })).toHaveAttribute('aria-current', 'page');
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Goals');
-  for (const path of ['/login', '/auth/callback']) {
-    await page.goto(path);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign-in unavailable');
-    await expect(page.getByRole('textbox')).toHaveCount(0);
-  }
+  await page.goto('/login');
+  await expect(page).toHaveURL('/ask');
+  await page.goto('/auth/callback');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
   await page.goto('/ask/unknown');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
 });
@@ -70,7 +75,7 @@ test('keyboard, skip link, reduced motion, and 200% text sizing', async ({ page 
   expect(await page.getByRole('link', { name: 'Explore Data' }).evaluate((element) => getComputedStyle(element).transitionDuration)).toBe('0s');
 });
 
-test('chat stays disabled and navigation stores no private data or service worker', async ({ page }) => {
+test('chat stays disabled and navigation stores only the auth session', async ({ page }) => {
   const mutations: string[] = [];
   page.on('request', (request) => { if (request.method() !== 'GET') mutations.push(request.url()); });
   await page.goto('/ask');
@@ -79,23 +84,24 @@ test('chat stays disabled and navigation stores no private data or service worke
   await page.getByRole('link', { name: 'Explore Data' }).click();
   await expect(page.getByRole('heading', { name: 'No measurements loaded', exact: true })).toBeVisible();
   await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
-  await expect(page.getByRole('status')).toHaveText('Local API is responding.');
-  expect(await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length }))).toEqual({ local: 0, session: 0 });
+  await expect(page.getByLabel('Timezone',{ exact:true })).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage).every((key) => key.startsWith('vulpes.auth.session.v1')))).toBe(true);
+  expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
   expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
   expect(await page.evaluate(async () => (await caches.keys()).length)).toBe(0);
   expect(mutations).toEqual([]);
 });
 
 test('Settings reports interrupted API access honestly', async ({ page }) => {
-  await page.route('**/api/status', (route) => route.abort());
+  await page.route('**/api/settings', (route) => route.abort());
   await page.goto('/settings');
-  await expect(page.getByRole('status')).toHaveText('Local API unavailable. Check that the full local stack is running.');
+  await expect(page.getByRole('alert')).toContainText('Your settings could not be loaded.');
 });
 
-test('Settings rejects a malformed liveness envelope through the shared schema', async ({ page }) => {
-  await page.route('**/api/status', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { status: 'ok' } }) }));
+test('Settings rejects a malformed settings envelope through the shared schema', async ({ page }) => {
+  await page.route('**/api/settings', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { status: 'ok' } }) }));
   await page.goto('/settings');
-  await expect(page.getByRole('status')).toHaveText('Local API unavailable. Check that the full local stack is running.');
+  await expect(page.getByRole('alert')).toContainText('Your settings could not be loaded.');
 });
 
 test('built HTTP surface preserves JSON errors and security headers', async ({ request }) => {

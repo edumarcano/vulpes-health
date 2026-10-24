@@ -8,6 +8,7 @@
   },
   "packageManager": "npm@11.18.0",
   "scripts": {
+    "maintenance:cleanup": "tsx scripts/cleanup.ts",
     "dev:client": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "dev:api": "tsx scripts/local-api.ts",
     "dev:full": "concurrently --kill-others --success first npm:dev:api npm:dev:client",
@@ -19,7 +20,8 @@
     "build": "npm run typecheck && vite build && tsc -p tsconfig.server.build.json",
     "test": "vitest run",
     "test:bundle": "tsx scripts/check-bundle.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "tsx scripts/browser-tests.ts",
+    "test:dev": "tsx scripts/browser-tests.ts --dev-proof",
     "test:providers": "tsx scripts/provider-smoke.ts",
     "db:start": "tsx scripts/database.ts start",
     "db:stop": "tsx scripts/database.ts stop",
@@ -33,6 +35,7 @@
   "dependencies": {
     "@assistant-ui/react": "0.15.31",
     "@radix-ui/react-slot": "1.5.0",
+    "@supabase/supabase-js": "2.118.0",
     "@tanstack/react-query": "5.104.5",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

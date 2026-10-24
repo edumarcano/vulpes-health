@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
-import status from '../api/status.js';
+import { localRouter } from '../server/http/router.js';
 import { readServerEnvironment } from '../server/config/environment.js';
 
 if (existsSync('.env.local')) process.loadEnvFile('.env.local');
 
 try {
   readServerEnvironment(process.env);
-  const server = createServer(status);
+  const server = createServer(localRouter);
   server.requestTimeout = 10_000;
   server.headersTimeout = 10_000;
   server.on('error', () => {

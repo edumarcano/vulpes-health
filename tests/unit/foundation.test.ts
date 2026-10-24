@@ -31,10 +31,10 @@ describe('real Node HTTP entry point', () => {
   });
   afterAll(async () => { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); });
 
-  it('returns only liveness even with a bearer token and live flag requested', async () => {
+  it('returns only public liveness with live flag requested', async () => {
     vi.stubEnv('VULPES_LIVE_AI_ENABLED', 'true');
     try {
-      const response = await fetch(`${origin}/api/status`, { headers: { Authorization: 'Bearer synthetic-token' } });
+      const response = await fetch(`${origin}/api/status`);
       expect(response.status).toBe(200);
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect(response.headers.get('content-type')).toContain('application/json');
