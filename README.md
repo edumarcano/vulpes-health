@@ -6,9 +6,9 @@ Vulpes turns personal health data and goals into transparent, auditable conversa
 
 ## Current status
 
-**Runnable application foundation (PR 01).** The local application has a branded, responsive shell for Ask Vulpes, Goals, Data, and Settings, plus a public API liveness endpoint. Authentication, health-data storage/imports, working goals, and AI conversations are not implemented. The preview cannot make model calls, even when the live-AI environment switch is set to true.
+**Application shell, contracts, and offline provider harness (PRs 01–02).** The local application has a branded, responsive shell for Ask Vulpes, Goals, Data, and Settings, plus a public API liveness endpoint. Shared runtime schemas, the server-side typed catalog, and synthetic provider contract tests are available. Authentication, health-data storage/imports, working goals, and AI conversations are not implemented. The preview and smoke CLI cannot make model calls, even when the live-AI environment switch is set to true.
 
-Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). Milestone 0 remains open until PR 02's contracts and offline provider harness pass their gates. See [PR 01 evidence](docs/evidence/pr01-foundation.md) for observed checks and limitations.
+Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). Milestone 0's local foundation checks are verified; PR 02 awaits review and integration before Milestone 1 starts. See [PR 01 evidence](docs/evidence/pr01-foundation.md), [PR 02 evidence](docs/evidence/pr02-contracts.md), and the [generated provider report](docs/evidence/PROVIDER_SMOKE_TESTS.md). Synthetic tests do not establish live provider support.
 
 ## Planned technology stack
 
@@ -105,9 +105,10 @@ npm test
 npm run build
 npm run test:bundle
 npm run test:e2e
+npm run test:providers
 ```
 
-`build` writes the public client to `dist/` and the local Node/API output to `.build/`. `test:bundle` rebuilds with synthetic server-secret canaries and scans all public output. `test:e2e` starts its own compiled preview, checks HTTP and browser behavior, and writes screenshots/report files to ignored `test-results/` and `playwright-report/` directories. It rejects browser requests outside the loopback test server.
+`build` writes the public client to `dist/` and the local Node/API output to `.build/`. `test:bundle` rebuilds with synthetic server-secret canaries and scans public output for secrets, the server catalog, and synthetic harness markers. `test:e2e` starts its own compiled preview, checks HTTP and browser behavior, and writes screenshots/report files to ignored `test-results/` and `playwright-report/` directories. It rejects browser requests outside the loopback test server.
 
 For manual inspection of the built client and compiled API:
 
@@ -116,6 +117,24 @@ npm run preview:full
 ```
 
 Open `http://127.0.0.1:4173`. No service worker or persistent health-data cache is registered. Database, provider, retention, and backup commands will be added with their owning features. Local preview does not prove deployed Vercel routing or function behavior.
+
+### Contracts and provider harness
+
+Executable schemas in `shared/` cover the complete documented domain DTOs, supported API inputs/envelopes, and all ten SSE v1 events. Settings uses the shared liveness validator. Ownership, evidence resolution, cursor authenticity, and business transactions require later services; parsing a DTO does not authorize it.
+
+The API inventory preserves all nine paths and documented actions. Incomplete future payloads return `not_implemented` in the contract dispatcher. Revision/state proposal payloads and their cards are rejected until PR 11 defines them. See the [contract coverage and owning PRs](docs/evidence/pr02-contracts.md#contract-coverage-and-deferred-owners).
+
+The default smoke command exercises normalized synthetic generation/tool continuation and decision-scoring interfaces. It uses no credentials or network and reports live roles as unavailable/disabled:
+
+```sh
+npm run test:providers
+npm run test:providers -- --role=everyday
+npm run test:providers -- --write-report
+```
+
+The last command explicitly refreshes the tracked provider evidence report. Ordinary tests do not write that report.
+
+`npm run test:providers -- --mode=live --role=everyday` exits 1 with `live_opt_in_required`. Even complete spend flags and a true live-AI switch end in `live_smoke_not_implemented`: no production provider transport exists. Enabling inference later requires separately authorized access/privacy checks, complete pricing, auth/consent, reservations, encrypted exact capture, and live evidence. No model identity is read from environment overrides.
 
 ## Privacy and license
 
