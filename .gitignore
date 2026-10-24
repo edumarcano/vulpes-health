@@ -11,6 +11,7 @@ secrets/
 # Application build and local services
 node_modules/
 dist/
+.build/
 .vercel/
 .supabase/
 coverage/

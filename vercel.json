@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": { "api/*.ts": { "maxDuration": 240 } },
+  "rewrites": [
+    { "source": "/api/status", "destination": "/api/status" },
+    { "source": "/api", "destination": "/api/status?__vulpes_unmatched=1" },
+    { "source": "/api/:path*", "destination": "/api/status?__vulpes_unmatched=1" },
+    { "source": "/ask/:path*", "destination": "/index.html" },
+    { "source": "/goals/:path*", "destination": "/index.html" },
+    { "source": "/data/:path*", "destination": "/index.html" },
+    { "source": "/settings/:path*", "destination": "/index.html" },
+    { "source": "/login/:path*", "destination": "/index.html" },
+    { "source": "/auth/:path*", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    },
+    { "source": "/api/:path*", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}

@@ -6,9 +6,9 @@ Vulpes turns personal health data and goals into transparent, auditable conversa
 
 ## Current status
 
-**Pre-implementation specification foundation.** The repository currently contains complete product, architectural, security, interface, and AI specifications, along with brand assets and synthetic test fixtures. No application source code has been implemented yet.
+**Runnable application foundation (PR 01).** The local application has a branded, responsive shell for Ask Vulpes, Goals, Data, and Settings, plus a public API liveness endpoint. Authentication, health-data storage/imports, working goals, and AI conversations are not implemented. The preview cannot make model calls, even when the live-AI environment switch is set to true.
 
-Development follows the ordered milestones in [`IMPLEMENTATION_PLAN.md`](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md), starting with **Milestone 0 (Verify and scaffold)**.
+Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). Milestone 0 remains open until PR 02's contracts and offline provider harness pass their gates. See [PR 01 evidence](docs/evidence/pr01-foundation.md) for observed checks and limitations.
 
 ## Planned technology stack
 
@@ -60,7 +60,7 @@ Operational repository guidance:
 
 ### Environment template
 
-Copy the root template to a local environment file when starting implementation:
+No environment file or cloud credentials are needed to run the foundation. When later features require local configuration, copy the root template:
 
 ```sh
 cp .env.example .env.local
@@ -78,9 +78,44 @@ python docs/spec/v0.1.0/scripts/validate_spec_package.py
 
 This script verifies canonical files, JSON syntax, markdown link integrity, empty secret placeholders, brand asset dimensions/hashes, and fixture arithmetic without making network requests.
 
-### Beginning implementation
+### Run locally
 
-Implementation proceeds milestone by milestone. Refer to [`AGENTS.md`](AGENTS.md) and begin with **Milestone 0** in [`docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md`](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md).
+Use Node 24 and npm 11.18.0. Install the locked dependencies, then start both processes:
+
+```sh
+npm ci
+npm run dev:full
+```
+
+Open `http://127.0.0.1:5173`. The API listens only on `127.0.0.1:3001`; Vite proxies `/api` to it. Stop the stack with Ctrl+C. Occupied ports fail rather than selecting another port. Use `dev:full`, because the frontend alone cannot serve the API.
+
+The frontend supports Vite hot reload. Restart the stack after server/API code or environment changes.
+
+`GET /api/status` returns public liveness only. Other API routes return JSON 404; the response contains no account or provider configuration. Settings displays this liveness result without triggering inference.
+
+### Verify the foundation
+
+Stop any local stack before tests that exercise the fixed API port. Install Chromium once for browser verification:
+
+```sh
+npx playwright install chromium
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:bundle
+npm run test:e2e
+```
+
+`build` writes the public client to `dist/` and the local Node/API output to `.build/`. `test:bundle` rebuilds with synthetic server-secret canaries and scans all public output. `test:e2e` starts its own compiled preview, checks HTTP and browser behavior, and writes screenshots/report files to ignored `test-results/` and `playwright-report/` directories. It rejects browser requests outside the loopback test server.
+
+For manual inspection of the built client and compiled API:
+
+```sh
+npm run preview:full
+```
+
+Open `http://127.0.0.1:4173`. No service worker or persistent health-data cache is registered. Database, provider, retention, and backup commands will be added with their owning features. Local preview does not prove deployed Vercel routing or function behavior.
 
 ## Privacy and license
 
