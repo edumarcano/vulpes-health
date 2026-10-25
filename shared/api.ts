@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SettingsPatchSchema } from './auth.js';
 import { MetricKeySchema } from './domain.js';
+import { AddMeasurementSchema, DataQuerySchema } from './data.js';
 import { AnalysisDepthSchema, HashSchema, IanaTimezoneSchema, ISOInstantSchema, UUIDSchema, VersionSchema } from './primitives.js';
 
 export const API_JSON_LIMIT_BYTES = 2 * 1024 * 1024;
@@ -50,10 +51,14 @@ export const apiOperations = {
     { method: 'POST', selector: 'action=cancel', owningPR: 9 },
   ],
   '/api/data': [
-    ...['measurements', 'sources', 'summary', 'export'].map((view) => ({ method: 'GET' as const, selector: `view=${view}` as const, owningPR: view === 'export' ? 7 : 5 })),
+    { method:'GET',selector:'view=sources',owningPR:5,schema:DataQuerySchema.options[0] },
+    { method:'GET',selector:'view=measurements',owningPR:5,schema:DataQuerySchema.options[1] },
+    { method:'GET',selector:'view=summary',owningPR:5,schema:DataQuerySchema.options[2] },
+    { method:'GET',selector:'view=export',owningPR:7 },
     { method: 'POST', selector: 'action=preview_csv', owningPR: 6 },
     { method: 'POST', selector: 'action=commit_import', owningPR: 6, schema: ImportCommitRequestSchema },
-    ...['add_measurement', 'correct_measurement', 'delete_measurement'].map((action) => ({ method: 'POST' as const, selector: `action=${action}` as const, owningPR: action === 'add_measurement' ? 5 : 7 })),
+    { method:'POST', selector:'action=add_measurement',owningPR:5,schema:AddMeasurementSchema },
+    ...['correct_measurement', 'delete_measurement'].map((action) => ({ method: 'POST' as const, selector: `action=${action}` as const, owningPR:7 })),
   ],
   '/api/goals': [
     { method: 'GET', selector: 'default', owningPR: 11 },

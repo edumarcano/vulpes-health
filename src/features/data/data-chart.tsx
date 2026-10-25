@@ -1,0 +1,7 @@
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { DataSummary } from '../../../shared/data';
+
+export default function DataChart({ data }: {data:DataSummary}) {
+  if(data.selection.granularity==='session_total') return <p>Session observations are listed individually in the table. They are not combined into daily totals.</p>;
+  return <figure className="data-chart"><figcaption id="chart-caption">{data.selection.granularity==='daily_total' ? 'Selected daily totals' : 'Daily medians of observed readings'} ({data.analysis.unit}). Gaps represent missing or conflicting data. The measurement table provides individual readings.</figcaption><div role="img" aria-labelledby="chart-caption" className="data-chart-canvas"><ResponsiveContainer width="100%" height={260} minWidth={0}><LineChart data={data.series} margin={{top:12,right:18,left:0,bottom:12}} accessibilityLayer><CartesianGrid stroke="var(--border)" strokeDasharray="3 3"/><XAxis dataKey="localDate" tick={{ fill:'var(--muted-foreground)',fontSize:11 }} minTickGap={30}/><YAxis domain={['auto','auto']} width={60} tick={{ fill:'var(--muted-foreground)',fontSize:11 }}/><Tooltip contentStyle={{ background:'var(--card)',color:'var(--foreground)',borderColor:'var(--border)' }}/><Line type="linear" dataKey="value" stroke="var(--accent-foreground)" strokeWidth={2} dot={{r:3}} connectNulls={false} isAnimationActive={false}/></LineChart></ResponsiveContainer></div></figure>;
+}

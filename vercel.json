@@ -7,6 +7,7 @@
   "rewrites": [
     { "source": "/api/status", "destination": "/api/status" },
     { "source": "/api/settings", "destination": "/api/settings" },
+    { "source": "/api/data", "destination": "/api/data" },
     { "source": "/api", "destination": "/api/status?__vulpes_unmatched=1" },
     { "source": "/api/:path*", "destination": "/api/status?__vulpes_unmatched=1" },
     { "source": "/ask/:path*", "destination": "/index.html" },

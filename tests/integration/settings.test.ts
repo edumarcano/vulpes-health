@@ -41,7 +41,7 @@ describe('real authentication and settings', () => {
     expect((await publicStatus.json() as { data: unknown }).data).toEqual({ status: 'ok' });
     const authenticated = await request(a.token, 'GET', undefined, '/api/status');
     expect(authenticated.status).toBe(200);
-    expect(AuthenticatedStatusSchema.parse((await authenticated.json() as { data: unknown }).data).features).toEqual({ settings: true, healthWorkflows: false, inference: false });
+    expect(AuthenticatedStatusSchema.parse((await authenticated.json() as { data: unknown }).data).features).toEqual({ settings: true, healthWorkflows: true, inference: false });
     expect((await request('forged', 'GET', undefined, '/api/status')).status).toBe(401);
   });
   it('persists only owned profile changes and exposes no receipt or arbitrary preferences', async () => {

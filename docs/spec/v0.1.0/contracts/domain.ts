@@ -37,6 +37,11 @@ export interface DataReference {
   label: string;
 }
 export interface AnalysisResult {
+  method?: "device_reported" | "device_estimate" | "user_reported" | "unknown";
+  granularity?: Granularity;
+  statistic?: "daily_median_mean_7d" | "observed_samples" | "daily_totals" | "session_observations";
+  statistics?: { median: number; min: number; max: number } | null;
+  previousWindow?: { from: ISOInstant; to: ISOInstant; validDays: number; coverageStatus: "sufficient" | "insufficient_data" };
   id: string;
   metric: MetricKey;
   unit: CanonicalUnit;

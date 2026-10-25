@@ -19,7 +19,7 @@ export async function handleStatus(request: IncomingMessage, response: ServerRes
     readServerEnvironment(process.env);
     if (request.headers.authorization !== undefined) {
       await verifySession(request);
-      sendJson(response, 200, { data: { status: 'ok', features: { settings: true, healthWorkflows: false, inference: false }, roles: { everyday: 'unavailable', intermediate: 'unavailable', advanced: 'unavailable', decision: 'disabled' } } });
+      sendJson(response, 200, { data: { status: 'ok', features: { settings: true, healthWorkflows: true, inference: false }, roles: { everyday: 'unavailable', intermediate: 'unavailable', advanced: 'unavailable', decision: 'disabled' } } });
       return;
     }
     sendJson(response, 200, { data: { status: 'ok' } });
