@@ -71,6 +71,8 @@ Do not automatically merge measurements from different source apps on approximat
 
 Manual correction increments the record version, invalidates derived caches and marks affected baselines for review. It does not silently change an approved goal baseline. Deletion removes the reading from future analysis and increments the user's data revision.
 
+Correction preserves series identity and import lineage, with a `user_corrected` marker. Deletion physically removes the measurement and invalidates pending owned import staging and retained exact trace payloads. Approved baseline snapshots remain frozen historical decisions with a review marker; their values are never silently rewritten. A genuinely new import may recreate a deleted reading, while replay of an already committed batch returns its historical result only. See [measurement lifecycle contracts](API_CONTRACTS.md#11-measurement-correction-deletion-and-selected-export).
+
 ## 6. Deterministic analysis v1
 
 All analysis responses include: metric, unit, selected source, interval `[from,to)`, timezone, observation count, distinct valid days, coverage, excluded flags, algorithm version, data revision and relevant measurement IDs.

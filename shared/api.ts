@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { SettingsPatchSchema } from './auth.js';
 import { MetricKeySchema } from './domain.js';
-import { AddMeasurementSchema, DataQuerySchema } from './data.js';
+import { AddMeasurementSchema, CorrectMeasurementSchema, DeleteMeasurementSchema, DataQuerySchema } from './data.js';
 import { PreviewCsvSchema } from './imports.js';
 import { AnalysisDepthSchema, HashSchema, IanaTimezoneSchema, ISOInstantSchema, UUIDSchema, VersionSchema } from './primitives.js';
 
@@ -55,11 +55,12 @@ export const apiOperations = {
     { method:'GET',selector:'view=sources',owningPR:5,schema:DataQuerySchema.options[0] },
     { method:'GET',selector:'view=measurements',owningPR:5,schema:DataQuerySchema.options[1] },
     { method:'GET',selector:'view=summary',owningPR:5,schema:DataQuerySchema.options[2] },
-    { method:'GET',selector:'view=export',owningPR:7 },
+    { method:'GET',selector:'view=export',owningPR:7,schema:DataQuerySchema.options[3] },
     { method: 'POST', selector: 'action=preview_csv', owningPR: 6, schema: PreviewCsvSchema },
     { method: 'POST', selector: 'action=commit_import', owningPR: 6, schema: ImportCommitRequestSchema },
     { method:'POST', selector:'action=add_measurement',owningPR:5,schema:AddMeasurementSchema },
-    ...['correct_measurement', 'delete_measurement'].map((action) => ({ method: 'POST' as const, selector: `action=${action}` as const, owningPR:7 })),
+    {method:'POST',selector:'action=correct_measurement',owningPR:7,schema:CorrectMeasurementSchema},
+    {method:'POST',selector:'action=delete_measurement',owningPR:7,schema:DeleteMeasurementSchema},
   ],
   '/api/goals': [
     { method: 'GET', selector: 'default', owningPR: 11 },

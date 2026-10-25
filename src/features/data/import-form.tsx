@@ -9,7 +9,7 @@ import type { MetricKey,Granularity,MeasurementMethod } from '../../../shared/do
 
 type Stage={kind:'editing'}|{kind:'previewing'}|{kind:'review';preview:ImportPreview;requestId:string}|{kind:'committing';preview:ImportPreview;requestId:string}|{kind:'done';result:ImportResult};
 type ColumnMapping={metric:MetricKey;unit:string;method:MeasurementMethod};
-export function ImportForm({sources,timezone,onSaved}:{sources:Source[];timezone:string;onSaved:(result:ImportResult)=>void}) {
+export function ImportForm({sources,timezone,dataRevision,onSaved}:{sources:Source[];timezone:string;dataRevision:number;onSaved:(result:ImportResult)=>void}) {
   const {state,scope}=useAuth();const session=state.kind==='signed_in' ? state.session : null;const epoch=scope.epoch;
   const [csv,setCsv]=useState('');const [headers,setHeaders]=useState<string[]>([]);const [fileName,setFileName]=useState('');
   const [format,setFormat]=useState<'canonical'|'wide'>('canonical');const [source,setSource]=useState('new');const [label,setLabel]=useState('');const [app,setApp]=useState('');const [device,setDevice]=useState('');
@@ -50,7 +50,7 @@ export function ImportForm({sources,timezone,onSaved}:{sources:Source[];timezone
     }catch(e){scope.commit(epoch,()=>{setStage({kind:'editing'});setError(e instanceof Error ? e.message : 'Preview failed. No measurements were saved.');});}
   }
   async function commit() {
-    if(stage.kind!=='review' || !session)return;const pending=stage;setError('');setStage({...pending,kind:'committing'});
+    if(stage.kind!=='review' || !session || stage.preview.dataRevision!==dataRevision)return;const pending=stage;setError('');setStage({...pending,kind:'committing'});
     try {const r=successEnvelopeSchema(ImportResultSchema).parse(await ownedJson('/api/data',session.access_token,scope,epoch,{method:'POST',body:JSON.stringify({action:'commit_import',batch_id:pending.preview.batch_id,payload_hash:pending.preview.payload_hash,client_request_id:pending.requestId})})).data;
       scope.commit(epoch,()=>{setStage({kind:'done',result:r});setSource(r.source_id);onSaved(r);});
     }catch(e){scope.commit(epoch,()=>{setStage(pending);setError(e instanceof Error ? e.message : 'Import failed. Retry to check its recorded outcome.');});}
@@ -80,7 +80,8 @@ export function ImportForm({sources,timezone,onSaved}:{sources:Source[];timezone
       <ul>{p.errors.map((e,i)=><li key={i}>Row {e.row}, {e.column}: {e.message}</li>)}</ul>{p.errors_omitted>0 && <p>{p.errors_omitted} more errors omitted from this bounded display.</p>}
       <p>First {p.preview.length} normalized observations (maximum 20):</p><div className="data-table-scroll" role="region" aria-label="CSV preview table" tabIndex={0}><table><caption>Normalized import preview</caption><thead><tr><th scope="col">Row / metric</th><th scope="col">Value</th><th scope="col">Time</th><th scope="col">Result</th></tr></thead><tbody>{p.preview.map((r,i)=><tr key={i}><td>{r.row} · {r.metric}</td><td>{r.value} {r.unit}</td><td>{r.observed_at}</td><td>{r.classification}</td></tr>)}</tbody></table></div>
       <p>Only observations marked new will be inserted. Conflicts and invalid rows remain excluded. A change to your data requires a fresh preview.</p>
-      <Button ref={confirm} disabled={stage.kind==='committing'} onClick={()=>void commit()}>Confirm import</Button><Button variant="outline" disabled={stage.kind==='committing'} onClick={()=>{setStage({kind:'editing'});setFileName('');}}>Discard preview and choose file</Button>
+      {p.dataRevision!==dataRevision && <p role="alert">Your data changed. Discard this preview and create a fresh one before importing.</p>}
+      <Button ref={confirm} disabled={stage.kind==='committing' || p.dataRevision!==dataRevision} onClick={()=>void commit()}>Confirm import</Button><Button variant="outline" disabled={stage.kind==='committing'} onClick={()=>{setStage({kind:'editing'});setFileName('');}}>Discard preview and choose file</Button>
     </section>}
     {stage.kind==='done' && <section><h3 ref={resultHeading} tabIndex={-1}>Import recorded</h3><p role="status">Historical batch outcome: {stage.result.inserted} inserted, {stage.result.duplicate} duplicates, {stage.result.conflict} conflicts excluded; revision {stage.result.dataRevision}. Replaying this batch adds nothing.</p><Button onClick={()=>{setStage({kind:'editing'});setFileName('');}}>Import another file</Button></section>}
     {error && <p role="alert">{error}</p>}

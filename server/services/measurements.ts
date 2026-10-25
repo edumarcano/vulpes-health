@@ -1,6 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
-import { DataSummarySchema, MeasurementsPageSchema, MutationResultSchema, SourceSchema, SourcesPageSchema, type AddMeasurement, type DataQuery, type DataSelection } from '../../shared/data.js';
+import { DataSummarySchema, MeasurementsPageSchema, MutationResultSchema, MeasurementMutationResultSchema, SourceSchema, SourcesPageSchema, type AddMeasurement, type DataQuery, type DataSelection, type MeasurementMutation } from '../../shared/data.js';
 import { UUIDSchema } from '../../shared/primitives.js';
 import type { AuthContext } from '../auth/session.js';
 import { measurementDTO, normalizeObservation, type StoredObservation } from '../analytics/measurements.js';
@@ -28,6 +28,22 @@ export async function addMeasurement(context: AuthContext, request: AddMeasureme
   if (error) databaseFailure(error.message);
   return MutationResultSchema.parse(data);
 }
+export async function mutateMeasurement(context:AuthContext,request:MeasurementMutation) {
+  let input=request;
+  if(request.action==='correct_measurement') {
+    try {
+      const value=request.changes.observed_at;
+      if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(value))throw new Error();
+      const explicit=/(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+      const zoned=explicit ? Temporal.Instant.from(value).toZonedDateTimeISO(request.changes.timezone) : Temporal.PlainDateTime.from(value,{overflow:'reject'}).toZonedDateTime(request.changes.timezone,{disambiguation:'reject'});
+      if(!explicit && zoned.offsetNanoseconds%60_000_000_000!==0)throw new Error();
+      input={...request,changes:{...request.changes,observed_at:explicit ? value : value+zoned.offset}};
+    }catch{throw new HttpFailure(400,'invalid_input','Check the observation time and timezone. Ambiguous or nonexistent local times require an explicit offset.');}
+  }
+  const {data,error}=await context.db.rpc('mutate_measurement_v1',{p_request:input});
+  if(error)databaseFailure(error.message);
+  return MeasurementMutationResultSchema.parse(data);
+}
 async function snapshot(context: AuthContext, query: Record<string, string | number>) {
   const { data,error } = await context.db.rpc('read_data_v1',{ p_query:query });
   if (error || data === null) databaseFailure(error?.message ?? 'account_unavailable');
@@ -39,7 +55,7 @@ function filterKey(query: DataQuery) {
 function cursor(context: AuthContext, query: DataQuery, revision: number, id: string) {
   return Buffer.from(JSON.stringify({ owner:context.userId,filter:filterKey(query),revision,id })).toString('base64url');
 }
-async function readCursor(context: AuthContext, query: Exclude<DataQuery,{view:'summary'}>) {
+async function readCursor(context: AuthContext, query: Extract<DataQuery,{view:'sources'|'measurements'}>) {
   if (!query.cursor) return null;
   try {
     const value = z.strictObject({ owner:UUIDSchema,filter:z.string(),revision:z.number().int().nonnegative(),id:UUIDSchema }).parse(JSON.parse(Buffer.from(query.cursor,'base64url').toString('utf8')));
@@ -78,6 +94,7 @@ export async function readData(context: AuthContext, query: DataQuery) {
     try { selectionWindows(selection(query)); }
     catch { throw new HttpFailure(400,'invalid_interval','Select 1–366 complete local calendar days with an explicit timezone.'); }
   }
+  if(query.view==='export') throw new Error('Use the CSV export service.');
   if (query.view === 'summary') {
     const chosen = selection(query); const windows = selectionWindows(chosen);
     const rows: StoredObservation[] = []; let after: string | undefined; let revision: number | undefined;

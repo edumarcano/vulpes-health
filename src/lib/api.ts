@@ -19,3 +19,17 @@ export async function ownedJson(path: string, token: string, scope: IdentityScop
     return value;
   } finally { owner.release(); }
 }
+export async function ownedDownload(path:string,token:string,scope:IdentityScope,expectedEpoch:number):Promise<void> {
+  if(!path.startsWith('/api/'))throw new Error('Invalid application API path.');
+  if(scope.epoch!==expectedEpoch || scope.userId===null)throw new DOMException('The account changed.','AbortError');
+  const owner=scope.capture();let url:string|undefined;
+  try{
+    const response=await fetch(path,{cache:'no-store',signal:owner.signal,headers:{Authorization:`Bearer ${token}`}});
+    if(!owner.current())throw new DOMException('The account changed.','AbortError');
+    if(!response.ok){const parsed=ErrorEnvelopeSchema.safeParse(await response.json());throw new ApiError(response.status,parsed.success ? parsed.data.error.message : 'The export could not be completed.');}
+    if(!response.headers.get('content-type')?.startsWith('text/csv'))throw new Error('The export was not a CSV file.');
+    const blob=await response.blob();
+    if(!owner.current())throw new DOMException('The account changed.','AbortError');
+    url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='vulpes-measurements-v1.csv';link.click();
+  }finally{if(url)URL.revokeObjectURL(url);owner.release();}
+}
