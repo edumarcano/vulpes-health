@@ -1,5 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { AddMeasurementSchema, DataQuerySchema } from '../../shared/data.js';
+import { ImportCommitRequestSchema } from '../../shared/api.js';
+import { PreviewCsvSchema } from '../../shared/imports.js';
+import { commitImport,previewCsv } from '../services/imports.js';
 import { verifySession } from '../auth/session.js';
 import { addMeasurement, readData } from '../services/measurements.js';
 import { HttpFailure, respondFailure } from './failure.js';
@@ -20,7 +23,14 @@ export async function handleData(request: IncomingMessage, response: ServerRespo
     }
     if (request.method === 'POST') {
       const input = await readJson(request);
-      if (input && typeof input === 'object' && 'action' in input && ['preview_csv','commit_import','correct_measurement','delete_measurement'].includes(String(input.action))) throw new HttpFailure(501,'not_implemented','This operation is not available yet.');
+      if (input && typeof input === 'object' && 'action' in input) {
+        if(input.action==='preview_csv' || input.action==='commit_import') {
+          const parsed=(input.action==='preview_csv' ? PreviewCsvSchema : ImportCommitRequestSchema).safeParse(input);
+          if(!parsed.success)throw new HttpFailure(400,'invalid_input','Check the import fields and mapping.');
+          sendJson(response,200,{data:parsed.data.action==='preview_csv' ? await previewCsv(context,parsed.data) : await commitImport(context,parsed.data)});return;
+        }
+        if(['correct_measurement','delete_measurement'].includes(String(input.action)))throw new HttpFailure(501,'not_implemented','This operation is not available yet.');
+      }
       const parsed = AddMeasurementSchema.safeParse(input);
       if (!parsed.success) throw new HttpFailure(400,'invalid_input','Choose valid measurement fields.');
       sendJson(response,200,{ data:await addMeasurement(context,parsed.data) }); return;

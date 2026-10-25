@@ -233,14 +233,14 @@ isOneToOne: false
                   ]
                 },"import_batches": {
                   Row: {
-                    "committed_at": string | null,"conflict_count": number,"created_at": string,"duplicate_count": number,"expires_at": string,"file_hash": string,"id": string,"mapping_hash": string,"new_count": number,"observation_count": number,"payload_hash": string,"source_id": string,"staging_payload_id": string | null,"status": string,"user_id": string
+                    "committed_at": string | null,"conflict_count": number,"created_at": string,"duplicate_count": number,"expires_at": string,"file_hash": string,"id": string,"mapping_hash": string,"new_count": number,"observation_count": number,"payload_hash": string,"preview_data_revision": number,"result": Json | null,"source_hash": string | null,"source_id": string,"staging_payload_id": string | null,"status": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash": string,"id"?: string,"mapping_hash": string,"new_count"?: number,"observation_count"?: number,"payload_hash": string,"source_id": string,"staging_payload_id"?: string | null,"status"?: string,"user_id": string
+                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash": string,"id"?: string,"mapping_hash": string,"new_count"?: number,"observation_count"?: number,"payload_hash": string,"preview_data_revision"?: number,"result"?: Json | null,"source_hash"?: string | null,"source_id": string,"staging_payload_id"?: string | null,"status"?: string,"user_id": string
                   }
                   Update: {
-                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash"?: string,"id"?: string,"mapping_hash"?: string,"new_count"?: number,"observation_count"?: number,"payload_hash"?: string,"source_id"?: string,"staging_payload_id"?: string | null,"status"?: string,"user_id"?: string
+                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash"?: string,"id"?: string,"mapping_hash"?: string,"new_count"?: number,"observation_count"?: number,"payload_hash"?: string,"preview_data_revision"?: number,"result"?: Json | null,"source_hash"?: string | null,"source_id"?: string,"staging_payload_id"?: string | null,"status"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -434,11 +434,29 @@ isOneToOne: false
             "add_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
                            },
+"classify_import_v1":
+{ Args: { "p_owner": string,"p_rows": Json,"p_source": string }; Returns: Json
+                           },
 "cleanup_private_payloads_v1":
 { Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: number
                            },
+"commit_import_v1":
+{ Args: { "p_bytes": string,"p_request": Json }; Returns: Json
+                           },
+"discard_import_v1":
+{ Args: { "p_batch_id": string }; Returns: undefined
+                           },
+"import_equal_key_v1":
+{ Args: { "r": Json }; Returns: Json
+                           },
+"inspect_import_v1":
+{ Args: { "p_rows": Json,"p_source": Json }; Returns: Json
+                           },
 "read_data_v1":
 { Args: { "p_query": Json }; Returns: Json
+                           },
+"register_import_v1":
+{ Args: { "p_bytes": string,"p_payload_id": string }; Returns: Json
                            },
 "store_private_payload_v1":
 { Args: { "p_payload": Json }; Returns: string

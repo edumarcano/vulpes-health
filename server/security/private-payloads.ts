@@ -12,6 +12,11 @@ function administrativeClient() {
   if (!key) throw new HttpFailure(503, 'payload_unavailable', 'Private payload storage is unavailable.');
   return createClient<Database>(config.url, key, serverClientOptions);
 }
+export async function discardImportPayload(context: AuthContext, id: string): Promise<void> {
+  UUIDSchema.parse(id);
+  const {error}=await administrativeClient().from('private_payloads').delete().eq('user_id',context.userId).eq('id',id).eq('purpose','import_staging');
+  if(error) throw new HttpFailure(503,'payload_unavailable','Private staging cleanup is unavailable.');
+}
 export async function cleanupExpiredPayloads(ownerId: string | null = null): Promise<number> {
   if (ownerId !== null) UUIDSchema.parse(ownerId);
   const { data, error } = await administrativeClient().rpc('cleanup_private_payloads_v1', { ...(ownerId === null ? {} : { p_owner: ownerId }), p_batch_size: 100 });

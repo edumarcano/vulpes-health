@@ -113,6 +113,21 @@ The server rechecks safety/policy, owner, version, pending state and expiry with
 
 `commit_import` accepts the owned batch ID, hash and idempotency key. Committing a preview from another account is 404. Changed mappings require a new preview. All-or-nothing commit for valid staged observations; rejected rows are explicitly excluded in the approved preview rather than silently skipped during commit.
 
+Executable import contracts are in [`shared/imports.ts`](../../../shared/imports.ts). Preview requires `action`, `client_request_id`, `csv`, `source` (the manual Data source-selection shape), and `mapping`. Mapping version 1 declares `format`, `timezone`, nullable exact `profile` column/value filter, `single_profile`, and `review_requested`. Without a filter, the single-profile declaration must be true.
+
+| Format | Additional mapping fields |
+|---|---|
+| `canonical` | Exact `source_label` to include; other source labels are counted as excluded. Required and optional columns follow DATA_MODEL. Canonical timestamps require offsets. |
+| `wide` | `timestamp_column`, nullable `local_date_column` and `external_id_column`, `granularity`, and 1–8 `metrics` with column, metric, unit and method. Unmapped columns are reported as ignored. |
+
+CSV text is limited to 1 MiB UTF-8, with 100 unique headers, 10,000 data rows, 64 KiB per record and 5,000 nonblank candidate observations. Normalized encrypted staging has a separate 4 MiB limit; excess input fails explicitly without truncation. Responses show at most 20 observations and 50 row errors, with a count of omitted errors. Preview counts distinguish new, duplicate, conflicting, invalid, blank, profile-excluded and source-excluded input.
+
+Canonical CSV also accepts `quality_flags`: semicolon-separated source-warning text (up to 20 nonblank flags of 100 characters each, including an optional `review_requested` flag). Warnings are retained as data, with no automatic diagnosis, correction or clinical interpretation. Manual entry continues to accept only the explicit review flag.
+
+The encrypted bundle binds normalized observations, mapping/profile/source selection, classifications, counts, file/mapping hashes and data revision. Registration binds source metadata and expiry to the batch and staging envelope. Commit revalidates normalization and checks the exact original staged bytes, envelope hash, owned source, expiry, revision and classifications inside the transaction. Only observations approved as new are inserted, atomically; conflicts/duplicates stay excluded. Any changed selection requires a fresh preview. Real inserts advance the data revision once per batch.
+
+Committed file/source/mapping identities return their recorded result on reimport, even after later data changes. They never recreate removed readings. Mutation acknowledgements are historical; clients refetch current readings. Raw CSV is not persisted. Successful commit or terminal invalidation removes staging; untouched staging expires within 24 hours. The broader inactivity maintenance workflow remains PR 07.
+
 ## 7. Read tool result references
 
 An analytical result contains stable source references such as `measurement:<uuid>`, `goal_revision:<uuid>` and `analysis:<step-id>`, all resolved through authenticated APIs. The model can cite only references included in its context or tool results. A valid-looking invented ID is rejected by the renderer.
@@ -143,4 +158,4 @@ Summary returns the selected interval, its daily chart series, latest reading, d
 
 Data analytical results require method, granularity, statistic kind, nullable sample statistics, and previous-window coverage. These fields are optional in the shared base `AnalysisResult` for compatibility with existing reference results, and validated by typed trend cards. Calculation uses exact decimal storage/transport; numeric DTO serialization and UI display rounding remain separate. This slice displays canonical units and preserves original input units in the table.
 
-CSV preview/commit, correction, deletion and export remain unavailable until their owning PRs. Manual entry does not activate goals or inference.
+CSV preview/commit is implemented by PR 06. Correction, deletion and export remain PR 07. Data entry/import does not activate goals or inference.

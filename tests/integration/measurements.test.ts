@@ -118,7 +118,7 @@ describe('real measurement HTTP/Auth/PostgREST workflow',() => {
     for (const patch of [{ user_id:b.id },{ observation:{ ...base.observation,value:70 } },{ observation:{ ...base.observation,method:null } },{ observation:{ ...base.observation,value:'-1' } },{ observation:{ ...base.observation,observed_at:'2026-11-01T01:30:00',timezone:'America/New_York' } }]) {
       const response=await db.request('/rest/v1/rpc/add_measurement_v1',a.token,{ method:'POST',body:JSON.stringify({ p_request:{ ...base,client_request_id:randomUUID(),...patch } }) }); expect(response.ok).toBe(false);
     }
-    expect((await request(a.token,'POST','/api/data',{ action:'preview_csv' })).status).toBe(501);
+    expect((await request(a.token,'POST','/api/data',{ action:'preview_csv' })).status).toBe(400);
     const anonymous=await db.request('/rest/v1/rpc/read_data_v1','anon',{ method:'POST',body:JSON.stringify({ p_query:{view:'sources'} }) }); expect([401,403]).toContain(anonymous.status);
   });
 });

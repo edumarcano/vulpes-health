@@ -4,7 +4,7 @@ import { LocalSupabase } from '../helpers/local-supabase';
 
 async function clearReadings() {
   const db=new LocalSupabase();
-  for(const account of accounts) for(const table of ['audit_events','measurements','data_sources']) await db.admin(`/rest/v1/${table}?user_id=eq.${account.id}`,'DELETE');
+  for(const account of accounts) for(const table of ['audit_events','measurements','import_batches','private_payloads','data_sources']) await db.admin(`/rest/v1/${table}?user_id=eq.${account.id}`,'DELETE');
 }
 test.beforeEach(async({page})=>{await clearReadings();await restrictNetwork(page);await signIn(page);await page.goto('/data');await expect(page.getByRole('heading',{name:'Manual measurement',exact:true})).toBeVisible();});
 test.afterEach(async()=>{await clearReadings();});

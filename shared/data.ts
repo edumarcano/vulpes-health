@@ -17,13 +17,13 @@ export const ObservationInputSchema = z.strictObject({
   metric: MetricKeySchema, value: DecimalInputSchema, unit: z.enum(['kg','lb','%','index','bpm','cm','m','in','count','min','h']),
   observed_at: z.string().min(1).max(100), timezone: IanaTimezoneSchema, local_date: LocalDateSchema.nullable(),
   granularity: GranularitySchema, method: MeasurementMethodSchema,
-  quality_flags: z.array(z.literal('review_requested')).max(1),
+  quality_flags: z.array(z.string().min(1).max(100).regex(/\S/)).max(20),
 });
 export const SourceSelectionSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('existing'), id: UUIDSchema.transform((id)=>id.toLowerCase()) }),
   z.strictObject({ kind: z.literal('new'), label: z.string().trim().min(1).max(200), origin_app: z.string().trim().min(1).max(200).nullable(), device_label: z.string().trim().min(1).max(200).nullable() }),
 ]);
-export const AddMeasurementSchema = z.strictObject({ action: z.literal('add_measurement'), client_request_id: UUIDSchema, source: SourceSelectionSchema, observation: ObservationInputSchema });
+export const AddMeasurementSchema = z.strictObject({ action: z.literal('add_measurement'), client_request_id: UUIDSchema, source: SourceSelectionSchema, observation: ObservationInputSchema.extend({quality_flags:z.array(z.literal('review_requested')).max(1)}) });
 export const SourceSchema = z.strictObject({ id: UUIDSchema, kind: z.enum(['manual','csv']), label: z.string(), namespace: z.string(), originApp: z.string().nullable(), deviceLabel: z.string().nullable(), method: MeasurementMethodSchema });
 export const MutationResultSchema = z.strictObject({ id: UUIDSchema, sourceId: UUIDSchema, outcome: z.enum(['created','duplicate']), version: VersionSchema, dataRevision: CountSchema });
 export const DataSelectionSchema = z.strictObject({ metric: MetricKeySchema, source_id: UUIDSchema.transform((id)=>id.toLowerCase()), from: ISOInstantSchema, to: ISOInstantSchema, timezone: IanaTimezoneSchema, method: MeasurementMethodSchema, granularity: GranularitySchema });
