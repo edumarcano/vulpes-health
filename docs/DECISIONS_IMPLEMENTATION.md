@@ -10,7 +10,7 @@ Record implementation trade-offs, actual provider capabilities and identifier ve
 
 **Decision:** Preserve merged migrations and replace `update_settings_v1` through a forward migration. Match JavaScript whitespace trimming before validation and storage while retaining Zod's existing 1–200 Unicode character contract, null handling, ownership, and transaction behavior. Use an explicit pending-logout barrier and boolean-only session assertions in browser tests. Canonicalize encryption-fixture expiry and assert exact-limit success plus the specific expansion-limit error. No production encryption or provider behavior changed.
 
-M1 remains locally verified pending remediation PR review/integration. No deployment, live-resource change, provider request, or real-data use was authorized or performed. No scope deviation.
+The owner accepted the remediation and M1 in chat on 2026-10-25 after the repaired tests and focused review passed. [Remediation PR #5](https://github.com/edumarcano/vulpes-health/pull/5) awaits merge; acceptance does not represent completed integration. No deployment, live-resource change, provider request, or real-data use was authorized or performed. No scope deviation.
 
 ## 2026-10-24: PR 04 authenticated shell and private payloads
 
