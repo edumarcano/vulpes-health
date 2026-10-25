@@ -52,7 +52,14 @@ export const MeasurementDTOSchema = z.strictObject({
 export const DataReferenceSchema = z.strictObject({
   id: z.string().min(1), kind: z.enum(['measurement', 'analysis', 'goal_revision', 'message', 'profile_field']), label: z.string(),
 });
+export const AnalysisMetadataSchema = z.strictObject({
+  method: MeasurementMethodSchema, granularity: GranularitySchema,
+  statistic: z.enum(['daily_median_mean_7d','observed_samples','daily_totals','session_observations']),
+  statistics: z.strictObject({ median: FiniteNumberSchema, min: FiniteNumberSchema, max: FiniteNumberSchema }).nullable(),
+  previousWindow: z.strictObject({ from: ISOInstantSchema, to: ISOInstantSchema, validDays: CountSchema, coverageStatus: z.enum(['sufficient','insufficient_data']) }),
+});
 export const AnalysisResultSchema = z.strictObject({
+  ...AnalysisMetadataSchema.partial().shape,
   id: z.string().min(1), metric: MetricKeySchema, unit: CanonicalUnitSchema, sourceId: UUIDSchema,
   from: ISOInstantSchema, to: ISOInstantSchema, timezone: IanaTimezoneSchema,
   algorithmVersion: z.string().min(1), dataRevision: CountSchema, observationCount: CountSchema, validDays: CountSchema,

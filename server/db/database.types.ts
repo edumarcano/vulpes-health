@@ -431,8 +431,14 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "cleanup_private_payloads_v1":
+            "add_measurement_v1":
+{ Args: { "p_request": Json }; Returns: Json
+                           },
+"cleanup_private_payloads_v1":
 { Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: number
+                           },
+"read_data_v1":
+{ Args: { "p_query": Json }; Returns: Json
                            },
 "store_private_payload_v1":
 { Args: { "p_payload": Json }; Returns: string

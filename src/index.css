@@ -101,6 +101,21 @@ p { line-height: 1.65; }
 .settings-facts dt { font-size: 0.8rem; font-weight: 600; }
 .settings-facts dd { margin: 0.3rem 0 0; color: var(--muted-foreground); font-size: 0.875rem; overflow-wrap: anywhere; }
 .connection-status { border-top: 1px solid var(--border); padding-top: 1rem; font-size: 0.8rem; }
+.data-stack { display: grid; grid-template-columns: minmax(0,1fr); gap: 1.5rem; min-width: 0; }
+.data-stack > *, .data-panel, .data-chart { min-width: 0; overflow-wrap: anywhere; }
+.data-stack h3 { margin: 1rem 0 0.75rem; }
+.data-stack p { margin-top: 0.75rem; }
+.data-actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+.data-confirm { padding: 1rem; border: 1px solid var(--border); border-radius: 0.5rem; }
+.data-checkbox { grid-template-columns: auto minmax(0,1fr); align-items: center; min-height: 44px; }
+.data-checkbox input { width: 24px; min-height: 24px; }
+.data-chart { margin: 2rem 0 0; }
+.data-chart figcaption { font-size: 0.85rem; color: var(--muted-foreground); }
+.data-chart-canvas { width: 100%; min-width: 0; margin-top: 1rem; }
+.data-table-scroll { max-width: 100%; overflow-x: auto; margin-top: 1rem; }
+.data-table-scroll table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 0.875rem; }
+.data-table-scroll caption { text-align: left; margin-bottom: 1rem; }
+.data-table-scroll th, .data-table-scroll td { padding: 0.75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .settings-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; min-width: 0; }
 .settings-card { min-width: 0; overflow-wrap: anywhere; }
 .settings-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin: 1rem 0; min-width: 0; }

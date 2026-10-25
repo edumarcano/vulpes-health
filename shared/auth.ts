@@ -22,7 +22,7 @@ export const SettingsSchema = z.strictObject({
   retention: z.strictObject({ traceDays: z.literal(7), importStagingHours: z.literal(24) }),
 });
 export const AuthenticatedStatusSchema = z.strictObject({
-  status: z.literal('ok'), features: z.strictObject({ settings: z.literal(true), healthWorkflows: z.literal(false), inference: z.literal(false) }),
+  status: z.literal('ok'), features: z.strictObject({ settings: z.literal(true), healthWorkflows: z.literal(true), inference: z.literal(false) }),
   roles: z.strictObject({ everyday: z.literal('unavailable'), intermediate: z.literal('unavailable'), advanced: z.literal('unavailable'), decision: z.literal('disabled') }),
 });
 export type Provider = z.infer<typeof ProviderSchema>;

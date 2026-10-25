@@ -130,3 +130,17 @@ Account deletion requires a recently reauthenticated session, an explicit confir
 PR 04 defines executable settings/status shapes in [`shared/auth.ts`](../../../shared/auth.ts). Settings PATCH requires `client_request_id`, `expected_updated_at` (the unchanged token returned by GET), and a nonempty `changes` object. Allowed changes are `display_name`, `timezone`, `units`, and one `provider_consent` containing `provider`, `accepted`, and `policy_version`. Unknown or privileged fields are rejected.
 
 The transaction binds changes to the authenticated owner and current update token. Repeating the latest identical request returns its result; changed input under the same key or an older stale retry returns 409 without changing settings. Responses expose the owned profile, provider policy/consent states and fixed retention defaults; internal write receipts are not returned. Google acceptance remains unavailable until the separate region/retention decision. Consent never establishes live provider availability.
+
+## 10. Manual Data foundation
+
+Executable Data contracts live in [`shared/data.ts`](../../../shared/data.ts). `add_measurement` requires `client_request_id`, a source selection (`kind: existing` with `id`, or `kind: new` with label and nullable app/device metadata), and an observation. The observation declares metric, decimal-string value, input unit, date/time, IANA timezone, nullable local date, granularity, method, and optional review flags represented as an array. Ownership and source namespace are server-controlled.
+
+The acknowledgement contains `id`, `sourceId`, `outcome` (`created` or `duplicate`), `version`, and `dataRevision`. Identical request-key retries return their recorded acknowledgement, not a reconstructed current reading. Changed input under the same owner/request key returns 409. A duplicate-only request does not advance the revision.
+
+`view=sources` supports `page_size` and `cursor`. `view=measurements` and `view=summary` require metric, source ID, method, granularity, `[from,to)`, and timezone. The Data UI selects complete local calendar days, bounded to 366 days. Measurements additionally support pagination and an expected `data_revision`. Cursors bind owner, filters, revision, and an owned anchor; they are navigation state, not authority to read a record. Reads fail with 409 if a multi-page result crosses revisions.
+
+Summary returns the selected interval, its daily chart series, latest reading, data revision, and an analytical result. Scalar headlines always describe the explicitly returned seven-day interval ending at `to`, independently of the chart's selected range, with a preceding comparison window. Daily totals retain their declared local dates rather than being shifted by their summary timestamps. Heart-rate statistics describe observed samples only. Sleep sessions are listed individually, without aggregation.
+
+Data analytical results require method, granularity, statistic kind, nullable sample statistics, and previous-window coverage. These fields are optional in the shared base `AnalysisResult` for compatibility with existing reference results, and validated by typed trend cards. Calculation uses exact decimal storage/transport; numeric DTO serialization and UI display rounding remain separate. This slice displays canonical units and preserves original input units in the table.
+
+CSV preview/commit, correction, deletion and export remain unavailable until their owning PRs. Manual entry does not activate goals or inference.

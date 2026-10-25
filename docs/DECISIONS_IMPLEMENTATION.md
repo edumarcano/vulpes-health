@@ -4,6 +4,21 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-25: PR 05 manual measurements and deterministic Data
+
+**Scope:** The approved M2 batch's first packet only, based on merged M1 remediation at `f4939df`. Verification and self-review are recorded in [PR 05 evidence](evidence/pr05-manual-data.md). CSV import, correction/deletion/export, persistent goals and inference remain with their owning PRs.
+
+| Area | Decision and reason |
+|---|---|
+| Normalization | One normalizer accepts the eight specified metrics. Decimal.js `10.6.0` preserves decimal inputs and exact conversion factors before numeric DTO serialization. Exact percentage/integer bounds are checked before conversion can round them. No clinical ranges or automatic outlier thresholds are introduced. |
+| Time | Temporal polyfill `0.5.1` rejects ambiguous/nonexistent naive local times. The API resolves unique local times; the direct mutation RPC requires an offset. Daily totals use their declared local dates; seven-day windows follow local calendar days across DST. |
+| Persistence | Authenticated, ownership-checking RPCs retain direct-write denial. A profile lock serializes data mutation and revision updates. Server-only audit receipts contain normalized request IDs, request hashes, IDs/versions and historical acknowledgements, without measurement values. New source namespaces are generated rather than inferred from labels. |
+| Reads | Invoker/RLS reads return PostgreSQL numeric values as text. Each page carries a revision; analytical assembly checks every page and a final snapshot. Cursors validate owner/filter/revision and the owned anchor; no extra cursor secret or authorization mechanism is introduced. |
+| Interface | Recharts `3.10.1` loads separately and has a local failure boundary. Source, method, granularity and timezone remain explicit; the table preserves original units. The current slice displays canonical units and bounds chart selection to 366 complete local days. |
+| Replaceability | Fixture-only canonical CSV and Health Connect weight adapters feed the same normalizer. They establish schema parity, not a parser, native permission flow, or device compatibility claim. Pure goal helpers calculate only; no goal is created or activated. |
+
+**Authorization:** Implementation, local synthetic verification, fixes, commit, push and PR creation were requested. No provider request, deployment, hosted modification, real-data use, or PR 06 implementation was authorized or performed.
+
 ## 2026-10-25: M0/M1 independent-review remediation
 
 **Status:** The three review repairs were authorized on a new branch from merged PR 04, with a remediation PR opened. Local reproduction, verification, and focused split-axis self-review are recorded in [remediation evidence](evidence/m0-m1-review-remediation.md).
