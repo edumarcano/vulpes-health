@@ -1,6 +1,6 @@
 # Agent instructions — Vulpes
 
-You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification, assets, authenticated application shell, owned settings, encrypted private-payload foundation, manual measurements, and deterministic Data analysis. CSV import, measurement correction/deletion/export, goals, conversations, and inference are not implemented yet.
+You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification, assets, authenticated application shell, owned settings, encrypted private-payload foundation, manual measurements, CSV preview/import, and deterministic Data analysis. Measurement correction/deletion/export, goals, conversations, and inference are not implemented yet.
 
 ## Core documentation references
 

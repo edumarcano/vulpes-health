@@ -9,6 +9,7 @@ import { successEnvelopeSchema } from '../../../shared/api';
 import { DataSummarySchema, MeasurementsPageSchema, MutationResultSchema, SourcesPageSchema, measurementRegistry, type AddMeasurement, type DataSelection } from '../../../shared/data';
 import type { MetricKey, MeasurementMethod, Granularity } from '../../../shared/domain';
 import { ManualForm } from './manual-form';
+import { ImportForm } from './import-form';
 import { DataChartView } from './data-chart-view';
 import { formatMeasurement as number } from './format';
 
@@ -44,10 +45,11 @@ export function DataPage() {
   const data=summary.data; const items=readings.data?.pages.flatMap((page)=>page.items) ?? [];
   function refresh() { void client.invalidateQueries({queryKey:root}); }
   return <>
-    <header className="page-heading"><p className="eyebrow">Your measurements, with their context</p><h1 tabIndex={-1}>Data</h1><p>Deterministic calculations. No model calls. CSV import is not available yet.</p></header>
+    <header className="page-heading"><p className="eyebrow">Your measurements, with their context</p><h1 tabIndex={-1}>Data</h1><p>Deterministic calculations. No model calls. Preview and confirm CSV imports.</p></header>
     <div className="data-stack">
       {sources.isPending ? <p role="status">Loading your sources…</p> : sources.isError ? <Card><p role="alert">Sources could not be loaded.</p><Button onClick={refresh}>Retry data</Button></Card> : <>
         <Card><ManualForm sources={allSources} timezone={sources.data.pages[0]!.timezone} busy={mutation.isPending} save={async(request)=>{await mutation.mutateAsync(request);}}/><p role="status">{notice}</p></Card>
+        <Card><ImportForm sources={allSources} timezone={timezone} onSaved={(result)=>{setSource(result.source_id);void client.invalidateQueries({queryKey:root});}}/></Card>
         {sources.hasNextPage && <Button variant="outline" disabled={sources.isFetchingNextPage} onClick={()=>void sources.fetchNextPage()}>Load more sources</Button>}
         <Card><h2>Explore measurements</h2><div className="settings-form data-filters">
           <label htmlFor="data-source">Source</label><select id="data-source" value={chosenSource} onChange={(event)=>setSource(event.target.value)}><option value="" disabled>Select a source</option>{allSources.map((item)=><option key={item.id} value={item.id}>{item.label} · {item.deviceLabel ?? item.kind} · {item.id.slice(0,8)}</option>)}</select>
@@ -73,7 +75,7 @@ export function DataPage() {
         </>}</Card>
         {chosenSource && selection && <Card><h2>Measurement table</h2>{readings.isError ? <p role="alert">The readings changed or could not be loaded. Refresh the selection.</p> : readings.isPending ? <p role="status">Loading readings…</p> : items.length===0 ? <p>No readings in this selection.</p> : <><div className="data-table-scroll" tabIndex={0} role="region" aria-label="Scrollable measurement table"><table><caption>Individual observations with original units and source context</caption><thead><tr><th scope="col">Timestamp</th><th scope="col">Value</th><th scope="col">Original</th><th scope="col">Source / method</th><th scope="col">Quality</th></tr></thead><tbody>{items.map((item)=><tr key={item.id}><td>{item.observedAt}<br/>{item.timezone}{item.localDate && <><br/>{item.localDate}</>}</td><td>{number(item.value)} {item.unit}</td><td>{item.originalValue} {item.originalUnit}</td><td>{allSources.find((entry)=>entry.id===item.sourceId)?.label}<br/>{item.method}<br/>{item.granularity}</td><td>{item.qualityFlags.join(', ') || 'No flags'}</td></tr>)}</tbody></table></div>{readings.hasNextPage && <Button variant="outline" disabled={readings.isFetchingNextPage} onClick={()=>void readings.fetchNextPage()}>Load more readings</Button>}</>}</Card>}
       </>}
-      <p className="detail-note">Manual measurements are available. CSV import, correction, deletion and export are not available yet. Android Health Connect is planned for a later release. Calculations are not medical diagnoses.</p>
+      <p className="detail-note">Manual measurements and CSV import are available. Correction, deletion and export are not available yet. Android Health Connect is planned for a later release. Calculations are not medical diagnoses.</p>
     </div>
   </>;
 }

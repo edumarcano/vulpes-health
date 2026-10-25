@@ -4,6 +4,21 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-25: PR 06 CSV preview and transactional import
+
+**Scope:** The approved M2 batch's second packet, from current `main` at `5b00a68`, after verifying PR 05 merged as GitHub #6. [Evidence](evidence/pr06-csv-import.md) distinguishes local synthetic proof from hosted or native-device acceptance. PR 07 and the independent M2 review remain separate.
+
+| Area | Decision and reason |
+|---|---|
+| Parsing/mapping | Pinned `csv-parse` 7.0.3 supplies bounded parsing, BOM/quoted fields and line endings. Canonical source labels and one optional profile-column value are explicit filters. Wide mappings declare each metric/unit/method. Bounded source warnings remain text; manual entry retains its explicit review flag. Unknown columns are ignored visibly; no vendor-format compatibility is inferred. |
+| Limits | Retain 1 MiB CSV, 5,000 observations and 2 MiB public JSON. Bound records to 64 KiB, headers to 100, data rows to 10,000 and normalized staging to the existing 4 MiB private-envelope limit. Reject excess rather than truncate. Preview/error displays are bounded with explicit omitted-error counts. |
+| Preview | Existing AES-GCM storage encrypts the normalized bundle, including mapping, classifications, counts and revision. Raw CSV and ignored cell contents are not retained. Authenticated registration verifies the database hash of the exact staged bytes and creates a source namespace when needed. Labels do not identify sources. |
+| Commit/replay | Lock the active profile before batch/envelope; bind source metadata, hash, expiry and revision, and reclassify before inserts. One transaction inserts only approved new observations, increments revision once, records the historical acknowledgement and deletes staging. Committed file/source/mapping identities never restore later removed rows. Receipts contain hashes, IDs and outcomes only. |
+| Failure lifecycle | Rejected stale/expired commits close owned pending batches and remove staging. Read-time expiry remains independent of cleanup. Broader bounded inactivity maintenance belongs to PR 07. Unavailable ciphertext/keys fail closed; a temporary storage/key outage does not destroy a pending preview. |
+| Interface | Browser parsing reads only the header for mapping discovery; server parsing/normalization is authoritative. Identity epochs protect file reads and network replies. Stable request hashes/IDs protect retries after lost replies. All draft/file/preview state stays in memory. |
+
+**Authorization:** PR 06 implementation, synthetic local verification, repairs, commit, push and PR creation were requested. No hosted change, real data, inference, merge or PR 07 work is authorized by this packet.
+
 ## 2026-10-25: PR 05 manual measurements and deterministic Data
 
 **Scope:** The approved M2 batch's first packet only, based on merged M1 remediation at `f4939df`. Verification and self-review are recorded in [PR 05 evidence](evidence/pr05-manual-data.md). CSV import, correction/deletion/export, persistent goals and inference remain with their owning PRs.
