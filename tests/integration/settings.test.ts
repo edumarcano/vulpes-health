@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { LocalSupabase } from '../helpers/local-supabase.js';
 import { localStatus } from '../../scripts/local-database.js';
 import { localRouter } from '../../server/http/router.js';
-import { AuthenticatedStatusSchema, SettingsSchema, type Settings } from '../../shared/auth.js';
+import { AuthenticatedStatusSchema, DisplayNameSchema, SettingsSchema, type Settings } from '../../shared/auth.js';
 import { hasProviderConsent } from '../../server/services/settings.js';
 import { verifySession } from '../../server/auth/session.js';
 
@@ -100,5 +100,30 @@ describe('real authentication and settings', () => {
     expect((await request(extra.token)).status).toBe(403);
     await db.admin('/rest/v1/profiles', 'POST', { user_id: extra.id, account_state: 'deleting' });
     expect((await request(extra.token)).status).toBe(403);
+  });
+  it('keeps settings readable and unchanged after invalid direct RPC display names', async () => {
+    const before = await settings(a.token);
+    const foreignBefore = await settings(b.token);
+    for (const display_name of ['\t', '\n\r', '\u00a0', '\u2003', '\ufeff', ' \t\n\u3000 ', 'x'.repeat(201), '🦊'.repeat(201), `${'x'.repeat(200)}🦊`, true, 7, {}, []]) {
+      expect(DisplayNameSchema.safeParse(display_name).success).toBe(false);
+      const patch = { client_request_id: randomUUID(), expected_updated_at: before.profile.updatedAt, changes: { display_name } };
+      expect((await request(a.token, 'PATCH', patch)).status).toBe(400);
+      const rpc = await db.request('/rest/v1/rpc/update_settings_v1', a.token, { method: 'POST', body: JSON.stringify({ p_request: patch }) });
+      expect(rpc.status).toBe(400);
+      expect((await rpc.json() as { message: string }).message).toBe('invalid_settings');
+      expect(await settings(a.token)).toEqual(before);
+      expect(await settings(b.token)).toEqual(foreignBefore);
+    }
+  });
+  it('normalizes direct RPC display names with the response contract at Unicode character boundaries', async () => {
+    const whitespace = '\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+    for (const display_name of [`${whitespace}Synthetic 🦊${whitespace}`, 'x'.repeat(200), '🦊'.repeat(200), `${'x'.repeat(199)}🦊`, 'Synthetic\u200bname', null]) {
+      const before = await settings(a.token);
+      const rpc = await db.request('/rest/v1/rpc/update_settings_v1', a.token, { method: 'POST', body: JSON.stringify({ p_request: { client_request_id: randomUUID(), expected_updated_at: before.profile.updatedAt, changes: { display_name } } }) });
+      expect(rpc.status).toBe(200);
+      const stored = await rpc.json() as { display_name: string | null };
+      expect(stored.display_name).toBe(DisplayNameSchema.parse(display_name));
+      expect((await settings(a.token)).profile.displayName).toBe(stored.display_name);
+    }
   });
 });
