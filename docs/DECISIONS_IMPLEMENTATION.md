@@ -4,6 +4,14 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and owner approval when required.
 
+## 2026-10-25: M0/M1 independent-review remediation
+
+**Status:** The owner authorized the three review repairs on a new branch from merged PR 04 and opening a remediation PR. Local reproduction, verification, and focused split-axis self-review are recorded in [remediation evidence](evidence/m0-m1-review-remediation.md).
+
+**Decision:** Preserve merged migrations and replace `update_settings_v1` through a forward migration. Match JavaScript whitespace trimming before validation and storage while retaining Zod's existing 1–200 Unicode character contract, null handling, ownership, and transaction behavior. Use an explicit pending-logout barrier and boolean-only session assertions in browser tests. Canonicalize encryption-fixture expiry and assert exact-limit success plus the specific expansion-limit error. No production encryption or provider behavior changed.
+
+M1 remains locally verified pending remediation PR review/integration. No deployment, live-resource change, provider request, or real-data use was authorized or performed. No scope deviation.
+
 ## 2026-10-24: PR 04 authenticated shell and private payloads
 
 **Status:** Implemented within the approved PR 04 plan; checkpoint evidence and final self-review are recorded in [PR 04 evidence](evidence/pr04-auth-private-payloads.md). Local synthetic accounts only; no live provider, hosted resource, or real data.

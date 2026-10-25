@@ -26,13 +26,16 @@ describe('authenticated private payload encryption', () => {
   });
   it('rejects oversized input and bounds authenticated gzip expansion', () => {
     expect(() => encryptBytes(metadata, Buffer.alloc(MAX_PAYLOAD_BYTES + 1), ring)).toThrow('size limit');
-    const expanded = Buffer.alloc(MAX_PAYLOAD_BYTES + 1);
-    const header = { ...metadata, payload_version: 1 as const, encoding: 'gzip' as const, key_id: ring.activeId, content_hash: createHash('sha256').update(expanded).digest('hex'), encryption_algorithm: 'aes-256-gcm' as const };
-    const nonce = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', key, nonce);
-    cipher.setAAD(Buffer.from(JSON.stringify([header.id,header.user_id,header.purpose,header.payload_version,header.encoding,header.key_id,header.content_hash,header.expires_at])));
-    const encrypted = Buffer.concat([cipher.update(gzipSync(expanded)),cipher.final(),cipher.getAuthTag()]);
-    const envelope: Envelope = { ...header, nonce: `\\x${nonce.toString('hex')}`, encrypted_bytes: `\\x${encrypted.toString('hex')}` };
-    expect(() => decryptBytes(envelope, ring)).toThrow();
+    for (const length of [MAX_PAYLOAD_BYTES, MAX_PAYLOAD_BYTES + 1]) {
+      const expanded = Buffer.alloc(length);
+      const header = { ...metadata, payload_version: 1 as const, encoding: 'gzip' as const, key_id: ring.activeId, content_hash: createHash('sha256').update(expanded).digest('hex'), encryption_algorithm: 'aes-256-gcm' as const };
+      const nonce = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', key, nonce);
+      cipher.setAAD(Buffer.from(JSON.stringify([header.id,header.user_id,header.purpose,header.payload_version,header.encoding,header.key_id,header.content_hash,new Date(header.expires_at).toISOString()])));
+      const encrypted = Buffer.concat([cipher.update(gzipSync(expanded)),cipher.final(),cipher.getAuthTag()]);
+      const envelope: Envelope = { ...header, nonce: `\\x${nonce.toString('hex')}`, encrypted_bytes: `\\x${encrypted.toString('hex')}` };
+      if (length === MAX_PAYLOAD_BYTES) expect(decryptBytes(envelope, ring).equals(expanded)).toBe(true);
+      else expect(() => decryptBytes(envelope, ring)).toThrow(expect.objectContaining({ code: 'ERR_BUFFER_TOO_LARGE' }));
+    }
   });
   it('validates key configuration without echoing secret values', () => {
     expect(readEncryptionKeys({ VULPES_TRACE_ENCRYPTION_KEY_ID: 'active', VULPES_TRACE_ENCRYPTION_KEY_B64: key.toString('base64') }).keys.get('active')).toEqual(key);

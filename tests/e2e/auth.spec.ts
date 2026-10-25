@@ -43,9 +43,18 @@ test('saves profile and explicit consent through the real API and survives reloa
 test('account switching clears the prior profile, draft, consent, and session namespace', async ({ page }) => {
   await signIn(page); await page.goto('/settings');
   await page.getByLabel('Display name',{ exact:true }).fill('Unsaved synthetic A draft');
-  await page.getByRole('button',{ name:'Sign out',exact:true }).click();
-  await expect(page.getByRole('heading',{ name:'Sign in to Vulpes',exact:true })).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('vulpes.auth.session.v1'))).toBeNull();
+  let release!: () => void; const barrier = new Promise<void>((resolve) => { release = resolve; });
+  let reached!: () => void; const started = new Promise<void>((resolve) => { reached = resolve; });
+  await page.route('**/auth/v1/logout*', async (route) => { reached(); await barrier; await route.continue(); });
+  try {
+    await page.getByRole('button',{ name:'Sign out',exact:true }).click();
+    await started;
+    await expect(page.getByRole('heading',{ name:'Sign in to Vulpes',exact:true })).toBeVisible();
+    await expect(page.getByRole('button',{ name:'Sign in',exact:true })).toBeDisabled();
+    release();
+    await expect(page.getByRole('button',{ name:'Sign in',exact:true })).toBeEnabled();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('vulpes.auth.session.v1') === null)).toBe(true);
+  } finally { release(); }
   await signIn(page,1); await page.goto('/settings');
   await expect(page.getByLabel('Display name',{ exact:true })).toHaveValue('Synthetic B');
   await expect(page.getByLabel('Timezone',{ exact:true })).toHaveValue('UTC');
@@ -111,7 +120,7 @@ test('failed remote sign-out still clears local private state', async ({ page })
   await page.getByRole('button',{ name:'Sign out',exact:true }).click();
   await expect(page.getByRole('heading',{ name:'Sign in to Vulpes',exact:true })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('Remote sign-out could not be confirmed');
-  expect(await page.evaluate(() => localStorage.getItem('vulpes.auth.session.v1'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('vulpes.auth.session.v1') === null)).toBe(true);
   await page.reload(); await expect(page.getByRole('heading',{ name:'Sign in to Vulpes',exact:true })).toBeVisible();
 });
 
