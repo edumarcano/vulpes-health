@@ -401,19 +401,25 @@ isOneToOne: false
                   ]
                 },"usage_reservations": {
                   Row: {
-                    "amount_usd": number,"created_at": string,"evidence_hash": string | null,"evidence_version": number,"household_bucket_id": string,"household_scope": string | null,"id": string,"known_cost_usd": number | null,"period_start": string,"run_id": string,"settled_at": string | null,"status": string,"step_id": string,"uncertain_since": string | null,"unknown_cost": boolean,"user_bucket_id": string,"user_id": string
+                    "account_bucket_id": string,"amount_usd": number,"app_bucket_id": string,"app_scope": string | null,"created_at": string,"evidence_hash": string | null,"evidence_version": number,"id": string,"known_cost_usd": number | null,"period_start": string,"run_id": string,"settled_at": string | null,"status": string,"step_id": string,"uncertain_since": string | null,"unknown_cost": boolean,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_usd": number,"created_at"?: string,"evidence_hash"?: string | null,"evidence_version"?: number,"household_bucket_id": string,"household_scope"?: never,"id"?: string,"known_cost_usd"?: number | null,"period_start": string,"run_id": string,"settled_at"?: string | null,"status"?: string,"step_id": string,"uncertain_since"?: string | null,"unknown_cost"?: boolean,"user_bucket_id": string,"user_id": string
+                    "account_bucket_id": string,"amount_usd": number,"app_bucket_id": string,"app_scope"?: never,"created_at"?: string,"evidence_hash"?: string | null,"evidence_version"?: number,"id"?: string,"known_cost_usd"?: number | null,"period_start": string,"run_id": string,"settled_at"?: string | null,"status"?: string,"step_id": string,"uncertain_since"?: string | null,"unknown_cost"?: boolean,"user_id": string
                   }
                   Update: {
-                    "amount_usd"?: number,"created_at"?: string,"evidence_hash"?: string | null,"evidence_version"?: number,"household_bucket_id"?: string,"household_scope"?: never,"id"?: string,"known_cost_usd"?: number | null,"period_start"?: string,"run_id"?: string,"settled_at"?: string | null,"status"?: string,"step_id"?: string,"uncertain_since"?: string | null,"unknown_cost"?: boolean,"user_bucket_id"?: string,"user_id"?: string
+                    "account_bucket_id"?: string,"amount_usd"?: number,"app_bucket_id"?: string,"app_scope"?: never,"created_at"?: string,"evidence_hash"?: string | null,"evidence_version"?: number,"id"?: string,"known_cost_usd"?: number | null,"period_start"?: string,"run_id"?: string,"settled_at"?: string | null,"status"?: string,"step_id"?: string,"uncertain_since"?: string | null,"unknown_cost"?: boolean,"user_id"?: string
                   }
                   Relationships: [
                     {
-      foreignKeyName: "usage_reservations_household_bucket_id_household_scope_per_fkey"
-      columns: ["household_bucket_id","household_scope","period_start"]
+      foreignKeyName: "usage_reservations_account_bucket_fk"
+      columns: ["user_id","account_bucket_id","period_start"]
+isOneToOne: false
+      referencedRelation: "usage_buckets"
+      referencedColumns: ["user_id","id","period_start"]
+    },{
+      foreignKeyName: "usage_reservations_app_bucket_fk"
+      columns: ["app_bucket_id","app_scope","period_start"]
 isOneToOne: false
       referencedRelation: "usage_buckets"
       referencedColumns: ["id","scope","period_start"]
@@ -435,12 +441,6 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "ai_steps"
       referencedColumns: ["user_id","id","run_id"]
-    },{
-      foreignKeyName: "usage_reservations_user_id_user_bucket_id_period_start_fkey"
-      columns: ["user_id","user_bucket_id","period_start"]
-isOneToOne: false
-      referencedRelation: "usage_buckets"
-      referencedColumns: ["user_id","id","period_start"]
     }
                   ]
                 }

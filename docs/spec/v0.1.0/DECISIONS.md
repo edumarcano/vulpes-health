@@ -61,7 +61,7 @@ The owner can revise these defaults before implementation. Codex must record a c
 
 ## Gate before the first family invitation
 
-In addition to the above: test backup/restore, export and deletion, account recovery, two-user adversarial access, per-user plus household budgets, source selection, clear limitations and onboarding consent. The deployment operator technically controls the database and server keys; app-level account separation is not end-to-end encryption from the operator.
+In addition to the above: test backup/restore, export and deletion, account recovery, two-user adversarial access, per-account plus app budgets, source selection, clear limitations and onboarding consent. The deployment operator technically controls the database and server keys; app-level account separation is not end-to-end encryption from the operator.
 
 ## Explicit non-goals
 

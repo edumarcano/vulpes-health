@@ -101,12 +101,12 @@ describe('real encrypted CSV HTTP transactions',()=>{
   },60000);
   it('rejects oversized normalized staging before storing any envelope and cleans failed registration',async()=>{
     const names=Array.from({length:8},(_,i)=>`Column${i}`.padEnd(200,'x'));const text=[['Time',...names].join(','),...Array.from({length:625},()=>['2026-09-01T08:00:00Z',...names.map(()=>'70')].join(','))].join('\n');
-    const before=await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id`,'GET')).json();
+    const before=await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id&order=id`,'GET')).json();
     const r=await post({...base,client_request_id:randomUUID(),csv:text,mapping:{schema_version:1,format:'wide',timezone:'UTC',profile:null,single_profile:true,review_requested:false,timestamp_column:'Time',local_date_column:null,external_id_column:null,granularity:'instant',metrics:names.map(column=>({column,metric:'weight',unit:'kg',method:'device_reported'}))}});expect(r.status).toBe(413);expect(await r.json()).toMatchObject({error:{code:'staging_too_large'}});
-    expect(await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id`,'GET')).json()).toEqual(before);
-    const request={...base,client_request_id:randomUUID()};await preview(request);const registered=await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id`,'GET')).json();
+    expect(await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id&order=id`,'GET')).json()).toEqual(before);
+    const request={...base,client_request_id:randomUUID()};await preview(request);const registered=await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id&order=id`,'GET')).json();
     expect((await post({...request,csv:csv.replace('70.0','71.0')})).status).toBe(409);
-    expect(await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id`,'GET')).json()).toEqual(registered);
+    expect(await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}&select=id&order=id`,'GET')).json()).toEqual(registered);
   });
   it('historical reimport never restores a subsequently removed reading',async()=>{
     const p=await preview();const result=await commit(p);const rows=await readings(p.source_id);await db.admin(`/rest/v1/measurements?id=eq.${rows[0]!.id}`,'DELETE');await db.admin(`/rest/v1/profiles?user_id=eq.${a.id}`,'PATCH',{data_revision:result.dataRevision+1});

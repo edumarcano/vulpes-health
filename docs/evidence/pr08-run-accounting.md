@@ -2,6 +2,8 @@
 
 Branch `feat/pr08-run-accounting`, based on refreshed `main`/`origin/main` at `fe6675b7aa0a0d1700803397ce18e94a3f9e6b11`, 2026-10-26. Scope is execution-plan PR 08. Implementation/publication is authorized; merge and PR 09 are not. Recorded M2 acceptance remains separate.
 
+The original implementation checkpoint below retains its recorded counts and vocabulary. [Budget terminology follow-up](#budget-terminology-follow-up) records the subsequent app/account migration and current verification.
+
 ## Implemented boundary
 
 Server-only admission claims one active user run and compares canonical request hashes. Ten newly admitted runs per rolling minute are enforced in PostgreSQL. Prepared steps atomically register encrypted exact bytes/context, a price snapshot and both original-month reservations. Only a fresh authorization can send; stored evidence is decrypted and compared before that authorization. A single-use dispatcher port keeps provider serialization separate from credentials and ledger authority.
@@ -97,3 +99,61 @@ Milestone: M3, execution-plan PR 08 locally verified; M3 fully accepted is not c
 Files changed: ledger/pricing/dispatcher and shared contracts; five forward migrations, generated types and grants; owned Settings; bounded maintenance; synthetic proof/upgrade/browser/unit/database/integration protection; canonical decisions/status and this evidence.
 
 Commands and tests actually run: the checkpoint table above records exact commands and observed results. Known limitations: no live provider/hosted deployment/physical-device evidence, and no PR 09/10 workflows. Sequencing authorization: the explicit PR 08 request permits this foundation while recorded M2 acceptance remains pending. Next packet: PR 09 only after separate instruction; no merge is authorized.
+
+
+## Budget terminology follow-up
+
+2026-10-26, following implementation commit `e6b0280`. The approved terminology is **app AI spending limit**, **account AI allocation**, and **personal spending limit**. The app limit aggregates inference spend across this deployment; it is not a household membership boundary or infrastructure-billing limit.
+
+Migration `20261026000600_budget_scope_names.sql` changes scopes to `app`/`account`, reservation references to `app_bucket_id`/`account_bucket_id`, and the generated discriminator to `app_scope`. The five affected RPC replacements preserve signatures, grants, empty search paths, ownership checks, decimal accounting and app-before-account lock order. The earlier migrations remain unchanged. Settings uses the approved labels; neutral HTTP routes/fields remain unchanged. Deploy the migration and matching server code together during an accounting maintenance window; legacy direct SQL clients must adopt the new names.
+
+### Upgrade artifact
+
+`npm run test:execution-upgrade -- --allow-disposable-reset` passed. It first verifies the original five accounting migrations against the base schema, then applies the naming migration to populated accounting tables. Inspected output:
+
+```json
+{
+  "scope": "local_synthetic_forward_upgrade",
+  "base": "fe6675b",
+  "migrationsApplied": 6,
+  "owners": 2,
+  "tablesPreserved": 15,
+  "originalRowsUnchanged": true,
+  "renamedStatesPreserved": ["reserved", "pending", "settled"],
+  "postMigrationSettlementAndReplay": true,
+  "crossUserDenied": true
+}
+```
+
+Snapshots compare every existing field, translating only the named scope/column changes; IDs, money, receipts, evidence and private payload bytes remain unchanged. A migrated pending charge settles once despite replay, a proven-unsent reservation releases, and a previously settled charge accepts an authoritative correction. Both account balances and the app balance match the expected deltas with zero holds. These are synthetic accounting values; provider requests/spend remain zero.
+
+### Follow-up verification
+
+| Check | Observed result |
+|---|---|
+| Forward-upgrade proof | Passed as shown above, including restoration hashes and synthetic cleanup |
+| Clean `npm run db:reset:test` | All six PR 08 migrations applied after the existing M2 migrations |
+| `npm run test:executions` | Passed after clean reset; exact bytes, one boundary winner, $0.022 held/conservative then $0.004 corrected; provider requests/spend zero |
+| `npm test -- --no-cache` | 279 tests passed in 17 files |
+| `npm run test:integration -- --no-cache` | Final rerun: all 127 tests passed in seven files after the test-order repair |
+| `npm run test:db` | 555 checks passed in three files, including current/legacy scope constraints, reservation references, isolation and grants |
+| `npm run db:lint`, `npm run db:types:check` | Passed; generated server types match the renamed schema |
+| `npm run lint`, `npm run typecheck`, `npm run build` | Passed; existing large client chunk advisory remains |
+| `npm run test:bundle` | Eight public files passed server/private/canary checks |
+| `npm run test:e2e` | All 92 built-browser checks passed, including approved labels, limit save/reload, above-allocation rejection and unavailable state |
+| `python docs/spec/v0.1.0/scripts/validate_spec_package.py` | 484 checks passed |
+| `git diff --check` | Passed |
+
+### Retained failures and review
+
+- Restricted-process unit startup returned Windows `spawn EPERM` before loading tests; the unchanged suite passed under approved local process permissions. Local Docker access likewise required approved execution outside the restricted process context.
+- The first integration run passed 126/127. The oversized-staging cleanup assertion received the same two payload IDs in reverse order. Four reads in that test now request `order=id`; the exact before/after equality assertions remain intact. This was a reproduced test-order defect, with no production import changes or weakened assertions.
+
+
+The updated Settings screenshots at 360x800 light and 1440x900 dark were visually inspected. Labels, help text and controls fit the layout; the browser suite also verified viewport/theme and 200% text behavior. Screenshots remain ignored test output, not a published artifact.
+
+**Axis 1: specification fulfillment — Approved.** Reviewed the follow-up diff from `e6b0280`, including the new migration, generated types, callers, settings labels, tests and canonical documentation. Current scopes and reservation references use app/account vocabulary; remaining legacy terms are limited to immutable migrations, dated history, explicit upgrade translation and rejection assertions. The populated forward proof and clean migration demonstrate preservation and settlement. The HTTP contract remains stable and app balances stay private. No PR 09 implementation or live inference was introduced.
+
+**Axis 2: engineering/security/test assurance — Approved with observations.** Composite ownership/scope/period constraints, unique monthly buckets, grants and security-definer search paths remain intact. Compared each of the five RPC replacement bodies against its predecessor: only the budget vocabulary changes. Transaction and lock order, exact encrypted capture, conservative uncertainty and idempotent settlement remain protected by real database/HTTP/loopback tests. The reproduced import-test ordering defect was repaired without production changes. No unresolved blocker remains; the existing bundle size advisory is unchanged. This is host self-review; comprehensive independent M3 review remains pending after PR 10.
+
+Follow-up completion: the approved names are implemented across the current schema, Settings, tests and living documentation. Verification used only the dedicated disposable Supabase stack, synthetic accounts and a loopback transport. No model/provider request, cloud mutation, deployment or real health data; maximum/actual inference spend **$0/$0**. M3 live acceptance remains pending. Merge and PR 09 remain outside authorization.

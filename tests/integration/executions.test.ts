@@ -14,7 +14,7 @@ import * as encryption from '../../server/security/encryption.js';
 import {addMeasurement,mutateMeasurement} from '../../server/services/measurements.js';
 import {getSettings,updateSettings} from '../../server/services/settings.js';
 
-let db:LocalSupabase;let household:string;let a:AuthContext;let b:AuthContext;
+let db:LocalSupabase;let app:string;let a:AuthContext;let b:AuthContext;
 let conversationA:string;let conversationB:string;let tokenA:string;
 const period=()=>new Date().toISOString().slice(0,7)+'-01';
 const input=(conversationId:string)=>({conversationId,clientRequestId:randomUUID(),requestHash:requestHash({text:'Synthetic only'}),depth:'everyday' as const,
@@ -29,19 +29,19 @@ async function account(){return (await rows('usage_buckets',`user_id=eq.${a.user
 beforeEach(async()=>{
   const status=localStatus();vi.stubEnv('VITE_SUPABASE_URL',status.apiUrl);vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY',status.anonKey);vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY',status.adminKey);
   vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID','synthetic-execution-v1');vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_B64',randomBytes(32).toString('base64'));
-  db=new LocalSupabase();household=randomUUID();
-  await db.admin('/rest/v1/usage_buckets','POST',{id:household,scope:'household',period_start:period(),allocated_ceiling_usd:'1'});
+  db=new LocalSupabase();app=randomUUID();
+  await db.admin('/rest/v1/usage_buckets','POST',{id:app,scope:'app',period_start:period(),allocated_ceiling_usd:'1'});
   const contexts:AuthContext[]=[];const conversations:string[]=[];
   for(let n=0;n<2;n++){
     const user=await db.createUser();if(n===0)tokenA=user.token;
     await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
     const id=randomUUID();await db.admin('/rest/v1/conversations','POST',{id,user_id:user.id,title:'Synthetic execution'});conversations.push(id);
-    await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'user',period_start:period(),allocated_ceiling_usd:'1'});
+    await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'account',period_start:period(),allocated_ceiling_usd:'1'});
     contexts.push(await verifySession({headers:{authorization:`Bearer ${user.token}`}}));
   }
   [a,b]=contexts as [AuthContext,AuthContext];[conversationA,conversationB]=conversations as [string,string];
 });
-afterEach(async()=>{try{if(db){await db.cleanup();await db.admin(`/rest/v1/usage_buckets?id=eq.${household}`,'DELETE');}}finally{vi.unstubAllEnvs();vi.restoreAllMocks();}});
+afterEach(async()=>{try{if(db){await db.cleanup();await db.admin(`/rest/v1/usage_buckets?id=eq.${app}`,'DELETE');}}finally{vi.unstubAllEnvs();vi.restoreAllMocks();}});
 
 describe('persistent run and accounting transactions',()=>{
   it('serializes duplicate admissions and rejects changed input; a second request gets the active run',async()=>{
@@ -53,13 +53,13 @@ describe('persistent run and accounting transactions',()=>{
     expect((await ledger.admit(input(conversationA))).result).toMatchObject({kind:'busy',run:{id:admissions[0]!.result.run.id}});
     expect(await rows('ai_runs',`user_id=eq.${a.userId}`)).toHaveLength(1);
   });
-  it('reserves user and household together under simultaneous budget-boundary requests',async()=>{
-    await db.admin(`/rest/v1/usage_buckets?id=eq.${household}`,'PATCH',{allocated_ceiling_usd:'0.03'});
+  it('reserves account and app together under simultaneous budget-boundary requests',async()=>{
+    await db.admin(`/rest/v1/usage_buckets?id=eq.${app}`,'PATCH',{allocated_ceiling_usd:'0.03'});
     const la=service();const lb=service(b);const [ra,rb]=await Promise.all([admit(la),admit(lb,conversationB)]);
     const outcomes=await Promise.allSettled([la.prepare(ra,stepInput()),lb.prepare(rb,stepInput())]);
     expect(outcomes.filter(x=>x.status==='fulfilled')).toHaveLength(1);
     expect(outcomes.filter(x=>x.status==='rejected')).toHaveLength(1);
-    expect((await rows('usage_buckets',`id=eq.${household}`))[0]).toMatchObject({reserved_usd:0.022,spent_usd:0});
+    expect((await rows('usage_buckets',`id=eq.${app}`))[0]).toMatchObject({reserved_usd:0.022,spent_usd:0});
     expect(await rows('usage_reservations','select=id')).toHaveLength(1);
     expect(await rows('private_payloads','select=id')).toHaveLength(2);
   });
@@ -116,16 +116,16 @@ describe('persistent run and accounting transactions',()=>{
   });
   it('uses the original accounting month for continuations and settlement after rollover',async()=>{
     const ledger=service();const lease=await admit(ledger);const previous=new Date();previous.setUTCDate(1);previous.setUTCMonth(previous.getUTCMonth()-1);const oldPeriod=previous.toISOString().slice(0,10);
-    const oldHouse=randomUUID();await db.admin('/rest/v1/usage_buckets','POST',{id:oldHouse,scope:'household',period_start:oldPeriod,allocated_ceiling_usd:'1'});
-    await db.admin('/rest/v1/usage_buckets','POST',{user_id:a.userId,scope:'user',period_start:oldPeriod,allocated_ceiling_usd:'1'});
+    const oldApp=randomUUID();await db.admin('/rest/v1/usage_buckets','POST',{id:oldApp,scope:'app',period_start:oldPeriod,allocated_ceiling_usd:'1'});
+    await db.admin('/rest/v1/usage_buckets','POST',{user_id:a.userId,scope:'account',period_start:oldPeriod,allocated_ceiling_usd:'1'});
     try{
       await db.admin(`/rest/v1/ai_runs?id=eq.${lease.runId}`,'PATCH',{accounting_period:oldPeriod,admitted_at:previous.toISOString()});
       const step=await ledger.prepare(lease,stepInput());await ledger.authorize(step);await ledger.settle(step,normalizeUsage({reportedCostUSD:'0.003',rawUsage:null}),'completed');
       const next=await ledger.prepare(lease,stepInput());await ledger.authorize(next);await ledger.settle(next,normalizeUsage({reportedCostUSD:'0.002',rawUsage:null}),'completed');
-      expect((await rows('usage_buckets',`id=eq.${oldHouse}`))[0]).toMatchObject({spent_usd:0.005,reserved_usd:0});
+      expect((await rows('usage_buckets',`id=eq.${oldApp}`))[0]).toMatchObject({spent_usd:0.005,reserved_usd:0});
       expect((await rows('usage_buckets',`user_id=eq.${a.userId}&period_start=eq.${period()}`))[0]).toMatchObject({spent_usd:0,reserved_usd:0});
       expect(await rows('usage_reservations',`run_id=eq.${lease.runId}&period_start=eq.${oldPeriod}`)).toHaveLength(2);
-    }finally{await db.admin(`/rest/v1/usage_reservations?run_id=eq.${lease.runId}`,'DELETE');await db.admin(`/rest/v1/usage_buckets?id=eq.${oldHouse}`,'DELETE');}
+    }finally{await db.admin(`/rest/v1/usage_reservations?run_id=eq.${lease.runId}`,'DELETE');await db.admin(`/rest/v1/usage_buckets?id=eq.${oldApp}`,'DELETE');}
   });
   it('denies foreign runs, client RPC access, missing consent, and revoked consent before dispatch',async()=>{
     const ledger=service();const lease=await admit(ledger);const step=await ledger.prepare(lease,stepInput());
@@ -145,7 +145,7 @@ describe('persistent run and accounting transactions',()=>{
     expect(send).not.toHaveBeenCalled();expect((await rows('ai_steps',`id=eq.${step.id}`))[0]!.dispatch_state).toBe('prepared');
     await ledger.settle(step,null,'failed',0,true);expect(await account()).toMatchObject({reserved_usd:0});
   });
-  it('enforces user, per-run and unknown-price gates independently of household admission',async()=>{
+  it('enforces account, per-run and unknown-price gates independently of app admission',async()=>{
     const ledger=new ExecutionService(a,{maxRunCostUSD:'0.01'});const lease=await admit(ledger);
     await expect(ledger.prepare(lease,stepInput())).rejects.toMatchObject({code:'budget_exhausted'});
     await expect(service().prepare(lease,{...stepInput(),price:{...syntheticPrice,status:'unverified'} as never})).rejects.toThrow();
@@ -154,7 +154,7 @@ describe('persistent run and accounting transactions',()=>{
     await expect(service().prepare(next,stepInput())).rejects.toMatchObject({code:'budget_exhausted'});
     await db.admin(`/rest/v1/usage_buckets?user_id=eq.${a.userId}`,'DELETE');
     await expect(service().prepare(next,stepInput())).rejects.toMatchObject({code:'budget_unconfigured'});
-    expect((await rows('usage_buckets',`id=eq.${household}`))[0]).toMatchObject({reserved_usd:0});
+    expect((await rows('usage_buckets',`id=eq.${app}`))[0]).toMatchObject({reserved_usd:0});
   });
   it('enforces the persistent rate limit across fresh service instances',async()=>{
     for(let n=0;n<10;n++){const ledger=service();const lease=await admit(ledger);await ledger.finish(lease,'completed');}
@@ -175,7 +175,7 @@ describe('persistent run and accounting transactions',()=>{
     const saved=await readPayload(a,String(tool.output_payload_id),'tool_output');expect(saved.state).toBe('available');if(saved.state==='available')expect(JSON.parse(saved.bytes.toString()).value).toBe(69.7);
     expect((await ledger.finish(lease,'completed')).costUSD).toBe('0.004');
   });
-  it('rechecks a lowered user preference before dispatch and denies raising the operator allocation',async()=>{
+  it('rechecks a lowered personal spending limit before dispatch and denies raising the account allocation',async()=>{
     const ledger=service();const lease=await admit(ledger);const step=await ledger.prepare(lease,stepInput());const before=await getSettings(a);
     const lowered=await updateSettings(a,{client_request_id:randomUUID(),expected_updated_at:before.profile.updatedAt,changes:{monthly_spending_preference_usd:'0.01'}});
     expect(lowered.budget).toMatchObject({allocationUSD:'1',preferenceUSD:'0.01',reservedUSD:'0.022',availableUSD:'0'});

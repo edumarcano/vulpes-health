@@ -4,6 +4,22 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-26: App and account AI spending terminology
+
+**Authorization:** Rename the PR 08 budgeting terminology, verify/review it and update the existing PR before merge. Spending behavior and authorization gates do not change.
+
+| Term | Scope and implementation |
+|---|---|
+| App AI spending limit | One aggregate inference cap per deployment/UTC month; database scope `app` |
+| Account AI allocation | Operator-assigned monthly ceiling for one account; database scope `account` |
+| Personal spending limit | Account holder's lower monthly preference within that allocation |
+
+The former `household` name implied membership that the schema does not model. Migration `20261026000600_budget_scope_names.sql` translates existing scopes, renames reservation references, and replaces the affected functions in one locked transaction. Existing migration files remain immutable.
+
+IDs, balances, uncertainty/evidence, ownership, periods and lock order remain intact. Deploy the schema and matching server code together; old direct database clients using the former scope/column names need updating. HTTP routes and neutral settings fields stay unchanged; app balances remain server-only.
+
+Historical evidence retains the vocabulary used when recorded. [PR 08 evidence](evidence/pr08-run-accounting.md#budget-terminology-follow-up) records the new proof and review.
+
 ## 2026-10-26: PR 08 run admission and accounting
 
 **Scope:** Execution-plan PR 08 only, from verified `main` at `fe6675b`. The explicit implementation/publication instruction authorizes this foundation while the ledger still records M2 acceptance as pending; it does not accept M2 or M3. [Verification evidence](evidence/pr08-run-accounting.md) owns commands, results and review status.

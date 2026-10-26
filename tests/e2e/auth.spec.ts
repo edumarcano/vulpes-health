@@ -40,26 +40,28 @@ test('saves profile and explicit consent through the real API and survives reloa
   await expect(page.getByRole('heading',{name:'Spending',exact:true})).toBeVisible();
 });
 
-test('saves an owned spending preference and rejects an amount above the operator allocation',async({page})=>{
+test('saves a personal spending limit and rejects an amount above the account AI allocation',async({page})=>{
   await signIn(page);await page.goto('/settings');
   await expect(page.getByText('$0.05',{exact:true})).toBeVisible();
-  await page.getByLabel('Monthly spending preference (USD)',{exact:true}).fill('0.01');
-  await page.getByRole('button',{name:'Save spending preference',exact:true}).click();
+  await expect(page.getByText('Account AI allocation',{exact:true})).toBeVisible();
+  await expect(page.getByText('$0.05; the app AI spending limit also applies.',{exact:true})).toBeVisible();
+  await page.getByLabel('Personal spending limit (USD)',{exact:true}).fill('0.01');
+  await page.getByRole('button',{name:'Save personal spending limit',exact:true}).click();
   await expect(page.getByRole('status')).toHaveText('Settings saved. AI remains unavailable.');
-  await page.reload();await expect(page.getByLabel('Monthly spending preference (USD)',{exact:true})).toHaveValue('0.01');
-  await page.getByLabel('Monthly spending preference (USD)',{exact:true}).fill('1');
+  await page.reload();await expect(page.getByLabel('Personal spending limit (USD)',{exact:true})).toHaveValue('0.01');
+  await page.getByLabel('Personal spending limit (USD)',{exact:true}).fill('1');
   const denied=page.waitForResponse(response=>response.url().endsWith('/api/settings') && response.request().method()==='PATCH');
-  await page.getByRole('button',{name:'Save spending preference',exact:true}).click();expect((await denied).status()).toBe(400);
-  await page.reload();await expect(page.getByLabel('Monthly spending preference (USD)',{exact:true})).toHaveValue('0.01');
-  await page.getByLabel('Monthly spending preference (USD)',{exact:true}).fill('');await page.getByRole('button',{name:'Save spending preference',exact:true}).click();
+  await page.getByRole('button',{name:'Save personal spending limit',exact:true}).click();expect((await denied).status()).toBe(400);
+  await page.reload();await expect(page.getByLabel('Personal spending limit (USD)',{exact:true})).toHaveValue('0.01');
+  await page.getByLabel('Personal spending limit (USD)',{exact:true}).fill('');await page.getByRole('button',{name:'Save personal spending limit',exact:true}).click();
   await expect(page.getByRole('status')).toHaveText('Settings saved. AI remains unavailable.');
 });
 
 test('shows an honest unavailable spending state for an account without allocation',async({page})=>{
   await signIn(page,1);await page.goto('/settings');
-  await expect(page.getByText('No operator allocation is configured. AI remains unavailable.',{exact:true})).toBeVisible();
-  await expect(page.getByLabel('Monthly spending preference (USD)',{exact:true})).toBeDisabled();
-  await expect(page.getByRole('button',{name:'Save spending preference',exact:true})).toBeDisabled();
+  await expect(page.getByText('No account AI allocation is configured. AI remains unavailable.',{exact:true})).toBeVisible();
+  await expect(page.getByLabel('Personal spending limit (USD)',{exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Save personal spending limit',exact:true})).toBeDisabled();
 });
 
 test('account switching clears the prior profile, draft, consent, and session namespace', async ({ page }) => {

@@ -24,9 +24,9 @@ function ProfileForm({ settings,busy,save }: { settings: Settings; busy: boolean
 function BudgetForm({settings,busy,save}:{settings:Settings;busy:boolean;save:(changes:SettingsPatch['changes'])=>void}) {
   const [preference,setPreference]=useState(settings.budget.preferenceUSD ?? '');
   return <form className="settings-form" onSubmit={(event)=>{event.preventDefault();save({monthly_spending_preference_usd:preference || null});}}>
-    <label>Monthly spending preference (USD)<input inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]+)?" maxLength={80} value={preference} disabled={busy || settings.budget.state==='unconfigured'} onChange={(event)=>setPreference(event.target.value)} aria-describedby="spending-preference-hint" /></label>
-    <p id="spending-preference-hint" className="field-hint">Choose an amount within your operator allocation. Leave blank to use that allocation. Changing this preference does not replenish spent funds.</p>
-    <Button type="submit" disabled={busy || settings.budget.state==='unconfigured'}>Save spending preference</Button>
+    <label>Personal spending limit (USD)<input inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]+)?" maxLength={80} value={preference} disabled={busy || settings.budget.state==='unconfigured'} onChange={(event)=>setPreference(event.target.value)} aria-describedby="spending-preference-hint" /></label>
+    <p id="spending-preference-hint" className="field-hint">Choose a monthly limit within your account AI allocation, assigned by the app operator. Leave blank to use that allocation. Changing this limit does not replenish spent funds.</p>
+    <Button type="submit" disabled={busy || settings.budget.state==='unconfigured'}>Save personal spending limit</Button>
   </form>;
 }
 export function SettingsPage() {
@@ -62,7 +62,7 @@ export function SettingsPage() {
           </section>)}
         </Card>
         <Card className="settings-card"><h2>Spending</h2><p>Calendar-month UTC accounting. Requests settle into their admission month, including after a reset.</p>
-          {settings.data.budget.state==='unconfigured' ? <p>No operator allocation is configured. AI remains unavailable.</p> : <dl className="settings-facts"><div><dt>Operator allocation</dt><dd>${settings.data.budget.allocationUSD}</dd></div><div><dt>Recorded spend</dt><dd>${settings.data.budget.spentUSD}</dd></div><div><dt>Reserved, including uncertain charges</dt><dd>${settings.data.budget.reservedUSD}</dd></div><div><dt>Available user allocation</dt><dd>${settings.data.budget.availableUSD}; household limits also apply.</dd></div></dl>}
+          {settings.data.budget.state==='unconfigured' ? <p>No account AI allocation is configured. AI remains unavailable.</p> : <dl className="settings-facts"><div><dt>Account AI allocation</dt><dd>${settings.data.budget.allocationUSD}</dd></div><div><dt>Recorded spend</dt><dd>${settings.data.budget.spentUSD}</dd></div><div><dt>Reserved, including uncertain charges</dt><dd>${settings.data.budget.reservedUSD}</dd></div><div><dt>Available account allocation</dt><dd>${settings.data.budget.availableUSD}; the app AI spending limit also applies.</dd></div></dl>}
           <BudgetForm key={settings.data.profile.updatedAt} settings={settings.data} busy={mutation.isPending} save={(changes)=>mutation.mutate(changes)} />
           <p className="detail-note">Unknown charges retain their reservation for 24 hours, then settle conservatively when checked or maintained. Provider verification and inference remain unavailable.</p>
         </Card>
