@@ -60,6 +60,10 @@ Assemble in a stable order:
 
 Use explicit token estimates and model-specific ceilings; never truncate required safety instructions. If context overflows, remove irrelevant history first and record exclusions. Do not create automatic paid summaries merely to open a chat. Explicit goal/profile records are authoritative; old conversation text is not a substitute for them.
 
+PR 09 uses conservative UTF-8 byte upper bounds, preserving the existing ledger's verified input bound. Whole older groups are pruned before generation and again when tool results increase context. Essential context that cannot fit fails clearly. Numerical summary projections omit duplicate point arrays and per-record details from provider input; the full deterministic result and the exact projection remain in encrypted tool evidence. No paid summarization is used.
+
+The read-only approved-goal projection excludes drafts and requires an owned current revision with an approved proposal. `get_goal_progress` returns a dedicated `unavailable` / `insufficient_data` / `progress` union. Supported frozen snapshots have `schemaVersion:1`, a complete `DataSelection`, decimal `value`, `dataRevision`, and `algorithmVersion:"daily_median_mean_7d_v1"`. Unsupported snapshots or review markers do not produce progress. PR 11 owns goal creation/approval and must consume or explicitly re-review this read contract.
+
 For a follow-up such as "what about last month?", retain enough recent context to resolve the metric and source. If ambiguous, ask; a cheap router that only receives the latest fragment is insufficient.
 
 All source text, including user uploads in future, is untrusted evidence. It cannot create system instructions, broaden permissions or authorize a tool. The app controls tools and prompt priority.

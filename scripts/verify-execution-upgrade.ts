@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
 import {existsSync,mkdirSync,readFileSync,renameSync} from 'node:fs';
 import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
-import {assertLocalStack,localStatus,projectRoot,runSupabase} from './local-database.js';
+import {assertLocalStack,localEnvironment,localStatus,projectRoot,runSupabase} from './local-database.js';
 import {LocalSupabase} from '../tests/helpers/local-supabase.js';
 import {databaseTables} from '../tests/fixtures/database-graph.js';
 
@@ -12,7 +13,7 @@ import {databaseTables} from '../tests/fixtures/database-graph.js';
 assert.deepEqual(process.argv.slice(2),['--allow-disposable-reset'],'Pass --allow-disposable-reset for the local upgrade proof.');
 assertLocalStack();localStatus();
 const db=new LocalSupabase();
-const names=['20261026000100_run_ledger.sql','20261026000200_run_reconciliation.sql','20261026000300_budget_settings.sql','20261026000400_budget_read.sql','20261026000500_usage_evidence.sql','20261026000600_budget_scope_names.sql'];
+const names=['20261026000100_run_ledger.sql','20261026000200_run_reconciliation.sql','20261026000300_budget_settings.sql','20261026000400_budget_read.sql','20261026000500_usage_evidence.sql','20261026000600_budget_scope_names.sql','20261026000700_conversations.sql','20261026000800_metric_inventory.sql','20261026000900_chat_checkpoints.sql','20261026001000_chat_cancel_receipts.sql'];
 const parked=path.resolve(projectRoot,'supabase/.temp/pr08-upgrade-migrations');
 const files=names.map(name=>{
   const source=path.resolve(projectRoot,'supabase/migrations',name);const destination=path.resolve(parked,name);
@@ -52,7 +53,7 @@ try{
   phase='snapshot base rows';const beforeA=await snapshot(a.id);const beforeB=await snapshot(b.id);
   const householdBefore=await(await db.admin('/rest/v1/usage_buckets?scope=eq.household','GET')).json();
   phase='restore accounting migrations';
-  for(const file of files.slice(0,-1))renameSync(file.destination,file.source);
+  for(const file of files.slice(0,5))renameSync(file.destination,file.source);
   phase='apply original PR08 migrations';runSupabase(['migration','up','--local'],true);await waitForLocalApi();
   for(const [owner,before] of [[a.id,beforeA],[b.id,beforeB]] as const){
     const after=await snapshot(owner);
@@ -75,7 +76,7 @@ try{
   await db.admin(`/rest/v1/usage_buckets?id=eq.${householdBefore[0].id}`,'PATCH',{reserved_usd:'0.15',spent_usd:'0.04'});
   const legacyA=await snapshot(a.id);const legacyB=await snapshot(b.id);
   const sharedBefore=await(await db.admin('/rest/v1/usage_buckets?scope=eq.household','GET')).json();
-  phase='apply terminology migration';restore();runSupabase(['migration','up','--local'],true);await waitForLocalApi();
+  phase='apply terminology migration';renameSync(files[5]!.destination,files[5]!.source);runSupabase(['migration','up','--local'],true);await waitForLocalApi();
   function renamed(row:Record<string,unknown>){
     return Object.fromEntries(Object.entries(row).map(([key,value])=>[
       ({user_bucket_id:'account_bucket_id',household_bucket_id:'app_bucket_id',household_scope:'app_scope'} as Record<string,string>)[key] ?? key,
@@ -101,7 +102,32 @@ try{
   phase='verify isolation';
   const foreign=await db.request(`/rest/v1/measurements?id=eq.${gb.ids.measurements}&select=id`,a.token);assert(foreign.ok);assert.deepEqual(await foreign.json(),[]);
   const own=await db.request(`/rest/v1/measurements?id=eq.${ga.ids.measurements}&select=id`,a.token);assert(own.ok);assert.equal((await own.json() as unknown[]).length,1);
-  report={scope:'local_synthetic_forward_upgrade',base:'fe6675b',migrationsApplied:names.length,owners:2,tablesPreserved:databaseTables.length,originalRowsUnchanged:true,renamedStatesPreserved:['reserved','pending','settled'],postMigrationSettlementAndReplay:true,crossUserDenied:true};
+  phase='snapshot populated PR08';const pr08A=await snapshot(a.id);const pr08B=await snapshot(b.id);
+  const bucketsBeforeChat=await(await db.admin('/rest/v1/usage_buckets?order=id','GET')).json();
+  phase='apply PR09';restore();runSupabase(['migration','up','--local'],true);await waitForLocalApi();
+  assert.deepEqual(await snapshot(a.id),pr08A);assert.deepEqual(await snapshot(b.id),pr08B);
+  assert.deepEqual(await(await db.admin('/rest/v1/usage_buckets?order=id','GET')).json(),bucketsBeforeChat);
+  phase='exercise new atomic message transaction';
+  await db.admin(`/rest/v1/ai_runs?id=eq.${ga.ids.ai_runs}`,'PATCH',{status:'completed',finished_at:new Date().toISOString()});
+  const conversation=randomUUID();const executor=randomUUID();const requestId=randomUUID();const messageId=randomUUID();
+  await db.admin('/rest/v1/rpc/mutate_conversation_v1','POST',{p_owner:a.id,p_request:{action:'create',id:conversation,client_request_id:randomUUID()}});
+  const chatInput={p_owner:a.id,p_executor:executor,p_request:{conversationId:conversation,clientRequestId:requestId,requestHash:'b'.repeat(64),depth:'auto',route:{role:'everyday',provider:'openrouter',model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1',baseline:'safety-v1',maxCostUSD:'0'},p_message:{id:messageId,text:'Synthetic baseline safety question'}};
+  const admitted=await(await db.admin('/rest/v1/rpc/admit_chat_v1','POST',chatInput)).json();assert.equal(admitted.kind,'admitted');
+  assert.equal((await(await db.admin('/rest/v1/rpc/admit_chat_v1','POST',chatInput)).json()).kind,'existing');
+  const completed=await(await db.admin('/rest/v1/rpc/baseline_chat_v1','POST',{p_owner:a.id,p_run:admitted.run.id,p_executor:executor,p_fence:1,p_text:'Synthetic deterministic safety guidance.'})).json();assert.equal(completed.state,'completed');assert.equal(completed.costUSD,'0');
+  assert.equal((await(await db.admin(`/rest/v1/messages?conversation_id=eq.${conversation}`,'GET')).json()).length,2);
+  const denied=await db.request('/rest/v1/rpc/admit_chat_v1',a.token,{method:'POST',body:JSON.stringify(chatInput)});assert([401,403,404].includes(denied.status));
+  phase='seed bounded maintenance cases';
+  await db.admin(`/rest/v1/private_payloads?id=eq.${ga.ids.private_payloads}`,'PATCH',{created_at:new Date(Date.now()-120000).toISOString(),expires_at:new Date(Date.now()-60000).toISOString()});
+  const pendingStep=randomUUID();await db.admin('/rest/v1/ai_steps','POST',{id:pendingStep,user_id:b.id,run_id:gb.ids.ai_runs,sequence:2,step_type:'generation',status:'started',dispatch_state:'send_authorized'});
+  await db.admin('/rest/v1/usage_reservations','POST',{user_id:b.id,run_id:gb.ids.ai_runs,step_id:pendingStep,period_start:'2026-10-01',account_bucket_id:gb.ids.usage_buckets,app_bucket_id:householdBefore[0].id,amount_usd:'0.01',status:'pending',uncertain_since:new Date(Date.now()-25*3600000).toISOString()});
+  await db.admin(`/rest/v1/usage_buckets?id=eq.${gb.ids.usage_buckets}`,'PATCH',{reserved_usd:'0.01'});await db.admin(`/rest/v1/usage_buckets?id=eq.${householdBefore[0].id}`,'PATCH',{reserved_usd:'0.01'});
+  await db.admin(`/rest/v1/ai_runs?id=eq.${gb.ids.ai_runs}`,'PATCH',{lease_expires_at:new Date(Date.now()-1000).toISOString()});
+  phase='run actual maintenance command';
+  const maintenance=spawnSync(process.execPath,['node_modules/tsx/dist/cli.mjs','scripts/cleanup.ts'],{cwd:projectRoot,env:localEnvironment(),encoding:'utf8',timeout:60000});
+  assert.equal(maintenance.status,0);const cleaned=JSON.parse(maintenance.stdout.trim());assert(cleaned.removed>=1);assert.equal(cleaned.interrupted,1);assert.equal(cleaned.conservative,1);
+  const pending=await(await db.admin(`/rest/v1/usage_reservations?step_id=eq.${pendingStep}`,'GET')).json();assert.equal(pending[0].status,'settled');assert.equal(Number(pending[0].known_cost_usd),0.01);
+  report={scope:'local_synthetic_forward_upgrade',base:'fe6675b',migrationsApplied:names.length,owners:2,tablesPreserved:databaseTables.length,originalRowsUnchanged:true,renamedStatesPreserved:['reserved','pending','settled'],postMigrationSettlementAndReplay:true,crossUserDenied:true,populatedPR08ToPR09Unchanged:true,atomicChatReplay:true,maintenance:{removed:cleaned.removed,interrupted:cleaned.interrupted,conservative:cleaned.conservative}};
 }catch(error){const safe=error instanceof Error && error.message.startsWith('Synthetic ') ? ' '+error.message : '';console.error('Forward-upgrade proof failed at '+phase+'.'+safe+' Inspect the guarded synthetic stack and restored migration files.');process.exitCode=1;}
 finally{restore();runSupabase(['migration','up','--local'],true);await db.cleanup();}
 if(report)console.info(JSON.stringify(report,null,2));

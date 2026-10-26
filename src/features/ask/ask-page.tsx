@@ -1,54 +1,146 @@
-import { AssistantRuntimeProvider, ComposerPrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessage } from '@assistant-ui/react';
-import { ArrowRight, LockKeyhole, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useEffect,useReducer,useRef,useState } from 'react';
+import { useInfiniteQuery,useMutation,useQueryClient,type InfiniteData } from '@tanstack/react-query';
+import { AssistantRuntimeProvider,ComposerPrimitive,MessagePrimitive,ThreadPrimitive,useExternalStoreRuntime,type AppendMessage } from '@assistant-ui/react';
+import { Link,useSearchParams } from 'react-router-dom';
+import { ArrowRight,LockKeyhole,Sparkles } from 'lucide-react';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/lib/auth/auth-context';
+import { ownedJson } from '@/lib/api';
+import { ErrorEnvelopeSchema,successEnvelopeSchema,type ChatSendRequest } from '../../../shared/api';
+import { ChatPartSchema,ConversationsPageSchema,MessagesPageSchema,type ChatMessage,type MessagesPage } from '../../../shared/chat';
+import { StreamDecoder,isTerminalEvent } from '../../../shared/stream';
+import { AdmissionResultSchema } from '../../../shared/executions';
+import { askReducer,initialAskState } from './state';
 
-const messages: readonly ThreadMessage[] = [];
-async function unavailable(): Promise<void> {
-  throw new Error('Chat is not available in this foundation preview.');
+function Welcome() {
+  return <><Card className="welcome-card"><div className="feature-symbol"><Sparkles size={24} aria-hidden="true"/></div><p className="eyebrow">Start with what you know</p><h2>Your data comes first.</h2><p>Explore your measurements and work toward goals you choose. Start a conversation to ask a question. Opening this page makes no model requests.</p><Button asChild><Link to="/data">Explore Data <ArrowRight size={16} aria-hidden="true"/></Link></Button></Card><section className="sample-questions" aria-label="Suggested questions"><h2>Questions to explore when chat is available</h2><ul><li>How has my weight changed over time?</li><li>Do I have enough data to see a trend?</li></ul></section></>;
+}
+function SummaryPart({data}:{data:unknown}) {
+  const parsed=ChatPartSchema.safeParse(data);
+  if(!parsed.success || parsed.data.type!=='metric_summary')return <p>Evidence is unavailable.</p>;
+  const {result}=parsed.data;const a=result.analysis;
+  return <Card className="chat-evidence"><h3>Calculated measurement summary</h3><p>{a.coverageStatus==='sufficient' ? `${a.value} ${a.unit}; change ${a.absoluteChange} ${a.unit}` : 'Insufficient observed days for a trend.'}</p><p>{a.validDays} valid days · {a.observationCount} observations · {a.algorithmVersion}</p><p>{result.selection.method} · {result.selection.granularity} · {result.selection.timezone}</p><p>{result.selection.from} to {result.selection.to} (end excluded)</p><Button asChild variant="outline"><Link to="/data">Open Data</Link></Button></Card>;
+}
+const plainText=({text}:{text:string})=><p className="chat-text">{text}</p>;
+
+function AskThread({id,availability,locked}:{id:string|null;availability:'synthetic'|'unavailable';locked:boolean}) {
+  const {state:auth,scope}=useAuth();const session=auth.kind==='signed_in'?auth.session:null;const epoch=scope.epoch;
+  const client=useQueryClient();const root=['conversations',session?.user.id,epoch];const key=[...root,'messages',id];
+  const [state,dispatch]=useReducer(askReducer,initialAskState);const lock=useRef(false);const abort=useRef<AbortController|null>(null);
+  const [depth,setDepth]=useState<ChatSendRequest['depth']>('auto');
+  const [existingConversation,setExistingConversation]=useState<string|null>(null);
+  const query=useInfiniteQuery({queryKey:key,enabled:!!session&&!!id,initialPageParam:null as string|null,retry:false,refetchOnWindowFocus:false,
+    queryFn:async({signal,pageParam})=>successEnvelopeSchema(MessagesPageSchema).parse(await ownedJson('/api/conversations?'+new URLSearchParams({view:'messages',id:id!,...(pageParam?{cursor:pageParam}:{})}),session!.access_token,scope,epoch,{signal})).data,
+    getNextPageParam:page=>page.nextCursor,
+    refetchInterval:q=>q.state.data?.pages[0]?.run && ['admitted','running','cancellation_requested'].includes(q.state.data.pages[0].run.state) ? 1000 : false,
+  });
+  useEffect(()=>()=>abort.current?.abort(),[]);
+  useEffect(()=>{if(state.phase==='loading'&&(!id||query.data))dispatch({type:'ready'});},[state.phase,id,query.data]);
+  const pages=query.data?.pages ?? [];const latest=pages[0];
+  const messages=[...new Map([...pages].reverse().flatMap(page=>page.items).map(message=>[message.id,message])).values()];
+  const activeRun=latest?.run && ['admitted','running','cancellation_requested'].includes(latest.run.state) ? latest.run : null;
+  const busy=['submitting','streaming','stopping'].includes(state.phase)||!!activeRun;
+  const retryText=state.attemptText||[...messages].reverse().find(message=>message.role==='user'&&message.runId===latest?.run?.id)?.parts.filter(part=>part.type==='text').map(part=>part.text).join('\n')||'';
+  async function recover(notice:string) {
+    scope.commit(epoch,()=>dispatch({type:'recover',notice}));
+    await query.refetch();await client.invalidateQueries({queryKey:[...root,'list']});
+  }
+  const send=useMutation({retry:false,mutationFn:async(text:string)=>{
+    if(!session||!id||lock.current)throw new Error('Choose a conversation before sending.');
+    if(scope.epoch!==epoch||scope.userId!==session.user.id)throw new DOMException('The account changed.','AbortError');
+    lock.current=true;const owner=scope.capture();const controller=new AbortController();abort.current=controller;
+    const input:ChatSendRequest={action:'send',conversation_id:id,client_request_id:crypto.randomUUID(),message:{id:crypto.randomUUID(),text},depth,context_selection:null};
+    let protocol=askReducer(initialAskState,{type:'submit',text});dispatch({type:'submit',text});
+    try {
+      const response=await fetch('/api/chat',{method:'POST',cache:'no-store',signal:AbortSignal.any([owner.signal,controller.signal]),headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify(input)});
+      if(!owner.current())return;
+      if(!response.ok){const failure=ErrorEnvelopeSchema.safeParse(await response.json());throw new Error(failure.success?failure.data.error.message:'The response could not start.');}
+      if(response.headers.get('content-type')?.startsWith('application/json')){const existing=successEnvelopeSchema(AdmissionResultSchema).parse(await response.json()).data;if(owner.current())setExistingConversation(existing.run.conversationId);await recover('This request already exists or another run is active. Reading saved state.');return;}
+      if(!response.headers.get('content-type')?.startsWith('text/event-stream')||!response.body)throw new Error('The response stream is unavailable.');
+      const decoder=new StreamDecoder();let terminal=false;const reader=response.body.getReader();
+      while(true) {
+        const next=await reader.read();if(!owner.current())return;if(next.done)break;
+        for(const event of decoder.push(next.value)) {
+          if(!owner.current())return;
+          const previous=protocol;protocol=askReducer(protocol,{type:'event',event});
+          if(protocol.phase==='recovering')throw new Error(protocol.notice);
+          if(protocol===previous)continue;
+          dispatch({type:'event',event});
+          client.setQueryData<InfiniteData<MessagesPage>>(key,old=>{
+            if(!old || !owner.current())return old;
+            const first=old.pages[0]!;let items=[...first.items];
+            if(event.type==='run.started') {
+              if(!items.some(m=>m.id===input.message.id))items.push({id:input.message.id,role:'user',parts:[{type:'text',text}],runId:event.run_id,status:'completed',contextState:'eligible',createdAt:new Date().toISOString()});
+              if(!items.some(m=>m.id===event.payload.assistant_message_id))items.push({id:event.payload.assistant_message_id,role:'assistant',parts:[],runId:event.run_id,status:'streaming',contextState:'eligible',createdAt:new Date().toISOString()});
+            }
+            if(event.type==='text.delta')items=items.map(m=>m.id!==event.payload.message_id?m:{...m,parts:[...m.parts.filter(p=>p.type!=='text'),{type:'text',text:m.parts.filter(p=>p.type==='text').map(p=>p.text).join('')+event.payload.text}]});
+            return {...old,pages:[{...first,items},...old.pages.slice(1)]};
+          });
+          if(isTerminalEvent(event))terminal=true;
+        }
+      }
+      decoder.finish();if(!terminal)throw new Error('The stream disconnected. Reading the saved prefix; inference will not restart.');
+      await query.refetch();await client.invalidateQueries({queryKey:[...root,'list']});
+    } catch(error) {
+      controller.abort();if(owner.current())await recover(error instanceof Error?error.message:'The response stopped. Refresh saved status.');
+    } finally {lock.current=false;owner.release();abort.current=null;}
+  }});
+  const stop=useMutation({retry:false,mutationFn:async()=>{
+    const runId=state.runId??activeRun?.id;if(!session||!runId)return;dispatch({type:'stop'});
+    try{await ownedJson('/api/chat',session.access_token,scope,epoch,{method:'POST',body:JSON.stringify({action:'cancel',run_id:runId,client_request_id:crypto.randomUUID()})});abort.current?.abort();await recover('Stop requested. Reading saved status; usage may remain pending.');}
+    catch(error){scope.commit(epoch,()=>dispatch({type:'recover',notice:error instanceof Error?error.message:'Stop could not be confirmed. Refresh saved status.'}));}
+  }});
+  const runtime=useExternalStoreRuntime<ChatMessage>({messages,isRunning:busy,isDisabled:locked||availability==='unavailable'||!id||query.isPending||latest?.conversation.archived===true||query.isError,
+    isSendDisabled:busy,onNew:async(message:AppendMessage)=>{await send.mutateAsync(message.content.filter(part=>part.type==='text').map(part=>part.text).join('\n'));},onCancel:async()=>{await stop.mutateAsync();},
+    hasEarlier:query.hasNextPage,onLoadEarlier:async()=>{await query.fetchNextPage();},
+    convertMessage:message=>({id:message.id,role:message.role,createdAt:new Date(message.createdAt),content:message.parts.map(part=>{
+      if(part.type==='text')return {type:'text' as const,text:part.text};
+      if(message.contextState!=='eligible'||part.evidence.ownerId!==session?.user.id||part.evidence.runId!==message.runId||part.result.dataRevision!==part.evidence.dataRevision)return {type:'text' as const,text:'Evidence is unavailable or was invalidated.'};
+      return {type:'data' as const,name:'metric_summary',data:part};
+    }),...(message.role==='assistant'?{status:message.status==='streaming'?{type:'running' as const}:message.status==='completed'?{type:'complete' as const,reason:'stop' as const}:{type:'incomplete' as const,reason:'error' as const}}:{}),metadata:{...(message.runId?{runId:message.runId}:{})}}),
+  });
+  const notice=state.notice || (activeRun?'Recovering saved run status. Inference will not restart.':query.isPending&&id?'Loading conversation…':query.isError?'Conversation could not be loaded.':'');
+  return <AssistantRuntimeProvider runtime={runtime}><ThreadPrimitive.Root className="conversation" aria-label="Conversation"><ThreadPrimitive.Viewport className="conversation-viewport">
+    {query.hasNextPage&&<Button variant="outline" onClick={()=>void query.fetchNextPage()} disabled={query.isFetchingNextPage}>Load earlier messages</Button>}
+    {!messages.length&&!query.isError&&<Welcome/>}
+    <ThreadPrimitive.Messages>{({message})=><MessagePrimitive.Root className={`chat-message chat-${message.role}`}><p className="chat-speaker">{message.role==='user'?'You':'Vulpes'}</p><MessagePrimitive.Parts components={{Text:plainText,data:{by_name:{metric_summary:SummaryPart}}}}/>{message.role==='assistant'&&message.status.type==='incomplete'&&<p className="incomplete-badge">Incomplete response</p>}</MessagePrimitive.Root>}</ThreadPrimitive.Messages>
+    </ThreadPrimitive.Viewport><div className="composer-area"><p role="status" aria-live="polite" className="chat-status">{notice}</p>
+    {availability==='unavailable'&&<p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true"/>Inference is unavailable until provider verification and activation gates pass.</p>}
+    {availability==='synthetic'&&<p className="availability-note">Local synthetic verification. No live provider calls.</p>}
+    <label className="depth-label">Analysis depth<select aria-label="Analysis depth" value={depth} onChange={e=>setDepth(e.target.value as typeof depth)} disabled={busy}><option value="auto">Auto</option><option value="everyday">Everyday</option><option value="intermediate">Intermediate (unavailable)</option><option value="advanced">Advanced (unavailable)</option></select></label>
+    <ComposerPrimitive.Root className="composer"><ComposerPrimitive.Input aria-label="Message Ask Vulpes" placeholder="Ask about your measurements…" rows={1}/>{busy?<Button onClick={()=>void stop.mutateAsync()} disabled={stop.isPending||!state.runId&&!activeRun}>Stop</Button>:<ComposerPrimitive.Send asChild><Button>Send</Button></ComposerPrimitive.Send>}</ComposerPrimitive.Root>
+    {state.phase==='recovering'&&<Button variant="outline" onClick={()=>void recover('Reading saved status.')}>Refresh saved status</Button>}
+    {existingConversation&&<Button asChild variant="outline"><Link to={`/ask?conversation=${encodeURIComponent(existingConversation)}`}>Open current run</Link></Button>}
+    {retryText&&!busy&&(state.phase==='recovering'||latest?.run&&['failed','cancelled','interrupted'].includes(latest.run.state))&&<Button variant="outline" disabled={availability==='unavailable'||latest?.conversation.archived} onClick={()=>send.mutate(retryText)}>Send again as a new request (may incur another charge)</Button>}
+    {query.isError&&<Button variant="outline" onClick={()=>void query.refetch()}>Reload conversation</Button>}
+    {latest?.run&&<p className="availability-note">Run {latest.run.state} · {latest.run.costStatus} · {latest.run.costUSD===null?'Total cost unknown':`$${latest.run.costUSD}`} · held ${latest.run.reservationUSD}</p>}
+    <p className="wellness-note">Personal wellness information. Not medical diagnosis or emergency monitoring.</p>
+  </div></ThreadPrimitive.Root></AssistantRuntimeProvider>;
 }
 
 export function AskPage() {
-  const runtime = useExternalStoreRuntime({ messages, isRunning: false, isDisabled: true, onNew: unavailable });
-
-  return (
-    <div className="ask-page">
-      <header className="page-heading">
-        <p className="eyebrow">A clearer picture, one question at a time</p>
-        <h1 tabIndex={-1}>Ask Vulpes</h1>
-        <p>Understand your measurements. Find a way forward.</p>
-      </header>
-      <AssistantRuntimeProvider runtime={runtime}>
-        <ThreadPrimitive.Root className="conversation" aria-label="Conversation">
-          <ThreadPrimitive.Viewport className="conversation-viewport">
-            <ThreadPrimitive.Empty>
-              <Card className="welcome-card">
-                <div className="feature-symbol"><Sparkles size={24} aria-hidden="true" /></div>
-                <p className="eyebrow">Start with what you know</p>
-                <h2>Your data comes first.</h2>
-                <p>Vulpes will help you explore your own measurements and work toward goals you choose. No measurements are loaded in this preview.</p>
-                <Button asChild><Link to="/data">Explore Data <ArrowRight size={16} aria-hidden="true" /></Link></Button>
-              </Card>
-              <section className="sample-questions" aria-labelledby="sample-heading">
-                <h2 id="sample-heading">Questions to explore when chat is available</h2>
-                <ul>
-                  <li>How has my weight changed over time?</li>
-                  <li>Do I have enough data to see a trend?</li>
-                </ul>
-              </section>
-            </ThreadPrimitive.Empty>
-          </ThreadPrimitive.Viewport>
-          <div className="composer-area">
-            <p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true" /> Chat is not available in this foundation preview.</p>
-            <ComposerPrimitive.Root className="composer">
-              <ComposerPrimitive.Input aria-label="Message Ask Vulpes" aria-describedby="chat-unavailable" placeholder="Ask about your measurements…" disabled rows={1} />
-              <span className="composer-label">Unavailable</span>
-            </ComposerPrimitive.Root>
-            <p className="wellness-note">Personal wellness information. Not medical diagnosis or emergency monitoring.</p>
-          </div>
-        </ThreadPrimitive.Root>
-      </AssistantRuntimeProvider>
-    </div>
-  );
+  const {state,scope}=useAuth();const session=state.kind==='signed_in'?state.session:null;const epoch=scope.epoch;const client=useQueryClient();
+  const [params,setParams]=useSearchParams();const [archived,setArchived]=useState(false);const [notice,setNotice]=useState('');const root=['conversations',session?.user.id,epoch];
+  const list=useInfiniteQuery({queryKey:[...root,'list',archived],enabled:!!session,initialPageParam:null as string|null,retry:false,refetchOnWindowFocus:false,
+    queryFn:async({signal,pageParam})=>successEnvelopeSchema(ConversationsPageSchema).parse(await ownedJson('/api/conversations?'+new URLSearchParams({archived:String(archived),...(pageParam?{cursor:pageParam}:{})}),session!.access_token,scope,epoch,{signal})).data,
+    getNextPageParam:page=>page.nextCursor,
+  });
+  const items=list.data?.pages.flatMap(page=>page.items)??[];const id=params.get('conversation')??items[0]?.id??null;
+  const mutation=useMutation({retry:false,mutationFn:async(action:'create'|'archive'|'delete')=>{
+    if(!session)return;const target=action==='create'?crypto.randomUUID():id;if(!target)return;
+    const result=await ownedJson('/api/conversations',session.access_token,scope,epoch,{method:'POST',body:JSON.stringify({action,id:target,client_request_id:crypto.randomUUID(),...(action==='delete'?{confirm:true}:{})})});
+    const checked=successEnvelopeSchema(z.strictObject({id:z.uuid(),outcome:z.enum(['create','archive','delete'])})).parse(result).data;
+    scope.commit(epoch,()=>{setParams(action==='create'?{conversation:checked.id}:{});setNotice(action==='create'?'Conversation created.':action==='archive'?'Conversation archived.':'Conversation deleted.');});
+    await client.invalidateQueries({queryKey:root});
+  },onError:error=>scope.commit(epoch,()=>setNotice(error instanceof Error?error.message:'The conversation operation failed.'))});
+  return <div className="ask-page"><header className="page-heading"><p className="eyebrow">A clearer picture, one question at a time</p><h1 tabIndex={-1}>Ask Vulpes</h1><p>Understand your measurements. Find a way forward.</p></header>
+    <section className="conversation-controls" aria-label="Conversation history"><Button onClick={()=>mutation.mutate('create')} disabled={mutation.isPending}>New conversation</Button><label>Conversation<select aria-label="Conversation" value={id??''} onChange={e=>setParams({conversation:e.target.value})}><option value="" disabled>Choose a conversation</option>{items.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</select></label><label className="checkbox-label"><input type="checkbox" checked={archived} onChange={e=>{setArchived(e.target.checked);setParams({});}}/>Archived</label>
+      {list.hasNextPage&&<Button variant="outline" onClick={()=>void list.fetchNextPage()} disabled={list.isFetchingNextPage}>Load more conversations</Button>}
+      {id&&<><Button variant="outline" onClick={()=>mutation.mutate('archive')} disabled={mutation.isPending||archived}>Archive conversation</Button><details><summary>Delete conversation</summary><p>Delete this conversation, its messages, and private traces? Accounting records may remain.</p><Button onClick={()=>mutation.mutate('delete')} disabled={mutation.isPending}>Confirm delete conversation</Button></details></>}
+      {list.isError&&<><p role="alert">Conversations could not be loaded.</p><Button variant="outline" onClick={()=>void list.refetch()}>Reload history</Button></>}
+      <p role="status">{notice}</p>
+    </section><AskThread key={`${id??'empty'}:${epoch}`} id={id} availability={list.data?.pages[0]?.availability??'unavailable'} locked={mutation.isPending}/>
+  </div>;
 }

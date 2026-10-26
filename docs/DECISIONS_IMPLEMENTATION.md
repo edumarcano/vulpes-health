@@ -4,6 +4,18 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-26: PR 09 persisted Ask Vulpes
+
+**Scope:** Execution-plan PR 09 and the approved M3 batch plan, based on merged PR 08 (`98b097d`). Implementation, local synthetic verification, commit/push and an open PR are authorized; merge, PR 10 and live inference are not.
+
+- Extend admission through one service-only transaction that inserts the authoritative user message and assistant placeholder. Conversation/cancellation receipts reuse the existing audit store; no new queue, ORM or persistence service is introduced.
+- Keep raw provider response capture separate from durable message prefixes. Every emitted text delta follows a committed prefix. Parser rejection is a failed run; the original direct-dispatch consumer cancellation contract remains unchanged.
+- Preserve complete tool groups and opaque Responses output in encrypted continuation state. Conservative byte bounds prune whole older groups; qualified numerical projections avoid duplicate point arrays while full tool evidence remains exact.
+- Define a narrow approved-goal read projection and dedicated progress union. Drafts, unsupported frozen snapshots and review-required baselines remain unavailable. PR 11 must consume or re-review this contract.
+- Keep synthetic injection in a separate local test executable, bound to a synthetic account. Production has no mock fallback or credential-bearing provider transport. The typed model catalog and live gates are unchanged.
+
+[PR 09 evidence](evidence/pr09-ask-conversations.md) owns actual commands, failures, empirical artifacts and split-axis review. This local PR does not accept M3 or resolve recorded M2 acceptance.
+
 ## 2026-10-26: App and account AI spending terminology
 
 **Authorization:** Rename the PR 08 budgeting terminology, verify/review it and update the existing PR before merge. Spending behavior and authorization gates do not change.

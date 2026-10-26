@@ -17,7 +17,8 @@ export const AdmissionInputSchema = z.strictObject({
   conversationId: UUIDSchema, clientRequestId: UUIDSchema, requestHash: HashSchema, depth: AnalysisDepthSchema,
   route: z.strictObject({ role: z.enum(['everyday','intermediate','advanced']), provider: z.enum(['openrouter','vertex_ai']), model: z.string().min(1).max(200), effort: z.string().max(100).nullable() }),
   consentVersion: z.string().min(1).max(100),
-}).refine(value=>value.depth==='auto' || value.depth===value.route.role,'The requested depth must match the selected role.');
+  baseline: z.literal('safety-v1').optional(),
+}).refine(value=>value.baseline==='safety-v1' || value.depth==='auto' || value.depth===value.route.role,'The requested depth must match the selected role.');
 export interface StepInput {
   type: 'generation' | 'decision' | 'tool'; body: Uint8Array; context?: unknown;
   provider?: 'openrouter' | 'vertex_ai'; model?: string; toolName?: string; price?: VerifiedPrice;
@@ -52,11 +53,12 @@ export class ExecutionService {
   async reconcile() {
     return this.rpc('reconcile_runs_v1',{ p_owner:this.context.userId,p_batch_size:100 });
   }
-  async admit(input: z.infer<typeof AdmissionInputSchema>) {
+  async admit(input: z.infer<typeof AdmissionInputSchema>, message?: {id:string;text:string}) {
     const request = AdmissionInputSchema.parse(input);
     await this.reconcile();
     const executor = randomUUID();
-    const result = AdmissionResultSchema.parse(await this.rpc('admit_run_v1',{ p_owner:this.context.userId,p_request:{ ...request,maxCostUSD:this.policy.maxRunCostUSD },p_executor:executor }));
+    const args={ p_owner:this.context.userId,p_request:{ ...request,maxCostUSD:this.policy.maxRunCostUSD },p_executor:executor };
+    const result = AdmissionResultSchema.parse(message ? await this.rpc('admit_chat_v1',{...args,p_message:message}) : await this.rpc('admit_run_v1',args));
     return { result, lease:result.kind === 'admitted' ? { runId:result.run.id,executor,fence:1,deadlineAt:result.run.deadlineAt } satisfies RunLease : null };
   }
   async summary(runId: string) {
@@ -121,6 +123,26 @@ export class ExecutionService {
   }
   async cancel(runId: string) {
     return RunSummarySchema.parse(await this.rpc('cancel_run_v1',{ p_owner:this.context.userId,p_run:UUIDSchema.parse(runId) }));
+  }
+  async cancelWithReceipt(runId:string,requestId:string) {
+    return RunSummarySchema.parse(await this.rpc('cancel_chat_v1',{p_owner:this.context.userId,p_run:UUIDSchema.parse(runId),p_request:UUIDSchema.parse(requestId)}));
+  }
+  async saveState(step:PreparedStep,state:unknown) {
+    return this.rpc('save_chat_state_v1',{p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,p_step:step.id,p_state:this.envelope('provider_state',Buffer.from(JSON.stringify(state)))});
+  }
+  async checkpointMessage(lease:RunLease,parts:Json[]) {
+    return this.rpc('checkpoint_message_v1',{p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_fence:lease.fence,p_parts:parts});
+  }
+  async usageTotals(runId:string) {
+    const {data,error}=await this.context.db.from('ai_steps').select('step_type,input_tokens,output_tokens,reasoning_tokens,cache_read_tokens,cache_write_tokens').eq('user_id',this.context.userId).eq('run_id',UUIDSchema.parse(runId)).neq('step_type','tool');
+    const sum=(column:'input_tokens'|'output_tokens'|'reasoning_tokens'|'cache_read_tokens'|'cache_write_tokens')=>{
+      if(error||!data?.length||data.some(step=>step[column]===null))return null;
+      const total=data.reduce((value,step)=>value+step[column]!,0);return Number.isSafeInteger(total)?total:null;
+    };
+    return {inputTokens:sum('input_tokens'),outputTokens:sum('output_tokens'),reasoningTokens:sum('reasoning_tokens'),cacheReadTokens:sum('cache_read_tokens'),cacheWriteTokens:sum('cache_write_tokens')};
+  }
+  async baseline(lease:RunLease,text:string) {
+    return RunSummarySchema.parse(await this.rpc('baseline_chat_v1',{p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_fence:lease.fence,p_text:text}));
   }
   async finish(lease: RunLease, status: TerminalRunState) {
     return RunSummarySchema.parse(await this.rpc('finish_run_v1',{ p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_status:status }));

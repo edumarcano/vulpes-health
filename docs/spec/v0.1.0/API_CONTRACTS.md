@@ -54,6 +54,25 @@ No `/web-search`, `/rag`, `/memory/auto-save`, `/health-connect/sync` or `/scale
 
 Accept only `auto`, `everyday`, `intermediate`, `advanced`. Validate all referenced IDs against the authenticated user. The server loads the authoritative transcript and data. Ignore/reject injected system messages, tool results, arbitrary model IDs, budgets, user IDs and provider URLs in client input.
 
+`context_selection` may be omitted or null; both normalize to null before idempotency hashing. A supplied selection must satisfy the complete schema. Messages are nonblank and limited to 16,000 characters. Recognizable credentials are rejected before persistence. Intermediate/Advanced return explicit unavailability in PR 09. Deterministic baseline safety guidance requires no provider request or consent.
+
+Initial admission inserts the user message and assistant placeholder in the same transaction, then returns SSE. Identical replay returns JSON `{data:{kind:"existing",run:RunSummary},request_id}`. Another active request returns the same envelope with `kind:"busy"`; its run includes the owned conversation link. Neither response grants execution authority. Reusing a message ID for another request conflicts.
+
+### Conversation operations
+
+| Operation | Fields / response |
+|---|---|
+| GET list | Optional `view=list`, `archived=true/false` (default false), `page_size` (default 50, maximum 200), `cursor`. Returns `items`, `nextCursor`, and inference `availability`. Production availability remains `unavailable`; `synthetic` exists only in test composition. |
+| GET messages | `view=messages`, `id`, optional `page_size` (default 100, maximum 200), `cursor`. Returns conversation metadata, messages, `nextCursor`, and active/latest `RunSummary`. |
+| POST create | `{action:"create",id,client_request_id}`. Default title `New conversation`; first admitted text normalizes whitespace and supplies at most 80 characters. |
+| POST archive | `{action:"archive",id,client_request_id}`. Stops future content writes and requests cancellation of active runs. |
+| POST delete | `{action:"delete",id,client_request_id,confirm:true}`. Fences runs and deletes transcript/private payloads; retained accounting metadata loses its conversation link. |
+| POST cancel to `/api/chat` | `{action:"cancel",run_id,client_request_id}`. Idempotent receipt bound to the owned run; reuse for another run conflicts. Returns current `RunSummary`. |
+
+Conversation mutations return `{id,outcome}` within the success envelope. Reusing a mutation key with changed input returns 409. Lists use descending `(created_at,id)`; message pages return their selected latest records in ascending order, with a cursor for earlier records. Cursors bind the owner, view, filter/conversation and an existing anchor. Reads reconcile stale runs without claiming an executor or replaying inference.
+
+Stored message parts are escaped `text` or server-issued `metric_summary`. The latter binds a versioned owner/run/step/result/data-revision reference to a deterministic summary. Reads resolve it against the owned completed tool output; forged, unavailable, expired or stale evidence becomes an unavailable notice. No model-supplied HTML, URLs or card objects become executable UI.
+
 A repeated request ID with identical input returns the same run status, not another paid call. Same ID with different input returns 409. An already-running user receives the current run link rather than an implicit parallel run. An unavailable explicit depth is reported; it is not silently downgraded.
 
 ## 4. Streaming protocol: Vulpes event stream v1

@@ -121,4 +121,12 @@ The full reservation stays pending for uncertain sent requests. Its 24-hour inte
 
 All applicable mutations acquire profile, conversation, run, step, app bucket, account bucket, reservation and payload/message locks in that order. Service-only helpers pin empty search paths; clients cannot reserve or settle directly. AI envelopes require a writable run; the standalone payload writer accepts import staging only. Measurement deletion fences affected runs and marks their messages ineligible for future context. Late billing may reconcile after cancellation/deletion, but late content cannot recreate removed payloads.
 
-Seven-day envelope expiry is enforced on reads. Bounded maintenance removes expired 90-day terminal execution records only after settling reservations and clearing nullable transcript/proposal links. Core messages and their request receipts remain with conversation history. Conversation operations and the public execution inspector are later PRs.
+Seven-day envelope expiry is enforced on reads. Bounded maintenance removes expired 90-day terminal execution records only after settling reservations and clearing nullable transcript/proposal links. Core messages and their request receipts remain with conversation history. The public execution inspector belongs to PR 10.
+
+### PR 09 conversations
+
+`admit_chat_v1` extends the existing admission transaction with the authoritative user message, assistant placeholder and first-message title. Only the admitted result inserts messages. Profile locking serializes admission, owned mutation receipts and deletion. A service-only deterministic safety path permits zero-cost admission without provider consent; it creates no paid step.
+
+Conversation and cancellation receipts use `audit_events` and contain only request IDs, hashes, object IDs and outcomes. All new write RPCs are service-only with empty search paths. `read_metric_inventory_v1()` is the narrow authenticated read projection; identity comes from `auth.uid()`, and it groups only owned, undeleted observations by metric/source/method/granularity.
+
+`checkpoint_message_v1` validates the execution fence and commits the assistant prefix before SSE emission. It never replaces captured raw provider bytes. Encrypted `provider_state` in the step continuation reference retains complete logical call/result groups and opaque response items. Only completed, current-revision, eligible history enters later context. Expired or invalid state excludes the entire group. Conversation deletion invalidates executors, removes every run-bound payload purpose and message, nulls retained accounting links, and preserves unsettled cost for reconciliation.

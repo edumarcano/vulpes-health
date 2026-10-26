@@ -17,11 +17,11 @@ export type LivenessResponse = z.infer<typeof LivenessResponseSchema>;
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelopeSchema>;
 export const ChatSendRequestSchema = z.strictObject({
   action: z.literal('send'), client_request_id: UUIDSchema, conversation_id: UUIDSchema,
-  message: z.strictObject({ id: UUIDSchema, text: z.string().refine((text) => /\S/.test(text), 'Expected nonblank text.') }), depth: AnalysisDepthSchema,
+  message: z.strictObject({ id: UUIDSchema, text: z.string().max(16000).refine((text) => /\S/.test(text), 'Expected nonblank text.') }), depth: AnalysisDepthSchema,
   context_selection: z.strictObject({
     metric: MetricKeySchema, source_id: UUIDSchema.nullable(), goal_id: UUIDSchema.nullable(),
     from: ISOInstantSchema, to: ISOInstantSchema, timezone: IanaTimezoneSchema,
-  }).refine((value) => Date.parse(value.from) < Date.parse(value.to), 'Expected a nonempty half-open interval.'),
+  }).refine((value) => Date.parse(value.from) < Date.parse(value.to), 'Expected a nonempty half-open interval.').nullish().transform(value=>value ?? null),
 });
 export const ApprovalRequestSchema = z.strictObject({
   action: z.enum(['approve', 'reject']), proposal_id: UUIDSchema, payload_hash: HashSchema,

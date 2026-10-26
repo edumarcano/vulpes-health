@@ -91,6 +91,25 @@ p { line-height: 1.65; }
 .composer textarea { flex: 1; min-width: 0; max-height: 10rem; border: 0; resize: none; font-size: 0.875rem; background: transparent; color: var(--muted-foreground); opacity: 1; }
 .composer textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
 .composer-label { font-size: 0.7rem; color: var(--muted-foreground); }
+.conversation-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
+.conversation-controls label { display: grid; gap: 0.35rem; min-width: 0; max-width: 100%; font-size: 0.8rem; }
+.conversation-controls select { max-width: 100%; width: min(23rem, 100%); min-height: 44px; }
+.conversation-controls details { flex-basis: 100%; font-size: 0.85rem; }
+.conversation-controls summary { cursor: pointer; min-height: 44px; padding-top: 0.75rem; }
+.conversation-controls details p { margin-block: 0.5rem; }
+.chat-message { padding: 1rem; border-radius: 0.75rem; margin-block: 0.75rem; overflow-wrap: anywhere; }
+.chat-user { background: var(--muted); }
+.chat-speaker { font-size: 0.75rem; font-weight: 650; margin-bottom: 0.5rem; color: var(--muted-foreground); }
+.chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-evidence { margin-top: 0.75rem; font-size: 0.85rem; }
+.chat-evidence p { margin-block: 0.5rem; }
+.incomplete-badge { margin-top: 0.75rem; font-size: 0.8rem; color: var(--accent-foreground); }
+.chat-status { font-size: 0.85rem; min-height: 1.5rem; margin-bottom: 0.5rem; }
+.depth-label { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; font-size: 0.8rem; margin-bottom: 0.5rem; }
+.depth-label select { min-height: 44px; max-width: 100%; }
+.ask-page .conversation { height: min(70dvh, 50rem); min-height: 22rem; }
+.ask-page .conversation-viewport { overflow-y: auto; overscroll-behavior: contain; scroll-padding-bottom: 1rem; }
+.ask-page .composer-area { flex-shrink: 0; background: var(--background); padding-block: 0.75rem 0.5rem; }
 .wellness-note { margin-top: 0.75rem; color: var(--muted-foreground); font-size: 0.7rem; text-align: center; }
 .empty-card, .settings-card { max-width: 760px; }
 .empty-card h2, .settings-card h2 { margin: 0.5rem 0 0.75rem; }

@@ -10,7 +10,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: { baseURL: origin, browserName: 'chromium', trace: 'off', screenshot: 'off', video: 'off' },
   webServer: {
-    command: devProof ? 'npm run dev:full' : 'npm run preview:full',
+    command: process.env.VULPES_TEST_CHAT_OWNER ? devProof ? 'node node_modules/concurrently/dist/bin/index.js --kill-others --success first "npm run dev:client" "node node_modules/tsx/dist/cli.mjs scripts/test-chat-api.ts"' : 'node node_modules/tsx/dist/cli.mjs scripts/test-chat-api.ts --serve-built' : devProof ? 'npm run dev:full' : 'npm run preview:full',
     url: `${origin}/api/status`,
     reuseExistingServer: false,
     timeout: 30_000,
