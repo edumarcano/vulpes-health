@@ -97,6 +97,13 @@ Without configuration, the app shows an honest sign-in-unavailable state. Config
 
 ### Verify the foundation
 
+GitHub Actions runs [CI](.github/workflows/ci.yml) for every pull request, including
+stacked PRs, and pushes to `main`. The branch-protection check names are
+`Fast checks` and `Integration checks`. The jobs use read-only permissions and
+locked dependencies; integration runs against a disposable local Supabase stack
+on GitHub-hosted Ubuntu. No repository secrets or hosted services are required.
+Browser reports and service logs are not uploaded as artifacts.
+
 Stop any local stack before tests that exercise the fixed API port. Install Chromium once for browser verification:
 
 ```sh
