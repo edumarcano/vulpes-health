@@ -4,6 +4,22 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-25: PR 07 measurement lifecycle
+
+**Scope:** The final approved M2 implementation packet, on `feat/pr07-measurement-lifecycle` from refreshed `main` at `aacc489`, after verifying CSV PR #7 merged. [Evidence and split-axis self-review](evidence/pr07-measurement-lifecycle.md) distinguish local acceptance from the pending independent cumulative M2 review.
+
+| Area | Decision and reason |
+|---|---|
+| Versioned edits | One narrow owner-derived RPC serializes correction/deletion with existing add/import transactions through the active profile lock. SQL checks expected version, permitted fields, exact numeric conversion and identity conflicts before writes. Database-computed request hashes and existing safe receipts preserve historical retries after later deletion. |
+| Provenance | Correction edits value/unit and observation time/date/timezone only. Preserve source, metric, external identity, method, granularity and import lineage. Add a correction marker without retaining old measurement values in receipts. A new series requires explicit deletion and entry. |
+| Baselines | M2 does not define authoritative baseline window/reference dependency metadata. Conservatively mark all owned matching source/metric baselines `needs_review`, increasing goal version only when that status changes. Preserve approved snapshots, targets, states and revision payloads. Goal creation, proposals and approval remain PR 11. |
+| Physical deletion | Remove the measurement, invalidate pending owned previews and remove all owned import staging. Conservatively purge retained AI request/response/tool/provider-state envelopes; record `trace_content_removed_at` on owned runs and retain safe accounting. Frozen goal decisions remain labelled history. A fresh import can recreate a reading; replay of a committed batch cannot. |
+| Export | Read owned pages of 200 into an encrypted temporary file with an ephemeral random AES-GCM key, then stream only after revision validation. Remove the file and zero the key on completion/failure; cancellation aborts page reads. A crash leaves unreadable ciphertext, not a retained plaintext CSV. Include canonical/original decimal text, source/provenance identifiers and available session times. Escape formula-sensitive text while keeping numeric negative strings unchanged. No public storage artifact or dependency is introduced. |
+| Client invalidation | Refetch Data queries after historical mutation acknowledgements. Disable a pending preview when the known revision changes. Mutation/CSV-download replies use existing identity epochs; downloads use authenticated fetch, no-store and a revoked object URL. |
+| Cleanup | Service-only bounded maintenance uses profile → batch → envelope lock order. Expire pending batches and remove staging atomically; handle orphan expired envelopes too. Data requests attempt owned cleanup, and the guarded local CLI handles inactivity without a scheduler. Read-time expiry does not depend on cleanup success. |
+
+**Authorization:** PR 07 implementation, synthetic local verification, blocker repairs, commit, push and PR creation were requested. No M3, hosted modification, real health data, live provider, merge or goal activation is included. No product-specification deviation was required.
+
 ## 2026-10-25: PR 06 CSV preview and transactional import
 
 **Scope:** The approved M2 batch's second packet, from current `main` at `5b00a68`, after verifying PR 05 merged as GitHub #6. [Evidence](evidence/pr06-csv-import.md) distinguishes local synthetic proof from hosted or native-device acceptance. PR 07 and the independent M2 review remain separate.

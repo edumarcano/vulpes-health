@@ -39,14 +39,14 @@ isOneToOne: false
                   ]
                 },"ai_runs": {
                   Row: {
-                    "admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string,"cost_status": string,"cost_usd": number | null,"expires_at": string,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"limits": NonNullable<Json>,"output_tokens": number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"user_id": string
+                    "admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string,"cost_status": string,"cost_usd": number | null,"expires_at": string,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"limits": NonNullable<Json>,"output_tokens": number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"trace_content_removed_at": string | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id": string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id": string
+                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id": string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"user_id": string
                   }
                   Update: {
-                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"user_id"?: string
+                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -437,6 +437,9 @@ isOneToOne: false
 "classify_import_v1":
 { Args: { "p_owner": string,"p_rows": Json,"p_source": string }; Returns: Json
                            },
+"cleanup_data_v1":
+{ Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: Json
+                           },
 "cleanup_private_payloads_v1":
 { Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: number
                            },
@@ -452,7 +455,13 @@ isOneToOne: false
 "inspect_import_v1":
 { Args: { "p_rows": Json,"p_source": Json }; Returns: Json
                            },
+"mutate_measurement_v1":
+{ Args: { "p_request": Json }; Returns: Json
+                           },
 "read_data_v1":
+{ Args: { "p_query": Json }; Returns: Json
+                           },
+"read_export_v1":
 { Args: { "p_query": Json }; Returns: Json
                            },
 "register_import_v1":

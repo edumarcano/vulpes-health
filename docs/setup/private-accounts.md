@@ -1,6 +1,6 @@
 # Private account setup
 
-PR 04 supports email/password authentication for operator-provisioned accounts. Public signup, invitations, email recovery, account export/deletion, and health workflows are not available. Local test tooling uses synthetic accounts only. Cloud provisioning or real-account changes still require explicit owner authorization.
+Email/password authentication supports operator-provisioned accounts. Manual/CSV Data workflows and selected measurement export/deletion are available. Public signup, invitations, email recovery, complete account export/deletion, goal workflows and inference are not available. Local test tooling uses synthetic accounts only. Cloud provisioning or real-account changes still require explicit owner authorization.
 
 ## Configuration
 
@@ -38,6 +38,6 @@ Keep keys separate from database dumps and unencrypted exports. New envelopes us
 
 Payloads use AES-256-GCM with random 12-byte nonces and a 16-byte tag appended to ciphertext. Gzip precedes encryption. The version-1 authenticated metadata is the UTF-8 JSON array `[id, user_id, purpose, payload_version, encoding, key_id, content_hash, expires_at]`; expiry is canonicalized to ISO UTC milliseconds. The hash covers original bytes. Storage and decompressed output are each bounded at 4 MiB.
 
-Import staging expires after 24 hours; AI/tool/provider-state payloads after seven days. Reads deny expired content before decrypting it. Successful payload access/write performs bounded owned cleanup. After inactivity, run `npm run maintenance:cleanup` against the disposable local stack; it reports removed counts and batch limits without payload content. Hosted maintenance requires a separately authorized operating procedure, not an implied scheduler.
+Import staging expires after 24 hours; AI/tool/provider-state payloads after seven days. Reads deny expired content before decrypting it. Data requests and successful payload access/write attempt bounded owned cleanup. After inactivity, run `npm run maintenance:cleanup` against the disposable local stack; it reports removed envelopes, expired import batches and work limits without payload content. Repeat after concurrent operations finish or if the reported transaction maximum is reached. Deleting a measurement also purges the owner's retained exact trace payloads, while preserving safe accounting and frozen goal decisions with review markers. Hosted maintenance requires a separately authorized operating procedure, not an implied scheduler.
 
 Normal account/health rows rely on access controls and managed storage protections. Payload encryption does not encrypt every database field or hide data from the operator. Local sign-out clears this device's supported SDK session and app state; issued access JWTs can remain valid until their configured expiry.

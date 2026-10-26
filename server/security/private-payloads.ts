@@ -18,10 +18,13 @@ export async function discardImportPayload(context: AuthContext, id: string): Pr
   if(error) throw new HttpFailure(503,'payload_unavailable','Private staging cleanup is unavailable.');
 }
 export async function cleanupExpiredPayloads(ownerId: string | null = null): Promise<number> {
+  return (await cleanupExpiredData(ownerId)).payloadsRemoved;
+}
+export async function cleanupExpiredData(ownerId: string | null = null) {
   if (ownerId !== null) UUIDSchema.parse(ownerId);
-  const { data, error } = await administrativeClient().rpc('cleanup_private_payloads_v1', { ...(ownerId === null ? {} : { p_owner: ownerId }), p_batch_size: 100 });
-  if (error || typeof data !== 'number') throw new HttpFailure(503, 'payload_unavailable', 'Private payload cleanup is unavailable.');
-  return data;
+  const { data, error } = await administrativeClient().rpc('cleanup_data_v1', { ...(ownerId === null ? {} : { p_owner: ownerId }), p_batch_size: 100 });
+  if (error || !data || typeof data!=='object' || Array.isArray(data) || typeof data.payloadsRemoved!=='number' || typeof data.batchesExpired!=='number' || typeof data.workCount!=='number') throw new HttpFailure(503, 'payload_unavailable', 'Private payload cleanup is unavailable.');
+  return {payloadsRemoved:data.payloadsRemoved,batchesExpired:data.batchesExpired,workCount:data.workCount};
 }
 export async function writePayload(context: AuthContext, purpose: PayloadPurpose, bytes: Uint8Array) {
   const checkedPurpose = PayloadPurposeSchema.parse(purpose);

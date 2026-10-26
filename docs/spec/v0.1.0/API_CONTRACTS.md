@@ -126,7 +126,7 @@ Canonical CSV also accepts `quality_flags`: semicolon-separated source-warning t
 
 The encrypted bundle binds normalized observations, mapping/profile/source selection, classifications, counts, file/mapping hashes and data revision. Registration binds source metadata and expiry to the batch and staging envelope. Commit revalidates normalization and checks the exact original staged bytes, envelope hash, owned source, expiry, revision and classifications inside the transaction. Only observations approved as new are inserted, atomically; conflicts/duplicates stay excluded. Any changed selection requires a fresh preview. Real inserts advance the data revision once per batch.
 
-Committed file/source/mapping identities return their recorded result on reimport, even after later data changes. They never recreate removed readings. Mutation acknowledgements are historical; clients refetch current readings. Raw CSV is not persisted. Successful commit or terminal invalidation removes staging; untouched staging expires within 24 hours. The broader inactivity maintenance workflow remains PR 07.
+Committed file/source/mapping identities return their recorded result on reimport, even after later data changes. They never recreate removed readings. Mutation acknowledgements are historical; clients refetch current readings. Raw CSV is not persisted. Successful commit or terminal invalidation removes staging; untouched staging expires within 24 hours. Bounded owned cleanup runs opportunistically on Data requests and payload access/write. The guarded local `maintenance:cleanup` command expires import batches and removes staging after inactivity; hosted scheduling remains an operational gate.
 
 ## 7. Read tool result references
 
@@ -158,4 +158,20 @@ Summary returns the selected interval, its daily chart series, latest reading, d
 
 Data analytical results require method, granularity, statistic kind, nullable sample statistics, and previous-window coverage. These fields are optional in the shared base `AnalysisResult` for compatibility with existing reference results, and validated by typed trend cards. Calculation uses exact decimal storage/transport; numeric DTO serialization and UI display rounding remain separate. This slice displays canonical units and preserves original input units in the table.
 
-CSV preview/commit is implemented by PR 06. Correction, deletion and export remain PR 07. Data entry/import does not activate goals or inference.
+Data entry, import, correction, deletion and export do not activate goals or inference.
+
+## 11. Measurement correction, deletion and selected export
+
+Executable schemas remain in [`shared/data.ts`](../../../shared/data.ts). Both mutations require `measurement_id`, `expected_version` and `client_request_id`. They derive ownership from the verified session, serialize with import/add using the active profile lock, and return 409 for a stale version or identity conflict. The safe acknowledgement includes ID, source ID, outcome, resulting version, data revision, baseline-review count, invalidated-preview count and removed-trace count. Identical retries return the historical acknowledgement even after subsequent deletion; changed input under the same request key fails with 409.
+
+| Action | Effect |
+|---|---|
+| `correct_measurement` | Requires `changes`: decimal-string `value`, `unit`, `observed_at`, IANA `timezone` and nullable `local_date`. Keeps metric, source, external identity, granularity, method and import lineage. Adds `user_corrected`; preserves source warnings. Changing series identity requires deletion and a new entry. |
+| `delete_measurement` | Physically removes the row and all owned retained request/response/tool/provider-state payloads. Safe accounting remains; `ai_runs.trace_content_removed_at` records removal. |
+| Both | Advance data revision once; mark matching source/metric goal baselines `needs_review` and advance goal version only when the marker changes. M2 lacks authoritative window/reference dependency metadata, so matching-series marking is conservative. Frozen snapshots, target/state and revision payloads stay unchanged. Invalidate pending owned previews and remove owned import staging, including unregistered envelopes. |
+
+`GET view=export` uses the same complete-day selection as the Data table: source, metric, method, granularity, `[from,to)` and timezone, with an optional expected `data_revision`. It reads owned pages of at most 200 rows and checks revision between pages and at completion, before sending CSV. Pages stream into a private AES-GCM-encrypted temporary file, using a random key retained only for the request; validated content then streams to the response. Completion/failure removes the file and zeros the key. Cancellation aborts page reads and streaming. A process crash can leave unreadable ciphertext in OS temporary storage; no recoverable CSV or export URL is retained. Changed data returns a JSON 409, without a partial CSV. The response is authenticated `text/csv; charset=utf-8`, attachment, `no-store`, with `X-Data-Revision`.
+
+CSV contains canonical import columns, schema version 1, measurement/version/revision IDs, original decimal value/unit/offset, source metadata and namespace, batch/fingerprint/provenance identifiers, and available session start/end times. Canonical/original decimals cross PostgreSQL as text and are written without numeric rounding or formula prefixes. Text uses CSV quoting and an apostrophe before formula operators after leading whitespace/control/format characters; leading tab/CR/LF text is also protected. The apostrophe is a documented spreadsheet-safety transformation of text. This is selected measurement export, not complete account/trace export.
+
+The browser downloads through authenticated fetch, aborts/discards work after an identity change, and revokes its object URL. It refetches authoritative data after mutations and disables an open preview when the known data revision changes. Deletion confirmation explains retained frozen goal decisions, trace removal, and the distinction between a fresh import and replay of an existing committed batch.

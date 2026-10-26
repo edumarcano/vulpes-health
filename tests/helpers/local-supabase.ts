@@ -60,7 +60,7 @@ export class LocalSupabase {
     const failures: string[] = [];
     for (const userId of this.users) {
       try {
-        await this.admin(`/rest/v1/goals?user_id=eq.${userId}`, 'PATCH', { current_revision_id: null });
+        await this.admin(`/rest/v1/goals?user_id=eq.${userId}`, 'PATCH', { state:'draft',current_revision_id: null });
         for (const table of cleanupTables) await this.admin(`/rest/v1/${table}?user_id=eq.${userId}`, 'DELETE');
         await this.admin(`/auth/v1/admin/users/${userId}`, 'DELETE');
       } catch {

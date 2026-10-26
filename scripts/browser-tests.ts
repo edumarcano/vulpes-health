@@ -31,7 +31,7 @@ try {
   }
   const npm = process.env.npm_execpath; if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm,'run','build']);
-  await run([require.resolve('@playwright/test/cli'),'test',...(devProof ? ['--grep','saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports'] : [])]);
+  await run([require.resolve('@playwright/test/cli'),'test',...(devProof ? ['--grep','saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey'] : [])]);
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'Local browser verification failed.'); process.exitCode = 1;
 } finally { await db.cleanup(); }
