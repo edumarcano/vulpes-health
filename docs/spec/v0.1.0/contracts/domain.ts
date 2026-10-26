@@ -102,7 +102,8 @@ export interface UsageSummary {
   costUSD: DecimalUSD | null;
   costStatus: "reported" | "estimated" | "pending" | "conservative";
   reservationUSD: DecimalUSD;
-  priceSnapshotId: string;
+  priceSnapshotId: string | null;
+  knownCostUSD: DecimalUSD;
 }
 export interface ContextManifest {
   templateVersion: string;

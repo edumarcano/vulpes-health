@@ -26,7 +26,7 @@ export const proposal = {
 };
 export const usage = {
   inputTokens: 20, outputTokens: 10, reasoningTokens: 4, cacheReadTokens: 5, cacheWriteTokens: null,
-  costUSD: null, costStatus: 'pending', reservationUSD: '0.01', priceSnapshotId: 'synthetic-only',
+  costUSD: null, costStatus: 'pending', reservationUSD: '0.01', priceSnapshotId: 'synthetic-only',knownCostUSD:'0',
 };
 export const manifest = {
   templateVersion: 'synthetic:v1', included: [{ reference: analysis.references[0], contentHash: hash, tokenEstimate: 20 }],

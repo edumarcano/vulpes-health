@@ -126,9 +126,11 @@ No background LLM calls. Home-screen cards are computed from records or previous
 
 ## 10. Budget enforcement
 
-Use calendar-month UTC accounting periods for both user and household buckets. A request settles into the period in which it was admitted, even if completion crosses a month boundary. Display this reset convention in Settings.
+Use calendar-month UTC accounting periods for both account and app buckets. A request settles into the period in which it was admitted, even if completion crosses a month boundary. Display this reset convention in Settings.
 
-Use decimal money, not binary floating point. Operator-configured monthly user allocations plus a household cap are enforced on the server. The user may lower their own preference, not increase the payer's allocation. Sample environment budgets are suggested ceilings, not expected monthly spend.
+Use decimal money, not binary floating point. An operator-configured app AI spending limit caps aggregate inference spend across all accounts in this deployment. Operator-assigned monthly account AI allocations cap individual accounts. An account holder may set a lower personal spending limit, but cannot increase their allocation.
+
+These controls do not cap hosting, database or other infrastructure bills. Sample environment budgets are suggested ceilings, not expected monthly spend.
 
 Before every paid request, reserve a conservative maximum from both buckets atomically. Use counted/upper-bounded input, allowed output including billable reasoning, tool fees if any, rate tier and a safety margin. Unknown prices block that role until configured. Never claim a precise spending guarantee when the provider lacks enforceable output limits or current rate information; disable that route or obtain an explicit policy change.
 

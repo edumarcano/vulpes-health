@@ -4,6 +4,38 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-26: App and account AI spending terminology
+
+**Authorization:** Rename the PR 08 budgeting terminology, verify/review it and update the existing PR before merge. Spending behavior and authorization gates do not change.
+
+| Term | Scope and implementation |
+|---|---|
+| App AI spending limit | One aggregate inference cap per deployment/UTC month; database scope `app` |
+| Account AI allocation | Operator-assigned monthly ceiling for one account; database scope `account` |
+| Personal spending limit | Account holder's lower monthly preference within that allocation |
+
+The former `household` name implied membership that the schema does not model. Migration `20261026000600_budget_scope_names.sql` translates existing scopes, renames reservation references, and replaces the affected functions in one locked transaction. Existing migration files remain immutable.
+
+IDs, balances, uncertainty/evidence, ownership, periods and lock order remain intact. Deploy the schema and matching server code together; old direct database clients using the former scope/column names need updating. HTTP routes and neutral settings fields stay unchanged; app balances remain server-only.
+
+Historical evidence retains the vocabulary used when recorded. [PR 08 evidence](evidence/pr08-run-accounting.md#budget-terminology-follow-up) records the new proof and review.
+
+## 2026-10-26: PR 08 run admission and accounting
+
+**Scope:** Execution-plan PR 08 only, from verified `main` at `fe6675b`. The explicit implementation/publication instruction authorizes this foundation while the ledger still records M2 acceptance as pending; it does not accept M2 or M3. [Verification evidence](evidence/pr08-run-accounting.md) owns commands, results and review status.
+
+| Area | Decision and reason |
+|---|---|
+| Transactions | One execution facade coordinates ledger and budget RPCs so a reservation cannot exist independently of its encrypted step capture. Pricing remains a pure decimal module. Household then user locking protects both scopes across processes; no database lock spans transport. |
+| Dispatch | Capture once, decrypt/verify stored bytes, then compare-and-set send authorization. A single-use run-bound dispatcher lets an adapter serialize its final body without receiving execution credentials. The actual transport remains mock-only. Ambiguous authorization never permits a retry. |
+| Unknown cost | Keep the full hold for 24 hours, then settle conservatively when reconciled. Late authoritative cost replaces the previous charge through an idempotent versioned delta; expiry/cancellation never implies zero. This implements the confirmed M3 planning choice. |
+| Lifecycle | Persist executor hash, fence, lease, UTC admission period, data revision, explicit dispatch state and terminal outcome. Source deletion and account-deleting state fence content writes. A late usage correction can affect accounting without restoring private content. |
+| Limits and prices | Retain four model calls, six tools and 210 seconds; use ten starts/minute, five-second heartbeats, 30-second leases and 60-second request timeouts bounded by the run deadline. Reserve verified category maxima with a 10% margin, rounding upward to 12 decimal places. Production prices remain unverified and the positive run ceiling unconfigured. |
+| Settings | Expose only the owned allocation/preference/spend/holds. The user may choose a preference within the operator allocation; clearing it does not replenish spend. Reuse the existing optimistic settings receipt and transaction. No operator-budget editing UI. |
+| Retention | Existing seven-day encrypted payload retention and 90-day run metadata cleanup accompany this store. Core transcript receipts are separate from execution metadata. Full conversation/account workflows remain deferred. |
+
+**Boundaries:** Synthetic local Supabase, mock transports and a loopback HTTP receiver only. No provider transport, live inference, model replacement, deployment, hosted mutation or real health data. PR 09 has not started. Live M3 acceptance remains pending its required evidence.
+
 ## 2026-10-25: M2 timestamp review remediation
 
 **Scope:** Independent cumulative M2 review blocker F1, from merged PR 07 at `0e59d8c`. [Reproduction and verification](evidence/m2-timestamp-remediation.md) record the focused remediation and split-axis self-review.

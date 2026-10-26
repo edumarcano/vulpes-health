@@ -46,7 +46,7 @@ These are tests to implement and run, not claims that the application already pa
 | AI-09 | P1 | Escalation request | Permission/cost/call ceiling applied; trace shows route |
 | AI-10 | O | Decision model uncertain/invalid response | Conservative fallback/clarification; not treated as medical certainty |
 | COST-01 | P0 | Open screen, import data, inspect goal | Zero model requests |
-| COST-02 | P0 | Concurrent requests at budget boundary | Atomic user+household limit; no race overspend admission |
+| COST-02 | P0 | Concurrent requests at budget boundary | Atomic account+app limit; no race overspend admission |
 | COST-03 | P0 | Unknown price/capability | Paid route blocked, not treated as free |
 | COST-04 | P0 | Cancellation/provider timeout without usage | Conservative/pending spend; no automatic free settlement |
 | COST-05 | P0 | Cache/think tokens overlap reported totals | No double counting; actual/estimated label correct |

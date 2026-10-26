@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CountSchema, DecimalUSDSchema } from '../../shared/primitives.js';
 import { API_JSON_LIMIT_BYTES } from '../../shared/api.js';
+import type { PaidRequestDispatcher } from './ledger/dispatcher.js';
 
 export const GenerationFamilySchema = z.enum(['openrouter_responses', 'vertex_generate_content']);
 export type GenerationFamily = z.infer<typeof GenerationFamilySchema>;
@@ -39,6 +40,7 @@ export const NormalizedUsageSchema = z.strictObject({
   inputTokens: CountSchema.nullable().default(null), outputTokens: CountSchema.nullable().default(null),
   reasoningTokens: CountSchema.nullable().default(null), cacheReadTokens: CountSchema.nullable().default(null), cacheWriteTokens: CountSchema.nullable().default(null),
   reasoningIsOutputSubset: z.boolean().nullable().default(null), cacheReadIsInputSubset: z.boolean().nullable().default(null),
+  cacheWriteIsInputSubset: z.boolean().nullable().default(null),
   reportedCostUSD: DecimalUSDSchema.nullable().default(null), rawUsage: z.json(),
 });
 export type NormalizedUsage = z.infer<typeof NormalizedUsageSchema>;
@@ -54,7 +56,7 @@ export type GenerationEvent = z.infer<typeof GenerationEventSchema>;
 export interface GenerationAdapter {
   readonly family: GenerationFamily;
   readonly capabilities: GenerationCapabilities;
-  generate(request: GenerationRequest, options: { signal: AbortSignal }): AsyncIterable<GenerationEvent>;
+  generate(request: GenerationRequest, options: { signal: AbortSignal; dispatch: PaidRequestDispatcher }): AsyncIterable<GenerationEvent>;
 }
 
 export const DecisionRequestSchema = z.strictObject({

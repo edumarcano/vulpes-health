@@ -39,14 +39,14 @@ isOneToOne: false
                   ]
                 },"ai_runs": {
                   Row: {
-                    "admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string,"cost_status": string,"cost_usd": number | null,"expires_at": string,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"limits": NonNullable<Json>,"output_tokens": number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"trace_content_removed_at": string | null,"user_id": string
+                    "accounting_period": string,"admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string | null,"cost_status": string,"cost_usd": number | null,"data_revision": number,"deadline_at": string,"executor_hash": string | null,"expires_at": string,"fence": number,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"lease_expires_at": string,"limits": NonNullable<Json>,"max_cost_usd": number,"output_tokens": number | null,"partial_output": boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"trace_content_removed_at": string | null,"trace_state": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id": string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"user_id": string
+                    "accounting_period"?: string,"admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string | null,"cost_status"?: string,"cost_usd"?: number | null,"data_revision"?: number,"deadline_at"?: string,"executor_hash"?: string | null,"expires_at"?: string,"fence"?: number,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"lease_expires_at"?: string,"limits"?: NonNullable<Json>,"max_cost_usd"?: number,"output_tokens"?: number | null,"partial_output"?: boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"trace_state"?: string,"user_id": string
                   }
                   Update: {
-                    "admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string,"cost_status"?: string,"cost_usd"?: number | null,"expires_at"?: string,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"limits"?: NonNullable<Json>,"output_tokens"?: number | null,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"user_id"?: string
+                    "accounting_period"?: string,"admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string | null,"cost_status"?: string,"cost_usd"?: number | null,"data_revision"?: number,"deadline_at"?: string,"executor_hash"?: string | null,"expires_at"?: string,"fence"?: number,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"lease_expires_at"?: string,"limits"?: NonNullable<Json>,"max_cost_usd"?: number,"output_tokens"?: number | null,"partial_output"?: boolean,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"trace_state"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -65,14 +65,14 @@ isOneToOne: false
                   ]
                 },"ai_steps": {
                   Row: {
-                    "adapter_version": string | null,"cache_read_tokens": number | null,"cache_write_tokens": number | null,"cost_status": string,"cost_usd": number | null,"effective_effort": string | null,"finish_reason": string | null,"finished_at": string | null,"id": string,"input_payload_id": string | null,"input_tokens": number | null,"model_id": string | null,"output_payload_id": string | null,"output_tokens": number | null,"price_snapshot": Json | null,"provider": string | null,"provider_request_id": string | null,"raw_usage": Json | null,"reasoning_tokens": number | null,"requested_effort": string | null,"run_id": string,"sequence": number,"source_references": NonNullable<Json>,"started_at": string,"status": string,"step_type": string,"tool_name": string | null,"user_id": string
+                    "adapter_version": string | null,"cache_read_tokens": number | null,"cache_write_tokens": number | null,"context_payload_id": string | null,"continuation_payload_id": string | null,"cost_bound_state": string,"cost_status": string,"cost_usd": number | null,"dispatch_authorized_at": string | null,"dispatch_state": string,"effective_effort": string | null,"finish_reason": string | null,"finished_at": string | null,"id": string,"input_payload_id": string | null,"input_tokens": number | null,"model_id": string | null,"output_payload_id": string | null,"output_tokens": number | null,"price_snapshot": Json | null,"provider": string | null,"provider_request_id": string | null,"raw_usage": Json | null,"reasoning_tokens": number | null,"request_body_hash": string | null,"request_metadata": NonNullable<Json>,"requested_effort": string | null,"run_id": string,"sequence": number,"source_references": NonNullable<Json>,"started_at": string,"status": string,"step_type": string,"tool_name": string | null,"usage_payload_id": string | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "adapter_version"?: string | null,"cache_read_tokens"?: number | null,"cache_write_tokens"?: number | null,"cost_status"?: string,"cost_usd"?: number | null,"effective_effort"?: string | null,"finish_reason"?: string | null,"finished_at"?: string | null,"id"?: string,"input_payload_id"?: string | null,"input_tokens"?: number | null,"model_id"?: string | null,"output_payload_id"?: string | null,"output_tokens"?: number | null,"price_snapshot"?: Json | null,"provider"?: string | null,"provider_request_id"?: string | null,"raw_usage"?: Json | null,"reasoning_tokens"?: number | null,"requested_effort"?: string | null,"run_id": string,"sequence": number,"source_references"?: NonNullable<Json>,"started_at"?: string,"status": string,"step_type": string,"tool_name"?: string | null,"user_id": string
+                    "adapter_version"?: string | null,"cache_read_tokens"?: number | null,"cache_write_tokens"?: number | null,"context_payload_id"?: string | null,"continuation_payload_id"?: string | null,"cost_bound_state"?: string,"cost_status"?: string,"cost_usd"?: number | null,"dispatch_authorized_at"?: string | null,"dispatch_state"?: string,"effective_effort"?: string | null,"finish_reason"?: string | null,"finished_at"?: string | null,"id"?: string,"input_payload_id"?: string | null,"input_tokens"?: number | null,"model_id"?: string | null,"output_payload_id"?: string | null,"output_tokens"?: number | null,"price_snapshot"?: Json | null,"provider"?: string | null,"provider_request_id"?: string | null,"raw_usage"?: Json | null,"reasoning_tokens"?: number | null,"request_body_hash"?: string | null,"request_metadata"?: NonNullable<Json>,"requested_effort"?: string | null,"run_id": string,"sequence": number,"source_references"?: NonNullable<Json>,"started_at"?: string,"status": string,"step_type": string,"tool_name"?: string | null,"usage_payload_id"?: string | null,"user_id": string
                   }
                   Update: {
-                    "adapter_version"?: string | null,"cache_read_tokens"?: number | null,"cache_write_tokens"?: number | null,"cost_status"?: string,"cost_usd"?: number | null,"effective_effort"?: string | null,"finish_reason"?: string | null,"finished_at"?: string | null,"id"?: string,"input_payload_id"?: string | null,"input_tokens"?: number | null,"model_id"?: string | null,"output_payload_id"?: string | null,"output_tokens"?: number | null,"price_snapshot"?: Json | null,"provider"?: string | null,"provider_request_id"?: string | null,"raw_usage"?: Json | null,"reasoning_tokens"?: number | null,"requested_effort"?: string | null,"run_id"?: string,"sequence"?: number,"source_references"?: NonNullable<Json>,"started_at"?: string,"status"?: string,"step_type"?: string,"tool_name"?: string | null,"user_id"?: string
+                    "adapter_version"?: string | null,"cache_read_tokens"?: number | null,"cache_write_tokens"?: number | null,"context_payload_id"?: string | null,"continuation_payload_id"?: string | null,"cost_bound_state"?: string,"cost_status"?: string,"cost_usd"?: number | null,"dispatch_authorized_at"?: string | null,"dispatch_state"?: string,"effective_effort"?: string | null,"finish_reason"?: string | null,"finished_at"?: string | null,"id"?: string,"input_payload_id"?: string | null,"input_tokens"?: number | null,"model_id"?: string | null,"output_payload_id"?: string | null,"output_tokens"?: number | null,"price_snapshot"?: Json | null,"provider"?: string | null,"provider_request_id"?: string | null,"raw_usage"?: Json | null,"reasoning_tokens"?: number | null,"request_body_hash"?: string | null,"request_metadata"?: NonNullable<Json>,"requested_effort"?: string | null,"run_id"?: string,"sequence"?: number,"source_references"?: NonNullable<Json>,"started_at"?: string,"status"?: string,"step_type"?: string,"tool_name"?: string | null,"usage_payload_id"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -98,6 +98,24 @@ isOneToOne: false
       columns: ["user_id","run_id"]
 isOneToOne: false
       referencedRelation: "ai_runs"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "steps_context_payload_fk"
+      columns: ["user_id","context_payload_id"]
+isOneToOne: false
+      referencedRelation: "private_payloads"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "steps_continuation_payload_fk"
+      columns: ["user_id","continuation_payload_id"]
+isOneToOne: false
+      referencedRelation: "private_payloads"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "steps_usage_payload_fk"
+      columns: ["user_id","usage_payload_id"]
+isOneToOne: false
+      referencedRelation: "private_payloads"
       referencedColumns: ["user_id","id"]
     }
                   ]
@@ -297,14 +315,14 @@ isOneToOne: false
                   ]
                 },"messages": {
                   Row: {
-                    "content_parts": NonNullable<Json>,"conversation_id": string,"created_at": string,"id": string,"role": string,"run_id": string | null,"status": string,"user_id": string
+                    "client_request_id": string | null,"content_parts": NonNullable<Json>,"context_state": string,"conversation_id": string,"created_at": string,"id": string,"request_hash": string | null,"role": string,"run_id": string | null,"status": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "content_parts": NonNullable<Json>,"conversation_id": string,"created_at"?: string,"id"?: string,"role": string,"run_id"?: string | null,"status": string,"user_id": string
+                    "client_request_id"?: string | null,"content_parts": NonNullable<Json>,"context_state"?: string,"conversation_id": string,"created_at"?: string,"id"?: string,"request_hash"?: string | null,"role": string,"run_id"?: string | null,"status": string,"user_id": string
                   }
                   Update: {
-                    "content_parts"?: NonNullable<Json>,"conversation_id"?: string,"created_at"?: string,"id"?: string,"role"?: string,"run_id"?: string | null,"status"?: string,"user_id"?: string
+                    "client_request_id"?: string | null,"content_parts"?: NonNullable<Json>,"context_state"?: string,"conversation_id"?: string,"created_at"?: string,"id"?: string,"request_hash"?: string | null,"role"?: string,"run_id"?: string | null,"status"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -349,14 +367,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "account_state": string,"consent_versions": NonNullable<Json>,"created_at": string,"data_revision": number,"deletion_progress": NonNullable<Json>,"display_name": string | null,"preferences": NonNullable<Json>,"timezone": string,"units": string,"updated_at": string,"user_id": string
+                    "account_state": string,"consent_versions": NonNullable<Json>,"created_at": string,"data_revision": number,"deletion_progress": NonNullable<Json>,"display_name": string | null,"monthly_preference_usd": number | null,"preferences": NonNullable<Json>,"timezone": string,"units": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_state"?: string,"consent_versions"?: NonNullable<Json>,"created_at"?: string,"data_revision"?: number,"deletion_progress"?: NonNullable<Json>,"display_name"?: string | null,"preferences"?: NonNullable<Json>,"timezone"?: string,"units"?: string,"updated_at"?: string,"user_id": string
+                    "account_state"?: string,"consent_versions"?: NonNullable<Json>,"created_at"?: string,"data_revision"?: number,"deletion_progress"?: NonNullable<Json>,"display_name"?: string | null,"monthly_preference_usd"?: number | null,"preferences"?: NonNullable<Json>,"timezone"?: string,"units"?: string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "account_state"?: string,"consent_versions"?: NonNullable<Json>,"created_at"?: string,"data_revision"?: number,"deletion_progress"?: NonNullable<Json>,"display_name"?: string | null,"preferences"?: NonNullable<Json>,"timezone"?: string,"units"?: string,"updated_at"?: string,"user_id"?: string
+                    "account_state"?: string,"consent_versions"?: NonNullable<Json>,"created_at"?: string,"data_revision"?: number,"deletion_progress"?: NonNullable<Json>,"display_name"?: string | null,"monthly_preference_usd"?: number | null,"preferences"?: NonNullable<Json>,"timezone"?: string,"units"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
 
@@ -383,19 +401,25 @@ isOneToOne: false
                   ]
                 },"usage_reservations": {
                   Row: {
-                    "amount_usd": number,"created_at": string,"household_bucket_id": string,"household_scope": string | null,"id": string,"known_cost_usd": number | null,"period_start": string,"run_id": string,"settled_at": string | null,"status": string,"step_id": string,"unknown_cost": boolean,"user_bucket_id": string,"user_id": string
+                    "account_bucket_id": string,"amount_usd": number,"app_bucket_id": string,"app_scope": string | null,"created_at": string,"evidence_hash": string | null,"evidence_version": number,"id": string,"known_cost_usd": number | null,"period_start": string,"run_id": string,"settled_at": string | null,"status": string,"step_id": string,"uncertain_since": string | null,"unknown_cost": boolean,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_usd": number,"created_at"?: string,"household_bucket_id": string,"household_scope"?: never,"id"?: string,"known_cost_usd"?: number | null,"period_start": string,"run_id": string,"settled_at"?: string | null,"status"?: string,"step_id": string,"unknown_cost"?: boolean,"user_bucket_id": string,"user_id": string
+                    "account_bucket_id": string,"amount_usd": number,"app_bucket_id": string,"app_scope"?: never,"created_at"?: string,"evidence_hash"?: string | null,"evidence_version"?: number,"id"?: string,"known_cost_usd"?: number | null,"period_start": string,"run_id": string,"settled_at"?: string | null,"status"?: string,"step_id": string,"uncertain_since"?: string | null,"unknown_cost"?: boolean,"user_id": string
                   }
                   Update: {
-                    "amount_usd"?: number,"created_at"?: string,"household_bucket_id"?: string,"household_scope"?: never,"id"?: string,"known_cost_usd"?: number | null,"period_start"?: string,"run_id"?: string,"settled_at"?: string | null,"status"?: string,"step_id"?: string,"unknown_cost"?: boolean,"user_bucket_id"?: string,"user_id"?: string
+                    "account_bucket_id"?: string,"amount_usd"?: number,"app_bucket_id"?: string,"app_scope"?: never,"created_at"?: string,"evidence_hash"?: string | null,"evidence_version"?: number,"id"?: string,"known_cost_usd"?: number | null,"period_start"?: string,"run_id"?: string,"settled_at"?: string | null,"status"?: string,"step_id"?: string,"uncertain_since"?: string | null,"unknown_cost"?: boolean,"user_id"?: string
                   }
                   Relationships: [
                     {
-      foreignKeyName: "usage_reservations_household_bucket_id_household_scope_per_fkey"
-      columns: ["household_bucket_id","household_scope","period_start"]
+      foreignKeyName: "usage_reservations_account_bucket_fk"
+      columns: ["user_id","account_bucket_id","period_start"]
+isOneToOne: false
+      referencedRelation: "usage_buckets"
+      referencedColumns: ["user_id","id","period_start"]
+    },{
+      foreignKeyName: "usage_reservations_app_bucket_fk"
+      columns: ["app_bucket_id","app_scope","period_start"]
 isOneToOne: false
       referencedRelation: "usage_buckets"
       referencedColumns: ["id","scope","period_start"]
@@ -417,12 +441,6 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "ai_steps"
       referencedColumns: ["user_id","id","run_id"]
-    },{
-      foreignKeyName: "usage_reservations_user_id_user_bucket_id_period_start_fkey"
-      columns: ["user_id","user_bucket_id","period_start"]
-isOneToOne: false
-      referencedRelation: "usage_buckets"
-      referencedColumns: ["user_id","id","period_start"]
     }
                   ]
                 }
@@ -433,6 +451,18 @@ isOneToOne: false
           Functions: {
             "add_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
+                           },
+"admit_run_v1":
+{ Args: { "p_executor": string,"p_owner": string,"p_request": Json }; Returns: Json
+                           },
+"authorize_send_v1":
+{ Args: { "p_body_hash": string,"p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_step": string }; Returns: boolean
+                           },
+"cancel_run_v1":
+{ Args: { "p_owner": string,"p_run": string }; Returns: Json
+                           },
+"checkpoint_step_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_message"?: Json,"p_output": Json,"p_owner": string,"p_run": string,"p_step": string }; Returns: string
                            },
 "classify_import_v1":
 { Args: { "p_owner": string,"p_rows": Json,"p_source": string }; Returns: Json
@@ -449,14 +479,66 @@ isOneToOne: false
 "discard_import_v1":
 { Args: { "p_batch_id": string }; Returns: undefined
                            },
+"finish_run_v1":
+{ Args: { "p_executor": string,"p_owner": string,"p_run": string,"p_status": string }; Returns: Json
+                           },
+"heartbeat_run_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string }; Returns: Json
+                           },
 "import_equal_key_v1":
 { Args: { "r": Json }; Returns: Json
                            },
 "inspect_import_v1":
 { Args: { "p_rows": Json,"p_source": Json }; Returns: Json
                            },
+"lock_run_v1":
+{ Args: { "p_content"?: boolean,"p_executor"?: string,"p_fence"?: number,"p_owner": string,"p_run": string }; Returns: {
+              "accounting_period": string,
+"admitted_at": string,
+"cancellation_requested_at": string | null,
+"client_request_id": string,
+"consent_versions": NonNullable<Json>,
+"conversation_id": string | null,
+"cost_status": string,
+"cost_usd": number | null,
+"data_revision": number,
+"deadline_at": string,
+"executor_hash": string | null,
+"expires_at": string,
+"fence": number,
+"finished_at": string | null,
+"heartbeat_at": string | null,
+"id": string,
+"input_tokens": number | null,
+"lease_expires_at": string,
+"limits": NonNullable<Json>,
+"max_cost_usd": number,
+"output_tokens": number | null,
+"partial_output": boolean,
+"policy_version": string,
+"request_hash": string,
+"requested_depth": string,
+"route": Json | null,
+"started_at": string | null,
+"status": string,
+"trace_content_removed_at": string | null,
+"trace_state": string,
+"user_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "ai_runs"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "mutate_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
+                           },
+"prepare_step_v1":
+{ Args: { "p_context"?: Json,"p_executor": string,"p_fence": number,"p_input": Json,"p_owner": string,"p_run": string,"p_step": Json }; Returns: string
+                           },
+"read_budget_v1":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "read_data_v1":
 { Args: { "p_query": Json }; Returns: Json
@@ -464,11 +546,26 @@ isOneToOne: false
 "read_export_v1":
 { Args: { "p_query": Json }; Returns: Json
                            },
+"reconcile_runs_v1":
+{ Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: Json
+                           },
+"record_step_usage_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_payload": Json,"p_run": string,"p_step": string,"p_usage": Json }; Returns: string
+                           },
 "register_import_v1":
 { Args: { "p_bytes": string,"p_payload_id": string }; Returns: Json
                            },
+"run_summary_v1":
+{ Args: { "p_owner": string,"p_run": string }; Returns: Json
+                           },
+"settle_step_v1":
+{ Args: { "p_evidence": Json,"p_owner": string,"p_run": string,"p_status": string,"p_step": string }; Returns: Json
+                           },
 "store_private_payload_v1":
 { Args: { "p_payload": Json }; Returns: string
+                           },
+"store_run_envelope_v1":
+{ Args: { "p_envelope": Json,"p_owner": string,"p_purpose": string }; Returns: string
                            },
 "update_settings_v1":
 { Args: { "p_request": Json }; Returns: {
@@ -478,6 +575,7 @@ isOneToOne: false
 "data_revision": number,
 "deletion_progress": NonNullable<Json>,
 "display_name": string | null,
+"monthly_preference_usd": number | null,
 "preferences": NonNullable<Json>,
 "timezone": string,
 "units": string,

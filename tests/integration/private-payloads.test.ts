@@ -22,10 +22,10 @@ afterAll(async () => { try { if (db) await db.cleanup(); } finally { vi.unstubAl
 describe('real private payload persistence', () => {
   it('round trips exact original bytes through PostgreSQL and denies foreign/wrong-purpose reads', async () => {
     const bytes = Buffer.concat([Buffer.from('Synthetic request 🦊\n'),randomBytes(500)]);
-    const saved = await writePayload(a,'ai_request',bytes);
-    const result = await readPayload(a,saved.id,'ai_request');
+    const saved = await writePayload(a,'import_staging',bytes);
+    const result = await readPayload(a,saved.id,'import_staging');
     expect(result.state).toBe('available'); if (result.state === 'available') expect(result.bytes).toEqual(bytes);
-    expect(await readPayload(b,saved.id,'ai_request')).toEqual({ state: 'not_found' });
+    expect(await readPayload(b,saved.id,'import_staging')).toEqual({ state: 'not_found' });
     expect(await readPayload(a,saved.id,'tool_output')).toEqual({ state: 'not_found' });
     expect(await readPayload(a,randomUUID(),'ai_request')).toEqual({ state: 'not_found' });
     for (const token of ['anon',tokenA]) {
@@ -35,13 +35,13 @@ describe('real private payload persistence', () => {
     }
   });
   it('rejects tampered stored content and unavailable keys without returning plaintext', async () => {
-    const saved = await writePayload(a,'tool_output',Buffer.from('Synthetic private result'));
+    const saved = await writePayload(a,'import_staging',Buffer.from('Synthetic private result'));
     await db.admin(`/rest/v1/private_payloads?id=eq.${saved.id}`,'PATCH',{ encrypted_bytes: `\\x${'00'.repeat(32)}` });
-    expect(await readPayload(a,saved.id,'tool_output')).toEqual({ state: 'unavailable' });
-    const intact = await writePayload(a,'ai_response',Buffer.from('Synthetic response'));
+    expect(await readPayload(a,saved.id,'import_staging')).toEqual({ state: 'unavailable' });
+    const intact = await writePayload(a,'import_staging',Buffer.from('Synthetic response'));
     const old = process.env.VULPES_TRACE_ENCRYPTION_KEY_ID!;
     vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID','missing-key');
-    expect(await readPayload(a,intact.id,'ai_response')).toEqual({ state:'unavailable' });
+    expect(await readPayload(a,intact.id,'import_staging')).toEqual({ state:'unavailable' });
     vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID',old);
   });
   it('denies at the exact expiry boundary before any physical cleanup', async () => {
@@ -63,15 +63,15 @@ describe('real private payload persistence', () => {
     const step = await db.admin(`/rest/v1/ai_steps?id=eq.${stepId}&select=user_id,input_payload_id`,'GET');
     expect(await step.json()).toEqual([{ user_id:a.userId,input_payload_id:null }]);
     expect(await readPayload(a,envelopes[0]!.id,'ai_request')).toEqual({ state:'not_found' });
-    const live = await writePayload(b,'provider_state',Buffer.from('Synthetic live'));
-    expect((await readPayload(b,live.id,'provider_state')).state).toBe('available');
+    const live = await writePayload(b,'import_staging',Buffer.from('Synthetic live'));
+    expect((await readPayload(b,live.id,'import_staging')).state).toBe('available');
     const invalid = await db.request('/rest/v1/rpc/cleanup_private_payloads_v1','admin',{ method:'POST',body:JSON.stringify({ p_owner:a.userId,p_batch_size:101 }) }); expect(invalid.ok).toBe(false);
   });
   it('enforces account state and retention ceilings in the privileged write RPC', async () => {
     const envelope = encryptBytes({ id:randomUUID(),user_id:a.userId,purpose:'import_staging',expires_at:new Date(Date.now() + 7 * 24 * 3600_000).toISOString() },Buffer.from('Synthetic bounded'),readEncryptionKeys());
     const excessive = await db.request('/rest/v1/rpc/store_private_payload_v1','admin',{ method:'POST',body:JSON.stringify({ p_payload:envelope }) }); expect(excessive.ok).toBe(false);
     await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`,'PATCH',{ account_state:'deleting' });
-    try { await expect(writePayload(a,'ai_request',Buffer.from('Synthetic denied'))).rejects.toMatchObject({ status:503 }); }
+    try { await expect(writePayload(a,'import_staging',Buffer.from('Synthetic denied'))).rejects.toMatchObject({ status:503 }); }
     finally { await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`,'PATCH',{ account_state:'active' }); }
   });
   it('runs the actual cleanup CLI and inspects its persisted deletion effects', async () => {

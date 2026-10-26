@@ -32,7 +32,7 @@ select ok(not has_table_privilege(role_name, format('public.%I', name), privileg
 from expected_tables cross join (values ('anon'), ('authenticated')) roles(role_name)
 cross join (values ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) privileges(privilege);
 select ok(not has_schema_privilege('authenticated', 'public', 'CREATE'), 'clients cannot create public objects');
-select is((select count(*) from pg_proc p join pg_namespace n on p.pronamespace = n.oid where n.nspname = 'public' and p.prosecdef and p.proname not in ('update_settings_v1','store_private_payload_v1','cleanup_private_payloads_v1','add_measurement_v1','classify_import_v1','inspect_import_v1','register_import_v1','commit_import_v1','discard_import_v1','mutate_measurement_v1','cleanup_data_v1')), 0::bigint, 'only reviewed feature security-definer functions exist');
+select is((select count(*) from pg_proc p join pg_namespace n on p.pronamespace = n.oid where n.nspname = 'public' and p.prosecdef and p.proname not in ('update_settings_v1','store_private_payload_v1','cleanup_private_payloads_v1','add_measurement_v1','classify_import_v1','inspect_import_v1','register_import_v1','commit_import_v1','discard_import_v1','mutate_measurement_v1','cleanup_data_v1','lock_run_v1','run_summary_v1','store_run_envelope_v1','admit_run_v1','prepare_step_v1','authorize_send_v1','heartbeat_run_v1','checkpoint_step_v1','settle_step_v1','cancel_run_v1','finish_run_v1','fence_removed_run_v1','fence_deleting_account_v1','reconcile_runs_v1','read_budget_v1','record_step_usage_v1')), 0::bigint, 'only reviewed feature security-definer functions exist');
 select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature||' permits authenticated') from unnest(array['public.mutate_measurement_v1(jsonb)','public.read_export_v1(jsonb)']) signature;
 select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature||' denies '||role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.mutate_measurement_v1(jsonb)','public.read_export_v1(jsonb)']) signature;
 select ok(not has_function_privilege(role_name,'public.cleanup_data_v1(uuid,integer)','EXECUTE'),'lifecycle cleanup denies '||role_name) from unnest(array['anon','authenticated']) role_name;
@@ -76,14 +76,25 @@ insert into expected_links values
   ('ai_steps', array['user_id','output_payload_id'], 'private_payloads', array['user_id','id']),
   ('usage_reservations', array['user_id','run_id'], 'ai_runs', array['user_id','id']),
   ('usage_reservations', array['user_id','step_id','run_id'], 'ai_steps', array['user_id','id','run_id']),
-  ('usage_reservations', array['user_id','user_bucket_id','period_start'], 'usage_buckets', array['user_id','id','period_start']),
-  ('usage_reservations', array['household_bucket_id','household_scope','period_start'], 'usage_buckets', array['id','scope','period_start']);
+  ('usage_reservations', array['user_id','account_bucket_id','period_start'], 'usage_buckets', array['user_id','id','period_start']),
+  ('usage_reservations', array['app_bucket_id','app_scope','period_start'], 'usage_buckets', array['id','scope','period_start']);
 select ok(exists (
   select 1 from pg_constraint c
   where c.contype = 'f' and c.conrelid = format('public.%I', e.child)::regclass and c.confrelid = format('public.%I', e.parent)::regclass
   and (select array_agg(a.attname::text order by k.ord) from unnest(c.conkey) with ordinality k(num,ord) join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.num) = e.child_columns
   and (select array_agg(a.attname::text order by k.ord) from unnest(c.confkey) with ordinality k(num,ord) join pg_attribute a on a.attrelid = c.confrelid and a.attnum = k.num) = e.parent_columns
 ), e.child || ' has expected composite parent ' || array_to_string(e.child_columns, ',')) from expected_links e;
+
+select has_column('public','usage_reservations','account_bucket_id','account reservation reference uses current name');
+select has_column('public','usage_reservations','app_bucket_id','app reservation reference uses current name');
+select has_column('public','usage_reservations','app_scope','app scope reference uses current name');
+select hasnt_column('public','usage_reservations','user_bucket_id','legacy account reference removed');
+select hasnt_column('public','usage_reservations','household_bucket_id','legacy app reference removed');
+select hasnt_column('public','usage_reservations','household_scope','legacy generated scope removed');
+select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'
+  and p.prosrc ~ '(household|user_bucket_id|scope[[:space:]]*=[[:space:]]*''user'')'),0::bigint,'active SQL functions use app/account budget vocabulary');
+select throws_ok('insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values (''household'',''2026-12-01'',20)', '23514', null, 'legacy app scope is rejected');
+select throws_ok('insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values (''user'',''2026-12-01'',20)', '23514', null, 'legacy account scope is rejected');
 
 create temporary table fixture_ids (
   user_id uuid primary key default gen_random_uuid(),
@@ -133,10 +144,10 @@ insert into public.goal_revisions(id, user_id, goal_id, revision_number, previou
 select revision_id, user_id, goal_id, 2, previous_revision_id, proposal_id, '{"schemaVersion":1}' from fixture_ids;
 update public.goals g set current_revision_id = f.revision_id from fixture_ids f where g.user_id = f.user_id;
 insert into public.usage_buckets(id, user_id, scope, period_start, allocated_ceiling_usd, lower_preference_usd)
-select bucket_id, user_id, 'user', '2026-10-01', 10, 5 from fixture_ids;
-insert into public.usage_buckets(scope, period_start, allocated_ceiling_usd) values ('household', '2026-10-01', 20), ('household', '2026-11-01', 20);
-insert into public.usage_reservations(user_id, run_id, step_id, user_bucket_id, household_bucket_id, period_start, amount_usd)
-select user_id, run_id, step_id, bucket_id, (select id from public.usage_buckets where scope = 'household' and period_start = '2026-10-01'), '2026-10-01', 0.1 from fixture_ids;
+select bucket_id, user_id, 'account', '2026-10-01', 10, 5 from fixture_ids;
+insert into public.usage_buckets(scope, period_start, allocated_ceiling_usd) values ('app', '2026-10-01', 20), ('app', '2026-11-01', 20);
+insert into public.usage_reservations(user_id, run_id, step_id, account_bucket_id, app_bucket_id, period_start, amount_usd)
+select user_id, run_id, step_id, bucket_id, (select id from public.usage_buckets where scope = 'app' and period_start = '2026-10-01'), '2026-10-01', 0.1 from fixture_ids;
 insert into public.audit_events(user_id, event_type, object_id) select user_id, 'synthetic_fixture', measurement_id from fixture_ids;
 
 -- Exercise the actual relational constraints as database owner, independently of RLS or grants.
@@ -175,9 +186,9 @@ select throws_ok(format('insert into public.ai_runs(user_id,conversation_id,clie
 select throws_ok(format('insert into public.ai_runs(user_id,conversation_id,client_request_id,request_hash,requested_depth,policy_version) values (%L,%L,gen_random_uuid(),%L,''auto'',''synthetic'')', user_id,conversation_id,repeat('a',64)), '23505', null, 'one admitted run per user') from fixture_ids where label = 'A';
 select throws_ok(format('insert into public.ai_steps(user_id,run_id,sequence,step_type,status) values (%L,%L,1,''tool'',''started'')', user_id,run_id), '23505', null, 'one sequence number per run') from fixture_ids where label = 'A';
 select throws_ok(format('update public.usage_buckets set lower_preference_usd = 11 where user_id = %L', user_id), '23514', null, 'preference cannot exceed allocation') from fixture_ids where label = 'A';
-select throws_ok('insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values (''household'',''2026-10-01'',20)', '23505', null, 'one household bucket per UTC month');
+select throws_ok('insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values (''app'',''2026-10-01'',20)', '23505', null, 'one app bucket per UTC month');
 select throws_ok(format('update public.usage_reservations set period_start = ''2026-11-01'' where user_id = %L', user_id), '23503', null, 'reservation preserves admission period') from fixture_ids where label = 'A';
-select throws_ok(format('update public.usage_reservations set household_bucket_id = (select id from public.usage_buckets where scope = ''household'' and period_start = ''2026-11-01'') where user_id = %L', user_id), '23503', null, 'household bucket period must also match') from fixture_ids where label = 'A';
+select throws_ok(format('update public.usage_reservations set app_bucket_id = (select id from public.usage_buckets where scope = ''app'' and period_start = ''2026-11-01'') where user_id = %L', user_id), '23503', null, 'app bucket period must also match') from fixture_ids where label = 'A';
 select throws_ok(format('update public.usage_buckets set allocated_ceiling_usd = ''NaN'' where user_id = %L', user_id), '23514', null, 'money is finite') from fixture_ids where label = 'A';
 select throws_ok(format('update public.usage_reservations set unknown_cost = false where user_id = %L', user_id), '23514', null, 'unknown usage is not fabricated as free') from fixture_ids where label = 'A';
 

@@ -142,9 +142,19 @@ Account deletion requires a recently reauthenticated session, an explicit confir
 
 ## 9. Settings foundation
 
-PR 04 defines executable settings/status shapes in [`shared/auth.ts`](../../../shared/auth.ts). Settings PATCH requires `client_request_id`, `expected_updated_at` (the unchanged token returned by GET), and a nonempty `changes` object. Allowed changes are `display_name`, `timezone`, `units`, and one `provider_consent` containing `provider`, `accepted`, and `policy_version`. Unknown or privileged fields are rejected.
+Executable settings/status shapes are in [`shared/auth.ts`](../../../shared/auth.ts). Settings PATCH requires `client_request_id`, `expected_updated_at` (the unchanged token returned by GET), and a nonempty `changes` object. Allowed changes are `display_name`, `timezone`, `units`, one `provider_consent` containing `provider`, `accepted`, and `policy_version`, and `monthly_spending_preference_usd`. The personal spending limit is a nonnegative decimal string within the current account AI allocation, or null to use that allocation. Unknown or privileged fields are rejected.
 
 The transaction binds changes to the authenticated owner and current update token. Repeating the latest identical request returns its result; changed input under the same key or an older stale retry returns 409 without changing settings. Responses expose the owned profile, provider policy/consent states and fixed retention defaults; internal write receipts are not returned. Google acceptance remains unavailable until the separate region/retention decision. Consent never establishes live provider availability.
+
+The owned `budget` response contains UTC period/reset, allocation, personal spending limit, spent, reserved and available account amounts as decimal strings. An absent allocation has state `unconfigured` and nullable allocation/available amounts. App-wide balances and operator credentials are never exposed. Lowering a preference does not release existing holds or replenish spend; dispatch rechecks the effective ceiling.
+
+| Spending control | Meaning |
+|---|---|
+| App AI spending limit | Server-only aggregate cap across all accounts in this deployment |
+| Account AI allocation | Operator-assigned account ceiling |
+| Personal spending limit | Account holder's lower monthly preference |
+
+`/api/settings`, `allocationUSD`, `preferenceUSD` and `monthly_spending_preference_usd` retain their neutral wire names.
 
 ## 10. Manual Data foundation
 

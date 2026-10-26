@@ -1,17 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { createClient } from '@supabase/supabase-js';
 import { UUIDSchema } from '../../shared/primitives.js';
-import { serverAuthConfig, serverClientOptions, type AuthContext } from '../auth/session.js';
-import type { Database } from '../db/database.types.js';
+import type { AuthContext } from '../auth/session.js';
+import { administrativeClient } from '../db/administrative.js';
 import { HttpFailure } from '../http/failure.js';
 import { decryptBytes, encryptBytes, PayloadPurposeSchema, readEncryptionKeys, type PayloadPurpose } from './encryption.js';
 
-function administrativeClient() {
-  const config = serverAuthConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new HttpFailure(503, 'payload_unavailable', 'Private payload storage is unavailable.');
-  return createClient<Database>(config.url, key, serverClientOptions);
-}
 export async function discardImportPayload(context: AuthContext, id: string): Promise<void> {
   UUIDSchema.parse(id);
   const {error}=await administrativeClient().from('private_payloads').delete().eq('user_id',context.userId).eq('id',id).eq('purpose','import_staging');
@@ -26,7 +19,7 @@ export async function cleanupExpiredData(ownerId: string | null = null) {
   if (error || !data || typeof data!=='object' || Array.isArray(data) || typeof data.payloadsRemoved!=='number' || typeof data.batchesExpired!=='number' || typeof data.workCount!=='number') throw new HttpFailure(503, 'payload_unavailable', 'Private payload cleanup is unavailable.');
   return {payloadsRemoved:data.payloadsRemoved,batchesExpired:data.batchesExpired,workCount:data.workCount};
 }
-export async function writePayload(context: AuthContext, purpose: PayloadPurpose, bytes: Uint8Array) {
+export async function writePayload(context: AuthContext, purpose: 'import_staging', bytes: Uint8Array) {
   const checkedPurpose = PayloadPurposeSchema.parse(purpose);
   const ttl = checkedPurpose === 'import_staging' ? 24 * 3600_000 : 7 * 24 * 3600_000;
   const expiresAt = new Date(Date.now() + ttl).toISOString();

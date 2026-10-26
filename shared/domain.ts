@@ -110,7 +110,8 @@ export const ActionProposalSchema = ProposalMetadataSchema.extend({
 export const UsageSummarySchema = z.strictObject({
   inputTokens: CountSchema.nullable(), outputTokens: CountSchema.nullable(), reasoningTokens: CountSchema.nullable(),
   cacheReadTokens: CountSchema.nullable(), cacheWriteTokens: CountSchema.nullable(), costUSD: DecimalUSDSchema.nullable(),
-  costStatus: z.enum(['reported', 'estimated', 'pending', 'conservative']), reservationUSD: DecimalUSDSchema, priceSnapshotId: z.string().min(1),
+  costStatus: z.enum(['reported', 'estimated', 'pending', 'conservative']), reservationUSD: DecimalUSDSchema, priceSnapshotId: z.string().min(1).nullable(),
+  knownCostUSD:DecimalUSDSchema.default('0'),
 });
 export const ContextManifestSchema = z.strictObject({
   templateVersion: z.string().min(1),

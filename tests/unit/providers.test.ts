@@ -137,7 +137,7 @@ describe('usage and separate decision contract', () => {
     expect(GenerationRequestSchema.safeParse({ ...syntheticRequest, turns }).success).toBe(false);
   });
   it('retains unknown categories as null and does not add reasoning/cache subsets to totals', () => {
-    expect(normalizeUsage({ rawUsage: null })).toEqual({ inputTokens: null, outputTokens: null, reasoningTokens: null, cacheReadTokens: null, cacheWriteTokens: null, reasoningIsOutputSubset: null, cacheReadIsInputSubset: null, reportedCostUSD: null, rawUsage: null });
+    expect(normalizeUsage({ rawUsage: null })).toEqual({ inputTokens: null, outputTokens: null, reasoningTokens: null, cacheReadTokens: null, cacheWriteTokens: null, reasoningIsOutputSubset: null, cacheReadIsInputSubset: null,cacheWriteIsInputSubset:null, reportedCostUSD: null, rawUsage: null });
     expect(normalizeUsage(syntheticUsage)).toEqual(syntheticUsage);
     expect(syntheticUsage.inputTokens).toBe(20);
     expect(syntheticUsage.outputTokens).toBe(10);

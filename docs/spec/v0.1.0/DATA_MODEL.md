@@ -26,9 +26,11 @@ This is a migration specification, not executable SQL. Codex must produce review
 | `ai_runs` | owner, conversation, client request ID, route, status, limits, consent/policy versions, total usage/cost status, expiry | Unique `(user_id, client_request_id)`; one admitted active run per user |
 | `ai_steps` | owner, run, sequence, type, provider/model, input/output payload references, source references, timings, usage categories, price snapshot | One record per actual model request or tool execution; no fabricated zero cost |
 | `private_payloads` | owner, purpose, encrypted bytes, nonce, key ID, content hash, encoding, expiration | Authenticated encryption, no public bucket; never contains credentials |
-| `usage_buckets` | scope (`user` / `household`), period, allocated ceiling, lower user preference, spent, reserved | User ceilings cannot exceed operator allocation; household data is server-only |
-| `usage_reservations` | owner, run, step, bucket period, amount, status, known cost, unknown-cost flag | Atomic user+household admission; cancelled/unknown usage is not automatically free |
+| `usage_buckets` | scope (`account` / `app`), period, allocated ceiling, lower personal spending limit, spent, reserved | Account limits cannot exceed operator allocation; app balances are server-only |
+| `usage_reservations` | owner, run, step, bucket period, amount, status, known cost, unknown-cost flag | Atomic account+app admission; cancelled/unknown usage is not automatically free |
 | `audit_events` | owner, event type, object ID, timestamp, safe metadata | No duplicated prompts; account deletion includes owned audit data |
+
+The `app` scope is one shared AI spending bucket per UTC month for this deployment; it has no account owner or household membership. Account reservations reference `account_bucket_id` and `app_bucket_id`; generated `app_scope` binds the shared reference to an app bucket. Authentication and ownership remain `user_id`.
 
 Do not add vector, memory, research-crawl, workout-program, notification or household-sharing tables to v0.1.0.
 
@@ -103,8 +105,20 @@ Goal states: `draft`, `needs_data`, `active`, `paused`, `completed`, `archived`.
 
 - `commit_import`: verify owner/source/hash/expiry, insert or report duplicates/conflicts, update counts and data revision atomically.
 - `approve_proposal`: verify owner, pending state, expiry, content hash, expected object version and policy; write the revision and consume the proposal atomically.
-- `reserve_inference`: lock household then user bucket in fixed order; verify consent/limits; reserve both scopes and create a unique step reservation.
+- `reserve_inference`: lock app then account bucket in fixed order; verify consent/limits; reserve both scopes and create a unique step reservation.
 - `settle_inference`: record actual or conservatively unknown cost, release only proven unused reservation; never settle twice.
 - `delete_account_data`: cancel admission of new runs; remove owned records and payloads in a documented order; remove Auth identity after data cleanup succeeds.
 
 A request that times out after sending to a provider retains an uncertain-cost reservation until reconciliation or conservative settlement. Expiration of a lock must not be confused with proof of zero provider cost.
+
+### PR 08 execution foundation
+
+Run states and owned summaries are executable in [`shared/executions.ts`](../../../shared/executions.ts). Runs retain an executor hash, monotonic fence, lease/deadline, admission month, data revision and run ceiling. Only a fresh admission returns execution authority. The initial limits are ten admissions per rolling minute, four model requests, six tool calls, a 210-second deadline, five-second heartbeats and a 30-second lease.
+
+Request preparation atomically stores the encrypted exact bytes, context and paired reservations. A separate compare-and-set authorizes one send, binding the request hash and rechecking consent, account state, deletion fence and budgets. No lock spans HTTP transport. Step dispatch (`prepared`, `send_authorized`, `finished`, or `not_applicable` for tools) is independent of run/step termination.
+
+The full reservation stays pending for uncertain sent requests. Its 24-hour interval starts at observed uncertainty or the expired execution lease; the next authorized reconciliation or bounded maintenance pass settles it conservatively. A later authoritative correction applies a versioned delta to both original-month buckets. Duplicate evidence is a no-op. Proven unsent steps release without charge. Usage evidence and settlement commit together; overlapping reasoning/cache categories are not added twice. A charge exceeding its reserved bound is recorded in full and blocks subsequent use of that route.
+
+All applicable mutations acquire profile, conversation, run, step, app bucket, account bucket, reservation and payload/message locks in that order. Service-only helpers pin empty search paths; clients cannot reserve or settle directly. AI envelopes require a writable run; the standalone payload writer accepts import staging only. Measurement deletion fences affected runs and marks their messages ineligible for future context. Late billing may reconcile after cancellation/deletion, but late content cannot recreate removed payloads.
+
+Seven-day envelope expiry is enforced on reads. Bounded maintenance removes expired 90-day terminal execution records only after settling reservations and clearing nullable transcript/proposal links. Core messages and their request receipts remain with conversation history. Conversation operations and the public execution inspector are later PRs.

@@ -10,7 +10,7 @@ export const protectedTables: readonly DatabaseTable[] = ['private_payloads', 'u
 export const readableTables = databaseTables.filter((table) => !protectedTables.includes(table));
 
 // No production seed: each test creates its own disposable, explicitly synthetic graph.
-export function databaseGraph(userId: string, householdId: string, period = '2026-10-01') {
+export function databaseGraph(userId: string, appId: string, period = '2026-10-01') {
   const ids = Object.fromEntries(databaseTables.map((table) => [table, randomUUID()])) as Record<DatabaseTable, string>;
   const hash = 'a'.repeat(64);
   const expiresAt = new Date(Date.now() + 3_600_000).toISOString();
@@ -33,8 +33,8 @@ export function databaseGraph(userId: string, householdId: string, period = '202
     action_proposals: { kind: 'goal.revise', target_id: ids.goals, target_version: 1, canonical_payload: payload, payload_hash: hash, state: 'approved', summary: 'Synthetic proposal', source_run_id: ids.ai_runs, expires_at: expiresAt },
     goal_revisions: { goal_id: ids.goals, revision_number: 1, approved_proposal_id: ids.action_proposals, payload },
     ai_steps: { run_id: ids.ai_runs, sequence: 1, step_type: 'generation', status: 'started', input_payload_id: ids.private_payloads, output_payload_id: ids.private_payloads },
-    usage_buckets: { scope: 'user', period_start: period, allocated_ceiling_usd: '10.00', lower_preference_usd: '5.00' },
-    usage_reservations: { run_id: ids.ai_runs, step_id: ids.ai_steps, user_bucket_id: ids.usage_buckets, household_bucket_id: householdId, period_start: period, amount_usd: '0.10' },
+    usage_buckets: { scope: 'account', period_start: period, allocated_ceiling_usd: '10.00', lower_preference_usd: '5.00', reserved_usd:'0.10' },
+    usage_reservations: { run_id: ids.ai_runs, step_id: ids.ai_steps, account_bucket_id: ids.usage_buckets, app_bucket_id: appId, period_start: period, amount_usd: '0.10' },
     audit_events: { event_type: 'synthetic_fixture', object_id: ids.measurements, safe_metadata: { synthetic: true } },
   };
   for (const table of databaseTables) rows[table] = { ...rows[table], user_id: userId, ...(table === 'profiles' ? {} : { id: ids[table] }) };
