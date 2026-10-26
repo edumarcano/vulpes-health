@@ -150,6 +150,8 @@ The transaction binds changes to the authenticated owner and current update toke
 
 Executable Data contracts live in [`shared/data.ts`](../../../shared/data.ts). `add_measurement` requires `client_request_id`, a source selection (`kind: existing` with `id`, or `kind: new` with label and nullable app/device metadata), and an observation. The observation declares metric, decimal-string value, input unit, date/time, IANA timezone, nullable local date, granularity, method, and optional review flags represented as an array. Ownership and source namespace are server-controlled.
 
+Observation timestamps support seconds `00`–`59`, with up to six fractional digits. Second `60` is unsupported: entry and correction return a validation error, and CSV preview excludes the row as invalid. No ingestion path silently constrains or rolls that input into another instant.
+
 The acknowledgement contains `id`, `sourceId`, `outcome` (`created` or `duplicate`), `version`, and `dataRevision`. Identical request-key retries return their recorded acknowledgement, not a reconstructed current reading. Changed input under the same owner/request key returns 409. A duplicate-only request does not advance the revision.
 
 `view=sources` supports `page_size` and `cursor`. `view=measurements` and `view=summary` require metric, source ID, method, granularity, `[from,to)`, and timezone. The Data UI selects complete local calendar days, bounded to 366 days. Measurements additionally support pagination and an expected `data_revision`. Cursors bind owner, filters, revision, and an owned anchor; they are navigation state, not authority to read a record. Reads fail with 409 if a multi-page result crosses revisions.

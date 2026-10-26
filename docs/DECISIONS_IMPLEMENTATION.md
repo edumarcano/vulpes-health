@@ -4,6 +4,14 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-25: M2 timestamp review remediation
+
+**Scope:** Independent cumulative M2 review blocker F1, from merged PR 07 at `0e59d8c`. [Reproduction and verification](evidence/m2-timestamp-remediation.md) record the focused remediation and split-axis self-review.
+
+**Decision:** Reject unsupported second-60 observation timestamps before Temporal or PostgreSQL parses them. Temporal constrains them to second 59 while PostgreSQL can roll them into the next day. The normalizer, correction service and a forward migration for the two direct mutation RPCs enforce seconds 00–59. Preserve ordinary offsets, microseconds, naive-time/DST handling, decimal values, ownership, transaction locks and grants. Existing rows and historical receipts are not rewritten; their intended timestamp cannot be recovered from the stored instant alone.
+
+**Authorization:** Focused repair, local synthetic verification, commit and one remediation PR were requested. This closes the demonstrated validation defect without introducing a clinical threshold or changing analytical semantics. M2 acceptance and integration remain separate decisions.
+
 ## 2026-10-25: PR 07 measurement lifecycle
 
 **Scope:** The final approved M2 implementation packet, on `feat/pr07-measurement-lifecycle` from refreshed `main` at `aacc489`, after verifying CSV PR #7 merged. [Evidence and split-axis self-review](evidence/pr07-measurement-lifecycle.md) distinguish local acceptance from the pending independent cumulative M2 review.

@@ -35,6 +35,12 @@ describe('normalization and replacement boundaries',() => {
     expect(normalizeObservation({ ...input,observed_at:'2026-11-01T01:30:00-04:00',timezone:'America/New_York' }).original_offset_minutes).toBe(-240);
     expect(normalizeObservation({ ...input,observed_at:'2026-09-01T08:00:00',timezone:'America/New_York' }).observed_at).toBe('2026-09-01T12:00:00Z');
   });
+  it.each(['2026-09-01T23:59:60Z','2026-09-01T23:59:60.123456Z','2026-09-01T23:59:60+00:00','2026-09-01T23:59:60-04:00','2026-09-01T23:59:60'])('rejects unsupported second-60 timestamps: %s',(observed_at)=>{
+    expect(()=>normalizeObservation({...input,observed_at})).toThrow();
+  });
+  it('preserves the last ordinary second and microseconds at midnight boundaries',()=>{
+    expect(normalizeObservation({...input,observed_at:'2026-09-01T23:59:59.123456Z'}).observed_at).toBe('2026-09-01T23:59:59.123456Z');
+  });
   it('manual, fixture CSV and fixture-only Health Connect inputs normalize identically',() => {
     const csvFixture = { observed_at:input.observed_at,metric:input.metric,value:input.value,unit:input.unit,timezone:input.timezone,method:input.method };
     const healthConnectFixture = { time:input.observed_at,zone:input.timezone,mass:{amount:input.value,unit:'lb' as const} };

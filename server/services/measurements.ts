@@ -33,7 +33,7 @@ export async function mutateMeasurement(context:AuthContext,request:MeasurementM
   if(request.action==='correct_measurement') {
     try {
       const value=request.changes.observed_at;
-      if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(value))throw new Error();
+      if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::[0-5]\d(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(value))throw new Error();
       const explicit=/(?:Z|[+-]\d{2}:\d{2})$/.test(value);
       const zoned=explicit ? Temporal.Instant.from(value).toZonedDateTimeISO(request.changes.timezone) : Temporal.PlainDateTime.from(value,{overflow:'reject'}).toZonedDateTime(request.changes.timezone,{disambiguation:'reject'});
       if(!explicit && zoned.offsetNanoseconds%60_000_000_000!==0)throw new Error();

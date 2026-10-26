@@ -16,7 +16,9 @@ export function normalizeObservation(input: ObservationInput) {
   if (value.metric === 'body_fat_percent' && (canonical.lt(0) || canonical.gt(100))) throw new Error('Percentages must be between zero and 100.');
   if (value.metric === 'steps_daily' && (!canonical.isInteger() || canonical.lt(0) || canonical.gt(Number.MAX_SAFE_INTEGER))) throw new Error('Daily steps must be a nonnegative safe integer.');
   if (!Number.isFinite(canonical.toNumber()) || (!canonical.isZero() && canonical.toNumber() === 0)) throw new Error('This value cannot be represented by the measurement interface.');
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(value.observed_at)) throw new Error('Enter an ISO date/time with an explicit timezone or offset.');
+  // Temporal constrains second 60 while PostgreSQL rolls it into the next minute.
+  // Reject it before parsing so every ingestion path preserves the same instant.
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::[0-5]\d(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(value.observed_at)) throw new Error('Enter an ISO date/time with seconds from 00 to 59.');
   const hasOffset = /(?:Z|[+-]\d{2}:\d{2})$/.test(value.observed_at);
   const zoned = hasOffset
     ? Temporal.Instant.from(value.observed_at).toZonedDateTimeISO(value.timezone)

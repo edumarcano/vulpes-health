@@ -32,6 +32,24 @@ test('manual entry persists, calculates exact summary, reloads, and never calls 
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
   expect(calls).toEqual([]);expect(await page.evaluate(()=>Object.keys(localStorage).every((key)=>key.startsWith('vulpes.auth.session.v1')))).toBe(true);
 });
+
+test('second-60 manual entry and correction show validation errors without moving a reading',async({page},info)=>{
+  await range(page);const source=await entry(page,'70','08');
+  await page.getByLabel('Entry source',{exact:true}).selectOption(source);
+  await page.getByLabel('Value',{exact:true}).fill('69');await page.getByLabel('Observation date/time',{exact:true}).fill('2026-09-01T23:59:60Z');
+  await page.getByRole('button',{name:'Review measurement',exact:true}).click();
+  const rejectedEntry=page.waitForResponse(r=>r.url().endsWith('/api/data') && r.request().method()==='POST');
+  await page.getByRole('button',{name:'Confirm and save',exact:true}).click();expect((await rejectedEntry).status()).toBe(400);
+  await expect(page.getByRole('alert')).toContainText('Check the value');await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
+  await page.getByRole('button',{name:'Back to editing',exact:true}).click();
+  await page.getByRole('button',{name:'Correct',exact:true}).click();await page.getByLabel('Corrected observation time',{exact:true}).fill('2026-09-01T23:59:60Z');
+  await page.getByRole('button',{name:'Review correction',exact:true}).click();
+  const rejectedCorrection=page.waitForResponse(r=>r.url().endsWith('/api/data') && r.request().method()==='POST');
+  await page.getByRole('button',{name:'Confirm correction',exact:true}).click();expect((await rejectedCorrection).status()).toBe(400);
+  await expect(page.getByRole('alert')).toContainText('Check the observation time');
+  await expect(page.getByRole('table')).toContainText('2026-09-08T08:00:00+00:00');await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
+  await page.screenshot({path:info.outputPath('second-60-correction-rejected.png'),fullPage:true});
+});
 test('confirmation is required, unusual readings stay unchanged, source text is inert, and errors are honest',async({page})=>{
   await range(page);await page.getByLabel('Source label',{exact:true}).fill('<script>synthetic-only</script>');await page.getByLabel('Value',{exact:true}).fill('600');await page.getByLabel('Observation date/time',{exact:true}).fill('2026-09-08T08:00:00Z');await page.getByLabel('Flag this reading for review').check();
   await page.getByRole('button',{name:'Review measurement',exact:true}).click();await expect(page.getByRole('heading',{name:'No measurements loaded',exact:true})).toBeVisible();
