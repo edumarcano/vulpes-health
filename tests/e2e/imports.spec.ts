@@ -22,6 +22,18 @@ test('wide mapping exposes five exact observations, ignored columns and a missin
   await choose(page,wide);await expect(page.getByRole('combobox',{name:'CSV format',exact:true})).toHaveValue('wide');await page.getByRole('combobox',{name:'Metric for Mass (lb)',exact:true}).selectOption('weight');await page.getByRole('combobox',{name:'Unit for Mass (lb)',exact:true}).selectOption('lb');await page.getByRole('combobox',{name:'Method for Mass (lb)',exact:true}).selectOption('device_reported');await page.getByRole('combobox',{name:'Metric for Fat (%)',exact:true}).selectOption('body_fat_percent');await page.getByRole('combobox',{name:'Method for Fat (%)',exact:true}).selectOption('device_estimate');await preview(page);
   const region=page.getByRole('region',{name:'Confirm CSV import',exact:true});await expect(region).toContainText('5 new');await expect(region).toContainText('1 blank cells skipped');await expect(region).toContainText('Ignored columns: Notes');await expect(region).toContainText('68.0388555 kg');await confirm(page);
 });
+
+test('second-60 CSV rows are excluded visibly and the valid boundary row commits unchanged',async({page},info)=>{
+  const csv='observed_at,metric,value,unit,source,granularity,timezone,method\n2026-09-01T23:59:60Z,weight,70,kg,Synthetic Scale A,instant,UTC,device_reported\n2026-09-01T23:59:59.123456Z,weight,69,kg,Synthetic Scale A,instant,UTC,device_reported';
+  await choose(page,Buffer.from(csv));await page.getByLabel('CSV source label to include',{exact:true}).fill('Synthetic Scale A');await preview(page);
+  const region=page.getByRole('region',{name:'Confirm CSV import',exact:true});await expect(region).toContainText('1 new; 0 duplicates; 0 conflicts excluded; 1 invalid');
+  await expect(region).toContainText('Row 2');await expect(region.getByRole('table')).toContainText('2026-09-01T23:59:59.123456Z');
+  await page.screenshot({path:info.outputPath('second-60-csv-preview.png'),fullPage:true});
+  const source=await confirm(page);await page.getByLabel('Method',{exact:true}).selectOption('device_reported');
+  await page.getByLabel('From date',{exact:true}).fill('2026-09-01');await page.getByLabel('Through date',{exact:true}).fill('2026-09-01');
+  await expect(page.getByRole('table')).toContainText('2026-09-01T23:59:59.123456+00:00');await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
+  const db=new LocalSupabase();expect(await(await db.admin(`/rest/v1/measurements?source_id=eq.${source}&select=observed_at`,'GET')).json()).toEqual([{observed_at:'2026-09-01T23:59:59.123456+00:00'}]);
+});
 test('profile exclusion, invalid rows and altered values remain explicit before confirmation',async({page})=>{
   const rows=canonical.toString().trim().split(/\r?\n/);const csv=[rows[0]+',Profile',rows[1]+',A',rows[2]+',B',rows[1]!.replace('70.0','71.0')+',A',rows[3]!.replace('69.9','NaN')+',A'].join('\n');await choose(page,Buffer.from(csv));await page.getByLabel('CSV source label to include',{exact:true}).fill('Synthetic Scale A');await page.getByRole('combobox',{name:'Profile column',exact:true}).selectOption('Profile');await page.getByLabel('Profile value to include',{exact:true}).fill('A');await preview(page);
   const region=page.getByRole('region',{name:'Confirm CSV import',exact:true});await expect(region).toContainText('2 conflicts excluded; 1 invalid');await expect(region).toContainText('1 profile-excluded rows');await confirm(page);await expect(page.getByRole('status').filter({hasText:'Historical batch outcome'})).toContainText('0 inserted');

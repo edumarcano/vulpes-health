@@ -25,6 +25,14 @@ beforeAll(async()=>{const c=localStatus();vi.stubEnv('VITE_SUPABASE_URL',c.apiUr
 });
 afterAll(async()=>{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));try{if(db)await db.cleanup();}finally{vi.unstubAllEnvs();}});
 describe('real encrypted CSV HTTP transactions',()=>{
+  it('excludes second-60 rows from preview and commit while retaining valid boundary readings',async()=>{
+    const p=await preview({...base,client_request_id:randomUUID(),csv:'observed_at,metric,value,unit,source,granularity,timezone,method\n2026-09-01T23:59:60Z,weight,70,kg,Synthetic Scale A,instant,UTC,device_reported\n2026-09-01T23:59:59.123456Z,weight,69,kg,Synthetic Scale A,instant,UTC,device_reported'});
+    expect(p.counts).toMatchObject({new:1,invalid:1});expect(p.errors[0]).toMatchObject({row:2,column:'value'});
+    expect(p.preview).toHaveLength(1);expect(p.preview[0]!.observed_at).toBe('2026-09-01T23:59:59.123456Z');
+    expect((await commit(p)).inserted).toBe(1);
+    const stored=await db.request(`/rest/v1/measurements?source_id=eq.${p.source_id}&select=observed_at`,a.token);
+    expect(await stored.json()).toEqual([{observed_at:'2026-09-01T23:59:59.123456+00:00'}]);
+  });
   it('previews 28 observations without measurement writes, commits once, erases staging, and returns historical reimport',async()=>{
     const request={...base,client_request_id:randomUUID()};const p=await preview(request);expect(p.counts).toMatchObject({observations:28,new:28,duplicate:0,conflict:0,invalid:0});expect(await readings(p.source_id)).toHaveLength(0);
     const raw=await(await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}`,'GET')).json() as Array<{id:string;encrypted_bytes:string;content_hash:string}>;expect(raw).toHaveLength(1);expect(raw[0]!.content_hash).toBe(p.payload_hash);expect(raw[0]!.encrypted_bytes).not.toContain('observed_at');

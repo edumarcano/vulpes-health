@@ -43,6 +43,31 @@ beforeAll(async()=>{
 });
 afterAll(async()=>{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));try{if(db)await db.cleanup();}finally{vi.unstubAllEnvs();}});
 describe('real M2 correction/deletion/export transactions',()=>{
+  it('rejects second-60 entry and correction through HTTP and direct RPC without changing persisted state',async()=>{
+    const reading=await add();const before=await rows('measurements',`id=eq.${reading.id}`);const rev=await revision();
+    const sources=await rows('data_sources',`user_id=eq.${a.id}&select=id&order=id`);
+    for(const observed_at of ['2026-09-01T23:59:60Z','2026-09-01T23:59:60.123456+00:00','2026-09-01T23:59:60-04:00']){
+      const entry={...base,client_request_id:randomUUID(),observation:{...base.observation,observed_at}};
+      const change={...correction(reading),changes:{value:'69',unit:'kg',observed_at,timezone:'UTC',local_date:null}};
+      for(const [operation,request] of [['add_measurement_v1',entry],['mutate_measurement_v1',change]] as const){
+        const response=await http(request);expect(response.status).toBe(400);expect(await response.json()).toMatchObject({error:{code:'invalid_input'}});
+        const direct=await db.request(`/rest/v1/rpc/${operation}`,a.token,{method:'POST',body:JSON.stringify({p_request:request})});
+        expect(direct.status).toBe(400);expect(await direct.json()).toMatchObject({message:'invalid_measurement'});
+      }
+    }
+    expect(await rows('measurements',`id=eq.${reading.id}`)).toEqual(before);expect(await revision()).toBe(rev);
+    expect(await rows('data_sources',`user_id=eq.${a.id}&select=id&order=id`)).toEqual(sources);
+  });
+  it('persists identical ordinary boundary timestamps through manual, CSV and correction paths',async()=>{
+    const observed_at='2026-09-01T23:59:59.123456-04:00';const expected='2026-09-02T03:59:59.123456+00:00';
+    const manual=await add({observation:{...base.observation,observed_at,timezone:'America/New_York'}});
+    const p=await preview({csv:'observed_at,metric,value,unit,source,granularity,timezone,method\n'+observed_at+',weight,70,kg,Synthetic Scale A,instant,America/New_York,device_reported'});
+    expect(p.counts).toMatchObject({new:1,invalid:0});await success(await http(commitBody(p)));
+    const imported=(await rows('measurements',`source_id=eq.${p.source_id}`))[0]!;
+    const change=correction({id:imported.id as string,version:1});if(change.action!=='correct_measurement')throw new Error();
+    await success(await http({...change,changes:{...change.changes,observed_at,timezone:'America/New_York'}}));
+    for(const id of [manual.id,imported.id])expect((await rows('measurements',`id=eq.${id}`))[0]).toMatchObject({observed_at:expected,original_offset_minutes:-240,timezone:'America/New_York'});
+  });
   it('demonstrates import → exact analysis → correction → deletion → surviving export → historical replay',async()=>{
     const p=await preview();const committed=await success<{inserted:number;dataRevision:number}>(await http(commitBody(p)));expect(committed.inserted).toBe(28);
     const before=await success<{analysis:{value:number;previousValue:number;absoluteChange:number}}>(await get(query(p.source_id)));expect(before.analysis).toMatchObject({value:69,previousValue:69.7,absoluteChange:-0.7});

@@ -6,6 +6,12 @@ const mapping:ImportMapping={schema_version:1,format:'canonical',timezone:'UTC',
 const fixture=readFileSync('docs/spec/v0.1.0/fixtures/measurements-synthetic.csv','utf8');
 const wide:ImportMapping={schema_version:1,format:'wide',timezone:'UTC',profile:null,single_profile:true,review_requested:false,timestamp_column:'Recorded At',local_date_column:null,external_id_column:null,granularity:'instant',metrics:[{column:'Mass (lb)',metric:'weight',unit:'lb',method:'device_reported'},{column:'Fat (%)',metric:'body_fat_percent',unit:'%',method:'device_estimate'}]};
 describe('bounded CSV normalization',()=>{
+  it('reports second-60 timestamps as invalid in canonical and mapped input',()=>{
+    const canonical='observed_at,metric,value,unit,source,granularity\n2026-09-01T23:59:60Z,weight,70,kg,Synthetic Scale A,instant';
+    const mapped='Recorded At,Mass (lb),Fat (%)\n2026-09-01T23:59:60,150,20';
+    expect(parseCsv(canonical,mapping)).toMatchObject({observations:[],counts:{invalid:1,new:0}});
+    expect(parseCsv(mapped,wide)).toMatchObject({observations:[],counts:{invalid:2,new:0}});
+  });
   it('normalizes all 28 canonical and five mapped observations, preserving decimals and provenance',()=>{
     const canonical=parseCsv(fixture,mapping);expect(canonical.observations).toHaveLength(28);expect(canonical.counts.invalid).toBe(0);
     expect(canonical.observations[0]).toMatchObject({canonical_value:'70',original_value:'70.0',external_record_id:'synthetic-01-w',provenance:{row:2,column:'value'}});
