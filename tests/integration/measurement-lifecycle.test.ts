@@ -130,7 +130,10 @@ describe('real M2 correction/deletion/export transactions',()=>{
     await db.admin(`/rest/v1/goals?id=eq.${g.ids.goals}`,'PATCH',{state:'active',baseline_snapshot:frozen});
     const before=(await rows('goals',`id=eq.${g.ids.goals}`))[0]!;const approved=await rows('goal_revisions',`goal_id=eq.${g.ids.goals}`);
     const context=await verifySession({headers:{authorization:`Bearer ${u.token}`}});
-    for(const purpose of ['ai_request','ai_response','tool_input','tool_output','provider_state'] as const)await writePayload(context,purpose,Buffer.from('Synthetic exact trace'));
+    // These are deliberately unbound historical fixtures. Production AI writes
+    // now require a run lease; the execution suite verifies that guarded path.
+    for(const purpose of ['ai_request','ai_response','tool_input','tool_output','provider_state'] as const)await db.admin('/rest/v1/private_payloads','POST',
+      encryptBytes({id:randomUUID(),user_id:context.userId,purpose,expires_at:new Date(Date.now()+3600_000).toISOString()},Buffer.from('Synthetic exact trace'),readEncryptionKeys()));
     const result=await success<Ack>(await http(deletion({id:g.ids.measurements,version:1}),u.token));expect(result.baselinesMarked).toBe(1);expect(result.tracePayloadsRemoved).toBe(6);
     const goal=(await rows('goals',`id=eq.${g.ids.goals}`))[0]!;expect(goal).toEqual({...before,review_status:'needs_review',version:2,updated_at:goal.updated_at});
     expect(await rows('goal_revisions',`goal_id=eq.${g.ids.goals}`)).toEqual(approved);expect(await rows('private_payloads',`user_id=eq.${u.id}`)).toEqual([]);

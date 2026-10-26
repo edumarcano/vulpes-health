@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { IanaTimezoneSchema, ISOInstantSchema, UUIDSchema } from './primitives.js';
+import { DecimalUSDSchema, IanaTimezoneSchema, ISOInstantSchema, UUIDSchema } from './primitives.js';
+import { BudgetStateSchema } from './executions.js';
 
 export const ProviderSchema = z.enum(['openrouter', 'vertex_ai']);
 export const UnitsSchema = z.enum(['metric', 'imperial']);
@@ -10,6 +11,7 @@ export const SettingsPatchSchema = z.strictObject({
   changes: z.strictObject({
     display_name: DisplayNameSchema.optional(), timezone: IanaTimezoneSchema.max(100).optional(),
     units: UnitsSchema.optional(), provider_consent: ConsentChangeSchema.optional(),
+    monthly_spending_preference_usd: DecimalUSDSchema.max(80).nullable().optional(),
   }).refine((changes) => Object.keys(changes).length > 0, 'Choose a setting to change.'),
 });
 export const ProviderConsentSchema = z.strictObject({
@@ -20,6 +22,7 @@ export const SettingsSchema = z.strictObject({
   profile: z.strictObject({ userId: UUIDSchema, displayName: DisplayNameSchema, timezone: IanaTimezoneSchema, units: UnitsSchema, updatedAt: ISOInstantSchema }),
   providerConsents: z.array(ProviderConsentSchema).length(2),
   retention: z.strictObject({ traceDays: z.literal(7), importStagingHours: z.literal(24) }),
+  budget: BudgetStateSchema,
 });
 export const AuthenticatedStatusSchema = z.strictObject({
   status: z.literal('ok'), features: z.strictObject({ settings: z.literal(true), healthWorkflows: z.literal(true), inference: z.literal(false) }),

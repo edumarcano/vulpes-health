@@ -108,3 +108,15 @@ Goal states: `draft`, `needs_data`, `active`, `paused`, `completed`, `archived`.
 - `delete_account_data`: cancel admission of new runs; remove owned records and payloads in a documented order; remove Auth identity after data cleanup succeeds.
 
 A request that times out after sending to a provider retains an uncertain-cost reservation until reconciliation or conservative settlement. Expiration of a lock must not be confused with proof of zero provider cost.
+
+### PR 08 execution foundation
+
+Run states and owned summaries are executable in [`shared/executions.ts`](../../../shared/executions.ts). Runs retain an executor hash, monotonic fence, lease/deadline, admission month, data revision and run ceiling. Only a fresh admission returns execution authority. The initial limits are ten admissions per rolling minute, four model requests, six tool calls, a 210-second deadline, five-second heartbeats and a 30-second lease.
+
+Request preparation atomically stores the encrypted exact bytes, context and paired reservations. A separate compare-and-set authorizes one send, binding the request hash and rechecking consent, account state, deletion fence and budgets. No lock spans HTTP transport. Step dispatch (`prepared`, `send_authorized`, `finished`, or `not_applicable` for tools) is independent of run/step termination.
+
+The full reservation stays pending for uncertain sent requests. Its 24-hour interval starts at observed uncertainty or the expired execution lease; the next authorized reconciliation or bounded maintenance pass settles it conservatively. A later authoritative correction applies a versioned delta to both original-month buckets. Duplicate evidence is a no-op. Proven unsent steps release without charge. Usage evidence and settlement commit together; overlapping reasoning/cache categories are not added twice. A charge exceeding its reserved bound is recorded in full and blocks subsequent use of that route.
+
+All applicable mutations acquire profile, conversation, run, step, household bucket, user bucket, reservation and payload/message locks in that order. Service-only helpers pin empty search paths; clients cannot reserve or settle directly. AI envelopes require a writable run; the standalone payload writer accepts import staging only. Measurement deletion fences affected runs and marks their messages ineligible for future context. Late billing may reconcile after cancellation/deletion, but late content cannot recreate removed payloads.
+
+Seven-day envelope expiry is enforced on reads. Bounded maintenance removes expired 90-day terminal execution records only after settling reservations and clearing nullable transcript/proposal links. Core messages and their request receipts remain with conversation history. Conversation operations and the public execution inspector are later PRs.

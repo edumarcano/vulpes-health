@@ -4,18 +4,21 @@ import { HttpFailure } from '../http/failure.js';
 import { consentState } from '../security/consent.js';
 import type { Database } from '../db/database.types.js';
 
-function settingsDTO(profile: Database['public']['Tables']['profiles']['Row']) {
+async function settingsDTO(context:AuthContext,profile: Database['public']['Tables']['profiles']['Row']) {
+  const {data:budget,error}=await context.db.rpc('read_budget_v1');
+  if(error)throw new HttpFailure(503,'settings_unavailable','Spending information could not be loaded.');
   const stored = profile.consent_versions && typeof profile.consent_versions === 'object' && !Array.isArray(profile.consent_versions) ? profile.consent_versions : {};
   return SettingsSchema.parse({
     profile: { userId: profile.user_id, displayName: profile.display_name, timezone: profile.timezone, units: profile.units, updatedAt: profile.updated_at },
     providerConsents: (['openrouter', 'vertex_ai'] as const).map((provider) => consentState(stored[provider], provider)),
     retention: { traceDays: 7, importStagingHours: 24 },
+    budget,
   });
 }
 export async function getSettings(context: AuthContext) {
   const { data, error } = await context.db.from('profiles').select('*').eq('user_id', context.userId).single();
   if (error || data.account_state !== 'active') throw new HttpFailure(503, 'settings_unavailable', 'Settings could not be loaded.');
-  return settingsDTO(data);
+  return settingsDTO(context,data);
 }
 export async function updateSettings(context: AuthContext, request: SettingsPatch) {
   const { data, error } = await context.db.rpc('update_settings_v1', { p_request: request });
@@ -29,7 +32,7 @@ export async function updateSettings(context: AuthContext, request: SettingsPatc
     if (failure) throw new HttpFailure(failure[0], error.message, failure[1]);
     throw new HttpFailure(503, 'settings_unavailable', 'Settings could not be saved.');
   }
-  return settingsDTO(data);
+  return settingsDTO(context,data);
 }
 export async function hasProviderConsent(context: AuthContext, provider: Provider): Promise<boolean> {
   const settings = await getSettings(context);

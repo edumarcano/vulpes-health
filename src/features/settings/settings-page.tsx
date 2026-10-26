@@ -21,6 +21,14 @@ function ProfileForm({ settings,busy,save }: { settings: Settings; busy: boolean
     <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>
   </form>;
 }
+function BudgetForm({settings,busy,save}:{settings:Settings;busy:boolean;save:(changes:SettingsPatch['changes'])=>void}) {
+  const [preference,setPreference]=useState(settings.budget.preferenceUSD ?? '');
+  return <form className="settings-form" onSubmit={(event)=>{event.preventDefault();save({monthly_spending_preference_usd:preference || null});}}>
+    <label>Monthly spending preference (USD)<input inputMode="decimal" pattern="(?:0|[1-9][0-9]*)(?:\.[0-9]+)?" maxLength={80} value={preference} disabled={busy || settings.budget.state==='unconfigured'} onChange={(event)=>setPreference(event.target.value)} aria-describedby="spending-preference-hint" /></label>
+    <p id="spending-preference-hint" className="field-hint">Choose an amount within your operator allocation. Leave blank to use that allocation. Changing this preference does not replenish spent funds.</p>
+    <Button type="submit" disabled={busy || settings.budget.state==='unconfigured'}>Save spending preference</Button>
+  </form>;
+}
 export function SettingsPage() {
   const { state,scope,signOut } = useAuth();
   const queryClient = useQueryClient();
@@ -53,7 +61,12 @@ export function SettingsPage() {
             {(consent.acceptanceAvailable || consent.acceptedVersion !== null) && <Button variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate({ provider_consent:{ provider:consent.provider,accepted:!consent.accepted && consent.acceptedVersion === null,policy_version:consent.policyVersion } })}>{consent.acceptedVersion !== null ? `Revoke ${consent.provider === 'openrouter' ? 'OpenRouter' : 'Google Cloud'}` : 'Allow OpenRouter'}</Button>}
           </section>)}
         </Card>
-        <Card className="settings-card"><h2>Privacy and availability</h2><dl className="settings-facts"><div><dt>Full AI payload retention</dt><dd>{settings.data.retention.traceDays} days; expired content is unavailable even before cleanup.</dd></div><div><dt>Import staging retention</dt><dd>{settings.data.retention.importStagingHours} hours</dd></div><div><dt>Connections</dt><dd>CSV/manual now; Android Health Connect planned.</dd></div><div><dt>AI and spending controls</dt><dd>Unavailable. Consent does not enable inference.</dd></div></dl><p className="detail-note">Account export and deletion workflows are not implemented yet. The deployment operator controls the database and encryption keys. Vulpes is not end-to-end encrypted against the operator.</p></Card>
+        <Card className="settings-card"><h2>Spending</h2><p>Calendar-month UTC accounting. Requests settle into their admission month, including after a reset.</p>
+          {settings.data.budget.state==='unconfigured' ? <p>No operator allocation is configured. AI remains unavailable.</p> : <dl className="settings-facts"><div><dt>Operator allocation</dt><dd>${settings.data.budget.allocationUSD}</dd></div><div><dt>Recorded spend</dt><dd>${settings.data.budget.spentUSD}</dd></div><div><dt>Reserved, including uncertain charges</dt><dd>${settings.data.budget.reservedUSD}</dd></div><div><dt>Available user allocation</dt><dd>${settings.data.budget.availableUSD}; household limits also apply.</dd></div></dl>}
+          <BudgetForm key={settings.data.profile.updatedAt} settings={settings.data} busy={mutation.isPending} save={(changes)=>mutation.mutate(changes)} />
+          <p className="detail-note">Unknown charges retain their reservation for 24 hours, then settle conservatively when checked or maintained. Provider verification and inference remain unavailable.</p>
+        </Card>
+        <Card className="settings-card"><h2>Privacy and availability</h2><dl className="settings-facts"><div><dt>Full AI payload retention</dt><dd>{settings.data.retention.traceDays} days; expired content is unavailable even before cleanup.</dd></div><div><dt>Import staging retention</dt><dd>{settings.data.retention.importStagingHours} hours</dd></div><div><dt>Connections</dt><dd>CSV/manual now; Android Health Connect planned.</dd></div><div><dt>AI</dt><dd>Unavailable. Consent does not enable inference.</dd></div></dl><p className="detail-note">Account export and deletion workflows are not implemented yet. The deployment operator controls the database and encryption keys. Vulpes is not end-to-end encrypted against the operator.</p></Card>
       </>}
     </div>
   </>;

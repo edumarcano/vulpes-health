@@ -10,6 +10,8 @@ Vulpes turns personal health data and goals into transparent, auditable conversa
 
 Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and canonical [milestones](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md). PRs 01–06 and [M0/M1 review remediation](docs/evidence/m0-m1-review-remediation.md) are merged; M1 was accepted on 2026-10-25. Data evidence is recorded in [manual Data verification](docs/evidence/pr05-manual-data.md), [CSV import verification](docs/evidence/pr06-csv-import.md) and [measurement lifecycle verification](docs/evidence/pr07-measurement-lifecycle.md). M2 acceptance still requires the comprehensive independent review. Local evidence does not establish hosted authentication, family readiness, or live provider support.
 
+**Run/accounting foundation (execution-plan PR 08).** Persistent admission, paired user/household reservations, encrypted request capture, cancellation and crash reconciliation are implemented behind server-only transactions. Settings supports an owned spending preference within an operator allocation; an unconfigured account remains unavailable. The [local accounting proof](docs/evidence/pr08-run-accounting.md) uses synthetic accounts and a loopback receiver. Chat, conversation and inspector endpoints remain unavailable. No production provider transport or live inference is enabled.
+
 ## Planned technology stack
 
 - **Frontend:** React, TypeScript (strict), Vite, Tailwind CSS, shadcn/ui, assistant-ui, Recharts, Motion, and Lucide. Packaged as an installable mobile-first Progressive Web App (PWA).
@@ -137,6 +139,7 @@ npm run db:lint
 npm run test:db
 npm run db:types:check
 npm run test:integration
+npm run test:executions
 npm run test:e2e
 npm run test:dev
 npm run maintenance:cleanup
@@ -144,6 +147,10 @@ npm run db:stop
 ```
 
 These commands target only `vulpes-health-pr03-test`, a disposable synthetic stack at `http://127.0.0.1:54321` with PostgreSQL on port 54322. **`db:reset:test` deletes that stack's database contents.** The wrappers reject linked projects, remote Docker contexts, altered project/port settings, and connection overrides. `db:stop` preserves local volumes and does not stop unrelated projects. A missing runtime fails explicitly; database tests are not replaced with mocks.
+
+`test:executions` requires that disposable stack and no existing current-month household bucket. It creates temporary synthetic accounts, races paired reservations at a small household boundary, sends exact captured bytes to a loopback receiver, and demonstrates pending/conservative/corrected accounting. It cleans its records and prints only safe proof metadata. Reported monetary values are simulated; no model endpoint is contacted.
+
+`npm run test:execution-upgrade -- --allow-disposable-reset` verifies a forward upgrade from the pre-PR-08 schema. It refuses a nonempty stack, temporarily parks only the five new migrations inside the workspace, resets the guarded disposable database, seeds two synthetic owners, restores/applies the migrations and compares original rows and isolation. Migration file hashes are verified on restoration; temporary accounts are cleaned. Do not run it alongside other database/browser checks.
 
 Use a clean reset to verify all migrations, including after upgrading an existing test volume. Integration tests provision temporary synthetic accounts, obtain real password sessions, exercise the Node API and direct PostgREST, and clean up their records/accounts in `finally`. The global signup switch is false; the email provider remains enabled so provisioned accounts can sign in. Do not use this test stack for operator data.
 
@@ -155,7 +162,7 @@ The wrappers restrict which Docker engine and database project they use; they do
 
 All direct client table writes remain denied. The authenticated settings RPC can change only the caller's allowed profile fields and consent; it cannot alter ownership, account state, operator budgets, or arbitrary preferences. Private payloads, usage buckets/reservations and audit events deny direct client reads. The private-payload module uses authenticated AES-256-GCM envelopes with owner/purpose/version-bound metadata; it has no public endpoint.
 
-`maintenance:cleanup` accepts no connection overrides and targets only the disposable local stack. Each transaction handles at most 100 expired import batches or standalone private payloads; associated staging is removed in the same transaction. One invocation stops after at most 100 transactions and reports removed envelopes and expired batches. Run it after inactivity and repeat if its maximum is reached. Data requests also attempt bounded owned cleanup; reads/commit enforce expiry independently. Cleanup skips profiles locked by a concurrent operation; rerun after it finishes. This command does not delete usage metadata or entire accounts. Keep required key versions recoverable as described in the setup guide.
+`maintenance:cleanup` accepts no connection overrides and targets only the disposable local stack. Each pass reconciles at most 100 runs and cleans at most 100 expired import batches/private payloads. Stale executors are fenced; unsent reservations release, uncertain sent requests retain their full hold, and holds at least 24 hours old settle conservatively. Expired terminal execution metadata is removed after resolving reservations and detaching retained transcript/proposal references. Core conversations remain. One invocation stops after at most 100 passes and reports its work; repeat if the maximum is reached. Reads enforce payload expiry independently. Cleanup skips locked profiles; rerun after concurrent work finishes. Full account deletion and hosted maintenance remain later gates. Keep required key versions recoverable as described in the setup guide.
 
 ### Contracts and provider harness
 

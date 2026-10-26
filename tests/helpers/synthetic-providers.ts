@@ -85,8 +85,9 @@ export function generationReplies(family: GenerationFamily): readonly (readonly 
 
 // A bounded contract exerciser, not the application's future authenticated tool loop.
 export async function exerciseGeneration(adapter: GenerationAdapter, signal: AbortSignal) {
+  const dispatch={async *send(){yield* [];throw new Error('The normalized fixture must not dispatch paid requests.');}};
   const first = [];
-  for await (const event of adapter.generate(syntheticRequest, { signal })) first.push(event);
+  for await (const event of adapter.generate(syntheticRequest, { signal,dispatch })) first.push(event);
   const calls = first.filter((event) => event.type === 'tool.call');
   const completed = first.filter((event) => event.type === 'completed');
   if (calls.length !== 1 || completed.length !== 1 || completed[0]?.finishReason !== 'tool_calls') throw new Error('invalid_synthetic_tool_turn');
@@ -99,7 +100,7 @@ export async function exerciseGeneration(adapter: GenerationAdapter, signal: Abo
     continuation: completed[0]!.continuation,
   };
   const second = [];
-  for await (const event of adapter.generate(next, { signal })) second.push(event);
+  for await (const event of adapter.generate(next, { signal,dispatch })) second.push(event);
   if (second.filter((event) => event.type === 'completed').length !== 1 || second.at(-1)?.type !== 'completed') throw new Error('invalid_synthetic_final_turn');
   return { first, second };
 }

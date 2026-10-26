@@ -8,6 +8,7 @@ export class LocalSupabase {
   private readonly status = localStatus();
   private readonly users: string[] = [];
   private householdId: string | undefined;
+  private seededReservations = 0;
 
   async request(route: string, token: string | null, init: RequestInit = {}) {
     assert(route.startsWith('/rest/v1/') || route.startsWith('/auth/v1/'), 'Unexpected test route.');
@@ -23,7 +24,11 @@ export class LocalSupabase {
   async admin(route: string, method: string, body?: unknown) {
     const response = await this.request(route, 'admin', { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     // Do not include response bodies or credentials in assertion output.
-    assert(response.ok, `Synthetic setup/cleanup failed (${method}, HTTP ${response.status}).`);
+    if(!response.ok){
+      const failure=await response.json().catch(()=>null) as {code?:unknown}|null;
+      const code=typeof failure?.code==='string' && /^[A-Z0-9]{4,12}$/.test(failure.code) ? failure.code : 'unavailable';
+      assert.fail(`Synthetic setup/cleanup failed (${method}, HTTP ${response.status}, code ${code}).`);
+    }
     return response;
   }
 
@@ -52,6 +57,8 @@ export class LocalSupabase {
     }
     const graph = databaseGraph(userId, this.householdId);
     for (const table of databaseTables) await this.admin(`/rest/v1/${table}`, 'POST', graph.rows[table]);
+    this.seededReservations++;
+    await this.admin(`/rest/v1/usage_buckets?id=eq.${this.householdId}`,'PATCH',{reserved_usd:(this.seededReservations/10).toFixed(2)});
     await this.admin(`/rest/v1/goals?id=eq.${graph.ids.goals}`, 'PATCH', { current_revision_id: graph.ids.goal_revisions });
     return graph;
   }

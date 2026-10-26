@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { CountSchema, VersionSchema } from '../../shared/primitives.js';
 import type { ModelRole } from '../../shared/primitives.js';
 import { GenerationCapabilitiesSchema } from '../ai/contracts.js';
+import { VerifiedPriceSchema } from '../ai/ledger/pricing.js';
 
 const unverifiedPrice = z.strictObject({
   status: z.literal('unverified'), currency: z.literal('USD'), checkedAt: z.null(), sourceURL: z.null(),
@@ -9,7 +10,7 @@ const unverifiedPrice = z.strictObject({
 });
 const common = {
   modelId: z.string().min(1), maxInputTokens: VersionSchema,
-  price: unverifiedPrice, liveSmokeStatus: z.literal('not_run'),
+  price: z.discriminatedUnion('status',[unverifiedPrice,VerifiedPriceSchema]), liveSmokeStatus: z.literal('not_run'),
 };
 export const ModelConfigSchema = z.discriminatedUnion('apiFamily', [
   z.strictObject({
