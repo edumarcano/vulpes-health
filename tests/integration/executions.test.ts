@@ -54,6 +54,7 @@ describe('persistent run and accounting transactions',()=>{
     const admissions=await Promise.all([ledger.admit(request),ledger.admit(request)]);
     expect(admissions.map(x=>x.result.kind).sort()).toEqual(['admitted','existing']);
     expect(admissions.filter(x=>x.lease)).toHaveLength(1);
+    if(admissions[0]!.result.kind==='retained')throw new Error('Expected a retained run, not an expired receipt.');
     await expect(ledger.admit({...request,requestHash:requestHash('changed')})).rejects.toMatchObject({status:409});
     expect((await ledger.admit(input(conversationA))).result).toMatchObject({kind:'busy',run:{id:admissions[0]!.result.run.id}});
     expect(await rows('ai_runs',`user_id=eq.${a.userId}`)).toHaveLength(1);
@@ -227,6 +228,30 @@ describe('persistent run and accounting transactions',()=>{
     await db.admin(`/rest/v1/ai_runs?id=eq.${lease.runId}`,'PATCH',{expires_at:new Date(Date.now()-1000).toISOString()});await ledger.reconcile();
     expect(await rows('ai_runs',`id=eq.${lease.runId}`)).toEqual([]);expect((await rows('messages',`id=eq.${message}`))[0]).toMatchObject({run_id:null,client_request_id:key});
     expect(await rows('conversations',`id=eq.${conversationA}`)).toHaveLength(1);await expect(ledger.summary(lease.runId)).rejects.toMatchObject({status:404});
+  });
+  it('commits completion metadata once with settlement and keeps late cancelled metadata fenced',async()=>{
+    const ledger=service();const lease=await admit(ledger);const step=await ledger.prepare(lease,stepInput());
+    await ledger.authorize(step);await ledger.checkpoint(step,Buffer.from('Synthetic observable response'));
+    const usage=normalizeUsage({reportedCostUSD:'0.001',rawUsage:{synthetic:true}});
+    const completion={finishReason:'stop' as const,providerRequestId:'synthetic-response',effectiveModel:'synthetic/model',effectiveEffort:null};
+    await ledger.settle(step,usage,'completed',0,false,completion);await ledger.settle(step,usage,'completed',0,false,completion);
+    await expect(ledger.settle(step,usage,'completed',0,false,{...completion,providerRequestId:'changed'})).rejects.toMatchObject({status:409});
+    expect((await rows('ai_steps',`id=eq.${step.id}`))[0]).toMatchObject({finish_reason:'stop',provider_request_id:'synthetic-response',effective_model_id:'synthetic/model',effective_effort:null});
+    await ledger.finish(lease,'completed');
+    const next=await admit(ledger);const late=await ledger.prepare(next,stepInput());await ledger.authorize(late);await ledger.checkpoint(late,Buffer.from('Synthetic late response'));
+    await ledger.cancel(next.runId);await ledger.settle(late,usage,'completed',0,false,completion);
+    expect((await rows('ai_steps',`id=eq.${late.id}`))[0]).toMatchObject({finish_reason:null,provider_request_id:null,effective_model_id:null});
+    const denied=await db.request('/rest/v1/rpc/record_step_completion_v1',tokenA,{method:'POST',body:JSON.stringify({p_owner:a.userId,p_run:next.runId,p_executor:next.executor,p_fence:next.fence,p_step:late.id,p_completion:completion})});
+    expect([401,403,404]).toContain(denied.status);
+  });
+  it('fails closed on rejected completion evidence without releasing unknown spend',async()=>{
+    const ledger=service();const lease=await admit(ledger);const step=await ledger.prepare(lease,stepInput());
+    await ledger.authorize(step);await ledger.checkpoint(step,Buffer.from('Synthetic response with unknown usage'));
+    const stale={...step,lease:{...lease,fence:lease.fence+1}};
+    await expect(ledger.settle(stale,null,'completed',0,false,{finishReason:'stop',providerRequestId:'synthetic-response',effectiveModel:null,effectiveEffort:null})).rejects.toMatchObject({code:'trace_incomplete'});
+    const run=await ledger.summary(lease.runId);expect(run).toMatchObject({state:'failed',traceState:'incomplete',costStatus:'pending',costUSD:null});
+    expect(Number(run.reservationUSD)).toBeGreaterThan(0);expect((await account()).spent_usd).toBe(0);
+    expect((await rows('ai_steps',`id=eq.${step.id}`))[0]).toMatchObject({finish_reason:null,provider_request_id:null});
   });
   it('binds one serialized provider invocation to the run without exposing ledger authority to the adapter',async()=>{
     const ledger=service();const lease=await admit(ledger);const captured:PreparedStep[]=[];let calls=0;

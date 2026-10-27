@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { expect,test } from '@playwright/test';
 import { accounts,restrictNetwork,signIn } from './auth-helpers';
-const chatAccount=JSON.parse(process.env.VULPES_TEST_ACCOUNTS_JSON??'[]')[2] as {token:string};
+import { LocalSupabase } from '../helpers/local-supabase';
+const chatAccount=JSON.parse(process.env.VULPES_TEST_ACCOUNTS_JSON??'[]')[2] as {id:string;token:string};
 test.beforeEach(async({page})=>{await restrictNetwork(page);});
 async function scenario(page:import('@playwright/test').Page,mode:string) {
   await page.route('**/api/chat',route=>route.continue({headers:{...route.request().headers(),'x-vulpes-test-scenario':mode}}));
@@ -23,6 +24,8 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   const inspectionResponse=page.waitForResponse(response=>response.url().includes('/api/executions?run=')&&response.status()===200);
   await page.getByRole('button',{name:'Inspect execution'}).click();const inspector=page.getByRole('dialog',{name:'Execution inspector'});const inspected=(await (await inspectionResponse).json()).data;
   await expect(inspector.getByRole('heading',{name:'Step 5: generation'})).toBeVisible();await expect(inspector.getByText(/RAG and web research were not used/)).toBeVisible();
+  await expect(inspector.getByText('Model requested openai/gpt-6-luna, provider-reported unknown')).toHaveCount(3);
+  await expect(inspector.getByText(/finish tool_calls \(adapter-normalized\)/)).toHaveCount(2);await expect(inspector.getByText(/finish stop \(adapter-normalized\)/)).toHaveCount(1);
   for(const [width,height,scheme] of [[360,800,'light'],[1440,900,'dark']] as const){await page.setViewportSize({width,height});await page.emulateMedia({colorScheme:scheme,reducedMotion:'reduce'});await inspector.evaluate(element=>{element.scrollTop=0;});expect(await inspector.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);await inspector.screenshot({path:`test-results/pr10-inspector-${width}-${scheme}.png`});}
   await page.setViewportSize({width:390,height:844});const zoom=await page.addStyleTag({content:'html{font-size:200%}'});expect(await inspector.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);await zoom.evaluate(element=>element.parentNode?.removeChild(element));
   await page.setViewportSize({width:1280,height:720});
@@ -48,6 +51,25 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   await page.setViewportSize({width:390,height:844});await page.addStyleTag({content:'html{font-size:200%}'});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.getByLabel('Message Ask Vulpes').focus();await expect(page.getByLabel('Message Ask Vulpes')).toBeFocused();
 });
+test('Ask reads retained message state when replayed execution metadata has expired',async({page})=>{
+  await start(page);
+  const sent=page.waitForRequest(request=>request.url().endsWith('/api/chat')&&request.postDataJSON()?.action==='send');
+  await page.getByLabel('Message Ask Vulpes',{exact:true}).fill('Can you diagnose my synthetic symptoms?');await page.getByRole('button',{name:'Send',exact:true}).click();
+  const input=(await sent).postDataJSON();await expect(page.getByText('Response saved.',{exact:true})).toBeVisible();
+  const db=new LocalSupabase();await db.admin(`/rest/v1/ai_runs?user_id=eq.${chatAccount.id}&client_request_id=eq.${input.client_request_id}`,'PATCH',{expires_at:new Date(Date.now()-1000).toISOString()});
+  const headers={Authorization:`Bearer ${chatAccount.token}`};
+  const before=(await(await page.request.get(`/api/conversations?view=messages&id=${input.conversation_id}`,{headers})).json()).data;
+  expect(before.run).toBeNull();expect(before.items).toHaveLength(2);
+  await page.route('**/api/chat',route=>route.continue({postData:JSON.stringify(input)}));
+  const replay=page.waitForResponse(response=>response.url().endsWith('/api/chat'));
+  await page.getByLabel('Message Ask Vulpes',{exact:true}).fill(input.message.text);await page.getByRole('button',{name:'Send',exact:true}).click();
+  expect((await(await replay).json()).data).toEqual({kind:'retained',conversationId:input.conversation_id,message:{id:input.message.id,status:'completed'}});
+  await expect(page.getByText('This request already exists or another run is active. Reading saved state.',{exact:true})).toBeVisible();
+  await expect(page.getByLabel('Message Ask Vulpes',{exact:true})).toBeEnabled();
+  const after=(await(await page.request.get(`/api/conversations?view=messages&id=${input.conversation_id}`,{headers})).json()).data;
+  expect(after.items).toEqual(before.items);expect(after.run).toBeNull();
+});
+
 test('Ask preserves a truncated prefix and offers an explicit new request',async({page})=>{
   await scenario(page,'truncated');await start(page);await page.getByLabel('Message Ask Vulpes').fill('Synthetic interrupted question');await page.getByRole('button',{name:'Send',exact:true}).click();
   await expect(page.getByText('Durable synthetic prefix 🦊',{exact:true})).toBeVisible();await expect(page.getByText('Incomplete response',{exact:true})).toBeVisible();await expect(page.getByText(/Total cost unknown/)).toBeVisible();

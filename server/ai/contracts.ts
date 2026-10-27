@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { CountSchema, DecimalUSDSchema } from '../../shared/primitives.js';
 import { API_JSON_LIMIT_BYTES } from '../../shared/api.js';
 import type { PaidRequestDispatcher } from './ledger/dispatcher.js';
+import { rejectCredentials } from '../security/credentials.js';
 
 export const GenerationFamilySchema = z.enum(['openrouter_responses', 'vertex_generate_content']);
 export type GenerationFamily = z.infer<typeof GenerationFamilySchema>;
@@ -46,11 +47,20 @@ export const NormalizedUsageSchema = z.strictObject({
 export type NormalizedUsage = z.infer<typeof NormalizedUsageSchema>;
 export function normalizeUsage(value: unknown): NormalizedUsage { return NormalizedUsageSchema.parse(value); }
 
+const responseIdentifier=z.string().min(1).max(200).regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/).refine(value=>!rejectCredentials(value),'Credential-shaped metadata is not retained.');
+export const GenerationCompletionSchema=z.strictObject({
+  finishReason:z.enum(['stop','tool_calls','length','blocked']),
+  providerRequestId:responseIdentifier.nullable().default(null),
+  effectiveModel:responseIdentifier.nullable().default(null),
+  effectiveEffort:responseIdentifier.max(100).nullable().default(null),
+});
+export type GenerationCompletion=z.infer<typeof GenerationCompletionSchema>;
+
 export const GenerationEventSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('text.delta'), text: z.string() }),
   z.strictObject({ type: z.literal('tool.call'), call: ToolCallSchema }),
   z.strictObject({ type: z.literal('usage'), usage: NormalizedUsageSchema }),
-  z.strictObject({ type: z.literal('completed'), finishReason: z.enum(['stop', 'tool_calls', 'length', 'blocked']), continuation: ProviderContinuationSchema.nullable() }),
+  z.strictObject({ type: z.literal('completed'), finishReason: GenerationCompletionSchema.shape.finishReason, continuation: ProviderContinuationSchema.nullable(), metadata:GenerationCompletionSchema.omit({finishReason:true}).optional() }),
 ]);
 export type GenerationEvent = z.infer<typeof GenerationEventSchema>;
 export interface GenerationAdapter {

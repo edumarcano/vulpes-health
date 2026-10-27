@@ -13,7 +13,7 @@ import {databaseTables} from '../tests/fixtures/database-graph.js';
 assert.deepEqual(process.argv.slice(2),['--allow-disposable-reset'],'Pass --allow-disposable-reset for the local upgrade proof.');
 assertLocalStack();localStatus();
 const db=new LocalSupabase();
-const names=['20261026000100_run_ledger.sql','20261026000200_run_reconciliation.sql','20261026000300_budget_settings.sql','20261026000400_budget_read.sql','20261026000500_usage_evidence.sql','20261026000600_budget_scope_names.sql','20261026000700_conversations.sql','20261026000800_metric_inventory.sql','20261026000900_chat_checkpoints.sql','20261026001000_chat_cancel_receipts.sql','20261026001100_live_verification_allocation.sql','20261026001200_durable_route_cost_blocks.sql'];
+const names=['20261026000100_run_ledger.sql','20261026000200_run_reconciliation.sql','20261026000300_budget_settings.sql','20261026000400_budget_read.sql','20261026000500_usage_evidence.sql','20261026000600_budget_scope_names.sql','20261026000700_conversations.sql','20261026000800_metric_inventory.sql','20261026000900_chat_checkpoints.sql','20261026001000_chat_cancel_receipts.sql','20261026001100_live_verification_allocation.sql','20261026001200_durable_route_cost_blocks.sql','20261027000100_completion_metadata.sql','20261027000200_retained_chat_replay.sql'];
 const parked=path.resolve(projectRoot,'supabase/.temp/pr08-upgrade-migrations');
 const files=names.map(name=>{
   const source=path.resolve(projectRoot,'supabase/migrations',name);const destination=path.resolve(parked,name);
@@ -112,10 +112,19 @@ try{
   assert.deepEqual(await(await db.admin('/rest/v1/usage_buckets?order=id','GET')).json(),bucketsBeforeChat);
   phase='seed existing violated route';await db.admin(`/rest/v1/ai_steps?id=eq.${ga.ids.ai_steps}`,'PATCH',{provider:'openrouter',model_id:'synthetic-upgrade-bound',cost_bound_state:'exceeded'});
   phase='apply PR10';const pr09A=await snapshot(a.id);const pr09B=await snapshot(b.id);
-  for(const file of files.slice(10))renameSync(file.destination,file.source);runSupabase(['migration','up','--local'],true);await waitForLocalApi();
+  for(const file of files.slice(10,12))renameSync(file.destination,file.source);runSupabase(['migration','up','--local'],true);await waitForLocalApi();
   assert.deepEqual(await snapshot(a.id),pr09A);assert.deepEqual(await snapshot(b.id),pr09B);
   assert.deepEqual(await(await db.admin('/rest/v1/usage_buckets?order=id','GET')).json(),bucketsBeforeChat);
   const routeBlocks=await(await db.admin('/rest/v1/ai_route_cost_blocks?provider=eq.openrouter&model_id=eq.synthetic-upgrade-bound','GET')).json();assert.equal(routeBlocks.length,1);
+  phase='snapshot populated M3';const m3A=await snapshot(a.id);const m3B=await snapshot(b.id);
+  phase='apply M3 review remediation';for(const file of files.slice(12))renameSync(file.destination,file.source);runSupabase(['migration','up','--local'],true);await waitForLocalApi();
+  for(const [owner,before] of [[a.id,m3A],[b.id,m3B]] as const){
+    const after=await snapshot(owner);
+    for(const table of databaseTables){const original=before[table]!;const keys=Object.keys(original[0]!);
+      assert.deepEqual(after[table]!.map(row=>Object.fromEntries(keys.map(key=>[key,row[key]]))),original,'Review remediation changed existing M3 data.');}
+    assert(after.ai_steps!.every(step=>step.effective_model_id===null),'Legacy metadata must remain unknown.');
+  }
+  assert.deepEqual(await(await db.admin('/rest/v1/usage_buckets?order=id','GET')).json(),bucketsBeforeChat);
   phase='exercise new atomic message transaction';
   await db.admin(`/rest/v1/ai_runs?id=eq.${ga.ids.ai_runs}`,'PATCH',{status:'completed',finished_at:new Date().toISOString()});
   const conversation=randomUUID();const executor=randomUUID();const requestId=randomUUID();const messageId=randomUUID();
@@ -136,7 +145,7 @@ try{
   const maintenance=spawnSync(process.execPath,['node_modules/tsx/dist/cli.mjs','scripts/cleanup.ts'],{cwd:projectRoot,env:localEnvironment(),encoding:'utf8',timeout:60000});
   assert.equal(maintenance.status,0);const cleaned=JSON.parse(maintenance.stdout.trim());assert(cleaned.removed>=1);assert.equal(cleaned.interrupted,1);assert.equal(cleaned.conservative,1);
   const pending=await(await db.admin(`/rest/v1/usage_reservations?step_id=eq.${pendingStep}`,'GET')).json();assert.equal(pending[0].status,'settled');assert.equal(Number(pending[0].known_cost_usd),0.01);
-  report={scope:'local_synthetic_forward_upgrade',base:'fe6675b',migrationsApplied:names.length,owners:2,tablesPreserved:databaseTables.length,originalRowsUnchanged:true,renamedStatesPreserved:['reserved','pending','settled'],postMigrationSettlementAndReplay:true,crossUserDenied:true,populatedPR08ToPR09Unchanged:true,populatedPR09ToPR10Unchanged:true,backfilledRouteBlock:true,atomicChatReplay:true,maintenance:{removed:cleaned.removed,interrupted:cleaned.interrupted,conservative:cleaned.conservative}};
+  report={scope:'local_synthetic_forward_upgrade',base:'fe6675b',migrationsApplied:names.length,owners:2,tablesPreserved:databaseTables.length,originalRowsUnchanged:true,renamedStatesPreserved:['reserved','pending','settled'],postMigrationSettlementAndReplay:true,crossUserDenied:true,populatedPR08ToPR09Unchanged:true,populatedPR09ToPR10Unchanged:true,populatedM3RemediationUnchanged:true,legacyCompletionMetadataUnknown:true,backfilledRouteBlock:true,atomicChatReplay:true,maintenance:{removed:cleaned.removed,interrupted:cleaned.interrupted,conservative:cleaned.conservative}};
 }catch(error){const safe=error instanceof Error && error.message.startsWith('Synthetic ') ? ' '+error.message : '';console.error('Forward-upgrade proof failed at '+phase+'.'+safe+' Inspect the guarded synthetic stack and restored migration files.');process.exitCode=1;}
 finally{restore();runSupabase(['migration','up','--local'],true);await db.cleanup();
   if(ownsSyntheticRoute){const cleaned=spawnSync('docker',['exec','supabase_db_vulpes-health-pr03-test','psql','-U','postgres','-d','postgres','-c',"delete from public.ai_route_cost_blocks where provider='openrouter' and model_id='synthetic-upgrade-bound'"],{cwd:projectRoot,env:localEnvironment(),encoding:'utf8',timeout:15000});

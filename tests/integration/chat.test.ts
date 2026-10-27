@@ -57,6 +57,51 @@ async function stream(response:Response) {
 }
 const send=(id:string,text='How has my imported weight changed?')=>({action:'send',conversation_id:id,client_request_id:randomUUID(),message:{id:randomUUID(),text},depth:'auto'});
 describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
+  it('replays retained message receipts after run expiry even when inference is unavailable',async()=>{
+    let calls=0;const transport:RequestTransport={mode:'mock',async *send(){calls++;yield responseFrame([assistantOutput('Saved synthetic answer')]);}};
+    const id=await conversation();const input=send(id);let run='';
+    await withApi(syntheticChatDependencies(transport),async api=>{const events=await stream(await api('/api/chat',input));expect(events.at(-1)?.type).toBe('run.completed');run=events[0]!.run_id;});
+    await db.admin(`/rest/v1/ai_runs?id=eq.${run}`,'PATCH',{expires_at:new Date(Date.now()-1000).toISOString()});await new ExecutionService(a).reconcile();
+    expect(await rows('ai_runs',`id=eq.${run}`)).toHaveLength(0);
+    const expected={kind:'retained',conversationId:id,message:{id:input.message.id,status:'completed'}};
+    const ledger=new ExecutionService(a,{maxRunCostUSD:'0.25'});
+    const atomic=await ledger.admit({...admission(id),clientRequestId:input.client_request_id,requestHash:requestHash(ChatSendRequestSchema.parse(input))},input.message);
+    expect(atomic.result).toEqual(expected);expect(atomic.lease).toBeNull();
+    const denied=await db.request('/rest/v1/rpc/replay_chat_v1',tokenA,{method:'POST',body:JSON.stringify({p_owner:a.userId,p_request:{conversationId:id,clientRequestId:input.client_request_id,requestHash:requestHash(ChatSendRequestSchema.parse(input))},p_message:input.message})});
+    expect([401,403,404]).toContain(denied.status);
+    await withApi(null,async api=>{
+      const replays=await Promise.all([api('/api/chat',input),api('/api/chat',input)]);
+      for(const replay of replays){expect(replay.status).toBe(200);expect((await replay.json()).data).toEqual(expected);}
+      for(const changed of [
+        {...input,message:{...input.message,text:'Changed text'}},
+        {...input,message:{...input.message,id:randomUUID()}},
+        {...input,client_request_id:randomUUID()},
+        {...input,conversation_id:await conversation()},
+      ])expect((await api('/api/chat',changed)).status).toBe(409);
+      expect((await api('/api/chat',input,tokenB)).status).toBe(404);
+      await service().mutate({action:'archive',id,client_request_id:randomUUID()});
+      expect((await(await api('/api/chat',input)).json()).data).toEqual(expected);
+      const saved=(await(await api(`/api/conversations?view=messages&id=${id}`)).json()).data;
+      expect(saved.run).toBeNull();expect(saved.items).toHaveLength(2);expect(saved.items[1].parts).toEqual([{type:'text',text:'Saved synthetic answer'}]);
+      await service().mutate({action:'delete',id,confirm:true,client_request_id:randomUUID()});
+      expect((await api('/api/chat',input)).status).toBe(404);
+    });
+    expect(calls).toBe(1);expect(await rows('ai_runs',`user_id=eq.${a.userId}`)).toHaveLength(0);
+  });
+  it('retains observed completion metadata in the owned inspector after private response expiry',async()=>{
+    const transport:RequestTransport={mode:'mock',async *send(){yield Buffer.from('data: '+JSON.stringify({type:'response.completed',response:{id:'resp-synthetic-metadata',model:'synthetic/effective-model',reasoning:{effort:'medium'},status:'completed',output:[assistantOutput('Synthetic metadata answer')],usage:{input_tokens:50,output_tokens:20,cost:'0.001'}}})+'\n\n');}};
+    await withApi(syntheticChatDependencies(transport),async api=>{
+      const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe('run.completed');
+      const run=events[0]!.run_id;
+      const overview=async()=>(await(await api(`/api/executions?run=${run}`)).json()).data;
+      const expected={providerRequestId:'resp-synthetic-metadata',finishReason:'stop',model:'openai/gpt-6-luna',effectiveModel:'synthetic/effective-model',requestedEffort:'low',effectiveEffort:'medium'};
+      const before=await overview();expect(before.steps[0]).toMatchObject(expected);
+      expect((await api(`/api/executions?run=${run}`,undefined,tokenB)).status).toBe(404);
+      await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.userId}`,'PATCH',{created_at:new Date(Date.now()-2000).toISOString(),expires_at:new Date(Date.now()-1000).toISOString()});
+      const payload=(await(await api(`/api/executions?view=payload&run=${run}&step=${before.steps[0].id}&part=output`)).json()).data;
+      expect(payload.state).toBe('expired');expect((await overview()).steps[0]).toMatchObject(expected);
+    });
+  });
   it('answers imported data, preserves exact multi-step evidence, replays once and reloads without inference',async()=>{
     const transport=new SyntheticChatTransport();
     await withApi(syntheticChatDependencies(transport),async api=>{
@@ -80,6 +125,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
       const overview=await api(`/api/executions?run=${runId}`);expect(overview.status).toBe(200);
       const inspected=(await overview.json()).data;expect(inspected.steps.map((step:{type:string})=>step.type)).toEqual(steps.map(step=>step.step_type));
       expect(inspected.steps[0].costUSD).toBe('0.001');expect(inspected.evidenceRevision).toBe('current');
+      expect(inspected.steps.filter((step:{type:string})=>step.type==='generation').map((step:{finishReason:string})=>step.finishReason)).toEqual(['tool_calls','tool_calls','stop']);
       await db.admin(`/rest/v1/ai_steps?id=eq.${paid[0]!.id}`,'PATCH',{cost_usd:'0.1234567890123456789'});
       expect((await (await api(`/api/executions?run=${runId}`)).json()).data.steps[0].costUSD).toBe('0.1234567890123456789');
       await db.admin(`/rest/v1/ai_steps?id=eq.${paid[0]!.id}`,'PATCH',{cost_usd:'0.001'});
@@ -145,6 +191,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
       const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe(scenario==='missing_usage'?'run.completed':'run.failed');
       const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;
       if(scenario!=='repeated_call'){expect(saved.run.costStatus).toBe('pending');expect(Number(saved.run.reservationUSD)).toBeGreaterThan(0);}
+      if(scenario==='missing_usage')expect((await rows('ai_steps',`run_id=eq.${saved.run.id}`))[0]).toMatchObject({finish_reason:'stop',provider_request_id:null,effective_model_id:null,effective_effort:null});
       if(scenario==='truncated'){expect(saved.items[1].parts).toEqual([{type:'text',text:'Durable synthetic prefix 🦊'}]);expect(saved.items[1].status).toBe('failed');}
       const count=transport.requests.length;await api(`/api/conversations?view=messages&id=${id}`);expect(transport.requests).toHaveLength(count);
     });
@@ -178,6 +225,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
   });
   it('interrupted process is reconciled on reload without taking execution ownership',async()=>{
     const id=await conversation();const agent=new VulpesAgent(a,syntheticChatDependencies());const admitted=await agent.admit(ChatSendRequestSchema.parse(send(id)));expect(admitted.lease).toBeTruthy();
+    if(!admitted.lease)throw new Error('Expected execution authority.');
     await db.admin(`/rest/v1/ai_runs?id=eq.${admitted.result.run.id}`,'PATCH',{lease_expires_at:new Date(Date.now()-1000).toISOString()});
     const saved=await service().read(ConversationQuerySchema.parse({view:'messages',id}));expect('run' in saved && saved.run).toMatchObject({state:'interrupted'});
     expect(await rows('ai_steps',`run_id=eq.${admitted.result.run.id}`)).toHaveLength(0);
@@ -250,6 +298,7 @@ describe('owned conversations and atomic admission',()=>{
     const id=await conversation();const ledger=new ExecutionService(a,{maxRunCostUSD:'0.25'});const input=admission(id);const message={id:randomUUID(),text:'  Synthetic   question  '};
     const result=await Promise.all([ledger.admit(input,message),ledger.admit(input,message)]);
     expect(result.map(r=>r.result.kind).sort()).toEqual(['admitted','existing']);
+    if(result[0]!.result.kind==='retained')throw new Error('Expected a retained run, not an expired receipt.');
     expect(await rows('messages',`conversation_id=eq.${id}`)).toHaveLength(2);
     expect((await service().owned(id)).title).toBe('Synthetic question');
     await expect(ledger.admit({...input,clientRequestId:randomUUID()},message)).rejects.toMatchObject({status:409});

@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { Decimal } from 'decimal.js';
 import { models } from '../../config/models.js';
 import { everydayAdapterVersion } from '../../config/everyday-versions.js';
-import { normalizeUsage,requireGenerationCapabilities,type GenerationAdapter,type GenerationEvent,type GenerationRequest,ToolCallSchema } from '../contracts.js';
+import { normalizeUsage,requireGenerationCapabilities,GenerationCompletionSchema,type GenerationAdapter,type GenerationEvent,type GenerationRequest,ToolCallSchema } from '../contracts.js';
 import { blocksOf,continuationFor } from '../continuation.js';
 import type { PaidRequestDispatcher } from '../ledger/dispatcher.js';
 
-const completedSchema=z.object({type:z.enum(['response.completed','response.incomplete']),response:z.object({status:z.enum(['completed','incomplete']),output:z.array(z.json()),usage:z.record(z.string(),z.json()).nullish(),incomplete_details:z.object({reason:z.string()}).nullish()})});
+const completedSchema=z.object({type:z.enum(['response.completed','response.incomplete']),response:z.object({id:GenerationCompletionSchema.shape.providerRequestId.optional(),model:GenerationCompletionSchema.shape.effectiveModel.optional(),reasoning:z.object({effort:GenerationCompletionSchema.shape.effectiveEffort.optional()}).nullish(),status:z.enum(['completed','incomplete']),output:z.array(z.json()),usage:z.record(z.string(),z.json()).nullish(),incomplete_details:z.object({reason:z.string()}).nullish()})});
 function mappedTurns(request:GenerationRequest):unknown[] {
   const blocks=blocksOf(request.continuation);let end=0;
   for(const b of blocks){if(b.at<end || b.at+b.count>request.turns.length)throw new Error('invalid_continuation');end=b.at+b.count;}
@@ -82,7 +82,8 @@ export class OpenRouterResponsesAdapter implements GenerationAdapter {
       if(done.response.usage)out.push({type:'usage',usage:providerUsage(done.response.usage)});
       const count=(finalText ? 1 : 0)+calls.length;
       const continuation=continuationFor([...blocksOf(request.continuation),...(count ? [{at:request.turns.length,count,items:done.response.output}] : [])]);
-      terminal=true;out.push({type:'completed',finishReason:blocked ? 'blocked' : done.type==='response.incomplete' ? 'length' : calls.length ? 'tool_calls' : 'stop',continuation});return out;
+      terminal=true;out.push({type:'completed',finishReason:blocked ? 'blocked' : done.type==='response.incomplete' ? 'length' : calls.length ? 'tool_calls' : 'stop',continuation,
+        metadata:{providerRequestId:done.response.id??null,effectiveModel:done.response.model??null,effectiveEffort:done.response.reasoning?.effort??null}});return out;
     };
     for await(const chunk of options.dispatch.send({body,metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},redactedHeaders:['authorization']},adapterVersion:everydayAdapterVersion,requestedEffort:models.everyday.reasoning.effort},options.signal)) {
       options.signal.throwIfAborted();frameBytes+=chunk.byteLength;

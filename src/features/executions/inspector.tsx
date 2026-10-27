@@ -59,8 +59,9 @@ export default function Inspector({run,onClose}:{run:string;onClose:()=>void}) {
       <p>Evidence revision: {query.data.evidenceRevision}{query.data.evidenceRevision==='stale'?' (historical; current data has changed)':''}.</p>
       <p>Seven-day private trace retention. RAG and web research were not used. This view shows what Vulpes sent and received, not hidden provider instructions or reasoning.</p></section>
       {query.data.steps.map(step=><section key={step.id} className="inspection-step" data-step-id={step.id}><h3>Step {step.sequence}: {step.type}{step.toolName?` · ${step.toolName}`:''}</h3>
-        <p>{step.status} · dispatch {step.dispatchState} · {step.startedAt}</p><p>{step.provider??'Local tool'} · {step.model??'no model'} · adapter {step.adapterVersion??'unknown'}</p>
-        <p>Effort requested {step.requestedEffort??'unknown'}, effective {step.effectiveEffort??'unknown'} · finish {step.finishReason??'unknown'}</p>
+        <p>{step.status} · dispatch {step.dispatchState} · {step.startedAt}</p><p>{step.provider??'Local tool'} · adapter {step.adapterVersion??'unknown'}</p>
+        <p>Model requested {step.model??'none'}, provider-reported {step.effectiveModel??'unknown'}</p>
+        <p>Effort requested {step.requestedEffort??'unknown'}, provider-reported {step.effectiveEffort??'unknown'} · finish {step.finishReason??'unknown'} (adapter-normalized)</p>
         <p>Request SHA-256: {step.requestBodyHash??'unavailable'}</p><p>Cost {step.costStatus}: {step.costUSD===null?'unknown':`$${step.costUSD}`} · bound {step.costBoundState}</p>
         <p>Tokens: input {step.usage.inputTokens??'unknown'}, output {step.usage.outputTokens??'unknown'}, reasoning {step.usage.reasoningTokens??'unknown'}, cache read {step.usage.cacheReadTokens??'unknown'}, cache write {step.usage.cacheWriteTokens??'unknown'}</p>
         <details><summary>Request metadata and price snapshot</summary><pre className="inspection-raw">{JSON.stringify({request:step.requestMetadata,price:step.priceSnapshot,providerRequestId:step.providerRequestId},null,2)}</pre></details>

@@ -58,6 +58,8 @@ Accept only `auto`, `everyday`, `intermediate`, `advanced`. Validate all referen
 
 Initial admission inserts the user message and assistant placeholder in the same transaction, then returns SSE. Identical replay returns JSON `{data:{kind:"existing",run:RunSummary},request_id}`. Another active request returns the same envelope with `kind:"busy"`; its run includes the owned conversation link. Neither response grants execution authority. Reusing a message ID for another request conflicts.
 
+After 90-day execution retention removes the run, an identical retained user-message receipt returns `{data:{kind:"retained",conversationId,message:{id,status:"completed"}},request_id}`. The client reloads conversation history; this response contains no execution authority or reconstructed run. Receipt checks precede provider availability checks and repeat inside admission. Changed input, message ID, conversation, or request-key reuse returns 409; a deleted or foreign conversation returns 404.
+
 ### Conversation operations
 
 | Operation | Fields / response |

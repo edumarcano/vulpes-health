@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { AdmissionResultSchema, RunSummarySchema, type TerminalRunState } from '../../../shared/executions.js';
+import { AdmissionResultSchema, RunSummarySchema, type AdmissionResult, type TerminalRunState } from '../../../shared/executions.js';
 import { AnalysisDepthSchema, HashSchema, UUIDSchema } from '../../../shared/primitives.js';
 import type { AuthContext } from '../../auth/session.js';
 import { administrativeClient } from '../../db/administrative.js';
@@ -8,11 +8,12 @@ import type { Database, Json } from '../../db/database.types.js';
 import { HttpFailure } from '../../http/failure.js';
 import { readPayload } from '../../security/private-payloads.js';
 import { encryptBytes, MAX_PAYLOAD_BYTES, readEncryptionKeys, type PayloadPurpose } from '../../security/encryption.js';
-import { normalizeUsage, type NormalizedUsage } from '../contracts.js';
+import { normalizeUsage, GenerationCompletionSchema, type GenerationCompletion, type NormalizedUsage } from '../contracts.js';
 import { executionPolicy } from './policy.js';
 import { priceUsage, reserveMaximum, VerifiedPriceSchema, type VerifiedPrice } from './pricing.js';
 
 export interface RunLease { readonly runId: string; readonly executor: string; readonly fence: number; readonly deadlineAt: string }
+type Admission={result:Extract<AdmissionResult,{kind:'admitted'}>;lease:RunLease} | {result:Exclude<AdmissionResult,{kind:'admitted'}>;lease:null};
 export const AdmissionInputSchema = z.strictObject({
   conversationId: UUIDSchema, clientRequestId: UUIDSchema, requestHash: HashSchema, depth: AnalysisDepthSchema,
   route: z.strictObject({ role: z.enum(['everyday','intermediate','advanced']), provider: z.enum(['openrouter','vertex_ai']), model: z.string().min(1).max(200), effort: z.string().max(100).nullable() }),
@@ -53,13 +54,21 @@ export class ExecutionService {
   async reconcile() {
     return this.rpc('reconcile_runs_v1',{ p_owner:this.context.userId,p_batch_size:100 });
   }
-  async admit(input: z.infer<typeof AdmissionInputSchema>, message?: {id:string;text:string}) {
+  async replayChat(input:{conversationId:string;clientRequestId:string;requestHash:string},message:{id:string;text:string}) {
+    const result=await this.rpc('replay_chat_v1',{p_owner:this.context.userId,p_request:input,p_message:message});
+    if(result===null)return null;
+    const replay=AdmissionResultSchema.parse(result);
+    if(replay.kind!=='existing' && replay.kind!=='retained')throw new HttpFailure(503,'execution_unavailable','The saved request could not be read.');
+    return replay;
+  }
+  async admit(input: z.infer<typeof AdmissionInputSchema>, message?: {id:string;text:string}):Promise<Admission> {
     const request = AdmissionInputSchema.parse(input);
     await this.reconcile();
     const executor = randomUUID();
     const args={ p_owner:this.context.userId,p_request:{ ...request,maxCostUSD:this.policy.maxRunCostUSD },p_executor:executor };
     const result = AdmissionResultSchema.parse(message ? await this.rpc('admit_chat_v1',{...args,p_message:message}) : await this.rpc('admit_run_v1',args));
-    return { result, lease:result.kind === 'admitted' ? { runId:result.run.id,executor,fence:1,deadlineAt:result.run.deadlineAt } satisfies RunLease : null };
+    if(result.kind==='admitted')return {result,lease:{runId:result.run.id,executor,fence:1,deadlineAt:result.run.deadlineAt}};
+    return {result,lease:null};
   }
   async summary(runId: string) {
     UUIDSchema.parse(runId);await this.reconcile();
@@ -105,7 +114,7 @@ export class ExecutionService {
     return this.rpc('checkpoint_step_v1',{ p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,
       p_step:step.id,p_output:output,...(message ? {p_message:message} : {}) });
   }
-  async settle(step: PreparedStep, usage: NormalizedUsage | null, status: 'completed'|'failed'|'cancelled'|'interrupted', expectedVersion=0, notSent=false) {
+  async settle(step: PreparedStep, usage: NormalizedUsage | null, status: 'completed'|'failed'|'cancelled'|'interrupted', expectedVersion=0, notSent=false, completion?:GenerationCompletion) {
     const checked=usage ? normalizeUsage(usage) : null;
     let traceIncomplete=false;let usageEvidence:Record<string,Json>={};
     if(checked && !notSent && step.type!=='tool') {
@@ -117,7 +126,7 @@ export class ExecutionService {
     }
     const charge = notSent || step.type === 'tool' ? {source:'not_sent',costUSD:'0'} : checked && step.price ? priceUsage(step.price,checked) : {source:'pending',costUSD:null};
     const result=RunSummarySchema.parse(await this.rpc('settle_step_v1',{ p_owner:this.context.userId,p_run:step.lease.runId,p_step:step.id,
-      p_evidence:{ expectedVersion,...charge,...usageEvidence,...(traceIncomplete ? {traceIncomplete:true}: {}) },p_status:status }));
+      p_evidence:{ expectedVersion,...charge,...usageEvidence,...(completion ? {completion:GenerationCompletionSchema.parse(completion),executor:step.lease.executor,fence:step.lease.fence} : {}),...(traceIncomplete ? {traceIncomplete:true}: {}) },p_status:status }));
     if(result.traceState==='incomplete' && ['admitted','running'].includes(result.state)){await this.finish(step.lease,'failed');throw new HttpFailure(503,'trace_incomplete','Usage was accounted for, but execution evidence could not be saved.');}
     return result;
   }
