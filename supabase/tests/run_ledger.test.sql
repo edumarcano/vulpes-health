@@ -5,6 +5,7 @@ select no_plan();
 create temporary table ledger_rpc(signature text primary key,service_access boolean);
 insert into ledger_rpc values
  ('public.lock_run_v1(uuid,uuid,uuid,bigint,boolean)',false),
+ ('public.record_step_completion_v1(uuid,uuid,uuid,bigint,uuid,jsonb)',false),
  ('public.store_run_envelope_v1(uuid,jsonb,text)',false),
  ('public.run_summary_v1(uuid,uuid)',true),
  ('public.admit_run_v1(uuid,jsonb,uuid)',true),
@@ -35,5 +36,6 @@ select has_column('public','ai_steps','usage_payload_id','raw usage has an encry
 select has_column('public','usage_reservations','uncertain_since','uncertain holds have a durable deadline');
 select has_column('public','usage_reservations','evidence_version','corrections use optimistic settlement versions');
 select has_column('public','messages','context_state','deleted evidence can be excluded from future context');
+select has_column('public','ai_steps','effective_model_id','provider-reported model remains distinct from requested model');
 select * from finish();
 rollback;

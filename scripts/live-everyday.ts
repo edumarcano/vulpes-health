@@ -24,7 +24,7 @@ export interface LiveSmokeReport {
   exactRequestsVerified:boolean;ownedToolEvidenceVerified:boolean;reloadVerified:boolean;
   maxCostUSD:string;fixtureHash:string;batchSpentUSD:string|null;batchReservedUSD:string|null;
   checkedAt:string;requested:{provider:'openrouter';model:string;effort:string;adapterVersion:string;templateVersion:string;priceId:string;priceHash:string};
-  effective:{model:null;effort:null};
+  effective:{model:string|null;effort:string|null};
   limitations:string;
 }
 // This function is reachable from the CLI only after opt-in and static
@@ -47,6 +47,7 @@ export async function runLiveEveryday(ceiling:string,allowSpend:boolean,env:Node
   let runId:string|null=null;let outcome:'passed'|'failed'='failed';let exact=false;let tools=false;let reload=false;
   let failureCode:string|null=null;
   let costUSD:string|null=null;let costStatus='unavailable';let reservationUSD:string|null=null;let traceState='unavailable';
+  let effective:LiveSmokeReport['effective']={model:null,effort:null};
   async function report(limitations:string):Promise<LiveSmokeReport> {
     let batchSpentUSD:string|null=null;let batchReservedUSD:string|null=null;
     try {
@@ -58,12 +59,13 @@ export async function runLiveEveryday(ceiling:string,allowSpend:boolean,env:Node
       if(batchSpentUSD===null || batchReservedUSD===null){outcome='failed';failureCode='verification_accounting_unavailable';}
       else if(new Money(batchSpentUSD).plus(batchReservedUSD).greaterThan(ceiling)){outcome='failed';failureCode='verification_allocation_exceeded';}
     } catch {batchSpentUSD=null;batchReservedUSD=null;outcome='failed';failureCode='verification_accounting_unavailable';}
-    return {mode:'live',scenario,result:outcome,failureCode,batchId,runId,actualProviderRequests:sent.length,costUSD,costStatus,reservationUSD,traceState,checkedAt:new Date().toISOString(),requested,effective:{model:null,effort:null},
+    return {mode:'live',scenario,result:outcome,failureCode,batchId,runId,actualProviderRequests:sent.length,costUSD,costStatus,reservationUSD,traceState,checkedAt:new Date().toISOString(),requested,effective,
       exactRequestsVerified:exact,ownedToolEvidenceVerified:tools,reloadVerified:reload,maxCostUSD:ceiling,fixtureHash,batchSpentUSD,batchReservedUSD,limitations};
   }
   try {
-    const admission=await agent.admit(input);runId=admission.result.run.id;
+    const admission=await agent.admit(input);
     if(!admission.lease)throw new Error('verification_not_admitted');
+    runId=admission.result.run.id;
     const controller=new AbortController();let terminal='';let requestedStop=false;
     for await(const event of agent.run(input,admission.lease,admission.result.run,admission.baseline,controller.signal)) {
       terminal=event.type;
@@ -73,6 +75,7 @@ export async function runLiveEveryday(ceiling:string,allowSpend:boolean,env:Node
     const inspector=new InspectionService(context);const overview=await inspector.overview(runId);
     costUSD=overview.run.costUSD;costStatus=overview.run.costStatus;reservationUSD=overview.run.reservationUSD;traceState=overview.run.traceState;
     const generation=overview.steps.filter(step=>step.type==='generation');const toolSteps=overview.steps.filter(step=>step.type==='tool');
+    const lastGeneration=generation.at(-1);effective={model:lastGeneration?.effectiveModel??null,effort:lastGeneration?.effectiveEffort??null};
     if(generation.length!==sent.length || !generation.length)throw new Error('verification_request_count_mismatch');
     for(let index=0;index<generation.length;index++) {
       const evidence=await inspector.evidence({view:'payload',run:runId,step:generation[index]!.id,part:'input'});

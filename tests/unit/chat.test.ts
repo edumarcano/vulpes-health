@@ -31,11 +31,18 @@ describe('chat contracts, bounded context and safety',()=>{
   });
 });
 describe('Everyday Responses wire adapter',()=>{
+  it('preserves observed completion identifiers, model and effort separately from requested configuration',async()=>{
+    const result=await events(Buffer.from('data: '+JSON.stringify({type:'response.completed',response:{id:'resp-synthetic-metadata',model:'synthetic/effective-model',reasoning:{effort:'medium'},status:'completed',output:[assistantOutput('Synthetic answer')],usage:null}})+'\n\n'));
+    expect(result.at(-1)).toMatchObject({type:'completed',finishReason:'stop',metadata:{providerRequestId:'resp-synthetic-metadata',effectiveModel:'synthetic/effective-model',effectiveEffort:'medium'}});
+  });
+  it.each([{id:'synthetic private text'},{model:'x'.repeat(201)},{reasoning:{effort:'Bearer synthetic-secret'}},{id:'sk-proj-'+'synthetic'.repeat(4)}])('rejects unsafe or oversized completion metadata %j',async metadata=>{
+    await expect(events(Buffer.from('data: '+JSON.stringify({type:'response.completed',response:{...metadata,status:'completed',output:[assistantOutput('Synthetic answer')]}})+'\n\n'))).rejects.toThrow();
+  });
   it('enforces privacy, stateless history and catalog bounds',()=>{
     const body=JSON.parse(Buffer.from(serializeEveryday(request)).toString());expect(body).toMatchObject({store:false,provider:{zdr:true},plugins:[],stream:true,max_output_tokens:3072});expect(body.previous_response_id).toBeUndefined();
   });
   it('parses fragmented UTF-8, CRLF, refusal, opaque state, and nullable usage',async()=>{
-    const result=await events(responseFrame([assistantOutput('Synthetic 🦊')],null));expect(result[0]).toEqual({type:'text.delta',text:'Synthetic 🦊'});expect(result.at(-1)).toMatchObject({type:'completed',finishReason:'stop'});expect(result.some(e=>e.type==='usage')).toBe(false);
+    const result=await events(responseFrame([assistantOutput('Synthetic 🦊')],null));expect(result[0]).toEqual({type:'text.delta',text:'Synthetic 🦊'});expect(result.at(-1)).toMatchObject({type:'completed',finishReason:'stop',metadata:{providerRequestId:null,effectiveModel:null,effectiveEffort:null}});expect(result.some(e=>e.type==='usage')).toBe(false);
     const refusal=await events(responseFrame([{type:'message',role:'assistant',content:[{type:'refusal',refusal:'Cannot comply'}]}]));expect(refusal.at(-1)).toMatchObject({finishReason:'blocked'});
     await expect(events(Buffer.from(responseFrame([assistantOutput('ok')]).toString().replaceAll('\n','\r\n')),3)).resolves.toHaveLength(3);
   });

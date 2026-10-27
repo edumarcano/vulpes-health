@@ -42,7 +42,7 @@ export class InspectionService {
     const evidenceRevision=run.traceState==='removed' ? 'removed' : profile.data.data_revision===storedRun.data.data_revision ? 'current' : 'stale';
     return { run, evidenceRevision, steps: steps.map(step => ({
       id: step.id, sequence: step.sequence, type: step.step_type, status: step.status,
-      provider: step.provider, model: step.model_id, adapterVersion: step.adapter_version,
+      provider: step.provider, model: step.model_id, effectiveModel:step.effective_model_id, adapterVersion: step.adapter_version,
       requestedEffort: step.requested_effort, effectiveEffort: step.effective_effort,
       toolName: step.tool_name, startedAt: step.started_at, finishedAt: step.finished_at,
       dispatchState: step.dispatch_state, requestBodyHash: step.request_body_hash,

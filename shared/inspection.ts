@@ -17,7 +17,7 @@ export const InspectionOverviewSchema = z.strictObject({
   steps: z.array(z.strictObject({
     id: UUIDSchema, sequence: z.number().int().positive(), type: z.enum(['generation', 'decision', 'tool']),
     status: z.enum(['started', 'completed', 'failed', 'cancelled', 'interrupted']),
-    provider: nullableText, model: nullableText, adapterVersion: nullableText, requestedEffort: nullableText,
+    provider: nullableText, model: nullableText, effectiveModel:nullableText, adapterVersion: nullableText, requestedEffort: nullableText,
     effectiveEffort: nullableText, toolName: nullableText, startedAt: z.string(), finishedAt: nullableText,
     dispatchState: z.string(), requestBodyHash: nullableText, requestMetadata: z.unknown(),
     providerRequestId: nullableText, finishReason: nullableText, priceSnapshot: z.unknown(),

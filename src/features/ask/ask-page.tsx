@@ -60,7 +60,7 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
       const response=await fetch('/api/chat',{method:'POST',cache:'no-store',signal:AbortSignal.any([owner.signal,controller.signal]),headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify(input)});
       if(!owner.current())return;
       if(!response.ok){const failure=ErrorEnvelopeSchema.safeParse(await response.json());throw new Error(failure.success?failure.data.error.message:'The response could not start.');}
-      if(response.headers.get('content-type')?.startsWith('application/json')){const existing=successEnvelopeSchema(AdmissionResultSchema).parse(await response.json()).data;if(owner.current())setExistingConversation(existing.run.conversationId);await recover('This request already exists or another run is active. Reading saved state.');return;}
+      if(response.headers.get('content-type')?.startsWith('application/json')){const existing=successEnvelopeSchema(AdmissionResultSchema).parse(await response.json()).data;if(owner.current())setExistingConversation(existing.kind==='retained'?existing.conversationId:existing.run.conversationId);await recover('This request already exists or another run is active. Reading saved state.');return;}
       if(!response.headers.get('content-type')?.startsWith('text/event-stream')||!response.body)throw new Error('The response stream is unavailable.');
       const decoder=new StreamDecoder();let terminal=false;const reader=response.body.getReader();
       while(true) {

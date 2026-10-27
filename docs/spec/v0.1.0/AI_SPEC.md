@@ -118,6 +118,8 @@ Store request body once per step; use references rather than copying it into man
 
 **Visibility boundary:** exact means what Vulpes sent to its selected API. OpenRouter may transform a request downstream; provider-side instructions and private reasoning may be unavailable. Show upstream metadata only when actually exposed and label its origin. Never present a fabricated hidden prompt or chain of thought.
 
+The inspector distinguishes the requested model/effort from provider-reported values. Responses `id`, `model`, and `reasoning.effort` supply observable correlation/model/effort metadata when present; missing fields remain unknown. Finish reasons are adapter-normalized (`stop`, `tool_calls`, `length`, `blocked`). These bounded values settle with the step and survive private payload expiry within the 90-day execution retention period. Historical steps without captured metadata remain unknown.
+
 Future RAG must retain the exact included passages, document/version/page identifiers and omitted retrieval candidates. Future web research must retain fetched content actually used, URL, retrieval time and content hash, distinguishing a search snippet from a read page. A URL alone is not a complete evidence audit. These future fields can be represented as typed references now without shipping a research system.
 
 ## 9. Caching and token efficiency

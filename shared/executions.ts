@@ -17,6 +17,7 @@ export const AdmissionResultSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('admitted'), run: RunSummarySchema }),
   z.strictObject({ kind: z.literal('existing'), run: RunSummarySchema }),
   z.strictObject({ kind: z.literal('busy'), run: RunSummarySchema }),
+  z.strictObject({ kind:z.literal('retained'),conversationId:UUIDSchema,message:z.strictObject({id:UUIDSchema,status:z.literal('completed')}) }),
 ]);
 export const BudgetStateSchema = z.strictObject({
   periodStart: z.iso.date(), resetsAt: ISOInstantSchema, allocationUSD: DecimalUSDSchema.nullable(),

@@ -4,6 +4,16 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-27: M3 independent-review remediation
+
+**Scope:** Implement F1 and the bounded F2 fix from the independent review of merged PRs #11–13. Implementation, branch publication and an open PR are authorized; merge and live-provider activation remain separate.
+
+- Persist bounded provider-reported identifiers/model/effort and adapter-normalized finish reasons within the existing settlement transaction. Reuse executor/content fences; retain requested values separately. Historical unknown metadata is not reconstructed from expired traces.
+- Resolve retained message receipts under the same profile/conversation locks as admission. Return an explicit `retained` response after execution expiry, with no lease or fabricated run. Check conflicts before provider availability and repeat the receipt check inside admission.
+- Add two forward migrations without editing merged migrations or changing accounting formulas, reservation ceilings, model identities, encrypted request capture, or provider activation gates.
+
+[Remediation evidence](evidence/m3-review-remediation.md) records reproduction failures, verification and split-axis review. This remediation does not record full M3 acceptance or resolve the pending live-integration gate.
+
 ## 2026-10-26: PR 10 execution inspection and verification
 
 **Scope:** Execution-plan PR 10 on the PR 09 parent. Local synthetic verification and publication of an open dependent PR are authorized. Merge, deployment, live provider calls, price approval and production activation remain separate decisions.

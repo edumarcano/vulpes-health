@@ -37,12 +37,8 @@ export class VulpesAgent {
     }
     const baseline=baselineSafety(input.message.text);const hash=requestHash(input);
     await this.ledger.reconcile();
-    const prior=await this.context.db.from('ai_runs').select('id,request_hash').eq('user_id',this.context.userId).eq('client_request_id',input.client_request_id).maybeSingle();
-    if(prior.error)throw new HttpFailure(503,'execution_unavailable','The request could not be checked.');
-    if(prior.data) {
-      if(prior.data.request_hash!==hash)throw new HttpFailure(409,'idempotency_conflict','This request ID was already used for different input.');
-      return {result:{kind:'existing' as const,run:await this.ledger.summary(prior.data.id)},lease:null,baseline};
-    }
+    const prior=await this.ledger.replayChat({conversationId:input.conversation_id,clientRequestId:input.client_request_id,requestHash:hash},input.message);
+    if(prior)return {result:prior,lease:null,baseline};
     if(!baseline && (input.depth==='intermediate'||input.depth==='advanced'))throw new HttpFailure(503,'depth_unavailable','This analysis depth is unavailable. Select Auto or Everyday explicitly to try another depth.');
     if(!baseline && !this.dependencies)throw new HttpFailure(503,'inference_unavailable','Ask Vulpes inference is unavailable until provider verification and activation gates pass.');
     const admission=await this.ledger.admit({conversationId:input.conversation_id,clientRequestId:input.client_request_id,requestHash:hash,depth:input.depth,
@@ -101,7 +97,7 @@ export class VulpesAgent {
           }
           if(!active || !completion)throw new Error('provider_stream_truncated');
           // Settlement does not imply success or release unknown spend.
-          await this.ledger.settle(active,usage,completion.finishReason==='length' ? 'failed' : 'completed');
+          await this.ledger.settle(active,usage,completion.finishReason==='length' ? 'failed' : 'completed',0,false,{finishReason:completion.finishReason,providerRequestId:null,effectiveModel:null,effectiveEffort:null,...completion.metadata});
           if(text)request.turns.push({type:'message',role:'assistant',text});
           for(const call of toolCalls)request.turns.push({type:'tool_call',...call});
           request={...request,continuation:completion.continuation};
