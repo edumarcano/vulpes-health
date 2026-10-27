@@ -132,6 +132,7 @@ export class VulpesAgent {
               yield event({type:'card.ready',payload:{message_id:messageId,card:{type:'metric_trend',result:summary.data.data.analysis}}});
             }
             yield event({type:'tool.result',payload:{step_id:toolStep.id,tool_name:call.name,result_reference:`analysis:${toolStep.id}`,summary:summary.success ? 'Deterministic summary saved with source and coverage.' : 'Read-only result saved.'}});
+            context.manifest.included.push({reference:{id:evidence.resultId,kind:'tool_result',label:`Result of ${call.name}`},contentHash:requestHash(result),tokenEstimate:Buffer.byteLength(JSON.stringify(result))});
             request.turns.push({type:'tool_result',callId:call.callId,name:call.name,result:JSON.parse(JSON.stringify(result)) as z.infer<ReturnType<typeof z.json>>});active=null;
           }
           // A complete group is persisted only at final completion; intermediate

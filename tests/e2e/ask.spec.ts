@@ -20,6 +20,23 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   await start(page);await page.getByLabel('Message Ask Vulpes',{exact:true}).fill('How has my imported weight changed?');await page.getByRole('button',{name:'Send',exact:true}).click();
   await expect(page.getByText('Response saved.',{exact:true})).toBeVisible();await expect(page.getByText(/seven-day mean 69 kg; change -0.7 kg/)).toBeVisible();
   await expect(page.getByRole('heading',{name:'Calculated measurement summary'})).toBeVisible();await expect(page.getByText(/Run completed · reported · \$0.003/)).toBeVisible();
+  const inspectionResponse=page.waitForResponse(response=>response.url().includes('/api/executions?run=')&&response.status()===200);
+  await page.getByRole('button',{name:'Inspect execution'}).click();const inspector=page.getByRole('dialog',{name:'Execution inspector'});const inspected=(await (await inspectionResponse).json()).data;
+  await expect(inspector.getByRole('heading',{name:'Step 5: generation'})).toBeVisible();await expect(inspector.getByText(/RAG and web research were not used/)).toBeVisible();
+  for(const [width,height,scheme] of [[360,800,'light'],[1440,900,'dark']] as const){await page.setViewportSize({width,height});await page.emulateMedia({colorScheme:scheme,reducedMotion:'reduce'});await inspector.evaluate(element=>{element.scrollTop=0;});expect(await inspector.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);await inspector.screenshot({path:`test-results/pr10-inspector-${width}-${scheme}.png`});}
+  await page.setViewportSize({width:390,height:844});const zoom=await page.addStyleTag({content:'html{font-size:200%}'});expect(await inspector.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);await zoom.evaluate(element=>element.parentNode?.removeChild(element));
+  await page.setViewportSize({width:1280,height:720});
+  const first=inspector.locator('.inspection-step').first();await first.getByRole('button',{name:'Load input'}).click();await expect(first.locator('pre').filter({hasText:'"model"'}).first()).toBeVisible();
+  page.once('dialog',dialog=>void dialog.dismiss());await first.getByRole('button',{name:'Export exact bytes'}).click();
+  page.once('dialog',dialog=>void dialog.accept());const downloaded=page.waitForEvent('download');await first.getByRole('button',{name:'Export exact bytes'}).click();const file=await downloaded;
+  const expected=await page.request.get(`/api/executions?view=export&run=${inspected.run.id}&step=${inspected.steps[0].id}&part=input`,{headers});
+  expect(readFileSync((await file.path())!)).toEqual(await expected.body());
+  await page.context().grantPermissions(['clipboard-read','clipboard-write']);page.once('dialog',dialog=>void dialog.accept());
+  await first.getByRole('button',{name:'Copy exact text'}).click();await expect(first.getByText('Copied exact text.')).toBeVisible();
+  expect(Buffer.from(await page.evaluate(()=>navigator.clipboard.readText()),'utf8')).toEqual(await expected.body());
+  await first.getByRole('button',{name:'Load context'}).click();await expect(first.getByRole('heading',{name:'Included'})).toBeVisible();
+  const summaryStep=inspector.locator('.inspection-step').filter({has:page.getByRole('heading',{name:/summarize_metric/})});await summaryStep.getByRole('button',{name:'Load output'}).click();await expect(summaryStep.getByRole('heading',{name:'Calculation and sources'})).toBeVisible();await expect(summaryStep.getByText(/7 valid days/)).toBeVisible();
+  await inspector.getByRole('button',{name:'Close'}).focus();await page.keyboard.press('Escape');await expect(inspector).toHaveCount(0);await expect(page.getByRole('button',{name:'Inspect execution'})).toBeFocused();
   expect(sends).toBe(1);await page.reload();await expect(page.getByText(/seven-day mean 69 kg; change -0.7 kg/)).toBeVisible();expect(sends).toBe(1);
   for(const [width,height] of [[360,800],[390,844],[430,932],[768,1024],[1440,900]])for(const colorScheme of ['light','dark'] as const) {
     await page.setViewportSize({width:width!,height:height!});await page.emulateMedia({colorScheme,reducedMotion:'reduce'});
@@ -35,6 +52,7 @@ test('Ask preserves a truncated prefix and offers an explicit new request',async
   await scenario(page,'truncated');await start(page);await page.getByLabel('Message Ask Vulpes').fill('Synthetic interrupted question');await page.getByRole('button',{name:'Send',exact:true}).click();
   await expect(page.getByText('Durable synthetic prefix 🦊',{exact:true})).toBeVisible();await expect(page.getByText('Incomplete response',{exact:true})).toBeVisible();await expect(page.getByText(/Total cost unknown/)).toBeVisible();
   await expect(page.getByRole('button',{name:'Send again as a new request (may incur another charge)',exact:true})).toBeVisible();await page.reload();await expect(page.getByText('Durable synthetic prefix 🦊',{exact:true})).toBeVisible();await expect(page.getByText('Incomplete response',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Inspect execution'}).click();const inspector=page.getByRole('dialog',{name:'Execution inspector'});await expect(inspector.getByText(/incomplete observed prefix/)).toBeVisible();await inspector.getByRole('button',{name:'Close'}).click();
   await scenario(page,'complete');await page.getByRole('button',{name:'Send again as a new request (may incur another charge)',exact:true}).click();await expect(page.getByText('Response saved.',{exact:true})).toBeVisible();await expect(page.locator('.chat-message .chat-text').getByText('Synthetic interrupted question',{exact:true})).toHaveCount(2);
 });
 test('Ask reload during a stream reads the saved prefix without resending',async({page})=>{
@@ -52,8 +70,10 @@ test('Ask renders provider HTML, unsafe links, and fabricated references as iner
 });
 test('Ask account switching discards the pending stream and private history',async({page})=>{
   await scenario(page,'slow');await start(page);await page.getByLabel('Message Ask Vulpes').fill('Private synthetic account A question');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByText('Saved synthetic partial response.',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Inspect execution'}).click();await expect(page.getByRole('dialog',{name:'Execution inspector'})).toBeVisible();
   // Sign out in a second tab while the first tab's stream is still pending.
   const settings=await page.context().newPage();await restrictNetwork(settings);await settings.goto('/settings');await settings.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page.getByRole('heading',{name:'Sign in to Vulpes',exact:true})).toBeVisible();await settings.close();
+  await expect(page.getByRole('dialog',{name:'Execution inspector'})).toHaveCount(0);
   await signIn(page,1);await expect(page.getByText('Private synthetic account A question',{exact:true})).toHaveCount(0);await expect(page.getByText('Saved synthetic partial response.',{exact:true})).toHaveCount(0);await expect(page.getByLabel('Message Ask Vulpes')).toBeDisabled();
   expect(accounts[1]!.id).not.toBe(accounts[2]!.id);
 });

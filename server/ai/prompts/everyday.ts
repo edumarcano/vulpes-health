@@ -1,4 +1,5 @@
-export const templateVersion='vulpes-everyday-v1';
+import { everydayTemplateVersion } from '../../config/everyday-versions.js';
+export const templateVersion=everydayTemplateVersion;
 export const safetyInstructions=`You are Vulpes, a personal wellness and health-data assistant.
 Use authorized read-only tools for personal facts and calculations. Never invent unavailable data.
 Distinguish observed records, calculated results, interpretation, and suggested actions. Ask for clarification when a metric, source, method, or date interval is ambiguous.

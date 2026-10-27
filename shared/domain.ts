@@ -113,9 +113,11 @@ export const UsageSummarySchema = z.strictObject({
   costStatus: z.enum(['reported', 'estimated', 'pending', 'conservative']), reservationUSD: DecimalUSDSchema, priceSnapshotId: z.string().min(1).nullable(),
   knownCostUSD:DecimalUSDSchema.default('0'),
 });
+const ContextReferenceSchema=DataReferenceSchema.extend({kind:z.enum(['measurement','analysis','goal_revision','message','profile_field','instruction','context_selection','goal_context','tool_result'])});
 export const ContextManifestSchema = z.strictObject({
+  captureVersion:z.literal(2).optional(),
   templateVersion: z.string().min(1),
-  included: z.array(z.strictObject({ reference: DataReferenceSchema, contentHash: HashSchema, tokenEstimate: CountSchema })),
+  included: z.array(z.strictObject({ reference: ContextReferenceSchema, contentHash: HashSchema, tokenEstimate: CountSchema })),
   excluded: z.array(z.strictObject({ referenceId: z.string().min(1), reason: z.string() })),
   retrieval: z.strictObject({ ragUsed: z.literal(false), webUsed: z.literal(false) }), consentVersion: z.string().min(1), dataRevision: CountSchema,
 });

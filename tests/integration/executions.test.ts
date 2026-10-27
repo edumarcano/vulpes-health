@@ -1,6 +1,7 @@
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
 import {once} from 'node:events';
+import {spawnSync} from 'node:child_process';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {LocalSupabase} from '../helpers/local-supabase.js';
 import {localStatus} from '../../scripts/local-database.js';
@@ -24,6 +25,10 @@ const stepInput=(body=Buffer.from('{"synthetic":"🦊\\n"}')):StepInput=>({type:
   adapterVersion:'synthetic-v1',requestedEffort:'low',metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{'Content-Type':'application/json'},redactedHeaders:['authorization']},
   context:{templateVersion:'synthetic-v1',included:[],excluded:[],retrieval:{ragUsed:false,webUsed:false}}});
 async function rows(table:string,filter:string){return await (await db.admin(`/rest/v1/${table}?${filter}`,'GET')).json() as Record<string,unknown>[];}
+function clearSyntheticRoute(model:'synthetic-route-bound'|'synthetic-overcharge-active'|'synthetic-route-race') {
+  const sql=`do $$ begin if to_regclass('public.ai_route_cost_blocks') is not null then delete from public.ai_route_cost_blocks where provider='openrouter' and model_id='${model}'; end if; end $$`;
+  expect(spawnSync('docker',['exec','supabase_db_vulpes-health-pr03-test','psql','-U','postgres','-d','postgres','-c',sql],{encoding:'utf8'}).status).toBe(0);
+}
 async function admit(ledger=service(),conversation=conversationA):Promise<RunLease>{const admission=await ledger.admit(input(conversation));expect(admission.result.kind).toBe('admitted');if(!admission.lease)throw new Error();return admission.lease;}
 async function account(){return (await rows('usage_buckets',`user_id=eq.${a.userId}`))[0]!;}
 beforeEach(async()=>{
@@ -240,10 +245,39 @@ describe('persistent run and accounting transactions',()=>{
     expect(send).not.toHaveBeenCalled();await ledger.settle(step,null,'failed',0,true);expect(await account()).toMatchObject({spent_usd:0,reserved_usd:0});
   });
   it('records a provider overcharge fully and blocks further use of the violated route bound',async()=>{
-    const ledger=service();const lease=await admit(ledger);const step=await ledger.prepare(lease,stepInput());await ledger.authorize(step);
-    await ledger.settle(step,normalizeUsage({reportedCostUSD:'0.03',rawUsage:null}),'completed');expect(await account()).toMatchObject({spent_usd:0.03,reserved_usd:0});
-    expect((await rows('ai_steps',`id=eq.${step.id}`))[0]!.cost_bound_state).toBe('exceeded');
-    await expect(ledger.prepare(lease,stepInput())).rejects.toMatchObject({code:'cost_bound_exceeded'});await ledger.finish(lease,'completed');
+    const ledger=service();const model='synthetic-overcharge-active';const request=input(conversationA);
+    try {
+      const admission=await ledger.admit({...request,route:{...request.route,model}});const lease=admission.lease!;const descriptor={...stepInput(),model};
+      const step=await ledger.prepare(lease,descriptor);await ledger.authorize(step);
+      await ledger.settle(step,normalizeUsage({reportedCostUSD:'0.03',rawUsage:null}),'completed');expect(await account()).toMatchObject({spent_usd:0.03,reserved_usd:0});
+      expect((await rows('ai_steps',`id=eq.${step.id}`))[0]!.cost_bound_state).toBe('exceeded');
+      await expect(ledger.prepare(lease,descriptor)).rejects.toMatchObject({code:'cost_bound_exceeded'});await ledger.finish(lease,'completed');
+    } finally {clearSyntheticRoute(model);}
+  });
+  it('retains a violated route block after execution metadata expires',async()=>{
+    const model='synthetic-route-bound';const ledger=service();const request=input(conversationA);
+    try {
+      const admission=await ledger.admit({...request,route:{...request.route,model}});expect(admission.lease).not.toBeNull();const lease=admission.lease!;
+      const descriptor={...stepInput(),model};const step=await ledger.prepare(lease,descriptor);await ledger.authorize(step);
+      await ledger.settle(step,normalizeUsage({reportedCostUSD:'0.03',rawUsage:null}),'completed');await ledger.finish(lease,'completed');
+      await db.admin(`/rest/v1/ai_runs?id=eq.${lease.runId}`,'PATCH',{expires_at:new Date(Date.now()-1000).toISOString()});await ledger.reconcile();
+      expect(await rows('ai_steps',`run_id=eq.${lease.runId}`)).toEqual([]);
+      const next=await ledger.admit({...input(conversationA),route:{...request.route,model}});expect(next.lease).not.toBeNull();
+      await expect(ledger.prepare(next.lease!,descriptor)).rejects.toMatchObject({code:'cost_bound_exceeded'});
+    } finally {
+      // Test-only cleanup for this fixed synthetic route; never clears real routes.
+      clearSyntheticRoute(model);
+    }
+  });
+  it('rejects dispatch of an already prepared request once another account violates the route bound',async()=>{
+    const model='synthetic-route-race';const first=service();const second=service(b);const ra=input(conversationA);const rb=input(conversationB);
+    try {
+      const aRun=await first.admit({...ra,route:{...ra.route,model}});const bRun=await second.admit({...rb,route:{...rb.route,model}});
+      const descriptor={...stepInput(),model};const aStep=await first.prepare(aRun.lease!,descriptor);const bStep=await second.prepare(bRun.lease!,descriptor);
+      await second.authorize(bStep);await second.settle(bStep,normalizeUsage({reportedCostUSD:'0.03',rawUsage:null}),'completed');await second.finish(bRun.lease!,'completed');
+      await expect(first.authorize(aStep)).rejects.toMatchObject({code:'cost_bound_exceeded'});
+      await first.settle(aStep,null,'failed',0,true);await first.finish(aRun.lease!,'failed');
+    } finally {clearSyntheticRoute(model);}
   });
   it('closes an abandoned consumer with a durable cancelled run and uncertain-cost hold',async()=>{
     const ledger=service();const lease=await admit(ledger);const step=await ledger.prepare(lease,stepInput());const signals:AbortSignal[]=[];

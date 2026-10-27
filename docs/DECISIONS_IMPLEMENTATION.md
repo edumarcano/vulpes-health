@@ -4,6 +4,18 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-26: PR 10 execution inspection and verification
+
+**Scope:** Execution-plan PR 10 on the PR 09 parent. Local synthetic verification and publication of an open dependent PR are authorized. Merge, deployment, live provider calls, price approval and production activation remain separate decisions.
+
+- Resolve each inspected payload through the authenticated owner, run, step and permitted purpose. Return exact bytes separately from formatted JSON; reject malformed tool identities and projections. Clear private inspector cache on close and mark historical data revisions.
+- Keep the Everyday verification transport fixed to the Responses endpoint and behind the same dispatcher, consent checks, encrypted capture and paired reservations. A persistent synthetic batch binds one fixture revision and account bucket to the approved aggregate ceiling. A changed fixture, new month or unresolved hold cannot replenish that ceiling.
+- Preserve violated provider/model cost-bound blocks in a separate non-sensitive durable table. A reproduced inherited defect showed that 90-day execution cleanup otherwise removed the only block. Settlement records it atomically; reservation and send authorization enforce it, and the migration backfills existing violations. Clearing a block requires separately reviewed operator action.
+- Keep prices and capability/privacy evidence unverified. The explicit opt-in CLI stops before credential discovery until those gates are separately approved. Production composition stays unavailable; a successful single smoke would not by itself accept M3.
+- Evaluate deterministic controls and synthetic orchestration separately from real-model behavior. The machine-readable report records `not_run` for every real-model assessment.
+
+[PR 10 evidence](evidence/pr10-execution-inspector.md) records local checkpoints, failures and review; live evidence and the independent cumulative M3 review remain pending.
+
 ## 2026-10-26: PR 09 persisted Ask Vulpes
 
 **Scope:** Execution-plan PR 09 and the approved M3 batch plan, based on merged PR 08 (`98b097d`). Implementation, local synthetic verification, commit/push and an open PR are authorized; merge, PR 10 and live inference are not.
