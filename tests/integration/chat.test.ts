@@ -16,6 +16,7 @@ import {localRouter} from '../../server/http/router.js';
 import {StreamDecoder,type StreamEvent} from '../../shared/stream.js';
 import {SyntheticChatTransport,syntheticChatDependencies,responseFrame,assistantOutput} from '../fixtures/chat.js';
 import {readPayload} from '../../server/security/private-payloads.js';
+import {encryptBytes,readEncryptionKeys} from '../../server/security/encryption.js';
 import {executeReadTool} from '../../server/ai/tools.js';
 import {VulpesAgent,type AgentDependencies} from '../../server/ai/VulpesAgent.js';
 import type {RequestTransport} from '../../server/ai/ledger/dispatcher.js';
@@ -62,15 +63,48 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
       const preview=await api('/api/data',{action:'preview_csv',client_request_id:randomUUID(),csv:readFileSync('docs/spec/v0.1.0/fixtures/measurements-synthetic.csv','utf8'),source:{kind:'new',label:'Synthetic Ask import',origin_app:null,device_label:null},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}});
       expect(preview.status).toBe(200);const p=(await preview.json()).data;
       expect((await api('/api/data',{action:'commit_import',batch_id:p.batch_id,payload_hash:p.payload_hash,client_request_id:randomUUID()})).status).toBe(200);
-      const id=await conversation();const input=send(id);const events=await stream(await api('/api/chat',input));
+      const id=await conversation();const input={...send(id),context_selection:{metric:'weight',source_id:p.source_id,goal_id:null,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC'}};const events=await stream(await api('/api/chat',input));
       expect(events.at(-1)?.type,JSON.stringify({events:events.map(e=>({type:e.type,...(e.type==='run.failed'?{code:e.payload.code}:{})})),sizes:transport.requests.map(r=>r.length),steps:(await rows('ai_steps',`user_id=eq.${a.userId}`)).map(s=>({type:s.step_type,status:s.status,tool:s.tool_name}))})).toBe('run.completed');expect(events.filter(e=>e.type==='tool.result')).toHaveLength(2);expect(events.filter(e=>e.type==='card.ready')).toHaveLength(1);
       expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toContain('69 kg; change -0.7 kg');
       expect(events.find(e=>e.type==='run.usage')?.payload).toMatchObject({inputTokens:150,outputTokens:60,reasoningTokens:null,costUSD:'0.003'});
       expect(events.map(e=>e.seq)).toEqual(events.map((_,i)=>i+1));expect(transport.requests).toHaveLength(3);
       const runId=events[0]!.run_id;const steps=await rows('ai_steps',`run_id=eq.${runId}&order=sequence`);expect(steps).toHaveLength(5);
       const paid=steps.filter(s=>s.step_type==='generation');
+      const toolRows=steps.filter(s=>s.step_type==='tool');const manifests=[];
+      for(const generation of paid){const payload=await readPayload(a,String(generation.context_payload_id),'provider_state');expect(payload.state).toBe('available');if(payload.state!=='available')throw new Error();manifests.push(JSON.parse(payload.bytes.toString()));}
+      expect(manifests.every(manifest=>manifest.captureVersion===2)).toBe(true);
+      expect(manifests[0].included.some((item:{reference:{kind:string}})=>item.reference.kind==='instruction')).toBe(true);
+      expect(manifests[0].included.some((item:{reference:{kind:string}})=>item.reference.kind==='context_selection')).toBe(true);
+      for(let i=0;i<toolRows.length;i++){const payload=await readPayload(a,String(toolRows[i]!.output_payload_id),'tool_output');expect(payload.state).toBe('available');if(payload.state!=='available')throw new Error();const evidence=JSON.parse(payload.bytes.toString()).evidence;expect(manifests[i+1].included.some((item:{reference:{id:string;kind:string}})=>item.reference.id===evidence.resultId&&item.reference.kind==='tool_result')).toBe(true);}
       for(let i=0;i<paid.length;i++){const payload=await readPayload(a,String(paid[i]!.input_payload_id),'ai_request');expect(payload.state).toBe('available');if(payload.state==='available')expect(payload.bytes).toEqual(transport.requests[i]);}
+      const overview=await api(`/api/executions?run=${runId}`);expect(overview.status).toBe(200);
+      const inspected=(await overview.json()).data;expect(inspected.steps.map((step:{type:string})=>step.type)).toEqual(steps.map(step=>step.step_type));
+      expect(inspected.steps[0].costUSD).toBe('0.001');expect(inspected.evidenceRevision).toBe('current');
+      await db.admin(`/rest/v1/ai_steps?id=eq.${paid[0]!.id}`,'PATCH',{cost_usd:'0.1234567890123456789'});
+      expect((await (await api(`/api/executions?run=${runId}`)).json()).data.steps[0].costUSD).toBe('0.1234567890123456789');
+      await db.admin(`/rest/v1/ai_steps?id=eq.${paid[0]!.id}`,'PATCH',{cost_usd:'0.001'});
+      await db.admin(`/rest/v1/ai_steps?id=eq.${paid[0]!.id}`,'PATCH',{request_metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{Authorization:'synthetic-secret-canary'},redactedHeaders:[]}});
+      const unsafeMetadata=await (await api(`/api/executions?run=${runId}`)).text();expect(unsafeMetadata).not.toContain('synthetic-secret-canary');expect(JSON.parse(unsafeMetadata).data.steps[0].requestMetadata).toBeNull();
+      await db.admin(`/rest/v1/ai_steps?id=eq.${paid[0]!.id}`,'PATCH',{request_metadata:paid[0]!.request_metadata});
+      for(let i=0;i<paid.length;i++){
+        const url=`/api/executions?view=export&run=${runId}&step=${paid[i]!.id}&part=input`;
+        const response=await api(url);expect(response.status).toBe(200);expect(Buffer.from(await response.arrayBuffer())).toEqual(transport.requests[i]);
+        expect((await api(url,undefined,tokenB)).status).toBe(404);
+      }
+      expect((await api(`/api/executions?view=payload&run=${runId}&step=${randomUUID()}&part=input`)).status).toBe(404);
+      expect((await api(`/api/executions?view=payload&run=${runId}&step=${paid[0]!.id}&part=continuation`)).status).toBe(400);
+      const tool=steps.find(step=>step.step_type==='tool')!;
+      const inspectedTool=(await (await api(`/api/executions?view=payload&run=${runId}&step=${tool.id}&part=output`)).json()).data;
+      const storedTool=await readPayload(a,String(tool.output_payload_id),'tool_output');
+      expect(inspectedTool.state).toBe('available');expect(storedTool.state).toBe('available');
+      if(storedTool.state==='available')expect(Buffer.from(inspectedTool.base64,'base64')).toEqual(storedTool.bytes);
+      expect(JSON.parse(Buffer.from(inspectedTool.base64,'base64').toString())).toHaveProperty('result');
       expect(transport.requests[2]!.toString()).toContain('synthetic-opaque-continuation');
+      const contextRow=(await rows('private_payloads',`id=eq.${paid[0]!.context_payload_id}`))[0]!;const legacy={...manifests[0]};delete legacy.captureVersion;
+      const contextMetadata={id:String(paid[0]!.context_payload_id),user_id:a.userId,purpose:'provider_state' as const,expires_at:String(contextRow.expires_at)};
+      await db.admin(`/rest/v1/private_payloads?id=eq.${contextMetadata.id}`,'PATCH',encryptBytes(contextMetadata,Buffer.from(JSON.stringify(legacy)),readEncryptionKeys()));
+      expect((await (await api(`/api/executions?view=payload&run=${runId}&step=${paid[0]!.id}&part=context`)).json()).data.completeness).toBe('partial');
+      await db.admin(`/rest/v1/private_payloads?id=eq.${contextMetadata.id}`,'PATCH',encryptBytes(contextMetadata,Buffer.from(JSON.stringify(manifests[0])),readEncryptionKeys()));
       const replay=await api('/api/chat',input);expect(replay.headers.get('content-type')).toContain('application/json');expect((await replay.json()).data).toMatchObject({kind:'existing',run:{id:runId,state:'completed',costUSD:'0.003'}});
       expect((await api('/api/chat',{...input,message:{...input.message,text:'Changed'}})).status).toBe(409);
       const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(saved.items).toHaveLength(2);expect(saved.items[1].parts.find((part:{type:string})=>part.type==='metric_summary').result.analysis).toMatchObject({value:69,previousValue:69.7,absoluteChange:-0.7});
@@ -81,9 +115,20 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
       const message=(await rows('messages',`run_id=eq.${runId}&role=eq.assistant`))[0]!;const forged=JSON.parse(JSON.stringify(message.content_parts));for(const part of forged)if(part.type==='metric_summary')part.evidence.stepId=randomUUID();
       await db.admin(`/rest/v1/messages?id=eq.${message.id}`,'PATCH',{content_parts:forged});
       const unresolved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(unresolved.items.flatMap((m:{parts:unknown[]})=>m.parts).some((part:{type:string})=>part.type==='metric_summary')).toBe(false);
+      await addMeasurement(a,{action:'add_measurement',client_request_id:randomUUID(),source:{kind:'existing',id:p.source_id},observation:{metric:'weight',value:'68',unit:'kg',observed_at:'2026-09-16T08:00:00Z',timezone:'UTC',local_date:null,granularity:'instant',method:'user_reported',quality_flags:[]}});
+      expect((await (await api(`/api/executions?run=${runId}`)).json()).data.evidenceRevision).toBe('stale');
+      await db.admin(`/rest/v1/private_payloads?id=eq.${paid[0]!.context_payload_id}`,'PATCH',{created_at:new Date(Date.now()-3000).toISOString(),expires_at:new Date(Date.now()-1000).toISOString()});
+      expect((await (await api(`/api/executions?view=payload&run=${runId}&step=${paid[0]!.id}&part=context`)).json()).data.state).toBe('expired');
+      await db.admin(`/rest/v1/private_payloads?id=eq.${paid[0]!.input_payload_id}`,'PATCH',{nonce:'\\x000000000000000000000000'});
+      expect((await (await api(`/api/executions?view=payload&run=${runId}&step=${paid[0]!.id}&part=input`)).json()).data.state).toBe('corrupt');
+      const storedRow=(await rows('private_payloads',`id=eq.${tool.output_payload_id}`))[0]!;
+      const forgedTool=encryptBytes({id:String(tool.output_payload_id),user_id:a.userId,purpose:'tool_output',expires_at:String(storedRow.expires_at)},Buffer.from(JSON.stringify({evidence:{version:1,ownerId:b.userId,runId,stepId:tool.id,resultId:randomUUID(),dataRevision:0},result:{},providerResult:{}})),readEncryptionKeys());
+      await db.admin(`/rest/v1/private_payloads?id=eq.${tool.output_payload_id}`,'PATCH',forgedTool);
+      expect((await (await api(`/api/executions?view=payload&run=${runId}&step=${tool.id}&part=output`)).json()).data.state).toBe('corrupt');
       const deletion={action:'delete',id,confirm:true,client_request_id:randomUUID()};expect((await api('/api/conversations',deletion)).status).toBe(200);
       expect(await rows('private_payloads',`user_id=eq.${a.userId}`)).toHaveLength(0);expect(await rows('messages',`user_id=eq.${a.userId}`)).toHaveLength(0);
       expect(await new ExecutionService(a).summary(runId)).toMatchObject({conversationId:null,traceState:'removed',costUSD:'0.003'});
+      expect((await (await api(`/api/executions?view=payload&run=${runId}&step=${paid[0]!.id}&part=input`)).json()).data.state).toBe('removed');
     });
   });
   it('serializes simultaneous identical HTTP sends and never dispatches for a busy request',async()=>{
@@ -141,7 +186,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
     const original=ExecutionService.prototype.checkpointMessage;let writes=0;
     vi.spyOn(ExecutionService.prototype,'checkpointMessage').mockImplementation(async function(this:ExecutionService,lease,parts){writes++;if(writes===2)throw new Error('Synthetic storage failure');return original.call(this,lease,parts);});
     const transport:RequestTransport={mode:'mock',async *send(){yield Buffer.from('data: {"type":"response.output_text.delta","delta":"Durable prefix"}\n\n');yield Buffer.from('data: {"type":"response.output_text.delta","delta":" unsaved suffix"}\n\n');yield responseFrame([assistantOutput('Durable prefix unsaved suffix')]);}};
-    await withApi(syntheticChatDependencies(transport),async api=>{const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe('run.failed');expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toBe('Durable prefix');const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(saved.items[1].parts).toEqual([{type:'text',text:'Durable prefix'}]);expect(saved.run).toMatchObject({traceState:'incomplete',costStatus:'pending'});});
+    await withApi(syntheticChatDependencies(transport),async api=>{const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe('run.failed');expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toBe('Durable prefix');const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(saved.items[1].parts).toEqual([{type:'text',text:'Durable prefix'}]);expect(saved.run).toMatchObject({traceState:'incomplete',costStatus:'pending'});const inspected=(await (await api(`/api/executions?run=${saved.run.id}`)).json()).data;expect(inspected.run).toMatchObject({state:'failed',traceState:'incomplete',costStatus:'pending'});expect(inspected.steps[0].status).not.toBe('completed');});
   });
   it.each([1,3])('enforces request and tool ceilings with %i tool calls per response',async count=>{
     let requests=0;const transport:RequestTransport={mode:'mock',async *send(){requests++;yield responseFrame(Array.from({length:count},(_,i)=>({type:'function_call',id:`item-${requests}-${i}`,call_id:`call-${requests}-${i}`,name:'list_metrics',arguments:'{}'})));}};

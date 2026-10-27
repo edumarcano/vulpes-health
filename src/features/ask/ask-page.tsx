@@ -1,4 +1,4 @@
-import { useEffect,useReducer,useRef,useState } from 'react';
+import { lazy,Suspense,useEffect,useReducer,useRef,useState } from 'react';
 import { useInfiniteQuery,useMutation,useQueryClient,type InfiniteData } from '@tanstack/react-query';
 import { AssistantRuntimeProvider,ComposerPrimitive,MessagePrimitive,ThreadPrimitive,useExternalStoreRuntime,type AppendMessage } from '@assistant-ui/react';
 import { Link,useSearchParams } from 'react-router-dom';
@@ -13,6 +13,7 @@ import { ChatPartSchema,ConversationsPageSchema,MessagesPageSchema,type ChatMess
 import { StreamDecoder,isTerminalEvent } from '../../../shared/stream';
 import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer,initialAskState } from './state';
+const Inspector=lazy(()=>import('../executions/inspector'));
 
 function Welcome() {
   return <><Card className="welcome-card"><div className="feature-symbol"><Sparkles size={24} aria-hidden="true"/></div><p className="eyebrow">Start with what you know</p><h2>Your data comes first.</h2><p>Explore your measurements and work toward goals you choose. Start a conversation to ask a question. Opening this page makes no model requests.</p><Button asChild><Link to="/data">Explore Data <ArrowRight size={16} aria-hidden="true"/></Link></Button></Card><section className="sample-questions" aria-label="Suggested questions"><h2>Questions to explore when chat is available</h2><ul><li>How has my weight changed over time?</li><li>Do I have enough data to see a trend?</li></ul></section></>;
@@ -31,6 +32,8 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
   const [state,dispatch]=useReducer(askReducer,initialAskState);const lock=useRef(false);const abort=useRef<AbortController|null>(null);
   const [depth,setDepth]=useState<ChatSendRequest['depth']>('auto');
   const [existingConversation,setExistingConversation]=useState<string|null>(null);
+  const [inspection,setInspection]=useState<string|null>(null);
+  const inspectionTrigger=useRef<HTMLButtonElement|null>(null);
   const query=useInfiniteQuery({queryKey:key,enabled:!!session&&!!id,initialPageParam:null as string|null,retry:false,refetchOnWindowFocus:false,
     queryFn:async({signal,pageParam})=>successEnvelopeSchema(MessagesPageSchema).parse(await ownedJson('/api/conversations?'+new URLSearchParams({view:'messages',id:id!,...(pageParam?{cursor:pageParam}:{})}),session!.access_token,scope,epoch,{signal})).data,
     getNextPageParam:page=>page.nextCursor,
@@ -105,7 +108,7 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
   return <AssistantRuntimeProvider runtime={runtime}><ThreadPrimitive.Root className="conversation" aria-label="Conversation"><ThreadPrimitive.Viewport className="conversation-viewport">
     {query.hasNextPage&&<Button variant="outline" onClick={()=>void query.fetchNextPage()} disabled={query.isFetchingNextPage}>Load earlier messages</Button>}
     {!messages.length&&!query.isError&&<Welcome/>}
-    <ThreadPrimitive.Messages>{({message})=><MessagePrimitive.Root className={`chat-message chat-${message.role}`}><p className="chat-speaker">{message.role==='user'?'You':'Vulpes'}</p><MessagePrimitive.Parts components={{Text:plainText,data:{by_name:{metric_summary:SummaryPart}}}}/>{message.role==='assistant'&&message.status.type==='incomplete'&&<p className="incomplete-badge">Incomplete response</p>}</MessagePrimitive.Root>}</ThreadPrimitive.Messages>
+    <ThreadPrimitive.Messages>{({message})=>{const runId=messages.find(item=>item.id===message.id)?.runId;return <MessagePrimitive.Root className={`chat-message chat-${message.role}`}><p className="chat-speaker">{message.role==='user'?'You':'Vulpes'}</p><MessagePrimitive.Parts components={{Text:plainText,data:{by_name:{metric_summary:SummaryPart}}}}/>{message.role==='assistant'&&message.status.type==='incomplete'&&<p className="incomplete-badge">Incomplete response</p>}{message.role==='assistant'&&runId&&<Button variant="outline" onClick={event=>{inspectionTrigger.current=event.currentTarget;setInspection(runId);}}>Inspect execution</Button>}</MessagePrimitive.Root>;}}</ThreadPrimitive.Messages>
     </ThreadPrimitive.Viewport><div className="composer-area"><p role="status" aria-live="polite" className="chat-status">{notice}</p>
     {availability==='unavailable'&&<p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true"/>Inference is unavailable until provider verification and activation gates pass.</p>}
     {availability==='synthetic'&&<p className="availability-note">Local synthetic verification. No live provider calls.</p>}
@@ -117,7 +120,7 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
     {query.isError&&<Button variant="outline" onClick={()=>void query.refetch()}>Reload conversation</Button>}
     {latest?.run&&<p className="availability-note">Run {latest.run.state} · {latest.run.costStatus} · {latest.run.costUSD===null?'Total cost unknown':`$${latest.run.costUSD}`} · held ${latest.run.reservationUSD}</p>}
     <p className="wellness-note">Personal wellness information. Not medical diagnosis or emergency monitoring.</p>
-  </div></ThreadPrimitive.Root></AssistantRuntimeProvider>;
+  </div></ThreadPrimitive.Root>{inspection&&<Suspense fallback={<p role="status">Loading inspector…</p>}><Inspector run={inspection} onClose={()=>{setInspection(null);inspectionTrigger.current?.focus();}}/></Suspense>}</AssistantRuntimeProvider>;
 }
 
 export function AskPage() {

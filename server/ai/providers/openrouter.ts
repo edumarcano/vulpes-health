@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Decimal } from 'decimal.js';
 import { models } from '../../config/models.js';
+import { everydayAdapterVersion } from '../../config/everyday-versions.js';
 import { normalizeUsage,requireGenerationCapabilities,type GenerationAdapter,type GenerationEvent,type GenerationRequest,ToolCallSchema } from '../contracts.js';
 import { blocksOf,continuationFor } from '../continuation.js';
 import type { PaidRequestDispatcher } from '../ledger/dispatcher.js';
@@ -83,7 +84,7 @@ export class OpenRouterResponsesAdapter implements GenerationAdapter {
       const continuation=continuationFor([...blocksOf(request.continuation),...(count ? [{at:request.turns.length,count,items:done.response.output}] : [])]);
       terminal=true;out.push({type:'completed',finishReason:blocked ? 'blocked' : done.type==='response.incomplete' ? 'length' : calls.length ? 'tool_calls' : 'stop',continuation});return out;
     };
-    for await(const chunk of options.dispatch.send({body,metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},redactedHeaders:['authorization']},adapterVersion:'openrouter-responses-v1',requestedEffort:models.everyday.reasoning.effort},options.signal)) {
+    for await(const chunk of options.dispatch.send({body,metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{'Content-Type':'application/json','Accept':'text/event-stream'},redactedHeaders:['authorization']},adapterVersion:everydayAdapterVersion,requestedEffort:models.everyday.reasoning.effort},options.signal)) {
       options.signal.throwIfAborted();frameBytes+=chunk.byteLength;
       if(frameBytes>4*1024*1024)throw new Error('provider_stream_limit');
       buffer=(buffer+decoder.decode(chunk,{stream:true})).replace(/\r\n/g,'\n');

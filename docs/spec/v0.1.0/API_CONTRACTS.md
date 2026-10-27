@@ -73,6 +73,12 @@ Conversation mutations return `{id,outcome}` within the success envelope. Reusin
 
 Stored message parts are escaped `text` or server-issued `metric_summary`. The latter binds a versioned owner/run/step/result/data-revision reference to a deterministic summary. Reads resolve it against the owned completed tool output; forged, unavailable, expired or stale evidence becomes an unavailable notice. No model-supplied HTML, URLs or card objects become executable UI.
 
+### Execution inspection
+
+`GET /api/executions?run=<uuid>` returns the owned run summary, ordered safe step metadata and whether its data revision is current, stale or removed. `view=payload` and `view=export` additionally require an owned `step` and a `part` of `input`, `output`, `context` or `usage`. The server resolves the permitted payload through the owned run and step; arbitrary payload identifiers and opaque continuation state are not accepted. Foreign runs and steps return 404.
+
+Payload reads return a no-store JSON envelope with `state` and, when available, base64-encoded exact bytes and expiry. Context payloads additionally report whether their manifest is complete or predates complete capture; binary context exports carry the same label in `X-Vulpes-Evidence-Completeness`. `view=export` returns the same bytes as an authenticated no-store binary attachment; unavailable content returns its explicit state in JSON. States include expired, removed, incomplete, corrupt and unavailable. Input hashes, context manifests, tool names, arguments, output references and provider projections are checked before evidence is presented. Exact bytes are never reconstructed from a formatted view.
+
 A repeated request ID with identical input returns the same run status, not another paid call. Same ID with different input returns 409. An already-running user receives the current run link rather than an implicit parallel run. An unavailable explicit depth is reported; it is not silently downgraded.
 
 ## 4. Streaming protocol: Vulpes event stream v1

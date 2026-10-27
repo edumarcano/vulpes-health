@@ -44,7 +44,7 @@ describe('real provider-smoke CLI', () => {
     expect(JSON.parse(output.stderr)).toEqual({ mode: 'blocked', code: expected, actualProviderRequests: 0, inferenceSpendUSD: '0' });
   });
   it.each([
-    ['false', 'live_ai_disabled'], ['true', 'live_smoke_not_implemented'], ['TRUE', 'invalid_live_switch'],
+    ['false', 'live_ai_disabled'], ['true', 'price_unverified'], ['TRUE', 'invalid_live_switch'],
   ])('denies fully supplied live flags with switch %s', async (liveSwitch, expected) => {
     const output = await cli(['--mode=live', '--role=everyday', '--allow-spend', '--max-cost-usd=0.01'], liveSwitch);
     expect(output.code).toBe(1);
@@ -61,12 +61,17 @@ describe('real provider-smoke CLI', () => {
     const env = new Proxy({}, { get() { throw new Error('Synthetic mode must not inspect environment.'); } });
     const { report, writeReport } = await runSmoke([], env);
     expect(writeReport).toBe(false);
+    if(report.mode!=='synthetic')throw new Error('Expected synthetic report.');
     const text = renderSmokeReport(report);
     expect(text).toContain('not_run');
     expect(text).toContain('disabled: optional_decision_disabled');
     expect(text).toContain('Actual provider requests: **0**');
     expect(text).not.toContain('synthetic-opaque');
     expect(text).not.toContain('mean is');
-    expect((await runSmoke(['--role=decision'], env)).report.rows).toHaveLength(1);
+    const decision=(await runSmoke(['--role=decision'], env)).report;if(decision.mode!=='synthetic')throw new Error('Expected synthetic report.');expect(decision.rows).toHaveLength(1);
+  });
+  it('rejects an unverified price before inspecting live credentials',async()=>{
+    const env=new Proxy({VULPES_LIVE_AI_ENABLED:'true'}, {get(target,key){if(key==='VULPES_LIVE_AI_ENABLED')return target.VULPES_LIVE_AI_ENABLED;throw new Error('credential_discovery');}});
+    await expect(runSmoke(['--mode=live','--role=everyday','--allow-spend','--max-cost-usd=1'],env)).rejects.toThrow('price_unverified');
   });
 });

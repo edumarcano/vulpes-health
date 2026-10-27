@@ -30,6 +30,8 @@ describe('typed catalog and honest role availability', () => {
       expect(model.liveSmokeStatus).toBe('not_run');
       expect(getRoleAvailability(model.role).state).toBe(model.role === 'decision' ? 'disabled' : 'unavailable');
     }
+    expect(getRoleAvailability('everyday',false)).toEqual({state:'unavailable',reason:'live_ai_disabled'});
+    expect(getRoleAvailability('everyday',true)).toEqual({state:'unavailable',reason:'price_unverified'});
   });
   it.each([
     { ...models.everyday, reasoning: { effort: 'MINIMAL' } },

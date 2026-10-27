@@ -37,6 +37,20 @@ isOneToOne: false
       referencedColumns: ["user_id","id"]
     }
                   ]
+                },"ai_route_cost_blocks": {
+                  Row: {
+                    "blocked_at": string,"model_id": string,"provider": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked_at"?: string,"model_id": string,"provider": string
+                  }
+                  Update: {
+                    "blocked_at"?: string,"model_id"?: string,"provider"?: string
+                  }
+                  Relationships: [
+
+                  ]
                 },"ai_runs": {
                   Row: {
                     "accounting_period": string,"admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string | null,"cost_status": string,"cost_usd": number | null,"data_revision": number,"deadline_at": string,"executor_hash": string | null,"expires_at": string,"fence": number,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"lease_expires_at": string,"limits": NonNullable<Json>,"max_cost_usd": number,"output_tokens": number | null,"partial_output": boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"trace_content_removed_at": string | null,"trace_state": string,"user_id": string
@@ -279,6 +293,32 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "private_payloads"
       referencedColumns: ["user_id","id"]
+    }
+                  ]
+                },"live_verification_allocations": {
+                  Row: {
+                    "account_bucket_id": string,"ceiling_usd": number,"created_at": string,"data_revision": number,"fixture_hash": string,"id": string,"period_start": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_bucket_id": string,"ceiling_usd": number,"created_at"?: string,"data_revision": number,"fixture_hash": string,"id": string,"period_start": string,"user_id": string
+                  }
+                  Update: {
+                    "account_bucket_id"?: string,"ceiling_usd"?: number,"created_at"?: string,"data_revision"?: number,"fixture_hash"?: string,"id"?: string,"period_start"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "live_verification_allocations_user_id_account_bucket_id_pe_fkey"
+      columns: ["user_id","account_bucket_id","period_start"]
+isOneToOne: false
+      referencedRelation: "usage_buckets"
+      referencedColumns: ["user_id","id","period_start"]
+    },{
+      foreignKeyName: "live_verification_allocations_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
     }
                   ]
                 },"measurements": {

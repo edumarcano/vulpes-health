@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { CountSchema, VersionSchema } from '../../shared/primitives.js';
 import type { ModelRole } from '../../shared/primitives.js';
 import { GenerationCapabilitiesSchema } from '../ai/contracts.js';
-import { VerifiedPriceSchema } from '../ai/ledger/pricing.js';
+import { reserveMaximum, VerifiedPriceSchema } from '../ai/ledger/pricing.js';
+import { assessEverydayPreflight } from '../ai/live-preflight.js';
+import { everydayCapabilityEvidence } from './everyday-verification.js';
+import { everydayAdapterVersion,everydayTemplateVersion } from './everyday-versions.js';
 
 const unverifiedPrice = z.strictObject({
   status: z.literal('unverified'), currency: z.literal('USD'), checkedAt: z.null(), sourceURL: z.null(),
@@ -54,11 +57,18 @@ export const models = {
 
 export const RoleAvailabilitySchema = z.discriminatedUnion('state', [
   z.strictObject({ state: z.literal('disabled'), reason: z.literal('optional_decision_disabled') }),
-  z.strictObject({ state: z.literal('unavailable'), reason: z.literal('live_inference_not_implemented') }),
+  z.strictObject({ state: z.literal('unavailable'), reason: z.enum(['live_inference_not_implemented','live_ai_disabled','price_unverified','price_bounds_mismatch','capability_privacy_unverified','capability_evidence_mismatch','insufficient_spend_ceiling','live_smoke_unverified','live_smoke_mismatch']) }),
 ]);
 export type RoleAvailability = z.infer<typeof RoleAvailabilitySchema>;
-export function getRoleAvailability(role: ModelRole): RoleAvailability {
-  return role === 'decision' ? { state: 'disabled', reason: 'optional_decision_disabled' } : { state: 'unavailable', reason: 'live_inference_not_implemented' };
+export function getRoleAvailability(role: ModelRole,liveEnabled=true): RoleAvailability {
+  if(role==='decision')return {state:'disabled',reason:'optional_decision_disabled'};
+  if(role!=='everyday')return {state:'unavailable',reason:'live_inference_not_implemented'};
+  const model=models.everyday;const price=VerifiedPriceSchema.safeParse(model.price);
+  const readiness=assessEverydayPreflight({enabled:liveEnabled,mode:'production',model:model.modelId,effort:model.reasoning.effort,
+    adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,
+    maxInputTokens:model.maxInputTokens,maxOutputTokens:model.maxOutputTokens,price:model.price,capabilities:everydayCapabilityEvidence,smoke:null,
+    maxCostUSD:price.success ? reserveMaximum(price.data) : '0'});
+  return RoleAvailabilitySchema.parse({state:'unavailable',reason:readiness.state==='unavailable'?readiness.reason:'live_inference_not_implemented'});
 }
 // Force schema checks on configuration changes without consulting environment or credentials.
 for (const model of Object.values(models)) ModelConfigSchema.parse(model);

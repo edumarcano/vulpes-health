@@ -4,6 +4,7 @@ import { MetricKeySchema } from './domain.js';
 import { AddMeasurementSchema, CorrectMeasurementSchema, DeleteMeasurementSchema, DataQuerySchema } from './data.js';
 import { PreviewCsvSchema } from './imports.js';
 import { AnalysisDepthSchema, HashSchema, IanaTimezoneSchema, ISOInstantSchema, UUIDSchema, VersionSchema } from './primitives.js';
+import { InspectionQuerySchema } from './inspection.js';
 
 export const API_JSON_LIMIT_BYTES = 2 * 1024 * 1024;
 export function successEnvelopeSchema<T extends z.ZodType>(data: T) {
@@ -72,7 +73,9 @@ export const apiOperations = {
   ],
   '/api/settings': [{ method: 'GET', selector: 'default', owningPR: 4, schema: z.strictObject({}) }, { method: 'PATCH', selector: 'default', owningPR: 4, schema: SettingsPatchSchema }],
   '/api/executions': [
-    { method: 'GET', selector: 'default', owningPR: 10 }, { method: 'GET', selector: 'view=payload', owningPR: 10 }, { method: 'GET', selector: 'view=export', owningPR: 10 },
+    { method: 'GET', selector: 'default', owningPR: 10, schema: InspectionQuerySchema.refine(value=>value.view==='overview') },
+    { method: 'GET', selector: 'view=payload', owningPR: 10, schema: InspectionQuerySchema.refine(value=>value.view==='payload') },
+    { method: 'GET', selector: 'view=export', owningPR: 10, schema: InspectionQuerySchema.refine(value=>value.view==='export') },
   ],
   '/api/account': [{ method: 'POST', selector: 'action=export', owningPR: 16 }, { method: 'POST', selector: 'action=delete', owningPR: 16 }],
 } as const satisfies Record<string, readonly Operation[]>;
