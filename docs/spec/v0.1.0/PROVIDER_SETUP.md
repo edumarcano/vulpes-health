@@ -21,6 +21,10 @@ OpenRouter's Responses API is stateless: send the needed history on each request
 
 Use a server key and a privacy-compatible route. Add documented `provider.zdr: true` preferences and do not relax them on failure. Retain necessary function call/result identifiers and opaque provider continuation items in Vulpes's private state. Suppress unneeded external plugins/tools. Verify streaming final usage, structured tool calls and cancellation before enabling live users.
 
+PR 09 implements the Responses wire mapper/parser behind `GenerationAdapter` and the PR 08 dispatcher. It supplies complete stateless input, `store:false`, required ZDR, empty external plugins, catalog output/effort limits and sequential tools. Its continuation blocks retain provider output items at their logical turn positions, including opaque reasoning items; these are never displayed as reasoning. Malformed/truncated streams fail without retry, and absent terminal usage retains the reservation. Effective effort remains unverified.
+
+Public [Responses](https://openrouter.ai/docs/api_reference/responses/overview), [tool-calling](https://openrouter.ai/docs/api_reference/responses/tool-calling) and [ZDR](https://openrouter.ai/docs/guides/features/zdr) documentation was rechecked on 2026-10-26. This supplies protocol guidance only. There is still no production credential-bearing HTTP transport, verified selected-model access, price/privacy validation or live smoke evidence. The synthetic browser composition is a separate local test executable and cannot be activated by production configuration.
+
 ## 3. Flash and Argon: provider-specific controls
 
 The selected Google models document Low/Medium/High thinking levels; their control conventions differ from a generic numeric thinking budget. In particular, do not send `MINIMAL` or blindly copy temperature/top-p/penalty controls from an OpenAI adapter. [S10](SOURCES.md#s10) [S11](SOURCES.md#s11)
@@ -47,7 +51,7 @@ Root `.env.example` is the authoritative environment template. Keep credentials 
 
 - **OpenRouter:** Server-only `OPENROUTER_API_KEY`. Set provider-compatible privacy constraints (`provider.zdr: true`) and disable optional prompt logging or external broadcast destinations.
 - **Vertex / Google Cloud:** Authenticate locally via Google Application Default Credentials (`gcloud auth application-default login` or `GOOGLE_APPLICATION_CREDENTIALS`). In production on Vercel, prefer Workload Identity Federation (WIF) with Vercel OIDC tokens, binding pool/provider/service-account to the specific project. A service-account JSON key is an owner-approved fallback for prototyping only; never commit keys or expose them in client bundles. [S18](SOURCES.md#s18)
-- **Supabase:** `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are browser-safe. `SUPABASE_SERVICE_ROLE_KEY` is optional, highly privileged, and strictly server-only.
+- **Supabase:** `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are browser-safe. `SUPABASE_SERVICE_ROLE_KEY` is required for private-payload, conversation and run transactions; it is highly privileged and strictly server-only.
 - **Live AI switch:** `VULPES_LIVE_AI_ENABLED=false` is a fail-closed operator defense-in-depth gate. It does not replace consent, verified rates, or budget reservations.
 - **No model environment overrides:** Do not add `VULPES_*_MODEL` variables or reasoning parameters to `.env`. Model configuration belongs in the typed server-side catalog.
 

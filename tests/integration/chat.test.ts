@@ -1,0 +1,217 @@
+import {randomBytes,randomUUID} from 'node:crypto';
+import {createServer} from 'node:http';
+import {once} from 'node:events';
+import {readFileSync} from 'node:fs';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+import {LocalSupabase} from '../helpers/local-supabase.js';
+import {localStatus} from '../../scripts/local-database.js';
+import {verifySession,type AuthContext} from '../../server/auth/session.js';
+import {ConversationService} from '../../server/services/conversations.js';
+import {ExecutionService,requestHash} from '../../server/ai/ledger/execution.js';
+import {ConversationQuerySchema} from '../../shared/chat.js';
+import {ChatSendRequestSchema} from '../../shared/api.js';
+import {createChatHandler} from '../../server/http/chat.js';
+import {createConversationsHandler} from '../../server/http/conversations.js';
+import {localRouter} from '../../server/http/router.js';
+import {StreamDecoder,type StreamEvent} from '../../shared/stream.js';
+import {SyntheticChatTransport,syntheticChatDependencies,responseFrame,assistantOutput} from '../fixtures/chat.js';
+import {readPayload} from '../../server/security/private-payloads.js';
+import {executeReadTool} from '../../server/ai/tools.js';
+import {VulpesAgent,type AgentDependencies} from '../../server/ai/VulpesAgent.js';
+import type {RequestTransport} from '../../server/ai/ledger/dispatcher.js';
+import {normalizeUsage,type GenerationAdapter} from '../../server/ai/contracts.js';
+import {addMeasurement} from '../../server/services/measurements.js';
+import {goalDraft} from '../fixtures/contracts.js';
+
+let db:LocalSupabase;let a:AuthContext;let b:AuthContext;let app:string;let tokenA:string;let tokenB:string;
+const service=()=>new ConversationService(a);
+async function conversation(){const id=randomUUID();await service().mutate({action:'create',id,client_request_id:randomUUID()});return id;}
+const admission=(id:string)=>({conversationId:id,clientRequestId:randomUUID(),requestHash:requestHash({text:'Synthetic question'}),depth:'auto' as const,route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1'});
+async function rows(table:string,filter:string){return (await (await db.admin(`/rest/v1/${table}?${filter}`,'GET')).json()) as Record<string,unknown>[];}
+beforeEach(async()=>{
+  const status=localStatus();vi.stubEnv('VITE_SUPABASE_URL',status.apiUrl);vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY',status.anonKey);vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY',status.adminKey);
+  vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID','synthetic-chat');vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_B64',randomBytes(32).toString('base64'));
+  db=new LocalSupabase();app=randomUUID();
+  const period=new Date().toISOString().slice(0,7)+'-01';
+  await db.admin('/rest/v1/usage_buckets','POST',{id:app,scope:'app',period_start:period,allocated_ceiling_usd:'10'});
+  const contexts=[];
+  for(let i=0;i<2;i++){
+    const user=await db.createUser();if(i===0)tokenA=user.token;else tokenB=user.token;await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+    await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
+    contexts.push(await verifySession({headers:{authorization:`Bearer ${user.token}`}}));
+  }
+  [a,b]=contexts as [AuthContext,AuthContext];
+});
+
+async function withApi(dependencies:AgentDependencies|null,work:(api:(path:string,body?:unknown,token?:string|null)=>Promise<Response>)=>Promise<void>) {
+  const compose=()=>dependencies;const chat=createChatHandler(compose);const conversations=createConversationsHandler(compose);
+  const server=createServer((req,res)=>{const path=new URL(req.url!,'http://localhost').pathname;void(path==='/api/chat' ? chat(req,res) : path==='/api/conversations' ? conversations(req,res) : localRouter(req,res));});
+  server.listen(0,'127.0.0.1');await once(server,'listening');const address=server.address();if(!address||typeof address==='string')throw new Error();
+  try{await work((path,body,token=tokenA)=>fetch(`http://127.0.0.1:${address.port}${path}`,{...(body===undefined?{}:{method:'POST',body:JSON.stringify(body)}),headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})}}));}
+  finally{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));}
+}
+async function stream(response:Response) {
+  expect(response.status).toBe(200);expect(response.headers.get('content-type')).toContain('text/event-stream');
+  const decoder=new StreamDecoder();const output:StreamEvent[]=[];for await(const chunk of response.body!)output.push(...decoder.push(chunk));decoder.finish();return output;
+}
+const send=(id:string,text='How has my imported weight changed?')=>({action:'send',conversation_id:id,client_request_id:randomUUID(),message:{id:randomUUID(),text},depth:'auto'});
+describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
+  it('answers imported data, preserves exact multi-step evidence, replays once and reloads without inference',async()=>{
+    const transport=new SyntheticChatTransport();
+    await withApi(syntheticChatDependencies(transport),async api=>{
+      const preview=await api('/api/data',{action:'preview_csv',client_request_id:randomUUID(),csv:readFileSync('docs/spec/v0.1.0/fixtures/measurements-synthetic.csv','utf8'),source:{kind:'new',label:'Synthetic Ask import',origin_app:null,device_label:null},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}});
+      expect(preview.status).toBe(200);const p=(await preview.json()).data;
+      expect((await api('/api/data',{action:'commit_import',batch_id:p.batch_id,payload_hash:p.payload_hash,client_request_id:randomUUID()})).status).toBe(200);
+      const id=await conversation();const input=send(id);const events=await stream(await api('/api/chat',input));
+      expect(events.at(-1)?.type,JSON.stringify({events:events.map(e=>({type:e.type,...(e.type==='run.failed'?{code:e.payload.code}:{})})),sizes:transport.requests.map(r=>r.length),steps:(await rows('ai_steps',`user_id=eq.${a.userId}`)).map(s=>({type:s.step_type,status:s.status,tool:s.tool_name}))})).toBe('run.completed');expect(events.filter(e=>e.type==='tool.result')).toHaveLength(2);expect(events.filter(e=>e.type==='card.ready')).toHaveLength(1);
+      expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toContain('69 kg; change -0.7 kg');
+      expect(events.find(e=>e.type==='run.usage')?.payload).toMatchObject({inputTokens:150,outputTokens:60,reasoningTokens:null,costUSD:'0.003'});
+      expect(events.map(e=>e.seq)).toEqual(events.map((_,i)=>i+1));expect(transport.requests).toHaveLength(3);
+      const runId=events[0]!.run_id;const steps=await rows('ai_steps',`run_id=eq.${runId}&order=sequence`);expect(steps).toHaveLength(5);
+      const paid=steps.filter(s=>s.step_type==='generation');
+      for(let i=0;i<paid.length;i++){const payload=await readPayload(a,String(paid[i]!.input_payload_id),'ai_request');expect(payload.state).toBe('available');if(payload.state==='available')expect(payload.bytes).toEqual(transport.requests[i]);}
+      expect(transport.requests[2]!.toString()).toContain('synthetic-opaque-continuation');
+      const replay=await api('/api/chat',input);expect(replay.headers.get('content-type')).toContain('application/json');expect((await replay.json()).data).toMatchObject({kind:'existing',run:{id:runId,state:'completed',costUSD:'0.003'}});
+      expect((await api('/api/chat',{...input,message:{...input.message,text:'Changed'}})).status).toBe(409);
+      const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(saved.items).toHaveLength(2);expect(saved.items[1].parts.find((part:{type:string})=>part.type==='metric_summary').result.analysis).toMatchObject({value:69,previousValue:69.7,absoluteChange:-0.7});
+      await api(`/api/conversations?view=messages&id=${id}`);expect(transport.requests).toHaveLength(3);
+      expect((await api(`/api/conversations?view=messages&id=${id}`,undefined,tokenB)).status).toBe(404);
+      const followup=await stream(await api('/api/chat',send(id,'What metric were we discussing?')));expect(followup.at(-1)?.type).toBe('run.completed');
+      expect(transport.requests[3]!.toString()).toContain('How has my imported weight changed?');expect(transport.requests[3]!.toString()).toContain('synthetic-opaque-continuation');
+      const message=(await rows('messages',`run_id=eq.${runId}&role=eq.assistant`))[0]!;const forged=JSON.parse(JSON.stringify(message.content_parts));for(const part of forged)if(part.type==='metric_summary')part.evidence.stepId=randomUUID();
+      await db.admin(`/rest/v1/messages?id=eq.${message.id}`,'PATCH',{content_parts:forged});
+      const unresolved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(unresolved.items.flatMap((m:{parts:unknown[]})=>m.parts).some((part:{type:string})=>part.type==='metric_summary')).toBe(false);
+      const deletion={action:'delete',id,confirm:true,client_request_id:randomUUID()};expect((await api('/api/conversations',deletion)).status).toBe(200);
+      expect(await rows('private_payloads',`user_id=eq.${a.userId}`)).toHaveLength(0);expect(await rows('messages',`user_id=eq.${a.userId}`)).toHaveLength(0);
+      expect(await new ExecutionService(a).summary(runId)).toMatchObject({conversationId:null,traceState:'removed',costUSD:'0.003'});
+    });
+  });
+  it('serializes simultaneous identical HTTP sends and never dispatches for a busy request',async()=>{
+    let reached!:()=>void;const started=new Promise<void>(r=>{reached=r;});let release!:()=>void;const wait=new Promise<void>(r=>{release=r;});
+    const transport=new SyntheticChatTransport('complete',{started:reached,wait});
+    await withApi(syntheticChatDependencies(transport),async api=>{
+      const id=await conversation();const input=send(id);const first=await api('/api/chat',input);await started;
+      try{expect((await (await api('/api/chat',input)).json()).data.kind).toBe('existing');expect((await (await api('/api/chat',send(id))).json()).data.kind).toBe('busy');expect(transport.requests).toHaveLength(1);}finally{release();}
+      expect((await stream(first)).at(-1)?.type).toBe('run.completed');expect(await rows('messages',`conversation_id=eq.${id}`)).toHaveLength(2);
+    });
+  });
+  it.each(['truncated','missing_usage','malformed','repeated_call'] as const)('retains honest %s results and unknown cost without replay',async scenario=>{
+    const transport=new SyntheticChatTransport(scenario);await withApi(syntheticChatDependencies(transport),async api=>{
+      const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe(scenario==='missing_usage'?'run.completed':'run.failed');
+      const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;
+      if(scenario!=='repeated_call'){expect(saved.run.costStatus).toBe('pending');expect(Number(saved.run.reservationUSD)).toBeGreaterThan(0);}
+      if(scenario==='truncated'){expect(saved.items[1].parts).toEqual([{type:'text',text:'Durable synthetic prefix 🦊'}]);expect(saved.items[1].status).toBe('failed');}
+      const count=transport.requests.length;await api(`/api/conversations?view=messages&id=${id}`);expect(transport.requests).toHaveLength(count);
+    });
+  });
+  it('honors cancellation from another handler before output and retains a possible charge',async()=>{
+    let reached!:()=>void;const started=new Promise<void>(r=>{reached=r;});let release!:()=>void;const wait=new Promise<void>(r=>{release=r;});const transport=new SyntheticChatTransport('complete',{started:reached,wait});
+    await withApi(syntheticChatDependencies(transport),async api=>{
+      const id=await conversation();const response=await api('/api/chat',send(id));await started;
+      const run=(await rows('ai_runs',`conversation_id=eq.${id}`))[0]!;
+      expect((await api('/api/chat',{action:'cancel',run_id:run.id,client_request_id:randomUUID()},tokenB)).status).toBe(404);
+      const cancellation={action:'cancel',run_id:run.id,client_request_id:randomUUID()};expect((await api('/api/chat',cancellation)).status).toBe(200);expect((await api('/api/chat',cancellation)).status).toBe(200);release();
+      const events=await stream(response);expect(events.at(-1)?.type).toBe('run.cancelled');expect(await new ExecutionService(a).summary(String(run.id))).toMatchObject({state:'cancelled',costStatus:'pending'});expect(transport.requests).toHaveLength(1);
+    });
+  });
+  it('revoked consent before continuation blocks a second dispatch',async()=>{
+    const base=new SyntheticChatTransport();const transport:RequestTransport={mode:'mock',async *send(body,signal){yield*base.send(body,signal);await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`,'PATCH',{consent_versions:{}});}};
+    await withApi(syntheticChatDependencies(transport),async api=>{const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe('run.failed');expect(base.requests).toHaveLength(1);});
+  });
+  it('requires auth, rejects credentials/forged tools/foreign context, and keeps production unavailable',async()=>{
+    await withApi(null,async api=>{
+      const id=await conversation();expect((await api('/api/chat',send(id),null)).status).toBe(401);expect((await api('/api/chat',send(id))).status).toBe(503);
+      expect((await api('/api/chat',send(id,'api_key=syntheticcredential123'))).status).toBe(400);expect((await api('/api/chat',{...send(id),tool_results:[]})).status).toBe(400);
+      expect((await api('/api/chat',send(id),tokenB)).status).toBe(404);expect(await rows('messages',`conversation_id=eq.${id}`)).toHaveLength(0);
+      const events=await stream(await api('/api/chat',{...send(id,'Can you diagnose my symptoms?'),depth:'advanced'}));expect(events.at(-1)?.type).toBe('run.completed');expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toContain('cannot diagnose');expect(await rows('ai_steps',`user_id=eq.${a.userId}`)).toHaveLength(0);expect(await new ExecutionService(a).summary(events[0]!.run_id)).toMatchObject({requestedDepth:'advanced',costUSD:'0'});
+    });
+  });
+  it('read tools reject unknown names/arguments/foreign IDs and keep empty goals/data honest',async()=>{
+    expect(await executeReadTool(a,'list_goals',{})).toMatchObject({items:[]});expect(await executeReadTool(a,'list_metrics',{})).toMatchObject({items:[]});
+    await expect(executeReadTool(a,'delete_measurements',{})).rejects.toMatchObject({status:400});await expect(executeReadTool(a,'list_metrics',{user_id:b.userId})).rejects.toThrow();await expect(executeReadTool(a,'get_goal_progress',{goal_id:randomUUID()})).rejects.toMatchObject({status:404});
+    await expect(executeReadTool(a,'get_measurements',{metric:'weight',source_id:randomUUID(),from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC',limit:201})).rejects.toThrow();
+  });
+  it('interrupted process is reconciled on reload without taking execution ownership',async()=>{
+    const id=await conversation();const agent=new VulpesAgent(a,syntheticChatDependencies());const admitted=await agent.admit(ChatSendRequestSchema.parse(send(id)));expect(admitted.lease).toBeTruthy();
+    await db.admin(`/rest/v1/ai_runs?id=eq.${admitted.result.run.id}`,'PATCH',{lease_expires_at:new Date(Date.now()-1000).toISOString()});
+    const saved=await service().read(ConversationQuerySchema.parse({view:'messages',id}));expect('run' in saved && saved.run).toMatchObject({state:'interrupted'});
+    expect(await rows('ai_steps',`run_id=eq.${admitted.result.run.id}`)).toHaveLength(0);
+  });
+  it('a failed second message checkpoint preserves only the first durable prefix',async()=>{
+    const original=ExecutionService.prototype.checkpointMessage;let writes=0;
+    vi.spyOn(ExecutionService.prototype,'checkpointMessage').mockImplementation(async function(this:ExecutionService,lease,parts){writes++;if(writes===2)throw new Error('Synthetic storage failure');return original.call(this,lease,parts);});
+    const transport:RequestTransport={mode:'mock',async *send(){yield Buffer.from('data: {"type":"response.output_text.delta","delta":"Durable prefix"}\n\n');yield Buffer.from('data: {"type":"response.output_text.delta","delta":" unsaved suffix"}\n\n');yield responseFrame([assistantOutput('Durable prefix unsaved suffix')]);}};
+    await withApi(syntheticChatDependencies(transport),async api=>{const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe('run.failed');expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toBe('Durable prefix');const saved=(await (await api(`/api/conversations?view=messages&id=${id}`)).json()).data;expect(saved.items[1].parts).toEqual([{type:'text',text:'Durable prefix'}]);expect(saved.run).toMatchObject({traceState:'incomplete',costStatus:'pending'});});
+  });
+  it.each([1,3])('enforces request and tool ceilings with %i tool calls per response',async count=>{
+    let requests=0;const transport:RequestTransport={mode:'mock',async *send(){requests++;yield responseFrame(Array.from({length:count},(_,i)=>({type:'function_call',id:`item-${requests}-${i}`,call_id:`call-${requests}-${i}`,name:'list_metrics',arguments:'{}'})));}};
+    await withApi(syntheticChatDependencies(transport),async api=>{const id=await conversation();const events=await stream(await api('/api/chat',send(id)));expect(events.at(-1)?.type).toBe('run.failed');expect(requests).toBe(count===1?4:3);expect((await rows('ai_steps',`user_id=eq.${a.userId}`)).filter(step=>step.step_type==='tool')).toHaveLength(count===1?3:6);});
+  });
+  it('replaces the compatible generation adapter through the same dispatcher without domain changes',async()=>{
+    const transport:RequestTransport={mode:'mock',async *send(){yield Buffer.from('synthetic-replacement');}};
+    const adapter:GenerationAdapter={family:'openrouter_responses',capabilities:{streaming:true,tools:true},async *generate(_request,{signal,dispatch}){for await(const chunk of dispatch.send({body:Buffer.from('{"replacement":true}'),metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{},redactedHeaders:[]},adapterVersion:'synthetic-replacement'},signal))void chunk;yield {type:'text.delta',text:'Compatible synthetic adapter'};yield {type:'usage',usage:normalizeUsage({reportedCostUSD:'0.001',rawUsage:{synthetic:true}})};yield {type:'completed',finishReason:'stop',continuation:null};}};
+    await withApi({...syntheticChatDependencies(transport),adapter},async api=>{const events=await stream(await api('/api/chat',send(await conversation())));expect(events.at(-1)?.type).toBe('run.completed');});
+  });
+  it('qualifies ambiguous sources and approved goal progress without treating drafts or snapshots as authority',async()=>{
+    const today=new Date().toISOString().slice(0,10);let source='';
+    for(let n=0;n<14;n++) {
+      const instant=new Date(`${today}T12:00:00Z`);instant.setUTCDate(instant.getUTCDate()-n);
+      const result=await addMeasurement(a,{action:'add_measurement',client_request_id:randomUUID(),source:source?{kind:'existing',id:source}:{kind:'new',label:'Synthetic approved series',origin_app:null,device_label:null},observation:{metric:'weight',value:'69',unit:'kg',observed_at:instant.toISOString(),timezone:'UTC',local_date:null,granularity:'instant',method:'user_reported',quality_flags:[]}});source=result.sourceId;
+    }
+    const selection={metric:'weight',source_id:source,from:new Date(Date.now()-14*86400000).toISOString().slice(0,10)+'T00:00:00Z',to:new Date(Date.now()+86400000).toISOString().slice(0,10)+'T00:00:00Z',timezone:'UTC',method:'user_reported',granularity:'instant'};
+    const measured=await executeReadTool(a,'get_measurements',{...selection,limit:2}) as {items:unknown[];nextCursor:string|null};expect(measured.items).toHaveLength(2);expect(measured.nextCursor).toBeTruthy();
+    await addMeasurement(a,{action:'add_measurement',client_request_id:randomUUID(),source:{kind:'new',label:'Synthetic other series',origin_app:null,device_label:null},observation:{metric:'weight',value:'80',unit:'kg',observed_at:new Date().toISOString(),timezone:'UTC',local_date:null,granularity:'instant',method:'user_reported',quality_flags:[]}});
+    expect(await executeReadTool(a,'summarize_metric',{...selection,source_id:null})).toMatchObject({kind:'clarification_required'});
+    const id=randomUUID();const proposal=randomUUID();const revision=randomUUID();const payload={...goalDraft,sourceId:source};
+    await db.admin('/rest/v1/goals','POST',{id,user_id:a.userId,title:'Synthetic approved goal',metric_key:'weight',canonical_unit:'kg',direction:'decrease_to',target_value:68,source_id:source});
+    expect(await executeReadTool(a,'list_goals',{})).toMatchObject({items:[]});
+    await db.admin('/rest/v1/action_proposals','POST',{id:proposal,user_id:a.userId,kind:'goal.create',canonical_payload:payload,payload_hash:'a'.repeat(64),state:'approved',summary:'Synthetic approval',expires_at:new Date(Date.now()+3600000).toISOString()});
+    await db.admin('/rest/v1/goal_revisions','POST',{id:revision,user_id:a.userId,goal_id:id,revision_number:1,approved_proposal_id:proposal,payload});
+    await db.admin(`/rest/v1/goals?id=eq.${id}`,'PATCH',{state:'active',current_revision_id:revision});
+    expect(await executeReadTool(a,'get_goal_progress',{goal_id:id})).toEqual({kind:'unavailable',reason:'unsupported_baseline'});
+    await db.admin(`/rest/v1/goals?id=eq.${id}`,'PATCH',{baseline_snapshot:{schemaVersion:1,selection,value:'70',dataRevision:14,algorithmVersion:'daily_median_mean_7d_v1'}});
+    expect(await executeReadTool(a,'get_goal_progress',{goal_id:id})).toMatchObject({kind:'progress',current:'69',result:{kind:'directional',rawPercent:100,displayPercent:100}});
+    await db.admin(`/rest/v1/goals?id=eq.${id}`,'PATCH',{review_status:'needs_review'});expect(await executeReadTool(a,'get_goal_progress',{goal_id:id})).toEqual({kind:'unavailable',reason:'needs_review'});
+    await expect(executeReadTool(b,'get_goal_progress',{goal_id:id})).rejects.toMatchObject({status:404});
+  });
+});
+afterEach(async()=>{try{if(db){await db.cleanup();await db.admin(`/rest/v1/usage_buckets?id=eq.${app}`,'DELETE');}}finally{vi.unstubAllEnvs();vi.restoreAllMocks();}});
+
+describe('owned conversations and atomic admission',()=>{
+  it('keeps the first accepted title even when it equals the default title',async()=>{
+    const id=await conversation();const ledger=new ExecutionService(a,{maxRunCostUSD:'0.25'});
+    const first=await ledger.admit(admission(id),{id:randomUUID(),text:'New conversation'});if(!first.lease)throw new Error();await ledger.baseline(first.lease,'Synthetic baseline.');
+    const second=await ledger.admit(admission(id),{id:randomUUID(),text:'Later question'});
+    expect((await service().owned(id)).title).toBe('New conversation');
+    if(!second.lease)throw new Error();await ledger.baseline(second.lease,'Synthetic baseline.');
+    const whitespace=await conversation();await ledger.admit(admission(whitespace),{id:randomUUID(),text:'\t Synthetic \n question \t'});expect((await service().owned(whitespace)).title).toBe('Synthetic question');
+  });
+  it('creates, lists, archives, and deletes idempotently with owner-bound cursors',async()=>{
+    const id=randomUUID();const create={action:'create' as const,id,client_request_id:randomUUID()};
+    expect(await service().mutate(create)).toEqual(await service().mutate(create));
+    await conversation();
+    const page=await service().read(ConversationQuerySchema.parse({view:'list',page_size:1}));
+    expect(page.items).toHaveLength(1);expect(page.nextCursor).toBeTruthy();
+    const next=await service().read(ConversationQuerySchema.parse({view:'list',page_size:1,cursor:page.nextCursor}));expect(next.items[0]?.id).not.toBe(page.items[0]?.id);
+    await expect(new ConversationService(b).read(ConversationQuerySchema.parse({view:'list',cursor:page.nextCursor}))).rejects.toMatchObject({status:400});
+    await expect(new ConversationService(b).owned(id)).rejects.toMatchObject({status:404});
+    const archive={action:'archive' as const,id,client_request_id:randomUUID()};await service().mutate(archive);await service().mutate(archive);
+    expect((await service().owned(id)).archived).toBe(true);
+    const deletion={action:'delete' as const,id,confirm:true as const,client_request_id:randomUUID()};expect(await service().mutate(deletion)).toEqual(await service().mutate(deletion));
+    await expect(service().owned(id)).rejects.toMatchObject({status:404});
+    await expect(service().mutate({...create,id:randomUUID()})).rejects.toMatchObject({status:409});
+  });
+  it('inserts one authoritative message pair in the winning admission transaction',async()=>{
+    const id=await conversation();const ledger=new ExecutionService(a,{maxRunCostUSD:'0.25'});const input=admission(id);const message={id:randomUUID(),text:'  Synthetic   question  '};
+    const result=await Promise.all([ledger.admit(input,message),ledger.admit(input,message)]);
+    expect(result.map(r=>r.result.kind).sort()).toEqual(['admitted','existing']);
+    expect(await rows('messages',`conversation_id=eq.${id}`)).toHaveLength(2);
+    expect((await service().owned(id)).title).toBe('Synthetic question');
+    await expect(ledger.admit({...input,clientRequestId:randomUUID()},message)).rejects.toMatchObject({status:409});
+    const busy=await ledger.admit(admission(id),{id:randomUUID(),text:'Other'});expect(busy.result.kind).toBe('busy');
+    expect(await rows('messages',`conversation_id=eq.${id}`)).toHaveLength(2);
+    const deletion={action:'delete' as const,id,confirm:true as const,client_request_id:randomUUID()};await service().mutate(deletion);
+    expect(await rows('messages',`conversation_id=eq.${id}`)).toHaveLength(0);
+    expect(await ledger.summary(result[0]!.result.run.id)).toMatchObject({conversationId:null,state:'cancellation_requested',traceState:'removed'});
+  });
+});

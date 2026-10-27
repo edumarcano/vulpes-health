@@ -67,6 +67,12 @@ test('keyboard, skip link, reduced motion, and 200% text sizing', async ({ page 
   await page.keyboard.press('Enter');
   await expect(page.getByRole('main')).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'New conversation', exact:true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('combobox',{name:'Conversation',exact:true})).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Archived',{exact:true})).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Explore Data' })).toBeFocused();
   expect(await page.getByRole('link', { name: 'Explore Data' }).evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
@@ -80,7 +86,8 @@ test('chat stays disabled and navigation stores only the auth session', async ({
   page.on('request', (request) => { if (request.method() !== 'GET') mutations.push(request.url()); });
   await page.goto('/ask');
   await expect(page.getByRole('textbox', { name: 'Message Ask Vulpes' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: /send|regenerate|edit/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name:'Send',exact:true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /regenerate|edit/i })).toHaveCount(0);
   await page.getByRole('link', { name: 'Explore Data' }).click();
   await expect(page.getByRole('heading', { name: 'No measurements loaded', exact: true })).toBeVisible();
   await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
@@ -107,7 +114,7 @@ test('Settings rejects a malformed settings envelope through the shared schema',
 test('built HTTP surface preserves JSON errors and security headers', async ({ request }) => {
   for (const [path, method, expectedStatus] of [
     ['/api/status', 'GET', 200], ['/api/status', 'POST', 405], ['/api', 'GET', 404],
-    ['/api/chat', 'POST', 404], ['/api/unknown', 'GET', 404], ['/api/status?__vulpes_unmatched=1', 'GET', 404],
+    ['/api/chat', 'POST', 401], ['/api/conversations','GET',401], ['/api/unknown', 'GET', 404], ['/api/status?__vulpes_unmatched=1', 'GET', 404],
   ] as const) {
     const response = await request.fetch(path, { method });
     expect(response.status()).toBe(expectedStatus);

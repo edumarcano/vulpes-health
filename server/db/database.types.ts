@@ -452,14 +452,26 @@ isOneToOne: false
             "add_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
                            },
+"admit_chat_v1":
+{ Args: { "p_executor": string,"p_message": Json,"p_owner": string,"p_request": Json }; Returns: Json
+                           },
 "admit_run_v1":
 { Args: { "p_executor": string,"p_owner": string,"p_request": Json }; Returns: Json
                            },
 "authorize_send_v1":
 { Args: { "p_body_hash": string,"p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_step": string }; Returns: boolean
                            },
+"baseline_chat_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_text": string }; Returns: Json
+                           },
+"cancel_chat_v1":
+{ Args: { "p_owner": string,"p_request": string,"p_run": string }; Returns: Json
+                           },
 "cancel_run_v1":
 { Args: { "p_owner": string,"p_run": string }; Returns: Json
+                           },
+"checkpoint_message_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_parts": Json,"p_run": string }; Returns: undefined
                            },
 "checkpoint_step_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_message"?: Json,"p_output": Json,"p_owner": string,"p_run": string,"p_step": string }; Returns: string
@@ -531,6 +543,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"mutate_conversation_v1":
+{ Args: { "p_owner": string,"p_request": Json }; Returns: Json
+                           },
 "mutate_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
                            },
@@ -546,6 +561,9 @@ isOneToOne: false
 "read_export_v1":
 { Args: { "p_query": Json }; Returns: Json
                            },
+"read_metric_inventory_v1":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "reconcile_runs_v1":
 { Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: Json
                            },
@@ -557,6 +575,9 @@ isOneToOne: false
                            },
 "run_summary_v1":
 { Args: { "p_owner": string,"p_run": string }; Returns: Json
+                           },
+"save_chat_state_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_state": Json,"p_step": string }; Returns: string
                            },
 "settle_step_v1":
 { Args: { "p_evidence": Json,"p_owner": string,"p_run": string,"p_status": string,"p_step": string }; Returns: Json

@@ -26,7 +26,7 @@ for (const file of files) {
   assert(!name.endsWith('.map'), 'Public source maps must be disabled.');
   const body = await readFile(name, 'utf8');
   for (const canary of Object.values(canaries)) assert(!body.includes(canary), `Secret canary leaked into ${name}`);
-  for (const marker of [...Object.values(models).map((model) => model.modelId), 'synthetic-opaque-do-not-rewrite', 'synthetic-credential-canary-not-a-real-key']) {
+  for (const marker of [...Object.values(models).map((model) => model.modelId), 'synthetic-opaque-do-not-rewrite', 'synthetic-opaque-continuation', 'SyntheticChatTransport', 'synthetic-credential-canary-not-a-real-key']) {
     assert(!body.includes(marker), `Server catalog or synthetic harness leaked into ${name}`);
   }
   assert(!/(?:source-extractions|proofs|\.build|server\/config)/.test(name), `Unexpected public artifact: ${name}`);

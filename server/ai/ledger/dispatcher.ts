@@ -16,7 +16,7 @@ interface StepDispatcher {
   send(step: PreparedStep, signal: AbortSignal): AsyncIterable<Uint8Array>;
   bind(lease:RunLease,binding:Pick<StepInput,'provider'|'model'|'price'|'context'>,onPrepared:(step:PreparedStep)=>void):PaidRequestDispatcher;
 }
-export function createDispatcher(ledger: ExecutionService, transport: RequestTransport): StepDispatcher {
+export function createDispatcher(ledger: ExecutionService, transport: RequestTransport,consumerExitStatus:'failed'|'cancelled'='cancelled'): StepDispatcher {
   const dispatcher:StepDispatcher={
     bind(lease,binding,onPrepared){
       let state:'fresh'|'used'='fresh';
@@ -64,8 +64,11 @@ export function createDispatcher(ledger: ExecutionService, transport: RequestTra
     } finally {
       clearInterval(timer);controller.abort();await heartbeat;
       if(streamState==='reading'){
-        await ledger.settle(step,null,'cancelled').catch(()=>undefined);
-        await ledger.finish(step.lease,'cancelled').catch(()=>undefined);
+        // A parser rejecting bytes is a failure. The original direct-consumer
+        // API continues to classify an abandoned iterator as cancellation.
+        const status=signal.aborted ? 'cancelled' : consumerExitStatus;
+        await ledger.settle(step,null,status).catch(()=>undefined);
+        await ledger.finish(step.lease,status).catch(()=>undefined);
       }
     }
   } };
