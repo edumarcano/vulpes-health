@@ -35,7 +35,31 @@ test('Ask goal proposal rejection and stale data show terminal status on reload'
  await say(page,`Propose again using source:${source}`);const pending=page.getByRole('region',{name:'Review goal proposal'}).filter({hasText:'pending'});await expect(pending).toBeVisible();const db=new LocalSupabase();const profile=(await(await db.admin(`/rest/v1/profiles?user_id=eq.${account.id}`,'GET')).json())[0];await db.admin(`/rest/v1/profiles?user_id=eq.${account.id}`,'PATCH',{data_revision:profile.data_revision+1});await page.reload();await expect(page.getByRole('region',{name:'Review goal proposal'}).filter({hasText:'conflicted'})).toBeVisible();await expect(page.getByRole('button',{name:'Approve goal proposal',exact:true})).toHaveCount(0);
 });
 test('Ask goal proposal account switch discards a delayed owned card response',async({page})=>{
- const source=await imported(page);await scenario(page,'goal_create');await start(page);await say(page,`Propose using source:${source}`);await expect(page.getByRole('button',{name:'Approve goal proposal',exact:true})).toBeVisible();
- let release!:()=>void;const gate=new Promise<void>(r=>{release=r;});let started!:()=>void;const blocked=new Promise<void>(r=>{started=r;});await page.route('**/api/goals?view=proposal*',async route=>{const response=await route.fetch();started();await gate;await route.fulfill({response}).catch(()=>undefined);});
- await page.reload({waitUntil:'domcontentloaded'});await blocked;const settings=await page.context().newPage();await restrictNetwork(settings);await settings.goto('/settings');await settings.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page.getByRole('heading',{name:'Sign in to Vulpes',exact:true})).toBeVisible();release();await settings.close();await signIn(page,1);await expect(page.getByRole('button',{name:'Approve goal proposal',exact:true})).toHaveCount(0);await expect(page.getByRole('heading',{name:'Synthetic chat goal',exact:true})).toHaveCount(0);expect(accounts[1]!.id).not.toBe(account.id);
+ await test.step('Create an owned pending proposal',async()=>{
+  const source=await imported(page);await scenario(page,'goal_create');await start(page);await say(page,`Propose using source:${source}`);
+  await expect(page.getByRole('button',{name:'Approve goal proposal',exact:true})).toBeVisible();
+ });
+ let release!:()=>void;const gate=new Promise<void>(r=>{release=r;});
+ let responseState='not requested';let settings:Page|undefined;
+ await page.route('**/api/goals?view=proposal*',async route=>{
+  responseState='fetching';const response=await route.fetch();responseState='held';await gate;
+  await route.fulfill({response}).catch(()=>undefined);
+ });
+ try{
+  await test.step('Reload and hold the restored proposal response',async()=>{
+   await page.reload({waitUntil:'domcontentloaded'});
+   await expect.poll(()=>responseState,{message:'The restored proposal response must reach the barrier'}).toBe('held');
+  });
+  await test.step('Sign out in another tab while the response is held',async()=>{
+   settings=await page.context().newPage();await restrictNetwork(settings);await settings.goto('/settings');
+   await settings.getByRole('button',{name:'Sign out',exact:true}).click();
+   await expect(page.getByRole('heading',{name:'Sign in to Vulpes',exact:true})).toBeVisible();
+  });
+  await test.step('Release the old response and verify the other account is clear',async()=>{
+   release();await settings!.close();await signIn(page,1);
+   await expect(page.getByRole('button',{name:'Approve goal proposal',exact:true})).toHaveCount(0);
+   await expect(page.getByRole('heading',{name:'Synthetic chat goal',exact:true})).toHaveCount(0);
+   expect(accounts[1]!.id).not.toBe(account.id);
+  });
+ }finally{release();await settings?.close();}
 });
