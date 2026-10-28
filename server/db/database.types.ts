@@ -7,14 +7,14 @@ export type Database = {
           Tables: {
             "action_proposals": {
                   Row: {
-                    "canonical_payload": NonNullable<Json>,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"source_run_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
+                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"result": Json | null,"source_run_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "canonical_payload": NonNullable<Json>,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"source_run_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"result"?: Json | null,"source_run_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
                   }
                   Update: {
-                    "canonical_payload"?: NonNullable<Json>,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"source_run_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"result"?: Json | null,"source_run_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -528,8 +528,14 @@ isOneToOne: false
 "commit_import_v1":
 { Args: { "p_bytes": string,"p_request": Json }; Returns: Json
                            },
+"decide_goal_proposal_v1":
+{ Args: { "p_owner": string,"p_request": Json }; Returns: Json
+                           },
 "discard_import_v1":
 { Args: { "p_batch_id": string }; Returns: undefined
+                           },
+"expire_goal_proposals_v1":
+{ Args: { "p_owner": string }; Returns: undefined
                            },
 "finish_run_v1":
 { Args: { "p_executor": string,"p_owner": string,"p_run": string,"p_status": string }; Returns: Json
@@ -612,6 +618,9 @@ isOneToOne: false
                            },
 "record_step_usage_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_payload": Json,"p_run": string,"p_step": string,"p_usage": Json }; Returns: string
+                           },
+"register_goal_proposal_v1":
+{ Args: { "p_owner": string,"p_payload": Json,"p_request": Json }; Returns: string
                            },
 "register_import_v1":
 { Args: { "p_bytes": string,"p_payload_id": string }; Returns: Json

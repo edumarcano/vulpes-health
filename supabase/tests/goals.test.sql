@@ -1,0 +1,16 @@
+begin;
+select plan(12);
+select ok(not has_function_privilege('anon','public.register_goal_proposal_v1(uuid,jsonb,jsonb)','EXECUTE'),'anonymous callers cannot register proposals');
+select ok(not has_function_privilege('authenticated','public.register_goal_proposal_v1(uuid,jsonb,jsonb)','EXECUTE'),'clients cannot inject proposal ownership');
+select ok(has_function_privilege('service_role','public.register_goal_proposal_v1(uuid,jsonb,jsonb)','EXECUTE'),'verified server can register');
+select ok(not has_function_privilege('anon','public.decide_goal_proposal_v1(uuid,jsonb)','EXECUTE'),'anonymous callers cannot approve');
+select ok(not has_function_privilege('authenticated','public.decide_goal_proposal_v1(uuid,jsonb)','EXECUTE'),'clients cannot bypass approval service');
+select ok(has_function_privilege('service_role','public.decide_goal_proposal_v1(uuid,jsonb)','EXECUTE'),'verified server can decide');
+select ok(not has_function_privilege('anon','public.expire_goal_proposals_v1(uuid)','EXECUTE'),'anonymous callers cannot expire drafts');
+select ok(not has_function_privilege('authenticated','public.expire_goal_proposals_v1(uuid)','EXECUTE'),'clients cannot expire another owner drafts');
+select ok(has_function_privilege('service_role','public.expire_goal_proposals_v1(uuid)','EXECUTE'),'maintenance can expire drafts');
+select ok(not has_function_privilege('authenticated','public.invalidate_goal_drafts_v1()','EXECUTE'),'clients cannot invoke invalidation trigger');
+select ok(not has_function_privilege('service_role','public.invalidate_goal_drafts_v1()','EXECUTE'),'trigger has no direct service entry point');
+select ok(not has_table_privilege('authenticated','public.goal_revisions','UPDATE'),'approved revision payloads are immutable');
+select * from finish();
+rollback;

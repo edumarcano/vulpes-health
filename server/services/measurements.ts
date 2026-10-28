@@ -113,3 +113,9 @@ export async function readData(context: AuthContext, query: DataQuery) {
   if (query.view === 'sources') return SourcesPageSchema.parse({ items:result.sources,nextCursor:result.sources.length === query.page_size ? cursor(context,query,result.revision,result.sources.at(-1)!.id) : null,dataRevision:result.revision,timezone:result.timezone });
   return MeasurementsPageSchema.parse({ items:(result.rows as StoredObservation[]).map(measurementDTO),nextCursor:result.rows.length === query.page_size ? cursor(context,query,result.revision,result.rows.at(-1)!.id) : null,dataRevision:result.revision });
 }
+
+export async function goalObservations(context:AuthContext,selection:DataSelection){
+  const rows:StoredObservation[]=[];let after:string|undefined;let revision:number|undefined;
+  do {const page=await snapshot(context,{...selection,view:'measurements',limit:200,...(after?{after_id:after}:{})});checkRevision(page.revision,revision);revision=page.revision;rows.push(...page.rows as StoredObservation[]);after=page.rows.length===200?page.rows.at(-1)!.id:undefined;}while(after);
+  const end=await snapshot(context,{view:'sources',limit:1});checkRevision(end.revision,revision);return {rows,revision:revision!};
+}

@@ -1,3 +1,4 @@
+import { GoalService } from '../services/goals.js';
 import { z } from 'zod';
 import { Temporal } from '@js-temporal/polyfill';
 import { DataSelectionSchema,DecimalInputSchema,DataSummarySchema,MeasurementsPageSchema } from '../../shared/data.js';
@@ -82,6 +83,7 @@ export async function executeReadTool(context:AuthContext,name:string,args:unkno
     const parsed=toolArguments.get_goal_progress.parse(args);
     const goal=(await approvedGoals(context,undefined,parsed.goal_id))[0];
     if(!goal)throw new HttpFailure(404,'goal_not_found','The approved goal was not found.');
+    if(goal.revision.payload&&typeof goal.revision.payload==='object'&&!Array.isArray(goal.revision.payload)&&goal.revision.payload.schemaVersion===2)return new GoalService(context).progress(parsed.goal_id);
     if(goal.review_status!=='clear')return GoalProgressResultSchema.parse({kind:'unavailable',reason:'needs_review'});
     const payload=GoalDraftSchema.safeParse(goal.revision.payload);const baseline=ApprovedBaselineSchema.safeParse(goal.baseline_snapshot);
     if(!payload.success || payload.data.sourceId!==goal.source_id || payload.data.metric!==goal.metric_key)return GoalProgressResultSchema.parse({kind:'unavailable',reason:'unsupported_revision'});

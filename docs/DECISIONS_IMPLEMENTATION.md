@@ -4,6 +4,14 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-28: Direct goal approval workflow (execution-plan PR 11)
+
+The approved M4 batch choices are implemented for direct Goals only: fixed current methods, explicit second review after missing baselines become available, retain-or-replace baseline review, reopening paused/completed goals, terminal archive, 24-hour proposals and discarded unapproved draft bodies. Existing wellness boundaries apply without new clinical numerical thresholds. PR 12 and production inference remain unavailable.
+
+One provider-independent GoalService owns proposal construction and approval coordination; a forwarding approval-service wrapper is unnecessary. Narrow service-only PostgreSQL functions serialize through the active profile lock, hash server-built JSONB, bind expected goal/data revisions and store replay outcomes with existing audit receipts. Forward migrations preserve existing rows. Frozen calculations retain exact decimal values before DTO/display conversion. Version-1 M3 evidence remains readable; the read-only goal tool delegates version-2 progress to the shared service.
+
+Unapproved bodies are removed atomically on data-revision changes and on rejection/conflict/expiry. Direct owned proposal reads enforce expiry. Approved revisions remain immutable history; the existing measurement lifecycle retains conservative baseline-review markers. No AI write/approval tool, provider activation, model change, deployment or real-data operation is included. [Evidence and split-axis self-review](evidence/pr11-direct-goals.md).
+
 ## 2026-10-27: M3 continuation repair and live re-verification
 
 The approved repair keeps the existing input/output and spending ceilings. Versioned measurement projections and compact provider schema framing fit the genuine read path while full results remain encrypted and historical projection validation remains available. Cache-write counts are preserved without inventing billing-subset semantics. Guarded smoke attempts now have explicit idempotent attempt IDs and require a durable nonterminal prefix for cancellation/disconnect proof.
