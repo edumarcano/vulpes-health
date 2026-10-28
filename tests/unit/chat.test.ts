@@ -5,6 +5,7 @@ import { safetyInstructions,rejectCredentials,baselineSafety } from '../../serve
 import { OpenRouterResponsesAdapter,serializeEveryday } from '../../server/ai/providers/openrouter.js';
 import type { GenerationRequest } from '../../server/ai/contracts.js';
 import { responseFrame,assistantOutput } from '../fixtures/chat.js';
+import {providerToolResult,readToolDefinitions,toolArguments} from '../../server/ai/tools.js';
 const request:GenerationRequest={turns:[{type:'message',role:'user',text:'Synthetic 🦊'}],tools:[],continuation:null};
 async function events(bytes:Buffer,fragment=1) {
   const result=[];
@@ -12,6 +13,19 @@ async function events(bytes:Buffer,fragment=1) {
   return result;
 }
 describe('chat contracts, bounded context and safety',()=>{
+  it('projects measurements losslessly for the provider while preserving historical projection behavior',()=>{
+    const source='11111111-1111-4111-8111-111111111111';
+    const selection={metric:'weight',source_id:source,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC',method:'device_reported',granularity:'instant'};
+    const items=Array.from({length:14},(_,index)=>({id:`22222222-2222-4222-8222-${String(index).padStart(12,'0')}`,sourceId:source,metric:'weight',value:70-index/10,unit:'kg',originalValue:String(70-index/10),originalUnit:'kg',observedAt:`2026-09-${String(index+1).padStart(2,'0')}T08:00:00Z`,localDate:null,timezone:index===0?'America/New_York':'UTC',granularity:'instant',method:'device_reported',qualityFlags:index===0?['review_requested']:[],externalRecordId:'synthetic',version:1}));
+    const result={kind:'measurements',selection,items,nextCursor:'synthetic-next-page',dataRevision:1};
+    const projected=providerToolResult(result) as {columns:string[];rows:unknown[][];units:string[];nextCursor:string};
+    expect(projected.rows).toHaveLength(14);expect(projected.nextCursor).toBe('synthetic-next-page');
+    for(let i=0;i<14;i++){const row=Object.fromEntries(projected.columns.map((column,j)=>[column,projected.rows[i]![j]]));expect({...row,unit:projected.units[Number(row.unitIndex)]}).toMatchObject({id:items[i]!.id,value:items[i]!.value,unit:'kg',observedAt:items[i]!.observedAt,localDate:null,timezone:items[i]!.timezone,qualityFlags:items[i]!.qualityFlags});}
+    expect(providerToolResult(result,1)).toBe(result);expect(JSON.stringify(projected).length).toBeLessThan(JSON.stringify(result).length/2);
+    expect(readToolDefinitions.find(t=>t.name==='get_measurements')!.parameters).not.toHaveProperty('$schema');
+    expect(toolArguments.get_measurements.safeParse({...selection,from:'2026-02-30T00:00:00Z'}).success).toBe(false);
+    expect(toolArguments.get_measurements.safeParse({...selection,source_id:'invented'}).success).toBe(false);
+  });
   it('allows absent selection without invented metric; rejects forged tools and empty input',()=>{
     const input={action:'send',conversation_id:'22222222-2222-4222-8222-222222222222',client_request_id:'11111111-1111-4111-8111-111111111111',message:{id:'33333333-3333-4333-8333-333333333333',text:'Hello'},depth:'auto'};
     expect(ChatSendRequestSchema.parse(input).context_selection).toBeNull();
@@ -31,6 +45,13 @@ describe('chat contracts, bounded context and safety',()=>{
   });
 });
 describe('Everyday Responses wire adapter',()=>{
+  it.each([-1,1.5,'377',Number.MAX_SAFE_INTEGER+1])('rejects malformed cache-write counts %s',async written=>{
+    await expect(events(responseFrame([assistantOutput('Synthetic')],{input_tokens:2295,input_tokens_details:{cache_write_tokens:written},output_tokens:2,cost:'0.001'}))).rejects.toThrow();
+  });
+  it.each([0,1915,377])('retains provider cache-write tokens %s without inventing subset semantics',async cacheWrites=>{
+    const result=await events(responseFrame([assistantOutput('Synthetic usage')],{input_tokens:2295,input_tokens_details:{cached_tokens:0,cache_write_tokens:cacheWrites},output_tokens:95,output_tokens_details:{reasoning_tokens:0},cost:'0.000114075'}));
+    expect(result.find(e=>e.type==='usage')).toMatchObject({usage:{cacheWriteTokens:cacheWrites,cacheWriteIsInputSubset:null,reportedCostUSD:'0.000114075'}});
+  });
   it('preserves observed completion identifiers, model and effort separately from requested configuration',async()=>{
     const result=await events(Buffer.from('data: '+JSON.stringify({type:'response.completed',response:{id:'resp-synthetic-metadata',model:'synthetic/effective-model',reasoning:{effort:'medium'},status:'completed',output:[assistantOutput('Synthetic answer')],usage:null}})+'\n\n'));
     expect(result.at(-1)).toMatchObject({type:'completed',finishReason:'stop',metadata:{providerRequestId:'resp-synthetic-metadata',effectiveModel:'synthetic/effective-model',effectiveEffort:'medium'}});

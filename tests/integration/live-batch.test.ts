@@ -35,7 +35,7 @@ afterEach(async()=>{
   } finally {vi.unstubAllGlobals();vi.doUnmock('../../server/config/models.js');vi.doUnmock('../../server/config/everyday-verification.js');vi.resetModules();vi.unstubAllEnvs();}
 });
 
-it('runs the same guarded dispatcher with a synthetic provider, then retains the shared ceiling',async()=>{
+async function configuredSmoke(){
   const price={...syntheticPrice,inputPerMillion:'0.1',outputPerMillion:'0.1',cacheReadPerMillion:'0.1',inputBoundTokens:12000,outputBoundTokens:3072};
   const config={modelId:'synthetic-model',reasoning:{effort:'low'},maxInputTokens:12000,maxOutputTokens:3072,price};
   const evidence={version:1,provider:'openrouter',model:config.modelId,effort:'low',adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,priceId:price.id,priceHash:priceFingerprint(price),inputBoundTokens:12000,outputBoundTokens:3072,streaming:true,tools:true,zdr:true,checkedAt:price.checkedAt,sourceURL:'https://example.test/capabilities'};
@@ -58,10 +58,15 @@ it('runs the same guarded dispatcher with a synthetic provider, then retains the
     return localFetch(input,init);
   });
   const {runSmoke}=await import('../../scripts/provider-smoke.js');
-  const first=(await runSmoke(['--mode=live','--role=everyday','--allow-spend','--max-cost-usd=0.004'],process.env)).report;
+  return {network,runLiveEveryday,runSmoke,SyntheticChatTransport,responseFrame,assistantOutput,setTransport:(next:typeof transport)=>{transport=next;}};
+}
+
+it('runs the same guarded dispatcher with a synthetic provider, then retains the shared ceiling',async()=>{
+  const {network,runLiveEveryday,runSmoke,SyntheticChatTransport,responseFrame,assistantOutput,setTransport}=await configuredSmoke();
+  const first=(await runSmoke(['--mode=live','--role=everyday','--allow-spend','--max-cost-usd=0.004',`--attempt-id=${randomUUID()}`],process.env)).report;
   if(first.mode!=='live')throw new Error('Expected synthetic transport live-path report.');
   expect(first).toMatchObject({result:'passed',actualProviderRequests:3,costUSD:'0.003',costStatus:'reported',reservationUSD:'0',maxCostUSD:'0.004',batchSpentUSD:'0.003',exactRequestsVerified:true,ownedToolEvidenceVerified:true,reloadVerified:true});expect(Number(first.batchReservedUSD)).toBe(0);
-  transport=new SyntheticChatTransport();const second=await runLiveEveryday('0.004',true,process.env,network);
+  setTransport(new SyntheticChatTransport());const second=await runLiveEveryday('0.004',true,process.env,network);
   expect(second).toMatchObject({result:'failed',failureCode:'budget_exhausted',actualProviderRequests:0});
   expect(vi.mocked(network)).toHaveBeenCalledTimes(3);
   const uncertainBatch=randomUUID();batches.push(uncertainBatch);vi.stubEnv('VULPES_SMOKE_BATCH_ID',uncertainBatch);
@@ -71,11 +76,7 @@ it('runs the same guarded dispatcher with a synthetic provider, then retains the
   expect(Number(failed.reservationUSD)).toBeGreaterThan(0);expect(Number(failed.batchReservedUSD)).toBeGreaterThan(0);
   const refused=await runLiveEveryday('0.0017',true,process.env,disconnected);
   expect(refused).toMatchObject({result:'failed',failureCode:'budget_exhausted',actualProviderRequests:0});expect(vi.mocked(disconnected)).toHaveBeenCalledTimes(1);
-  const cancelBatch=randomUUID();batches.push(cancelBatch);vi.stubEnv('VULPES_SMOKE_BATCH_ID',cancelBatch);transport=new SyntheticChatTransport('slow');
-  const cancelled=await runLiveEveryday('0.01',true,process.env,network,'cancel');
-  expect(cancelled).toMatchObject({scenario:'cancel',result:'passed',actualProviderRequests:1,costUSD:null,costStatus:'pending',exactRequestsVerified:true});
-  expect(Number(cancelled.reservationUSD)).toBeGreaterThan(0);
-  const wrongBatch=randomUUID();batches.push(wrongBatch);vi.stubEnv('VULPES_SMOKE_BATCH_ID',wrongBatch);transport=new SyntheticChatTransport();let calls=0;
+  const wrongBatch=randomUUID();batches.push(wrongBatch);vi.stubEnv('VULPES_SMOKE_BATCH_ID',wrongBatch);setTransport(new SyntheticChatTransport());let calls=0;
   const wrongAnswer=vi.fn(async(_url:string|URL|Request,init?:RequestInit)=>{
     calls++;
     if(calls===3)return new Response(Uint8Array.from(responseFrame([assistantOutput('The synthetic mean is 69.7 kg and increased 0.7 kg.')])),{status:200,headers:{'Content-Type':'text/event-stream'}});
@@ -83,6 +84,32 @@ it('runs the same guarded dispatcher with a synthetic provider, then retains the
   }) as unknown as typeof fetch;
   const incorrect=await runLiveEveryday('0.01',true,process.env,wrongAnswer);
   expect(incorrect).toMatchObject({result:'failed',failureCode:'verification_answer_inconsistent',actualProviderRequests:3,costUSD:'0.003'});
+});
+
+
+it.each(['cancel','disconnect'] as const)('captures a nonterminal prefix before controlled %s',async scenario=>{
+  const {network,runLiveEveryday,SyntheticChatTransport,setTransport}=await configuredSmoke();
+  setTransport(new SyntheticChatTransport('slow'));
+  const report=await runLiveEveryday('0.01',true,process.env,network,scenario);
+  expect(report).toMatchObject({scenario,result:'passed',actualProviderRequests:1,costUSD:null,costStatus:'pending',exactRequestsVerified:true,interruption:{state:'observed',capturedBeforeTerminal:true}});
+  expect(Number(report.reservationUSD)).toBeGreaterThan(0);
+});
+it('accepts a correct synthetic answer using the provider-observed mathematical minus sign',async()=>{
+  const {network,runLiveEveryday,responseFrame,assistantOutput}=await configuredSmoke();let calls=0;
+  const unicodeAnswer:typeof fetch=async(input,init)=>++calls===3?new Response(Uint8Array.from(responseFrame([assistantOutput('The seven-day mean is 69.0 kg; change is −0.7 kg, with sufficient coverage.')])),{headers:{'Content-Type':'text/event-stream'}}):network(input,init);
+  expect(await runLiveEveryday('0.01',true,process.env,unicodeAnswer)).toMatchObject({result:'passed',actualProviderRequests:3,costUSD:'0.003'});
+});
+it.each(['message','tool'] as const)('rejects terminal-only %s cancellation without starting a continuation',async kind=>{
+  const {runLiveEveryday,responseFrame,assistantOutput}=await configuredSmoke();
+  const terminalOnly=vi.fn(async()=>new Response(Uint8Array.from(responseFrame([kind==='message'?assistantOutput('Already finished'):{type:'function_call',id:'terminal-item',call_id:'terminal-call',name:'list_metrics',arguments:'{}'}])),{headers:{'Content-Type':'text/event-stream'}})) as unknown as typeof fetch;
+  expect(await runLiveEveryday('0.01',true,process.env,terminalOnly,'cancel')).toMatchObject({result:'failed',failureCode:'verification_interruption_unavailable',actualProviderRequests:1});
+  expect(terminalOnly).toHaveBeenCalledOnce();
+});
+it('reusing an explicit attempt cannot obtain another execution lease or provider request',async()=>{
+  const {network,runLiveEveryday}=await configuredSmoke();const attempt=randomUUID();
+  expect(await runLiveEveryday('0.01',true,process.env,network,'tool_loop',attempt)).toMatchObject({result:'passed',actualProviderRequests:3});
+  expect(await runLiveEveryday('0.01',true,process.env,network,'tool_loop',attempt)).toMatchObject({result:'failed',failureCode:'verification_not_admitted',actualProviderRequests:0});
+  expect(vi.mocked(network)).toHaveBeenCalledTimes(3);
 });
 
 it('creates one synthetic fixture allocation, reuses it, and refuses changed ceilings or data',async()=>{

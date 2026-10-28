@@ -4,6 +4,7 @@ import {
 } from '../../server/ai/contracts.js';
 import type { GenerationAdapter, GenerationFamily } from '../../server/ai/contracts.js';
 import { getRoleAvailability, ModelConfigSchema, models, prototypeRunLimits } from '../../server/config/models.js';
+import { reserveMaximum } from '../../server/ai/ledger/pricing.js';
 import {
   exerciseGeneration, generationReplies, SyntheticDecisionAdapter, SyntheticDecisionTransport,
   SyntheticGenerationAdapter, SyntheticGenerationTransport, syntheticDecisionRequest, syntheticDecisionResult,
@@ -24,14 +25,19 @@ describe('typed catalog and honest role availability', () => {
     expect(models.advanced.thinking).toEqual({ level: 'MEDIUM' });
     for (const model of Object.values(models)) {
       expect(ModelConfigSchema.parse(model)).toEqual(model);
-      expect(model.price.status).toBe('unverified');
-      expect(model.price.inputPerMillion).toBeNull();
-      expect(model.price.otherFees).toBeNull();
+      if(model.role==='everyday') {
+        expect(model.price.status).toBe('verified');
+        expect(reserveMaximum(model.price)).toBe('0.0093192');
+      } else {
+        expect(model.price.status).toBe('unverified');
+        expect(model.price.inputPerMillion).toBeNull();
+        expect(model.price.otherFees).toBeNull();
+      }
       expect(model.liveSmokeStatus).toBe('not_run');
       expect(getRoleAvailability(model.role).state).toBe(model.role === 'decision' ? 'disabled' : 'unavailable');
     }
     expect(getRoleAvailability('everyday',false)).toEqual({state:'unavailable',reason:'live_ai_disabled'});
-    expect(getRoleAvailability('everyday',true)).toEqual({state:'unavailable',reason:'price_unverified'});
+    expect(getRoleAvailability('everyday',true)).toEqual({state:'unavailable',reason:'live_smoke_unverified'});
   });
   it.each([
     { ...models.everyday, reasoning: { effort: 'MINIMAL' } },

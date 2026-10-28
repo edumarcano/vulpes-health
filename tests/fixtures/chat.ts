@@ -10,7 +10,7 @@ export function responseFrame(output:unknown[],usage:unknown={input_tokens:50,ou
 export const assistantOutput=(text:string)=>({type:'message',id:'message-synthetic',role:'assistant',content:[{type:'output_text',text}]});
 export class SyntheticChatTransport implements RequestTransport {
   readonly mode='mock';readonly requests:Buffer[]=[];
-  constructor(private readonly scenario:'complete'|'truncated'|'missing_usage'|'malformed'|'repeated_call'|'unsafe_text'|'slow'='complete',private readonly barrier?:{started:()=>void;wait:Promise<void>}) {}
+  constructor(private readonly scenario:'complete'|'measurements'|'truncated'|'missing_usage'|'malformed'|'repeated_call'|'unsafe_text'|'slow'='complete',private readonly barrier?:{started:()=>void;wait:Promise<void>}) {}
   async *send(body:Uint8Array,signal:AbortSignal) {
     signal.throwIfAborted();this.requests.push(Buffer.from(body));
     if(this.scenario==='slow') {
@@ -31,6 +31,9 @@ export class SyntheticChatTransport implements RequestTransport {
     if(summary) {
       const analysis=summary.result.data!.analysis;
       output=[assistantOutput(analysis.value===null ? 'There are not enough observed days to calculate this trend.' : `Calculated from your imported measurements: seven-day mean ${analysis.value} kg; change ${analysis.absoluteChange} kg. This is a deterministic summary, not a diagnosis.`)];
+    } else if(metrics && this.scenario==='measurements' && !results.some(item=>item.result.kind==='measurements')) {
+      const source=metrics.result.items!.find(item=>item.metric==='weight')!;
+      output=[{type:'function_call',id:'item-measurements',call_id:'call-measurements',name:'get_measurements',arguments:JSON.stringify({metric:'weight',source_id:source.source_id,method:source.method,granularity:source.granularity,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC',limit:200})}];
     } else if(metrics) {
       const source=metrics.result.items?.find(item=>item.metric==='weight');
       output=source ? [{type:'reasoning',id:'reasoning-synthetic',encrypted_content:'synthetic-opaque-continuation'},{type:'function_call',id:'item-summary',call_id:this.scenario==='repeated_call'?'call-inventory':'call-summary',name:'summarize_metric',arguments:JSON.stringify({metric:'weight',source_id:source.source_id,method:source.method,granularity:source.granularity,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC'})}]

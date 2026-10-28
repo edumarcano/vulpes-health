@@ -120,6 +120,10 @@ Store request body once per step; use references rather than copying it into man
 
 The inspector distinguishes the requested model/effort from provider-reported values. Responses `id`, `model`, and `reasoning.effort` supply observable correlation/model/effort metadata when present; missing fields remain unknown. Finish reasons are adapter-normalized (`stop`, `tool_calls`, `length`, `blocked`). These bounded values settle with the step and survive private payload expiry within the 90-day execution retention period. Historical steps without captured metadata remain unknown.
 
+Provider-facing tool results are versioned projections of complete owned results. Version 2 measurement results share series metadata and use named columns with ordered rows, retaining observation identifiers, values, units, timestamps/local dates, timezone and quality flags. The encrypted tool trace retains the complete original result and exact provider projection. Historical envelopes without `projectionVersion` use version 1 validation; projection changes must not invalidate old evidence. Large results still fail before dispatch if complete required context cannot fit.
+
+Means, changes and trends use deterministic `summarize_metric` results. Provider-facing tool schemas retain type/format/enum/range guidance while the server applies full canonical validation and authorization. Returned cache-write token counts are normalized when present; unverified billing-subset semantics remain unknown, and a provider-reported total is not charged again through category estimates.
+
 Future RAG must retain the exact included passages, document/version/page identifiers and omitted retrieval candidates. Future web research must retain fetched content actually used, URL, retrieval time and content hash, distinguishing a search snippet from a read page. A URL alone is not a complete evidence audit. These future fields can be represented as typed references now without shipping a research system.
 
 ## 9. Caching and token efficiency

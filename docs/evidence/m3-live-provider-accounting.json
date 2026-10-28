@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-10-27T22:26:34.118Z",
+  "records": [
+    {
+      "id": "gen-1793139862-ZUpLzmIdh7jfkOBtaGAZ",
+      "httpStatus": 200,
+      "provider": "Azure",
+      "model": "openai/gpt-6-luna-20260922",
+      "totalCostUSD": 0.000246675,
+      "inputTokens": 1599,
+      "outputTokens": 4,
+      "nativeInputTokens": 1918,
+      "nativeOutputTokens": 14,
+      "nativeReasoningTokens": 0,
+      "nativeCachedTokens": 0,
+      "isByok": false,
+      "finishReason": "tool_calls",
+      "nativeFinishReason": "completed"
+    },
+    {
+      "id": "gen-1793139864-EGoiHLGcHJnl7hHKll2M",
+      "httpStatus": 200,
+      "provider": "Azure",
+      "model": "openai/gpt-6-luna-20260922",
+      "totalCostUSD": 0.000114075,
+      "inputTokens": 1854,
+      "outputTokens": 56,
+      "nativeInputTokens": 2295,
+      "nativeOutputTokens": 95,
+      "nativeReasoningTokens": 0,
+      "nativeCachedTokens": 1915,
+      "isByok": false,
+      "finishReason": "tool_calls",
+      "nativeFinishReason": "completed"
+    }
+  ],
+  "keyUsageUSD": 0.00036075,
+  "keyLimitRemainingUSD": 2.99963925
+}

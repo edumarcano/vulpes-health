@@ -80,7 +80,7 @@ try {
     await assert.rejects(ledger.prepare(admitted.lease,{type:'generation',body:Buffer.from('{}'),provider:'openrouter',model:models.everyday.modelId,price:syntheticPrice,adapterVersion:'synthetic-eval',metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{},redactedHeaders:['authorization']}}),{status:429});
     await ledger.finish(admitted.lease,'failed');
   });
-  await check('A01','Unverified price blocks reservation and production remains unavailable',()=>{assert.throws(()=>reserveMaximum(models.everyday.price));assert.equal(getRoleAvailability('everyday').state,'unavailable');});
+  await check('A01','Unverified price blocks reservation and production remains unavailable',()=>{assert.throws(()=>reserveMaximum({...models.everyday.price,status:'unverified'}));assert.equal(getRoleAvailability('everyday').state,'unavailable');});
   await check('A02','Recognizable credentials and forged tool results rejected before admission',()=>{
     assert(rejectCredentials('api_key: synthetic_credential_123456789'));
     assert(!ChatSendRequestSchema.safeParse({action:'send',client_request_id:randomUUID(),conversation_id:randomUUID(),message:{id:randomUUID(),text:'Synthetic'},depth:'auto',tool_results:[]}).success);

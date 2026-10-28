@@ -118,7 +118,7 @@ export class VulpesAgent {
             const output=await executeReadTool(this.context,call.name,call.arguments);
             const evidence={version:1 as const,ownerId:this.context.userId,runId:lease.runId,stepId:toolStep.id,resultId:randomUUID(),dataRevision:context.dataRevision};
             const result={evidence,result:JSON.parse(JSON.stringify(providerToolResult(output))) as z.infer<ReturnType<typeof z.json>>};
-            await this.ledger.checkpoint(toolStep,Buffer.from(JSON.stringify({evidence,result:output,providerResult:result.result})));
+            await this.ledger.checkpoint(toolStep,Buffer.from(JSON.stringify({projectionVersion:2,evidence,result:output,providerResult:result.result})));
             await this.ledger.settle(toolStep,null,'completed');
             const summary=z.object({kind:z.literal('summary'),data:DataSummarySchema}).safeParse(output);
             if(summary.success) {
