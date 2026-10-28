@@ -4,6 +4,16 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-27: M3 continuation repair and live re-verification
+
+The approved repair keeps the existing input/output and spending ceilings. Versioned measurement projections and compact provider schema framing fit the genuine read path while full results remain encrypted and historical projection validation remains available. Cache-write counts are preserved without inventing billing-subset semantics. Guarded smoke attempts now have explicit idempotent attempt IDs and require a durable nonterminal prefix for cancellation/disconnect proof.
+
+The completed real-model answer used a mathematical minus sign; a notation-only verifier repair was reproduced offline and independently reviewed before reassessing the same saved run with zero further inference. The completed loop, controlled cancellation/disconnect and actual API/browser evidence passed. All seven requests in the original $0.06 batch currently show $0.001063265 in provider billing; the ledger has $0.000836365 settled and $0.0186384 conservatively held. Production remains disabled. [Evidence, retained failures and remaining limits](evidence/m3-live-reverification.md). Changes remain uncommitted; integration and formal milestone acceptance are separate.
+
+## 2026-10-27: Bounded Everyday live-verification attempt
+
+The user authorized a $0.06 aggregate synthetic-only batch after reviewing current model/pricing/ZDR evidence. Everyday now has a conservative typed price snapshot and matching public capability fingerprint; model identity, ceilings and production composition are unchanged. The first attempt made two Azure-routed Responses requests, settled $0.000360750 and stopped with `context_too_large` after a genuine measurement read. No further paid scenario or retry was run. Production remains unavailable, and full M3 acceptance is blocked. [Live evidence](evidence/m3-live-everyday.md) records the continuation-size reproduction, exact request/usage/accounting evidence and remaining checks. No budget, model, retention or live-user activation deviation was approved.
+
 ## 2026-10-27: M3 independent-review remediation
 
 **Scope:** Implement F1 and the bounded F2 fix from the independent review of merged PRs #11–13. Implementation, branch publication and an open PR are authorized; merge and live-provider activation remain separate.

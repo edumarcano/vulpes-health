@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Temporal } from '@js-temporal/polyfill';
-import { DataSelectionSchema,DecimalInputSchema,DataSummarySchema } from '../../shared/data.js';
+import { DataSelectionSchema,DecimalInputSchema,DataSummarySchema,MeasurementsPageSchema } from '../../shared/data.js';
 import { MetricKeySchema,MeasurementMethodSchema,GranularitySchema,GoalDraftSchema,GoalStateSchema,GoalTargetSchema } from '../../shared/domain.js';
 import { CountSchema,IanaTimezoneSchema,ISOInstantSchema,UUIDSchema } from '../../shared/primitives.js';
 import type { AuthContext } from '../auth/session.js';
@@ -12,8 +12,26 @@ import type { GenerationRequest } from './contracts.js';
 const selection=z.strictObject({metric:MetricKeySchema,source_id:UUIDSchema.nullish(),from:ISOInstantSchema,to:ISOInstantSchema,timezone:IanaTimezoneSchema,method:MeasurementMethodSchema.optional(),granularity:GranularitySchema.optional()});
 export const toolArguments={list_metrics:z.strictObject({}),get_measurements:selection.extend({limit:z.number().int().min(1).max(200).default(200)}),summarize_metric:selection,list_goals:z.strictObject({status:GoalStateSchema.exclude(['draft']).optional()}),get_goal_progress:z.strictObject({goal_id:UUIDSchema})};
 const descriptions={list_metrics:'List owned measurement series, counts, time ranges, and method/source limitations. Does not choose a series.',get_measurements:'Read at most 200 observations in an explicit interval. Clarify ambiguous source, method, or granularity.',summarize_metric:'Calculate a deterministic, method-qualified summary for complete local calendar days. Sparse coverage remains insufficient.',list_goals:'List approved owned goals; no drafts or goal mutations.',get_goal_progress:'Read an approved owned goal and calculate supported progress. Unsupported or stale baselines remain unavailable.'};
-export const readToolDefinitions:GenerationRequest['tools']=Object.entries(toolArguments).map(([name,schema])=>({name,description:descriptions[name as keyof typeof descriptions],parameters:z.toJSONSchema(schema) as Record<string,z.infer<ReturnType<typeof z.json>>>}));
-export function providerToolResult(output:unknown):unknown {
+export const readToolDefinitions:GenerationRequest['tools']=Object.entries(toolArguments).map(([name,schema])=>{
+  // Formats already describe these values to the model. Keep Zod's full
+  // calendar/UUID validation server-side rather than repeating its regex on wire.
+  const parameters=z.toJSONSchema(schema,{override:({jsonSchema})=>{if(jsonSchema.format==='uuid'||jsonSchema.format==='date-time')delete jsonSchema.pattern;}});
+  delete parameters.$schema;
+  return {name,description:descriptions[name as keyof typeof descriptions],parameters:parameters as Record<string,z.infer<ReturnType<typeof z.json>>>};
+});
+export const toolProjectionVersion=2;
+const MeasurementResultSchema=MeasurementsPageSchema.extend({kind:z.literal('measurements'),selection:DataSelectionSchema});
+export function providerToolResult(output:unknown,version:1|2=toolProjectionVersion):unknown {
+  if(version===2) {
+    const measurements=MeasurementResultSchema.safeParse(output);
+    if(measurements.success) {
+      const {selection,dataRevision,items,nextCursor}=measurements.data;
+      const units=[...new Set(items.map(item=>item.unit))];
+      return {kind:'measurements',selection,dataRevision,units,
+        columns:['id','value','unitIndex','observedAt','localDate','timezone','qualityFlags'],
+        rows:items.map(item=>[item.id,item.value,units.indexOf(item.unit),item.observedAt,item.localDate,item.timezone,item.qualityFlags]),nextCursor};
+    }
+  }
   const summary=z.object({kind:z.literal('summary'),data:DataSummarySchema}).safeParse(output);
   if(!summary.success)return output;
   const {selection,dataRevision,analysis}=summary.data.data;

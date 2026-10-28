@@ -1,0 +1,35 @@
+{
+  "mode": "live",
+  "scenario": "tool_loop",
+  "result": "failed",
+  "failureCode": "context_too_large",
+  "batchId": "b7baae10-fb2d-4e7d-bfc4-21151e343797",
+  "runId": "0e14205f-a604-4302-802b-c108e6fa90f1",
+  "actualProviderRequests": 2,
+  "costUSD": "0.000360750",
+  "costStatus": "reported",
+  "reservationUSD": "0",
+  "traceState": "incomplete",
+  "checkedAt": "2026-10-27T22:24:25.715Z",
+  "requested": {
+    "provider": "openrouter",
+    "model": "openai/gpt-6-luna",
+    "effort": "low",
+    "adapterVersion": "openrouter-responses-v1",
+    "templateVersion": "vulpes-everyday-v1",
+    "priceId": "openrouter-gpt-6-luna-20261027-conservative",
+    "priceHash": "7e9dcc1793067b0e991ef850f3a03d9513a00ec6ffc604d2de4b153e4f59f9f0"
+  },
+  "effective": {
+    "model": "openai/gpt-6-luna",
+    "effort": "low"
+  },
+  "exactRequestsVerified": true,
+  "ownedToolEvidenceVerified": false,
+  "reloadVerified": false,
+  "maxCostUSD": "0.06",
+  "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+  "batchSpentUSD": "0.000360750",
+  "batchReservedUSD": "0.0000000",
+  "limitations": "Value-presence checks do not establish semantic correctness or safety. A single synthetic attempt does not establish M3 acceptance or live cancellation and failure behavior."
+}

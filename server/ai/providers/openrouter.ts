@@ -30,9 +30,10 @@ function providerUsage(raw:Record<string,z.infer<ReturnType<typeof z.json>>>) {
   const details=z.record(z.string(),z.json()).nullish().parse(raw.output_tokens_details);
   const inputDetails=z.record(z.string(),z.json()).nullish().parse(raw.input_tokens_details);
   const reasoning=count.parse(details?.reasoning_tokens ?? null);const cached=count.parse(inputDetails?.cached_tokens ?? null);
+  const written=count.parse(inputDetails?.cache_write_tokens ?? null);
   const cost=raw.cost===undefined || raw.cost===null ? null : new Decimal(z.union([z.string(),z.number().finite().nonnegative()]).parse(raw.cost)).toFixed();
   if(reasoning!==null && outputTokens!==null && reasoning>outputTokens || cached!==null && inputTokens!==null && cached>inputTokens)throw new Error('invalid_usage_subset');
-  return normalizeUsage({inputTokens,outputTokens,reasoningTokens:reasoning,cacheReadTokens:cached,cacheWriteTokens:null,
+  return normalizeUsage({inputTokens,outputTokens,reasoningTokens:reasoning,cacheReadTokens:cached,cacheWriteTokens:written,
     reasoningIsOutputSubset:reasoning===null ? null : true,cacheReadIsInputSubset:cached===null ? null : true,reportedCostUSD:cost,rawUsage:raw});
 }
 

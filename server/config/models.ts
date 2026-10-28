@@ -39,7 +39,14 @@ const capabilities = { streaming: true, tools: true } as const;
 export const models = {
   everyday: {
     role: 'everyday', provider: 'openrouter', apiFamily: 'openrouter_responses', modelId: 'openai/gpt-6-luna', enabledByDefault: true,
-    reasoning: { effort: 'low' }, maxInputTokens: 12000, maxOutputTokens: 3072, privacyPolicy: 'openrouter_zdr_required', capabilities, price, liveSmokeStatus: 'not_run',
+    reasoning: { effort: 'low' }, maxInputTokens: 12000, maxOutputTokens: 3072, privacyPolicy: 'openrouter_zdr_required', capabilities,
+    price: {
+      status:'verified',id:'openrouter-gpt-6-luna-20261027-conservative',currency:'USD',checkedAt:'2026-10-27T22:20:31.355Z',
+      sourceURL:'https://openrouter.ai/api/v1/models/openai/gpt-6-luna/endpoints',
+      inputPerMillion:'0.20',outputPerMillion:'1.00',cacheReadPerMillion:'0.02',cacheWritePerMillion:'0.25',otherFees:'0',
+      inputBoundTokens:12000,outputBoundTokens:3072,reasoningBilling:'included_in_output',reasoningPerMillion:'0',reasoningBoundTokens:0,
+      outputLimitVerified:true,inputBoundVerified:true,
+    },liveSmokeStatus: 'not_run',
   },
   intermediate: {
     role: 'intermediate', provider: 'vertex_ai', apiFamily: 'vertex_generate_content', modelId: 'gemini-3.8-flash', enabledByDefault: true,

@@ -17,7 +17,8 @@ import {StreamDecoder,type StreamEvent} from '../../shared/stream.js';
 import {SyntheticChatTransport,syntheticChatDependencies,responseFrame,assistantOutput} from '../fixtures/chat.js';
 import {readPayload} from '../../server/security/private-payloads.js';
 import {encryptBytes,readEncryptionKeys} from '../../server/security/encryption.js';
-import {executeReadTool} from '../../server/ai/tools.js';
+import {executeReadTool,providerToolResult} from '../../server/ai/tools.js';
+import {InspectionService} from '../../server/services/inspection.js';
 import {VulpesAgent,type AgentDependencies} from '../../server/ai/VulpesAgent.js';
 import type {RequestTransport} from '../../server/ai/ledger/dispatcher.js';
 import {normalizeUsage,type GenerationAdapter} from '../../server/ai/contracts.js';
@@ -57,6 +58,33 @@ async function stream(response:Response) {
 }
 const send=(id:string,text='How has my imported weight changed?')=>({action:'send',conversation_id:id,client_request_id:randomUUID(),message:{id:randomUUID(),text},depth:'auto'});
 describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
+  it('fits the live-observed fourteen-measurement path through a deterministic summary and answer',async()=>{
+    const transport=new SyntheticChatTransport('measurements');
+    await withApi(syntheticChatDependencies(transport),async api=>{
+      const preview=await api('/api/data',{action:'preview_csv',client_request_id:randomUUID(),csv:readFileSync('docs/spec/v0.1.0/fixtures/measurements-synthetic.csv','utf8'),source:{kind:'new',label:'Synthetic verification import',origin_app:null,device_label:null},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}});
+      expect(preview.status).toBe(200);const p=(await preview.json()).data;
+      expect((await api('/api/data',{action:'commit_import',batch_id:p.batch_id,payload_hash:p.payload_hash,client_request_id:randomUUID()})).status).toBe(200);
+      const events=await stream(await api('/api/chat',send(await conversation(),'Using the imported synthetic scale records, calculate the seven-day weight mean and change for 2026-09-01 through 2026-09-14 UTC. Use the available read tool and explain its coverage.')));
+      const saved=[];
+      for(const step of await rows('ai_steps',`run_id=eq.${events[0]!.run_id}&order=sequence`))if(step.continuation_payload_id){const payload=await readPayload(a,String(step.continuation_payload_id),'provider_state');if(payload.state==='available'){const r=JSON.parse(payload.bytes.toString());saved.push({bytes:payload.bytes.length,turns:r.turns.map((t:{type:string;name?:string})=>({type:t.type,name:t.name,bytes:Buffer.byteLength(JSON.stringify(t))}))});}}
+      expect(events.at(-1)?.type,JSON.stringify({last:events.at(-1),saved})).toBe('run.completed');
+      expect(transport.requests).toHaveLength(4);expect(transport.requests.every(bytes=>bytes.length<=12000)).toBe(true);
+      expect(events.filter(e=>e.type==='tool.result').map(e=>e.payload.tool_name)).toEqual(['list_metrics','get_measurements','summarize_metric']);
+      expect(events.filter(e=>e.type==='text.delta').map(e=>e.payload.text).join('')).toContain('69 kg; change -0.7 kg');
+      const run=events[0]!.run_id;const inspector=new InspectionService(a);
+      const measurement=(await rows('ai_steps',`run_id=eq.${run}&tool_name=eq.get_measurements`))[0]!;
+      const output=await readPayload(a,String(measurement.output_payload_id),'tool_output');expect(output.state).toBe('available');if(output.state!=='available')throw new Error();
+      const stored=JSON.parse(output.bytes.toString());expect(stored.projectionVersion).toBe(2);expect(stored.result.items).toHaveLength(14);
+      const query={view:'payload' as const,run,step:String(measurement.id),part:'output' as const};
+      expect((await inspector.evidence(query)).state).toBe('available');
+      const expiresAt=String((await rows('private_payloads',`id=eq.${measurement.output_payload_id}`))[0]!.expires_at);
+      const replace=async(value:unknown)=>{const envelope=encryptBytes({id:String(measurement.output_payload_id),user_id:a.userId,purpose:'tool_output',expires_at:expiresAt},Buffer.from(JSON.stringify(value)),readEncryptionKeys());await db.admin(`/rest/v1/private_payloads?id=eq.${envelope.id}`,'PATCH',envelope);};
+      const legacy={evidence:stored.evidence,result:stored.result,providerResult:providerToolResult(stored.result,1)};
+      await replace(legacy);expect((await inspector.evidence(query)).state).toBe('available');
+      await replace({...stored,providerResult:{...stored.providerResult,rows:[]}});expect((await inspector.evidence(query)).state).toBe('corrupt');
+      await replace({...stored,projectionVersion:99});expect((await inspector.evidence(query)).state).toBe('corrupt');
+    });
+  });
   it('replays retained message receipts after run expiry even when inference is unavailable',async()=>{
     let calls=0;const transport:RequestTransport={mode:'mock',async *send(){calls++;yield responseFrame([assistantOutput('Saved synthetic answer')]);}};
     const id=await conversation();const input=send(id);let run='';

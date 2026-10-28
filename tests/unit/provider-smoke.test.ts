@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderSmokeReport, runSmoke } from '../../scripts/provider-smoke.js';
+import {matchesSyntheticAnswer} from '../../scripts/live-everyday.js';
 
 const canary = 'synthetic-credential-canary-not-a-real-key';
 async function cli(args: string[], liveSwitch = 'false') {
@@ -20,6 +21,10 @@ async function cli(args: string[], liveSwitch = 'false') {
 }
 
 describe('real provider-smoke CLI', () => {
+  it('accepts equivalent mathematical-minus spelling without accepting wrong magnitudes or direction',()=>{
+    for(const text of ['69.0 kg; change −0.7 kg','69 kg; change -0.70 kg','69 kg, decreased by 0.7 kg'])expect(matchesSyntheticAnswer(text)).toBe(true);
+    for(const text of ['69.7 kg; change −0.7 kg','69 kg; change −0.8 kg','69 kg, increased by 0.7 kg'])expect(matchesSyntheticAnswer(text)).toBe(false);
+  });
   it('runs all four synthetic roles with zero provider requests even when the live switch is true', async () => {
     const output = await cli([], 'true');
     expect(output.code).toBe(0);
@@ -44,7 +49,7 @@ describe('real provider-smoke CLI', () => {
     expect(JSON.parse(output.stderr)).toEqual({ mode: 'blocked', code: expected, actualProviderRequests: 0, inferenceSpendUSD: '0' });
   });
   it.each([
-    ['false', 'live_ai_disabled'], ['true', 'price_unverified'], ['TRUE', 'invalid_live_switch'],
+    ['false', 'live_ai_disabled'], ['true', 'verification_attempt_required'], ['TRUE', 'invalid_live_switch'],
   ])('denies fully supplied live flags with switch %s', async (liveSwitch, expected) => {
     const output = await cli(['--mode=live', '--role=everyday', '--allow-spend', '--max-cost-usd=0.01'], liveSwitch);
     expect(output.code).toBe(1);
@@ -71,7 +76,15 @@ describe('real provider-smoke CLI', () => {
     const decision=(await runSmoke(['--role=decision'], env)).report;if(decision.mode!=='synthetic')throw new Error('Expected synthetic report.');expect(decision.rows).toHaveLength(1);
   });
   it('rejects an unverified price before inspecting live credentials',async()=>{
+    vi.resetModules();
+    vi.doMock('../../server/config/models.js',async(importOriginal)=>{
+      const actual=await importOriginal<typeof import('../../server/config/models.js')>();
+      return {...actual,models:{...actual.models,everyday:{...actual.models.everyday,price:{status:'unverified'}}}};
+    });
     const env=new Proxy({VULPES_LIVE_AI_ENABLED:'true'}, {get(target,key){if(key==='VULPES_LIVE_AI_ENABLED')return target.VULPES_LIVE_AI_ENABLED;throw new Error('credential_discovery');}});
-    await expect(runSmoke(['--mode=live','--role=everyday','--allow-spend','--max-cost-usd=1'],env)).rejects.toThrow('price_unverified');
+    try {
+      const {runSmoke:unverifiedSmoke}=await import('../../scripts/provider-smoke.js');
+      await expect(unverifiedSmoke(['--mode=live','--role=everyday','--allow-spend','--max-cost-usd=1'],env)).rejects.toThrow('price_unverified');
+    } finally {vi.doUnmock('../../server/config/models.js');vi.resetModules();}
   });
 });

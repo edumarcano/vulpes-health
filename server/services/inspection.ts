@@ -89,13 +89,13 @@ export class InspectionService {
           if (call.name!==step.tool_name || !Object.hasOwn(toolArguments,call.name)) throw new Error('invalid_tool');
           toolArguments[call.name as keyof typeof toolArguments].parse(call.arguments);
         } else {
-          const result=z.strictObject({evidence:EvidenceSchema,result:z.json(),providerResult:z.json()}).parse(parsed);
+          const result=z.strictObject({projectionVersion:z.union([z.literal(1),z.literal(2)]).optional(),evidence:EvidenceSchema,result:z.json(),providerResult:z.json()}).parse(parsed);
           if (result.evidence.ownerId!==this.context.userId || result.evidence.runId!==query.run || result.evidence.stepId!==step.id) throw new Error('invalid_evidence');
           const output=z.object({kind:z.enum(['metrics','goals','measurements','summary','no_data','clarification_required','unavailable','insufficient_data','progress'])}).passthrough().parse(result.result);
           const kinds:Record<string,string[]>={list_metrics:['metrics'],list_goals:['goals'],get_measurements:['measurements','no_data','clarification_required'],summarize_metric:['summary','no_data','clarification_required'],get_goal_progress:['unavailable','insufficient_data','progress']};
           if (!step.tool_name || !kinds[step.tool_name]?.includes(output.kind)) throw new Error('invalid_tool_result');
           if (output.kind==='summary' && DataSummarySchema.parse(output.data).dataRevision!==result.evidence.dataRevision) throw new Error('invalid_revision');
-          if (requestHash(providerToolResult(result.result))!==requestHash(result.providerResult)) throw new Error('invalid_projection');
+          if (requestHash(providerToolResult(result.result,result.projectionVersion??1))!==requestHash(result.providerResult)) throw new Error('invalid_projection');
         }
       } catch { return { state:'corrupt' }; }
     }

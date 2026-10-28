@@ -1,0 +1,40 @@
+{
+  "mode": "live",
+  "scenario": "cancel",
+  "result": "passed",
+  "failureCode": null,
+  "batchId": "b7baae10-fb2d-4e7d-bfc4-21151e343797",
+  "attemptId": "adf80eec-b872-416a-86ed-a9d68ac447f5",
+  "interruption": {
+    "state": "observed",
+    "capturedBeforeTerminal": true
+  },
+  "runId": "a09b2096-b725-43ab-9f5d-328acb476895",
+  "actualProviderRequests": 1,
+  "costUSD": null,
+  "costStatus": "pending",
+  "reservationUSD": "0.0093192",
+  "traceState": "available",
+  "checkedAt": "2026-10-27T23:11:28.182Z",
+  "requested": {
+    "provider": "openrouter",
+    "model": "openai/gpt-6-luna",
+    "effort": "low",
+    "adapterVersion": "openrouter-responses-v2",
+    "templateVersion": "vulpes-everyday-v2",
+    "priceId": "openrouter-gpt-6-luna-20261027-conservative",
+    "priceHash": "7e9dcc1793067b0e991ef850f3a03d9513a00ec6ffc604d2de4b153e4f59f9f0"
+  },
+  "effective": {
+    "model": null,
+    "effort": null
+  },
+  "exactRequestsVerified": true,
+  "ownedToolEvidenceVerified": false,
+  "reloadVerified": false,
+  "maxCostUSD": "0.06",
+  "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+  "batchSpentUSD": "0.000836365",
+  "batchReservedUSD": "0.0093192",
+  "limitations": "The controlled stream interruption passed; provider-side termination and final charges remain unknown. This scenario does not establish a completed tool loop."
+}
