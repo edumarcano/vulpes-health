@@ -22,7 +22,7 @@ This is a migration specification, not executable SQL. Codex must produce review
 | `goal_revisions` | owner, goal, revision number, previous revision, approved proposal ID, payload, approved time | Immutable revision payload except user data deletion |
 | `conversations` | owner, title, created/updated time, archived flag | No model-created titles required; deterministic first-message title initially |
 | `messages` | owner, conversation, stable ID, role, content parts, run ID, status, time | Status distinguishes streaming, completed, interrupted and failed |
-| `action_proposals` | owner, kind, target ID, target version, canonical payload, hash, state, expiry, source run | Single-use approval; target-version conflict fails; no editable payload at approval |
+| `action_proposals` | owner, kind, target ID, target version, canonical payload, hash, state, expiry, source run/step/message | Single-use approval; one proposal per source step; owned message binding survives trace expiry; no editable payload at approval |
 | `ai_runs` | owner, conversation, client request ID, route, status, limits, consent/policy versions, total usage/cost status, expiry | Unique `(user_id, client_request_id)`; one admitted active run per user |
 | `ai_steps` | owner, run, sequence, type, provider/model, input/output payload references, source references, timings, usage categories, price snapshot | One record per actual model request or tool execution; no fabricated zero cost |
 | `private_payloads` | owner, purpose, encrypted bytes, nonce, key ID, content hash, encoding, expiration | Authenticated encryption, no public bucket; never contains credentials |

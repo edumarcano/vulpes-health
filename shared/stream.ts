@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { API_JSON_LIMIT_BYTES } from './api.js';
-import { UsageSummarySchema, VulpesCardSchema } from './domain.js';
+import { UsageSummarySchema } from './domain.js';
+import { VulpesCardSchema } from './cards.js';
 import { ModelRoleSchema, UUIDSchema, VersionSchema } from './primitives.js';
 
 function eventSchema<T extends string, P extends z.ZodType>(type: T, payload: P) {

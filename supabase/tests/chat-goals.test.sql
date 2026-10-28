@@ -1,0 +1,10 @@
+begin;
+select plan(6);
+select ok(not has_function_privilege('anon','public.checkpoint_goal_proposal_v1(uuid,uuid,uuid,bigint,uuid,jsonb,jsonb,jsonb)','EXECUTE'),'anonymous cannot register tool proposals');
+select ok(not has_function_privilege('authenticated','public.checkpoint_goal_proposal_v1(uuid,uuid,uuid,bigint,uuid,jsonb,jsonb,jsonb)','EXECUTE'),'client cannot supply execution authority');
+select ok(has_function_privilege('service_role','public.checkpoint_goal_proposal_v1(uuid,uuid,uuid,bigint,uuid,jsonb,jsonb,jsonb)','EXECUTE'),'verified server can checkpoint proposals');
+select is((select proconfig[1] from pg_proc where oid='public.checkpoint_goal_proposal_v1(uuid,uuid,uuid,bigint,uuid,jsonb,jsonb,jsonb)'::regprocedure),'search_path=""','checkpoint pins search path');
+select ok(not has_function_privilege('authenticated','public.invalidate_message_proposals_v1()','EXECUTE'),'client cannot invoke deletion trigger');
+select ok(not has_function_privilege('service_role','public.invalidate_message_proposals_v1()','EXECUTE'),'deletion trigger has no direct entry point');
+select * from finish();
+rollback;

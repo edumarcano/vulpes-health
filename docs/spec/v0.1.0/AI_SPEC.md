@@ -42,7 +42,7 @@ All arguments are strict schemas. Identity, permission and query bounds come fro
 | `list_goals` | Optional status | Current owned goals and approved revisions |
 | `get_goal_progress` | Goal ID | Approved baseline/current comparison and coverage |
 | `propose_goal` | Validated goal fields | Persists a pending proposal and returns a card; does not activate |
-| `propose_goal_revision` | Goal ID, expected revision, changed fields, short rationale | Pending proposal, not an applied update |
+| `propose_goal_revision` | Owned goal ID, expected_version, changed definition fields, baseline_resolution, short rationale | Pending proposal, not an applied update; version is the concurrency token, not the revision number; rationale is captured with encrypted tool input |
 
 No tools for arbitrary SQL, arbitrary URLs, code execution, database deletion, sending messages, changing model settings, increasing spending, altering privacy consent or reading another account. Tool arguments that try these operations are rejected and logged safely.
 
@@ -64,7 +64,11 @@ PR 09 uses conservative UTF-8 byte upper bounds, preserving the existing ledger'
 
 Each new generation step's version-2 encrypted manifest identifies its safety template, profile fields, selected data scope and goal context, eligible history, and the tool results included at that step. It records excluded groups and their reasons. Tool-result references bind to the server-issued result and its provider projection; later continuations add their own entries rather than retroactively changing earlier manifests. Older unversioned manifests remain readable but are labelled partial. The captured request body remains the byte-exact source for what was sent.
 
-The read-only approved-goal projection excludes drafts and requires an owned current revision with an approved proposal. `get_goal_progress` returns a dedicated `unavailable` / `insufficient_data` / `progress` union. Supported frozen snapshots have `schemaVersion:1`, a complete `DataSelection`, decimal `value`, `dataRevision`, and `algorithmVersion:"daily_median_mean_7d_v1"`. Unsupported snapshots or review markers do not produce progress. PR 11 owns goal creation/approval and must consume or explicitly re-review this read contract.
+The approved-goal projection excludes drafts and requires an owned current revision with an approved proposal. It includes the goal version separately from revisionNumber and exposes supported definitions for proposed changes. `get_goal_progress` shares the `unavailable` / `insufficient_data` / `progress` contract in `shared/goal-progress.ts` with Goals and chat cards. Version-2 snapshots use GoalService; supported historical version-1 snapshots retain their original daily-median reader. Unsupported snapshots or review markers do not produce progress.
+
+Proposal tools accept definition fields only; the server supplies owner, run/step identity, request key, expiry, frozen baseline and resulting state. Creation and revision use GoalService's direct-form preparation and policy checks. A profile-serialized transaction validates the execution lease/fence and data revision, then commits the pending proposal, encrypted tool result, completed tool step and message reference together. No tool approves, activates or applies a goal mutation. Conversation deletion closes its pending drafts while preserving approved goals.
+
+The current instruction template is `vulpes-everyday-v3`; tool evidence uses projectionVersion 3. Versions 1 and 2 remain inspectable. Proposal projections report pending status and required user confirmation; full definitions and baselines remain in encrypted evidence and the owned review record. Revision tools are omitted when no editable approved goal exists. At the last model request or after six tools, the request advertises no further tools. The context and wire ceilings remain 11,000 and 12,000 UTF-8 bytes, with four model calls and six tools. Reviewed live capability/smoke bindings are literal historical evidence; changing the template does not refresh or authorize them.
 
 For a follow-up such as "what about last month?", retain enough recent context to resolve the metric and source. If ambiguous, ask; a cheap router that only receives the latest fragment is insufficient.
 

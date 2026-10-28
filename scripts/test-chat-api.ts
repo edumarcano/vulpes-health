@@ -5,6 +5,7 @@ import { localRouter } from '../server/http/router.js';
 import { createChatHandler } from '../server/http/chat.js';
 import { createConversationsHandler } from '../server/http/conversations.js';
 import { SyntheticChatTransport,syntheticChatDependencies } from '../tests/fixtures/chat.js';
+import { SyntheticGoalTransport } from '../tests/fixtures/chat-goals.js';
 import { z } from 'zod';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +13,7 @@ import {securityHeaders} from '../server/http/security.js';
 import {publicAuthConfig} from '../shared/auth.js';
 
 const id=process.env.VULPES_TEST_CHAT_OWNER;
+const goalOwner=process.env.VULPES_TEST_GOAL_OWNER;
 if(!id || process.env.VULPES_LIVE_AI_ENABLED!=='false' || process.env.VITE_SUPABASE_URL!=='http://127.0.0.1:54321')throw new Error('Use the guarded local browser runner.');
 const built=process.argv[2]==='--serve-built';
 if(process.argv.length!==(built?3:2))throw new Error('Unsupported local test composition.');
@@ -29,12 +31,13 @@ async function staticFile(url:string,response:import('node:http').ServerResponse
     const bytes=await readFile(file);response.setHeader('Content-Type',type);response.end(bytes);
   }catch{response.statusCode=404;response.end('Not found.');}
 }
-const conversations=createConversationsHandler(context=>context.userId===id ? syntheticChatDependencies() : null);
+const conversations=createConversationsHandler(context=>context.userId===id||context.userId===goalOwner ? syntheticChatDependencies() : null);
 const server=createServer((req,res)=>{
   const path=new URL(req.url!,'http://localhost').pathname;
   if(built&&!path.startsWith('/api')){void staticFile(req.url!,res);return;}
-  const scenario=z.enum(['complete','truncated','missing_usage','malformed','unsafe_text','slow']).catch('complete').parse(req.headers['x-vulpes-test-scenario']);
-  const chat=createChatHandler(context=>context.userId===id ? syntheticChatDependencies(new SyntheticChatTransport(scenario)) : null);
+  const scenario=z.enum(['complete','truncated','missing_usage','malformed','unsafe_text','slow','goal_create','goal_revise','goal_progress','goal_yes']).catch('complete').parse(req.headers['x-vulpes-test-scenario']);
+  const goal=z.enum(['goal_create','goal_revise','goal_progress','goal_yes']).safeParse(scenario);
+  const chat=createChatHandler(context=>context.userId===id||context.userId===goalOwner ? syntheticChatDependencies(goal.success?new SyntheticGoalTransport(goal.data):new SyntheticChatTransport(scenario as 'complete'|'truncated'|'missing_usage'|'malformed'|'unsafe_text'|'slow')) : null);
   void(path==='/api/chat'?chat(req,res):path==='/api/conversations'?conversations(req,res):localRouter(req,res));
 });
 server.listen(built?4173:3001,'127.0.0.1',()=>console.info('Synthetic test API and optional built assets ready on loopback.'));

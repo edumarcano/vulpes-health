@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { GoalDraftSchema, GoalStateSchema, MeasurementMethodSchema, GranularitySchema } from './domain.js';
 import { DataSelectionSchema } from './data.js';
-import { CountSchema, UUIDSchema, VersionSchema } from './primitives.js';
+import { CountSchema, UUIDSchema, VersionSchema, HashSchema } from './primitives.js';
 
 export const GoalDefinitionSchema = GoalDraftSchema.safeExtend({
   title:z.string().trim().min(1).max(200), method:MeasurementMethodSchema, granularity:GranularitySchema,
@@ -27,4 +27,6 @@ export type GoalDefinition=z.infer<typeof GoalDefinitionSchema>;
 export type FrozenBaseline=z.infer<typeof FrozenBaselineSchema>;
 export type GoalRevisionPayload=z.infer<typeof GoalRevisionPayloadSchema>;
 export type GoalMutation=z.infer<typeof GoalMutationSchema>;
+export const GoalProposalReferenceSchema=z.strictObject({version:z.literal(1),proposalId:UUIDSchema,payloadHash:HashSchema,expectedVersion:VersionSchema.nullable()});
+export const GoalProposalToolResultSchema=z.strictObject({kind:z.literal('goal_proposal'),request:GoalMutationSchema,payload:GoalRevisionPayloadSchema});
 export const goalTransitions:Record<string,readonly string[]>={active:['paused','completed','archived'],paused:['active','completed','archived'],completed:['active','archived'],needs_data:['paused','archived'],archived:[],draft:[]};

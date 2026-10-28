@@ -4,6 +4,14 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-28: Chat proposal workflow (execution-plan PR 12)
+
+The approved M4 batch extends the verified PR 11 branch with two pending-proposal tools and typed chat references. GoalService prepares direct and chat payloads using the same ownership, policy, baseline and lifecycle rules. A narrow service-only transaction reuses PR 11 registration and M3 checkpoint/settlement functions; it commits proposal, encrypted tool evidence, tool completion and message reference together under the existing profile/executor fence. One source step creates at most one proposal. No approval or direct goal-mutation tool is exposed.
+
+Cards resolve only owned message-bound references, then fetch authoritative status/body for the shared review component. Confirmation sends the existing exact approval envelope directly, without inference. Reference resolution remains possible after trace expiry and before draft-expiry cleanup; it exposes no expired body. Saved numeric progress also binds to the approved goal version, so a later target change cannot leave an apparently current calculation. Conversation deletion invalidates pending drafts through the message binding and leaves approved revisions intact.
+
+Template v3 and projection v3 preserve the fixed context/wire/call limits. Revision tools have no advertised target until an editable approved goal exists; final requests advertise no more tools. Compact goal projections omit duplicated identity fields and null definition fields while full tool evidence remains encrypted. Version-1/version-2 projections remain readable. Existing literal live capability evidence is preserved and now mismatches the changed template, so live preflight fails closed. No catalog identity, price, spend, provider activation or production transport was changed. [Verification and self-review](evidence/pr12-chat-goals.md).
+
 ## 2026-10-28: Direct goal approval workflow (execution-plan PR 11)
 
 The approved M4 batch choices are implemented for direct Goals only: fixed current methods, explicit second review after missing baselines become available, retain-or-replace baseline review, reopening paused/completed goals, terminal archive, 24-hour proposals and discarded unapproved draft bodies. Existing wellness boundaries apply without new clinical numerical thresholds. PR 12 and production inference remain unavailable.

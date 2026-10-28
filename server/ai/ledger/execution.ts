@@ -10,6 +10,8 @@ import { readPayload } from '../../security/private-payloads.js';
 import { encryptBytes, MAX_PAYLOAD_BYTES, readEncryptionKeys, type PayloadPurpose } from '../../security/encryption.js';
 import { normalizeUsage, GenerationCompletionSchema, type GenerationCompletion, type NormalizedUsage } from '../contracts.js';
 import { executionPolicy } from './policy.js';
+import { GoalProposalToolResultSchema,GoalProposalReferenceSchema } from '../../../shared/goals.js';
+import { ChatPartSchema } from '../../../shared/chat.js';
 import { priceUsage, reserveMaximum, VerifiedPriceSchema, type VerifiedPrice } from './pricing.js';
 
 export interface RunLease { readonly runId: string; readonly executor: string; readonly fence: number; readonly deadlineAt: string }
@@ -46,7 +48,7 @@ export class ExecutionService {
     if (error) {
       const codes: Record<string,number> = { run_not_found:404, account_unavailable:403, run_policy_denied:403, executor_denied:403,
         idempotency_conflict:409, run_not_writable:409, step_in_progress:409, settlement_conflict:409,
-        budget_exhausted:429, run_rate_limited:429, run_call_limit:429, budget_unconfigured:503, cost_bound_exceeded:503 };
+        budget_exhausted:429, run_rate_limited:429, run_call_limit:429, budget_unconfigured:503, cost_bound_exceeded:503, goal_conflict:409,goal_not_found:404,invalid_goal:400 };
       throw new HttpFailure(codes[error.message] ?? 503, Object.hasOwn(codes,error.message) ? error.message : 'execution_unavailable', 'The execution could not proceed. Refresh its status before trying again.');
     }
     return data;
@@ -83,7 +85,7 @@ export class ExecutionService {
     if (input.body.byteLength>2*1024*1024) throw new HttpFailure(413,'request_too_large','The provider request is too large.');
     const metadata = z.strictObject({ endpoint:z.string().max(200),headers:z.record(z.string(),z.string().max(200)),redactedHeaders:z.array(z.string().max(100)).max(20) }).parse(input.metadata);
     if (Object.keys(metadata.headers).some((key) => !['accept','content-type'].includes(key.toLowerCase()))) throw new Error('unsafe_request_header');
-    if (!['https://openrouter.ai/api/v1/responses','https://aiplatform.googleapis.com','tool:read'].includes(metadata.endpoint)) throw new Error('unapproved_endpoint');
+    if (!['https://openrouter.ai/api/v1/responses','https://aiplatform.googleapis.com','tool:read','tool:proposal'].includes(metadata.endpoint)) throw new Error('unapproved_endpoint');
     const body = Buffer.from(input.body);const id = randomUUID();
     const price = input.type === 'tool' ? null : VerifiedPriceSchema.parse(input.price);
     if(price && body.byteLength>price.inputBoundTokens)throw new HttpFailure(413,'input_bound_exceeded','The request exceeds its verified input bound.');
@@ -113,6 +115,15 @@ export class ExecutionService {
     const output = this.envelope(step.type === 'tool' ? 'tool_output' : 'ai_response',bytes);
     return this.rpc('checkpoint_step_v1',{ p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,
       p_step:step.id,p_output:output,...(message ? {p_message:message} : {}) });
+  }
+  async checkpointGoal(step:PreparedStep,output:unknown,trace:unknown){
+    const result=GoalProposalToolResultSchema.parse(output);
+    const bytes=Buffer.from(JSON.stringify(trace));
+    if(bytes.length>MAX_PAYLOAD_BYTES)throw new HttpFailure(413,'response_too_large','The tool evidence exceeded its trace limit.');
+    return z.strictObject({reference:GoalProposalReferenceSchema,parts:z.array(ChatPartSchema)}).parse(await this.rpc('checkpoint_goal_proposal_v1',{
+      p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,p_step:step.id,
+      p_request:result.request,p_payload:result.payload,p_output:this.envelope('tool_output',bytes),
+    }));
   }
   async settle(step: PreparedStep, usage: NormalizedUsage | null, status: 'completed'|'failed'|'cancelled'|'interrupted', expectedVersion=0, notSent=false, completion?:GenerationCompletion) {
     const checked=usage ? normalizeUsage(usage) : null;

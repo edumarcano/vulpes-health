@@ -103,7 +103,8 @@ export const ProposalMetadataSchema = z.strictObject({
   id: UUIDSchema, kind: ProposalKindSchema, targetId: UUIDSchema.nullable(), expectedVersion: VersionSchema.nullable(),
   payloadHash: HashSchema, status: z.enum(['pending', 'approved', 'rejected', 'expired', 'conflicted']), expiresAt: ISOInstantSchema, summary: z.string(),
 });
-// Revision/state payloads are deliberately absent until PR 11 defines them.
+// Historical version-1 card payload. Current mutation/revision contracts live
+// in shared/goals.ts; actionable chat cards carry server-issued references.
 export const ActionProposalSchema = ProposalMetadataSchema.extend({
   kind: z.literal('goal.create'), targetId: z.null(), expectedVersion: z.null(), payload: GoalDraftSchema,
 });

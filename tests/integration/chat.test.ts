@@ -74,13 +74,14 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
       const run=events[0]!.run_id;const inspector=new InspectionService(a);
       const measurement=(await rows('ai_steps',`run_id=eq.${run}&tool_name=eq.get_measurements`))[0]!;
       const output=await readPayload(a,String(measurement.output_payload_id),'tool_output');expect(output.state).toBe('available');if(output.state!=='available')throw new Error();
-      const stored=JSON.parse(output.bytes.toString());expect(stored.projectionVersion).toBe(2);expect(stored.result.items).toHaveLength(14);
+      const stored=JSON.parse(output.bytes.toString());expect(stored.projectionVersion).toBe(3);expect(stored.result.items).toHaveLength(14);
       const query={view:'payload' as const,run,step:String(measurement.id),part:'output' as const};
       expect((await inspector.evidence(query)).state).toBe('available');
       const expiresAt=String((await rows('private_payloads',`id=eq.${measurement.output_payload_id}`))[0]!.expires_at);
       const replace=async(value:unknown)=>{const envelope=encryptBytes({id:String(measurement.output_payload_id),user_id:a.userId,purpose:'tool_output',expires_at:expiresAt},Buffer.from(JSON.stringify(value)),readEncryptionKeys());await db.admin(`/rest/v1/private_payloads?id=eq.${envelope.id}`,'PATCH',envelope);};
       const legacy={evidence:stored.evidence,result:stored.result,providerResult:providerToolResult(stored.result,1)};
       await replace(legacy);expect((await inspector.evidence(query)).state).toBe('available');
+      await replace({...stored,projectionVersion:2});expect((await inspector.evidence(query)).state).toBe('available');
       await replace({...stored,providerResult:{...stored.providerResult,rows:[]}});expect((await inspector.evidence(query)).state).toBe('corrupt');
       await replace({...stored,projectionVersion:99});expect((await inspector.evidence(query)).state).toBe('corrupt');
     });

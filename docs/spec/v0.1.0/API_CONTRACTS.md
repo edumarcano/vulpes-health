@@ -121,12 +121,13 @@ Before headers are sent, return standard HTTP errors. After streaming starts, em
   "id": "proposal-uuid",
   "kind": "goal.create",
   "target_id": null,
-  "expected_version": null,
+  "target_version": null,
   "payload_hash": "sha256-of-canonical-payload",
-  "status": "pending",
+  "state": "pending",
   "expires_at": "2026-10-20T12:00:00Z",
   "summary": "Create a draft numeric goal with the displayed target and source policy.",
-  "payload": { "schema_version": 1 }
+  "payload_version": 2,
+  "canonical_payload": { "schemaVersion": 2 }
 }
 ```
 
@@ -232,4 +233,17 @@ New canonical proposal/revision payloads have schemaVersion 2 and contain the co
 
 A proposal expires after 24 hours. Rejection, conflict and expiry remove its draft body while retaining safe replay metadata. Data-revision changes invalidate pending version-2 bodies atomically. Approved payloads remain historical decisions. Approval checks exact hash, ownership, expiry, current goal version and reviewed data revision in the transaction that writes the revision. Goal version includes review-marker changes; revisionNumber counts approved decisions. Replays return historical outcomes, and changed input under the same request key conflicts.
 
-Missing baselines yield needs_data; later imports cannot activate a goal. A reviewed revision supplies its baseline. Corrections/deletions retain approved snapshots and require review; retaining history or replacing it both require explicit approval. Paused/completed goals can reactivate through approval; archived goals are read-only. Target crossing never completes a goal automatically. Typed chat proposal cards and proposal tools remain execution-plan PR 12.
+Missing baselines yield needs_data; later imports cannot activate a goal. A reviewed revision supplies its baseline. Corrections/deletions retain approved snapshots and require review; retaining history or replacing it both require explicit approval. Paused/completed goals can reactivate through approval; archived goals are read-only. Target crossing never completes a goal automatically.
+
+## 13. Chat goal proposal and progress parts
+
+`shared/chat.ts` persists the following additional typed parts. They are issued by server tool execution, never accepted as user/model inline cards. Text resembling a card remains text.
+
+| Part | Stored fields | Resolution |
+|---|---|---|
+| goal_proposal | reference: {version:1, proposalId, payloadHash, expectedVersion} | Owned proposal must match the message ID, hash and goal version; reload reads its current status and available body through /api/goals |
+| goal_progress | evidence, goalId, result | Shared deterministic progress union; owned completed tool evidence must match and remain current/available; numeric results bind the goal version as well as the data revision |
+
+`card.ready` emits the same proposal reference only after the proposal/evidence/message transaction commits. The review card fetches the canonical owned proposal, displays its complete definition and before/after revision, and sends the existing exact approval envelope directly to `/api/approvals`. Approval/rejection makes no inference request. Pending status refreshes every five seconds while displayed; expiry/conflict/rejection removes confirmation controls. Conflicts require fresh review, without automatic resubmission.
+
+Proposal resolution does not depend on decrypting old traces. Deleting a conversation closes pending proposals through their durable message binding, removes draft bodies and prevents a fenced executor from adding another proposal. Approved goal revisions survive conversation deletion. Trace and execution expiry retain their existing accounting and privacy rules.

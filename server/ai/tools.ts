@@ -1,4 +1,7 @@
 import { GoalService } from '../services/goals.js';
+import { GoalDefinitionSchema,GoalRevisionPayloadSchema,GoalProposalToolResultSchema } from '../../shared/goals.js';
+export { GoalProgressResultSchema } from '../../shared/goal-progress.js';
+import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
 import { z } from 'zod';
 import { Temporal } from '@js-temporal/polyfill';
 import { DataSelectionSchema,DecimalInputSchema,DataSummarySchema,MeasurementsPageSchema } from '../../shared/data.js';
@@ -11,19 +14,37 @@ import { HttpFailure } from '../http/failure.js';
 import type { GenerationRequest } from './contracts.js';
 
 const selection=z.strictObject({metric:MetricKeySchema,source_id:UUIDSchema.nullish(),from:ISOInstantSchema,to:ISOInstantSchema,timezone:IanaTimezoneSchema,method:MeasurementMethodSchema.optional(),granularity:GranularitySchema.optional()});
-export const toolArguments={list_metrics:z.strictObject({}),get_measurements:selection.extend({limit:z.number().int().min(1).max(200).default(200)}),summarize_metric:selection,list_goals:z.strictObject({status:GoalStateSchema.exclude(['draft']).optional()}),get_goal_progress:z.strictObject({goal_id:UUIDSchema})};
-const descriptions={list_metrics:'List owned measurement series, counts, time ranges, and method/source limitations. Does not choose a series.',get_measurements:'Read at most 200 observations in an explicit interval. Clarify ambiguous source, method, or granularity.',summarize_metric:'Calculate a deterministic, method-qualified summary for complete local calendar days. Sparse coverage remains insufficient.',list_goals:'List approved owned goals; no drafts or goal mutations.',get_goal_progress:'Read an approved owned goal and calculate supported progress. Unsupported or stale baselines remain unavailable.'};
+export const toolArguments={list_metrics:z.strictObject({}),get_measurements:selection.extend({limit:z.number().int().min(1).max(200).default(200)}),summarize_metric:selection,list_goals:z.strictObject({status:GoalStateSchema.exclude(['draft']).optional()}),get_goal_progress:z.strictObject({goal_id:UUIDSchema}),
+  propose_goal:z.strictObject({definition:GoalDefinitionSchema}),
+  propose_goal_revision:z.strictObject({goal_id:UUIDSchema,expected_version:z.number().int().positive(),changes:z.strictObject(GoalDefinitionSchema.shape).partial(),baseline_resolution:z.enum(['retain','replace']),rationale:z.string().trim().min(1).max(1000)}),
+};
+const descriptions={list_metrics:'List owned series, counts, intervals and source limitations.',get_measurements:'Read at most 200 observations in an explicit interval. Clarify ambiguous series.',summarize_metric:'Deterministic summary of complete local days; sparse coverage stays insufficient.',list_goals:'List approved owned goals, versions and definitions.',get_goal_progress:'Read approved goal progress; stale or unsupported baselines stay unavailable.',propose_goal:'Propose a goal for explicit user review. Never activates. Server freezes the baseline.',propose_goal_revision:'Propose changed fields of an approved goal. expected_version is its version, not revision number. Never applies changes.'};
 export const readToolDefinitions:GenerationRequest['tools']=Object.entries(toolArguments).map(([name,schema])=>{
   // Formats already describe these values to the model. Keep Zod's full
   // calendar/UUID validation server-side rather than repeating its regex on wire.
-  const parameters=z.toJSONSchema(schema,{override:({jsonSchema})=>{if(jsonSchema.format==='uuid'||jsonSchema.format==='date-time')delete jsonSchema.pattern;}});
+  const parameters=z.toJSONSchema(schema,{override:({jsonSchema,zodSchema})=>{
+    if(zodSchema===GoalTargetSchema&&jsonSchema.oneOf){
+      jsonSchema.oneOf=[{type:'object',properties:{direction:{enum:['increase_to','decrease_to']},value:{type:'number'}},required:['direction','value'],additionalProperties:false},jsonSchema.oneOf[2]!];
+    }
+    if(jsonSchema.format)delete jsonSchema.pattern;
+    if(jsonSchema.enum||jsonSchema.const!==undefined)delete jsonSchema.type;
+  }});
   delete parameters.$schema;
   return {name,description:descriptions[name as keyof typeof descriptions],parameters:parameters as Record<string,z.infer<ReturnType<typeof z.json>>>};
 });
-export const toolProjectionVersion=2;
+export const toolProjectionVersion=3;
 const MeasurementResultSchema=MeasurementsPageSchema.extend({kind:z.literal('measurements'),selection:DataSelectionSchema});
-export function providerToolResult(output:unknown,version:1|2=toolProjectionVersion):unknown {
-  if(version===2) {
+export function providerToolResult(output:unknown,version:1|2|3=toolProjectionVersion):unknown {
+  if(version===3){
+    const proposal=GoalProposalToolResultSchema.safeParse(output);if(proposal.success)return {kind:'goal_proposal',status:'pending',title:proposal.data.payload.definition.title,requiresUserConfirmation:true};
+    const goals=z.object({kind:z.literal('goals'),items:z.array(z.record(z.string(),z.json())),limit:z.number()}).safeParse(output);
+    if(goals.success)return {...goals.data,items:goals.data.items.map(goal=>{
+      const definition=GoalDefinitionSchema.safeParse(goal.definition);if(!definition.success)return goal;
+      const {schemaVersion:_schema,title:_title,sourceId:_source,metric:_metric,...fields}=definition.data;void _schema;void _title;void _source;void _metric;
+      return {...goal,definition:Object.fromEntries(Object.entries(fields).filter(([,value])=>value!==null))};
+    })};
+  }
+  if(version>=2) {
     const measurements=MeasurementResultSchema.safeParse(output);
     if(measurements.success) {
       const {selection,dataRevision,items,nextCursor}=measurements.data;
@@ -41,15 +62,6 @@ export function providerToolResult(output:unknown,version:1|2=toolProjectionVers
 }
 const InventorySchema=z.strictObject({dataRevision:CountSchema,items:z.array(z.strictObject({metric:MetricKeySchema,source_id:UUIDSchema,source_label:z.string(),method:MeasurementMethodSchema,granularity:GranularitySchema,observations:CountSchema,first_at:ISOInstantSchema,last_at:ISOInstantSchema})).max(201)});
 export const ApprovedBaselineSchema=z.strictObject({schemaVersion:z.literal(1),selection:DataSelectionSchema,value:DecimalInputSchema,dataRevision:CountSchema,algorithmVersion:z.literal('daily_median_mean_7d_v1')});
-export const GoalProgressResultSchema=z.discriminatedUnion('kind',[
-  z.strictObject({kind:z.literal('unavailable'),reason:z.enum(['unsupported_baseline','needs_review','unsupported_revision'])}),
-  z.strictObject({kind:z.literal('insufficient_data'),coverage:DataSummarySchema}),
-  z.strictObject({kind:z.literal('progress'),goalId:UUIDSchema,revision:CountSchema,baseline:z.string(),current:z.string(),coverage:DataSummarySchema,result:z.discriminatedUnion('kind',[
-    z.strictObject({kind:z.literal('directional'),rawPercent:z.number().finite(),displayPercent:z.number().min(0).max(100)}),
-    z.strictObject({kind:z.enum(['below_range','above_range','within_range'])}),
-    z.strictObject({kind:z.literal('undefined'),reason:z.enum(['zero_denominator','unrepresentable_result'])}),
-  ])}),
-]);
 export async function inventory(context:AuthContext) {
   const {data,error}=await context.db.rpc('read_metric_inventory_v1');
   if(error)throw new HttpFailure(503,'data_unavailable','Measurement inventory could not be read.');
@@ -73,11 +85,11 @@ async function approvedGoals(context:AuthContext,status?:string,id?:string) {
   return result;
 }
 export async function executeReadTool(context:AuthContext,name:string,args:unknown):Promise<unknown> {
-  if(!Object.hasOwn(toolArguments,name))throw new HttpFailure(400,'unsupported_tool','This read tool is unavailable.');
+  if(!Object.hasOwn(toolArguments,name)||name==='propose_goal'||name==='propose_goal_revision')throw new HttpFailure(400,'unsupported_tool','This read tool is unavailable.');
   if(name==='list_metrics'){toolArguments.list_metrics.parse(args);return {kind:'metrics',...await inventory(context)};}
   if(name==='list_goals') {
     const parsed=toolArguments.list_goals.parse(args);
-    return {kind:'goals',items:(await approvedGoals(context,parsed.status)).map(g=>({id:g.id,title:g.title,state:g.state,version:g.version,metric:g.metric_key,sourceId:g.source_id,revisionId:g.revision.id,revisionNumber:g.revision.revision_number,reviewStatus:g.review_status})),limit:200};
+    return {kind:'goals',items:(await approvedGoals(context,parsed.status)).map(g=>({id:g.id,title:g.title,state:g.state,version:g.version,metric:g.metric_key,sourceId:g.source_id,revisionId:g.revision.id,revisionNumber:g.revision.revision_number,reviewStatus:g.review_status,definition:GoalRevisionPayloadSchema.safeParse(g.revision.payload).success?GoalRevisionPayloadSchema.parse(g.revision.payload).definition:null})),limit:200};
   }
   if(name==='get_goal_progress') {
     const parsed=toolArguments.get_goal_progress.parse(args);
@@ -107,4 +119,15 @@ export async function executeReadTool(context:AuthContext,name:string,args:unkno
   const query={metric:parsed.metric,from:parsed.from,to:parsed.to,timezone:parsed.timezone,source_id:chosen.source_id,method:chosen.method,granularity:chosen.granularity};
   if(name==='get_measurements')return {kind:'measurements',selection:DataSelectionSchema.parse(query),...await readData(context,{...query,view:'measurements',page_size:toolArguments.get_measurements.parse(args).limit,data_revision:available.dataRevision}) as object};
   return {kind:'summary',data:DataSummarySchema.parse(await readData(context,{...query,view:'summary'}))};
+}
+
+export async function prepareGoalTool(context:AuthContext,name:'propose_goal'|'propose_goal_revision',args:unknown,requestId:string){
+  const service=new GoalService(context);
+  const request=name==='propose_goal'?{action:'propose_create' as const,client_request_id:requestId,...toolArguments.propose_goal.parse(args)}:await (async()=>{
+    const input=toolArguments.propose_goal_revision.parse(args);
+    const previous=await service.revision(input.goal_id);
+    const payload=GoalRevisionPayloadSchema.parse(previous.revision.payload);
+    return {action:'propose_revision' as const,client_request_id:requestId,goal_id:input.goal_id,expected_version:input.expected_version,definition:GoalDefinitionSchema.parse({...payload.definition,...input.changes}),baseline_resolution:input.baseline_resolution};
+  })();
+  return GoalProposalToolResultSchema.parse({kind:'goal_proposal',request,payload:await service.prepareProposal(request)});
 }
