@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:bundle": "tsx scripts/check-bundle.ts",
     "test:e2e": "tsx scripts/browser-tests.ts",
+    "test:pwa": "playwright test --config tests/pwa.config.ts",
     "test:dev": "tsx scripts/browser-tests.ts --dev-proof",
     "test:providers": "tsx scripts/provider-smoke.ts",
     "test:evaluations": "tsx scripts/evaluate-everyday.ts",

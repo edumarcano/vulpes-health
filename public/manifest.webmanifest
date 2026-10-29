@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Vulpes - Personal Health Intelligence",
+  "short_name": "Vulpes",
+  "description": "Your personal health measurements and goals.",
+  "start_url": "/ask",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#f7f3ec",
+  "icons": [
+    { "src": "/icons/vulpes-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/vulpes-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

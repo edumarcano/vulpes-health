@@ -81,6 +81,8 @@ jobs:
       # Never upload browser reports, traces, screenshots, or local service logs.
       - name: Playwright Chromium tests
         run: npm run test:e2e
+      - name: Static PWA privacy proof
+        run: npm run test:pwa
       - name: Stop disposable Supabase
         if: ${{ always() }}
         timeout-minutes: 2

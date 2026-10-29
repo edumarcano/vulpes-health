@@ -40,6 +40,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   await first.getByRole('button',{name:'Load context'}).click();await expect(first.getByRole('heading',{name:'Included'})).toBeVisible();
   const summaryStep=inspector.locator('.inspection-step').filter({has:page.getByRole('heading',{name:/summarize_metric/})});await summaryStep.getByRole('button',{name:'Load output'}).click();await expect(summaryStep.getByRole('heading',{name:'Calculation and sources'})).toBeVisible();await expect(summaryStep.getByText(/7 valid days/)).toBeVisible();
   await inspector.getByRole('button',{name:'Close'}).focus();await page.keyboard.press('Escape');await expect(inspector).toHaveCount(0);await expect(page.getByRole('button',{name:'Inspect execution'})).toBeFocused();
+  expect(await page.locator('.skip-link').evaluate(element=>element.getBoundingClientRect().bottom<=0)).toBe(true);
   expect(sends).toBe(1);await page.reload();await expect(page.getByText(/seven-day mean 69 kg; change -0.7 kg/)).toBeVisible();expect(sends).toBe(1);
   for(const [width,height] of [[360,800],[390,844],[430,932],[768,1024],[1440,900]])for(const colorScheme of ['light','dark'] as const) {
     await page.setViewportSize({width:width!,height:height!});await page.emulateMedia({colorScheme,reducedMotion:'reduce'});

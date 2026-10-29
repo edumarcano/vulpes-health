@@ -4,6 +4,23 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-29: PR 15 static PWA and mobile presentation
+
+PR 15 uses a build-generated public-asset allowlist and a separate data-free
+offline page. No PWA framework, offline health store or background synchronization
+is added. The worker never caches application/API/auth responses; new workers wait
+for open tabs to close. The cache version binds compiled asset names and public
+asset content. Tailwind scans `src/` explicitly so verification copies produce the
+same stylesheet as the checkout.
+
+The header uses the supplied horizontal logo in both themes, with a light backing
+in dark mode to preserve contrast without a tiny descriptor or recoloring the
+wordmark. PWA runtime icons are resized from the approved color master. Existing
+GoalService, approvals, analytics, provider availability and accounting remain
+unchanged. Local verification and retained failures belong to [PR 15 evidence](evidence/pr15-mobile-pwa.md).
+Physical-device, real assistive-technology, hosted and live-provider evidence are
+separate gates. This records no new activation, deployment or retention policy.
+
 ## 2026-10-29: M5 routing and provider controls
 
 The approved M5 plan removes manual model/depth/effort selection from v0.1.0. Luna remains primary. One server-authorized Flash handoff requires current-run deterministic evidence for goal-progress review or comparison of two metrics. Argon remains a backend capability and is excluded from chat routing; its eventual automatic/explicit product policy is deferred beyond v0.1.0. PR 14 is deferred without blocking M6.

@@ -73,12 +73,15 @@ test('keyboard confirmation moves focus to the action and back to the entry',asy
   await page.getByLabel('Metric',{exact:true}).selectOption('heart_rate');
   await expect(page.getByText('A seven-day mean requires at least three valid days.',{exact:false})).toHaveCount(0);
 });
+test.describe('chart transport unavailable',()=>{
+test.use({serviceWorkers:'block'});
 test('a chart loading failure preserves entry and the table',async({page})=>{
   await page.route('**/assets/data-chart-*.js',route=>route.abort());
   await page.route('**/src/features/data/data-chart.tsx',route=>route.abort());
   await range(page);await entry(page,'70','08');
   await expect(page.getByText('The chart could not be loaded.',{exact:false})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Manual measurement',exact:true})).toBeVisible();await expect(page.getByRole('table')).toContainText('70 kg');
+});
 });
 for(const colorScheme of ['light','dark'] as const) for(const [width,height] of [[360,800],[390,844],[430,932],[768,1024],[1440,900]]) {
   test(`${width}x${height} ${colorScheme}: populated Data layout and table`,async({page},info)=>{

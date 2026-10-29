@@ -14,6 +14,7 @@ import { StreamDecoder,isTerminalEvent } from '../../../shared/stream';
 import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer,initialAskState } from './state';
 import { ProposalPart,ProgressPart } from './goal-parts';
+import { InspectionBoundary } from '../executions/inspection-boundary';
 const Inspector=lazy(()=>import('../executions/inspector'));
 
 function Welcome() {
@@ -119,9 +120,9 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
     {existingConversation&&<Button asChild variant="outline"><Link to={`/ask?conversation=${encodeURIComponent(existingConversation)}`}>Open current run</Link></Button>}
     {retryText&&!busy&&(state.phase==='recovering'||latest?.run&&['failed','cancelled','interrupted'].includes(latest.run.state))&&<Button variant="outline" disabled={availability==='unavailable'||latest?.conversation.archived} onClick={()=>send.mutate(retryText)}>Send again as a new request (may incur another charge)</Button>}
     {query.isError&&<Button variant="outline" onClick={()=>void query.refetch()}>Reload conversation</Button>}
-    {latest?.run&&<p className="availability-note">Run {latest.run.state} · {latest.run.costStatus} · {latest.run.costUSD===null?'Total cost unknown':`$${latest.run.costUSD}`} · held ${latest.run.reservationUSD}</p>}
+    {latest?.run&&<p role="status" className="availability-note">Run {latest.run.state} · {latest.run.costStatus} · {latest.run.costUSD===null?'Total cost unknown':`$${latest.run.costUSD}`} · held ${latest.run.reservationUSD}</p>}
     <p className="wellness-note">Personal wellness information. Not medical diagnosis or emergency monitoring.</p>
-  </div></ThreadPrimitive.Root>{inspection&&<Suspense fallback={<p role="status">Loading inspector…</p>}><Inspector run={inspection} onClose={()=>{setInspection(null);inspectionTrigger.current?.focus();}}/></Suspense>}</AssistantRuntimeProvider>;
+  </div></ThreadPrimitive.Root>{inspection&&<InspectionBoundary onClose={()=>{setInspection(null);inspectionTrigger.current?.focus();}}><Suspense fallback={<p role="status">Loading inspector…</p>}><Inspector run={inspection} onClose={()=>{setInspection(null);inspectionTrigger.current?.focus();}}/></Suspense></InspectionBoundary>}</AssistantRuntimeProvider>;
 }
 
 export function AskPage() {
