@@ -39,7 +39,7 @@ try {
   }
   const npm = process.env.npm_execpath; if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm,'run','build']);
-  await run([require.resolve('@playwright/test/cli'),'test',...(mobileProof?['--grep','mobile |Goals request failure|keyboard, skip link|chart loading failure']:goalsProof?['--grep','Ask goal proposal|direct Goals']:devProof ? ['--grep','direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'] : [])]);
+  await run([require.resolve('@playwright/test/cli'),'test',...(mobileProof?['--grep','Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure']:goalsProof?['--grep','Ask goal proposal|direct Goals']:devProof ? ['--grep','direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'] : [])]);
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'Local browser verification failed.'); process.exitCode = 1;
 } finally { await db.cleanup();if(appId)await db.admin(`/rest/v1/usage_buckets?id=eq.${appId}`,'DELETE'); }

@@ -38,10 +38,10 @@ Runtime: Node 24.15.0, npm 11.18.0; dependency versions remain locked.
 | `npm run typecheck` | Passed; repeated by final strict builds |
 | `npm test -- --maxWorkers=1` | Final serialized run: 328 passed across 24 files |
 | `npm run test:bundle` | Final build passed; 15 public files passed secret/server/harness scan |
-| `npm run test:e2e` | Final complete built-browser suite: 111 passed |
+| `npm run test:e2e` | Complete built-browser suite: 111 passed; final test-only inspector matrix expansion verified below |
 | `npm run test:dev -- --diagnostic` | Final Vite/API suite: 28 passed |
 | `npm run test:pwa` | Final built-worker privacy, obsolete-cache cleanup and offline-shell proof passed |
-| `npm run test:e2e -- --mobile-proof` | Six focused title, keyboard, chart/inspector failure and Goals recovery checks passed |
+| `npm run test:e2e -- --mobile-proof` | Seven final focused checks passed, including inspector at all five required viewports in both themes, title, keyboard, chart/inspector failure and Goals recovery |
 | `npm run test:e2e -- --goals-proof` | Six related chat/direct-goal checks passed after timestamp wrapping repair |
 | Specification validator and `git diff --check` | 499 specification/fixture checks and whitespace validation passed |
 
@@ -62,7 +62,9 @@ The retained M3 stack/allocation was not reset, used or replenished.
 
 The imported-data Ask/inspect/propose/approve/reimport/progress/reload journey
 passed through real local handlers and persistence, with synthetic provider
-composition. Final screenshots were captured at all required sizes. The mobile
+composition. Final screenshots were captured at all required sizes. Completion audit expanded
+the inspector from two sample pairings to all ten viewport/theme combinations;
+the updated imported-data journey and six related mobile checks passed. The mobile
 Ask, inspector and offline artifacts were inspected; the icon was inspected for
 legibility. Full screenshot inventories remain in ignored local test output.
 Safe committed samples: [light offline shell](pr15-offline-light.png) and
