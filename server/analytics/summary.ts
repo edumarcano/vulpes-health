@@ -20,7 +20,7 @@ function finite(value: Exact | null): number | null {
   if (value === null) return null;
   const number = value.toNumber(); return Number.isFinite(number) ? number : null;
 }
-export function summarizeMeasurements(rows: StoredObservation[], selection: DataSelection, revision: number) {
+export function summarizeMeasurementsExact(rows: StoredObservation[], selection: DataSelection, revision: number) {
   const windows = selectionWindows(selection);
   const allowed = rows.filter((row) => row.source_id === selection.source_id && row.metric_key === selection.metric && row.measurement_method === selection.method && row.granularity === selection.granularity);
   const between = (row: StoredObservation, from: Temporal.ZonedDateTime, to: Temporal.ZonedDateTime) => {
@@ -63,7 +63,7 @@ export function summarizeMeasurements(rows: StoredObservation[], selection: Data
   };
   const latest = [...selected].sort((a,b) => Temporal.Instant.compare(Temporal.Instant.from(b.observed_at),Temporal.Instant.from(a.observed_at)) || b.id.localeCompare(a.id))[0];
   const contributing = scalar ? allowed.filter((row) => between(row,windows.previous,windows.to)) : selected;
-  return DataSummarySchema.parse({
+  const result = DataSummarySchema.parse({
     selection, dataRevision: revision, latest: latest ? measurementDTO(latest) : null,
     series: points(windows.from,windows.to,plot),
     analysis: {
@@ -83,4 +83,6 @@ export function summarizeMeasurements(rows: StoredObservation[], selection: Data
       previousWindow: { from:windows.previous.toInstant().toString(), to:windows.current.toInstant().toString(), validDays:previous.size, coverageStatus:previous.size >= 3 ? 'sufficient' : 'insufficient_data' },
     },
   });
+  return {result,exactValue:value?.toFixed()??null};
 }
+export function summarizeMeasurements(rows: StoredObservation[],selection:DataSelection,revision:number){return summarizeMeasurementsExact(rows,selection,revision).result;}

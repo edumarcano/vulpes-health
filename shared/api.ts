@@ -1,3 +1,4 @@
+import { GoalMutationSchema } from './goals.js';
 import { z } from 'zod';
 import { SettingsPatchSchema } from './auth.js';
 import { MetricKeySchema } from './domain.js';
@@ -65,7 +66,7 @@ export const apiOperations = {
   ],
   '/api/goals': [
     { method: 'GET', selector: 'default', owningPR: 11 },
-    ...['propose_create', 'propose_revision', 'propose_state'].map((action) => ({ method: 'POST' as const, selector: `action=${action}` as const, owningPR: 11 })),
+    ...['propose_create', 'propose_revision', 'propose_state'].map((action) => ({ method: 'POST' as const, selector: `action=${action}` as const, owningPR: 11, schema:GoalMutationSchema })),
   ],
   '/api/approvals': [
     { method: 'POST', selector: 'action=approve', owningPR: 11, schema: ApprovalRequestSchema },

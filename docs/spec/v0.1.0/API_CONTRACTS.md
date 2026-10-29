@@ -214,3 +214,22 @@ Executable schemas remain in [`shared/data.ts`](../../../shared/data.ts). Both m
 CSV contains canonical import columns, schema version 1, measurement/version/revision IDs, original decimal value/unit/offset, source metadata and namespace, batch/fingerprint/provenance identifiers, and available session start/end times. Canonical/original decimals cross PostgreSQL as text and are written without numeric rounding or formula prefixes. Text uses CSV quoting and an apostrophe before formula operators after leading whitespace/control/format characters; leading tab/CR/LF text is also protected. The apostrophe is a documented spreadsheet-safety transformation of text. This is selected measurement export, not complete account/trace export.
 
 The browser downloads through authenticated fetch, aborts/discards work after an identity change, and revokes its object URL. It refetches authoritative data after mutations and disables an open preview when the known data revision changes. Deletion confirmation explains retained frozen goal decisions, trace removal, and the distinction between a fresh import and replay of an existing committed batch.
+
+## 12. Direct goal workflow
+
+Executable direct-goal inputs and revision/baseline schemas live in `shared/goals.ts`. These operations use no model. `GET /api/goals` defaults to `view=list`; `detail`, `progress`, `proposal`, and `revisions` require an owned `id`. `proposals` lists owned proposal metadata and available bodies. Lists accept `page_size` (default 50, maximum 200) and an owned UUID `cursor`. Detail returns the current goal/revision, progress and a 30-local-day chart with up to 200 observations; Data remains the complete measurement browser.
+
+| Action | Required fields beyond action and client_request_id |
+|---|---|
+| propose_create | definition |
+| propose_revision | goal_id, expected_version, definition, baseline_resolution (retain or replace) |
+| propose_state | goal_id, expected_version, state (active, paused, completed or archived) |
+| approve / reject at /api/approvals | proposal_id, payload_hash, expected_version (null for create) |
+
+Definitions extend the version-1 goal fields with measurement `method`, `granularity`, and fixed `currentMethod`. Seven-day tracking uses eligible scalar series; latest-value tracking preserves individual daily/session semantics. User-reported baselines require provenance and an explicit current method. Numeric inputs must be finite; blank form fields never become zero.
+
+New canonical proposal/revision payloads have schemaVersion 2 and contain the complete definition, frozen baseline, resulting state, review disposition and reviewed data revision. PostgreSQL JSONB text is the canonical hash representation. The server constructs this payload; approval cannot replace it. Storage results use proposal table field names including id, payload_hash, target_version, state and canonical_payload; consumed decisions return proposalId/outcome and, for approval, goalId/revisionId/revisionNumber/version.
+
+A proposal expires after 24 hours. Rejection, conflict and expiry remove its draft body while retaining safe replay metadata. Data-revision changes invalidate pending version-2 bodies atomically. Approved payloads remain historical decisions. Approval checks exact hash, ownership, expiry, current goal version and reviewed data revision in the transaction that writes the revision. Goal version includes review-marker changes; revisionNumber counts approved decisions. Replays return historical outcomes, and changed input under the same request key conflicts.
+
+Missing baselines yield needs_data; later imports cannot activate a goal. A reviewed revision supplies its baseline. Corrections/deletions retain approved snapshots and require review; retaining history or replacing it both require explicit approval. Paused/completed goals can reactivate through approval; archived goals are read-only. Target crossing never completes a goal automatically. Typed chat proposal cards and proposal tools remain execution-plan PR 12.
