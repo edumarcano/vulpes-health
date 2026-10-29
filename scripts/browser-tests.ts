@@ -8,8 +8,8 @@ const require = createRequire(import.meta.url);
 const db = new LocalSupabase();
 let appId:string|undefined;
 try {
-  const args=process.argv.slice(2);const devProof=args.includes('--dev-proof');const diagnostics=args.includes('--diagnostic');const goalsProof=args.includes('--goals-proof');
-  if(new Set(args).size!==args.length||args.some(arg=>!['--dev-proof','--diagnostic','--goals-proof'].includes(arg)))throw new Error('Browser tests accept only --dev-proof, --diagnostic and --goals-proof; no connection overrides.');
+  const args=process.argv.slice(2);const devProof=args.includes('--dev-proof');const diagnostics=args.includes('--diagnostic');const goalsProof=args.includes('--goals-proof');const mobileProof=args.includes('--mobile-proof');
+  if(new Set(args).size!==args.length||args.some(arg=>!['--dev-proof','--diagnostic','--goals-proof','--mobile-proof'].includes(arg)))throw new Error('Browser tests accept only --dev-proof, --diagnostic, --goals-proof and --mobile-proof; no connection overrides.');
   const status = localStatus();
   const a = await db.createUser(); const b = await db.createUser();const chat=await db.createUser();const goalChat=await db.createUser();
   for (const [user,name] of [[a,'Synthetic A'],[b,'Synthetic B']] as const) await db.admin('/rest/v1/profiles','POST',{ user_id:user.id,display_name:name });
@@ -39,7 +39,7 @@ try {
   }
   const npm = process.env.npm_execpath; if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm,'run','build']);
-  await run([require.resolve('@playwright/test/cli'),'test',...(goalsProof?['--grep','Ask goal proposal|direct Goals']:devProof ? ['--grep','direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey'] : [])]);
+  await run([require.resolve('@playwright/test/cli'),'test',...(mobileProof?['--grep','Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure']:goalsProof?['--grep','Ask goal proposal|direct Goals']:devProof ? ['--grep','direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'] : [])]);
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'Local browser verification failed.'); process.exitCode = 1;
 } finally { await db.cleanup();if(appId)await db.admin(`/rest/v1/usage_buckets?id=eq.${appId}`,'DELETE'); }

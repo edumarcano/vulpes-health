@@ -26,7 +26,7 @@ async function staticFile(url:string,response:import('node:http').ServerResponse
     const pathname=decodeURIComponent(new URL(url,'http://localhost').pathname);
     const relative=path.extname(pathname)?pathname.slice(1):'index.html';const file=path.resolve(dist,relative);
     if(!file.startsWith(dist+path.sep))throw new Error();
-    const types:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.json':'application/json'};
+    const types:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.json':'application/json','.webmanifest':'application/manifest+json'};
     const type=types[path.extname(file)];if(!type)throw new Error();
     const bytes=await readFile(file);response.setHeader('Content-Type',type);response.end(bytes);
   }catch{response.statusCode=404;response.end('Not found.');}

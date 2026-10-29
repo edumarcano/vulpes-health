@@ -62,6 +62,7 @@ test('keyboard, skip link, reduced motion, and 200% text sizing', async ({ page 
   await page.setViewportSize({ width: 360, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/ask');
+  await expect(page.getByRole('heading', { name: 'Ask Vulpes', exact: true })).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
   await page.keyboard.press('Enter');
@@ -94,8 +95,9 @@ test('chat stays disabled and navigation stores only the auth session', async ({
   await expect(page.getByLabel('Timezone',{ exact:true })).toBeVisible();
   expect(await page.evaluate(() => Object.keys(localStorage).every((key) => key.startsWith('vulpes.auth.session.v1')))).toBe(true);
   expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
-  expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
-  expect(await page.evaluate(async () => (await caches.keys()).length)).toBe(0);
+  const cached = await page.evaluate(async () => (await Promise.all((await caches.keys()).map(async name =>
+    (await (await caches.open(name)).keys()).map(request => new URL(request.url).pathname)))).flat());
+  expect(cached.every(path => /^(?:\/assets\/|\/brand\/|\/icons\/|\/offline\.(?:html|css)$|\/manifest.webmanifest$)/.test(path))).toBe(true);
   expect(mutations).toEqual([]);
 });
 

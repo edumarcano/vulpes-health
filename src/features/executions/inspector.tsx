@@ -31,7 +31,7 @@ function Evidence({run,step,part,incomplete=false}:{run:string;step:string;part:
   return <section className="inspection-evidence"><h4>{part==='input'?'Exact input':part==='output'?'Observed output':part==='context'?'Context manifest':'Raw usage'}</h4>
     {part==='output'&&incomplete&&<p>This is an incomplete observed prefix, not a completed response.</p>}
     {!visible&&<Button variant="outline" onClick={()=>setVisible(true)}>Load {part}</Button>}
-    {query.isPending&&visible&&<p>Loading evidence…</p>}{query.isError&&<p role="alert">Evidence could not be loaded.</p>}
+    {query.isPending&&visible&&<p role="status">Loading evidence…</p>}{query.isError&&<p role="alert">Evidence could not be loaded.</p>}
     {data&&data.state!=='available'&&<p>Evidence {data.state}. Exact content cannot be reconstructed.</p>}
     {data?.state==='available'&&<><p>Available until {data.expiresAt}. Private content.</p>
       {data.completeness==='partial'&&<p>This older context manifest is partial; some included items were not recorded.</p>}
@@ -52,7 +52,7 @@ export default function Inspector({run,onClose}:{run:string;onClose:()=>void}) {
   function close() { dialog.current?.close();onClose(); }
   return <dialog ref={dialog} className="inspection-dialog" aria-labelledby="inspection-title" onCancel={e=>{e.preventDefault();close();}}>
     <header><h2 id="inspection-title">Execution inspector</h2><Button variant="outline" onClick={close}>Close</Button></header>
-    {query.isPending&&<p>Loading execution…</p>}{query.isError&&<p role="alert">Execution could not be loaded.</p>}
+    {query.isPending&&<p role="status">Loading execution…</p>}{query.isError&&<div role="alert"><p>Execution could not be loaded.</p><Button variant="outline" onClick={()=>void query.refetch()}>Retry execution</Button></div>}
     {query.data&&<><section><h3>Overview</h3><p>{query.data.run.state} · trace {query.data.run.traceState} · {query.data.run.admittedAt}</p>
       <p>{query.data.run.route?.role ?? 'No model'} · {query.data.run.route?.provider ?? 'unknown provider'} · {query.data.run.route?.model ?? 'unknown model'}</p>
       <p>Cost {query.data.run.costStatus}: {query.data.run.costUSD===null?'unknown':`$${query.data.run.costUSD}`} · known ${query.data.run.knownCostUSD} · reserved ${query.data.run.reservationUSD}</p>

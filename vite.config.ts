@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { securityHeaders } from './server/http/security.js';
 import { apiProxy, localLogger } from './scripts/local-proxy.js';
+import { pwaShell } from './scripts/pwa.js';
 
 export default defineConfig(({ mode }) => {
  const env = loadEnv(mode, process.cwd(), 'VITE_SUPABASE_');
@@ -12,7 +13,7 @@ export default defineConfig(({ mode }) => {
  const headers = { ...securityHeaders, 'Content-Security-Policy': auth ? securityHeaders['Content-Security-Policy'].replace("connect-src 'self'", `connect-src 'self' ${auth.url}`) : securityHeaders['Content-Security-Policy'] };
  return {
   customLogger: localLogger,
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), pwaShell()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
     headers: {

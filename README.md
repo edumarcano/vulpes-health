@@ -22,6 +22,13 @@ Development follows the [execution plan](docs/plans/v0.1.0-execution.md) and can
 
 **M5 PR 13.** Chat uses automatic Luna-first routing without model/depth/effort selectors. The Vertex wire adapters and a single evidence-backed Flash handoff use the existing dispatcher and ledger. Argon is backend-only. Google approval, rates, account access and live verification remain pending; production inference remains disabled. [PR 13 evidence](docs/evidence/pr13-vertex-routing.md) records local proof and remaining gates. PR 14 is deferred.
 
+The mobile interface now includes a static PWA manifest and public offline shell.
+The production service worker caches only an explicit public-asset list; health
+data, conversations, API responses and private traces remain online. Inspector
+and chart load failures preserve the surrounding workflow. See [PR 15 evidence](docs/evidence/pr15-mobile-pwa.md)
+for local verification and remaining physical-device, assistive-technology and
+hosted gates. Account export/deletion remains PR 16.
+
 ## Planned technology stack
 
 - **Frontend:** React, TypeScript (strict), Vite, Tailwind CSS, shadcn/ui, assistant-ui, Recharts, Motion, and Lucide. Packaged as an installable mobile-first Progressive Web App (PWA).

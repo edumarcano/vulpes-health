@@ -36,7 +36,9 @@ export function App() {
   const main = useRef<HTMLElement>(null);
   useEffect(() => {
     const heading = main.current?.querySelector('h1');
-    document.title = `${heading?.textContent ?? 'Vulpes'} · Vulpes`;
+    const title = pathname === '/ask' ? 'Ask Vulpes' : destinations.find(item => item.to === pathname)?.label
+      ?? (pathname === '/login' ? 'Sign in' : 'Page not found');
+    document.title = `${title} · Vulpes`;
     if (previousPath.current !== pathname) {
       heading?.focus();
       window.scrollTo(0, 0);
@@ -49,10 +51,9 @@ export function App() {
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="brand-header">
         <NavLink to="/ask" aria-label="Vulpes home" className="brand-link">
-          <img className="logo-light" src="/brand/vulpes-horizontal.png" alt="Vulpes" width={3200} height={800} />
-          <img className="logo-dark" src="/brand/vulpes-reversed.png" alt="Vulpes" width={3200} height={1060} />
+          <img src="/brand/vulpes-horizontal.png" alt="Vulpes" width={3200} height={800} />
         </NavLink>
-        <span className="preview-label">Foundation preview</span>
+        <span className="preview-label">Private wellness prototype</span>
       </header>
       {state.kind === 'signed_in' && <nav className="primary-nav" aria-label="Primary">
         {destinations.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}><Icon size={20} aria-hidden="true" /><span>{label}</span></NavLink>)}
