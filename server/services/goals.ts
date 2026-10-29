@@ -103,8 +103,10 @@ export class GoalService {
     const parsed=GoalRevisionPayloadSchema.safeParse(revision.payload);
     if(!parsed.success){if(GoalDraftSchema.safeParse(revision.payload).success)return {kind:'unavailable',reason:'unsupported_baseline'};return {kind:'unavailable',reason:'unsupported_revision'};}
     const p=parsed.data;if(p.baseline.value===null)return {kind:'insufficient_data'};
-    const end=Temporal.Now.instant().toZonedDateTimeISO(p.definition.timezone).startOfDay().add({days:1});
-    const current=await this.baseline({...p.definition,baselineMethod:p.definition.currentMethod,baselineFrom:p.definition.currentMethod==='latest_value'?'0001-01-01T00:00:00Z':end.subtract({days:7}).toInstant().toString(),baselineTo:p.definition.currentMethod==='latest_value'?Temporal.Now.instant().toString():end.toInstant().toString()});
+    const now=Temporal.Now.instant();const end=now.toZonedDateTimeISO(p.definition.timezone).startOfDay().add({days:1});
+    // Daily totals use an exclusive local-date bound; timestamped readings stop at now.
+    const to=p.definition.currentMethod==='latest_value'&&p.definition.granularity!=='daily_total'?now.toString():end.toInstant().toString();
+    const current=await this.baseline({...p.definition,baselineMethod:p.definition.currentMethod,baselineFrom:p.definition.currentMethod==='latest_value'?'0001-01-01T00:00:00Z':end.subtract({days:7}).toInstant().toString(),baselineTo:to});
     const fresh=await this.owned(id);if(fresh.version!==goal.version||fresh.review_status!=='clear')return {kind:'unavailable',reason:'needs_review'};
     if(current.value===null)return {kind:'insufficient_data'};
     return {kind:'progress',goalId:goal.id,goalVersion:goal.version,revision:revision.revision_number,baseline:p.baseline.value,current:current.value,result:goalProgress(p.baseline.value,current.value,p.definition.target),selection:current.selection,dataRevision:current.dataRevision};
