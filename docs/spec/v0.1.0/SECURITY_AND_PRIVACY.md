@@ -6,7 +6,7 @@ The user trusts the deployment operator, Supabase/Vercel under their applicable 
 
 Provider "no training" and provider "zero retention" are separate properties. OpenRouter ZDR routing concerns eligible inference endpoints; it does not automatically cover external tools or the app's logs. [S16](SOURCES.md#s16) Google documents no-training commitments plus retention exceptions, including abuse monitoring and some model/features. Do not label every Vertex request ZDR. [S17](SOURCES.md#s17)
 
-The selected Google route is allowed only after the user accepts that provider policy. The operator's preferences do not imply every invited user's consent. Disabling a provider stops future routing there; it cannot retract already transmitted data.
+The selected Google route is allowed only after an operator approval binds the project, processing location and privacy fingerprint, and the user accepts its exact policy version. No approval is installed by migrations. The operator's preferences do not imply every invited user's consent. Disabling a provider stops future routing there; it cannot retract already transmitted data.
 
 ## 2. Required protections
 

@@ -48,7 +48,7 @@ Implement goal forms, draft proposals, source-bound baselines, range/directional
 
 ## Milestone 5 - Selected role lineup and controls
 
-Finish/test Flash and Argon adapters and explicit depth selection. Keep routing deterministic by default; limit escalation. Add decision scoring behind the disabled feature flag and enable only after its own smoke/evaluation gate.
+Finish/test Flash and Argon backend adapters. Remove the manual depth selector. Keep Luna primary, allow one evidence-backed Flash handoff, and exclude Argon from chat routing. Defer PR 14 without blocking M6; decision scoring stays disabled.
 
 Expose actual availability, effective effort, consent, usage and per-user budget state. Test unknown pricing, privacy-compatible endpoint absence, provider timeouts and Google credential failures.
 

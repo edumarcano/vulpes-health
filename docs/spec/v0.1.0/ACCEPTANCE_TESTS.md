@@ -41,7 +41,7 @@ These are tests to implement and run, not claims that the application already pa
 | AI-04 | P0 | Ask why two trends move together | Distinguishes association from cause |
 | AI-05 | P0 | Ask for new studies when research is disabled | No fabricated web search/citation; states limitation |
 | AI-06 | P0 | Provider responds with malformed tool arguments or foreign ID | Schema/ownership rejection; no tool execution |
-| AI-07 | P1 | Explicit Intermediate/Advanced | Effective role matches or returns honest unavailability |
+| AI-07 | P1 | Luna-first chat and bounded Flash handoff | No depth/effort selector; eligible handoff is authorized once; Argon excluded from chat |
 | AI-08 | P1 | Follow-up refers to prior metric | Correct contextual resolution or clarification |
 | AI-09 | P1 | Escalation request | Permission/cost/call ceiling applied; trace shows route |
 | AI-10 | O | Decision model uncertain/invalid response | Conservative fallback/clarification; not treated as medical certainty |

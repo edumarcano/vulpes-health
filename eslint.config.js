@@ -6,9 +6,10 @@ import globals from 'globals';
 import { boundaries } from './scripts/eslint-boundaries.js';
 
 export default tseslint.config(
-  { ignores: ['node_modules/**', 'dist/**', '.build/**', '.remora/**', '.agents/**', 'docs/spec/**', 'playwright-report/**', 'test-results/**', 'coverage/**'] },
+  { ignores: ['node_modules/**', 'dist/**', '.build/**', '.scratch/**', '.cache/**', 'tmp/**', '.remora/**', '.agents/**', 'docs/spec/**', 'playwright-report/**', 'test-results/**', 'coverage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  { languageOptions: { parserOptions: { tsconfigRootDir: import.meta.dirname } } },
   {
     files: ['**/*.{ts,tsx,js}'],
     ignores: ['src/**', 'shared/**'],

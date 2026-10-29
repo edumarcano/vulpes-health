@@ -39,7 +39,8 @@ async function configuredSmoke(){
   const price={...syntheticPrice,inputPerMillion:'0.1',outputPerMillion:'0.1',cacheReadPerMillion:'0.1',inputBoundTokens:12000,outputBoundTokens:3072};
   const config={modelId:'synthetic-model',reasoning:{effort:'low'},maxInputTokens:12000,maxOutputTokens:3072,price};
   const evidence={version:1,provider:'openrouter',model:config.modelId,effort:'low',adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,priceId:price.id,priceHash:priceFingerprint(price),inputBoundTokens:12000,outputBoundTokens:3072,streaming:true,tools:true,zdr:true,checkedAt:price.checkedAt,sourceURL:'https://example.test/capabilities'};
-  vi.doMock('../../server/config/models.js',()=>({models:{everyday:config}}));
+  const actual=await vi.importActual<typeof import('../../server/config/models.js')>('../../server/config/models.js');
+  vi.doMock('../../server/config/models.js',()=>({models:{...actual.models,everyday:{...actual.models.everyday,...config}}}));
   vi.doMock('../../server/config/everyday-verification.js',()=>({everydayCapabilityEvidence:evidence}));
   vi.stubEnv('VULPES_LIVE_AI_ENABLED','true');vi.stubEnv('VULPES_SMOKE_BATCH_ID',batch);vi.stubEnv('OPENROUTER_API_KEY','synthetic-not-a-real-key');
   const {SyntheticChatTransport,responseFrame,assistantOutput}=await import('../fixtures/chat.js');

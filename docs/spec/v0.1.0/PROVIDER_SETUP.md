@@ -39,6 +39,10 @@ Disable/avoid automatic long-decode continuations. Each actual request would nee
 
 Argon's current model page documents implicit-only caching and a minimum context size for cache eligibility; explicit context-cache APIs are not a universal optimization for this model. It also documents durable caching behavior. Review that setting with the accepted Google data policy, and never pad personal context solely to obtain a cache hit. [S12](SOURCES.md#s12)
 
+The PR 13 adapter uses direct bounded REST streaming and retains signed model parts in encrypted continuation state. GoogleAuth supplies ADC/external-account WIF tokens only after verification gates. No Google approval, price snapshot, capability evidence or production composition is installed. Project/location are explicit operator inputs; Argon remains excluded from chat routing even after a smoke pass.
+
+For a separately authorized synthetic batch, the guarded CLI accepts `--role=intermediate` or `--role=advanced` with `--mode=live --allow-spend --max-cost-usd=<approved-batch-cap> --attempt-id=<UUID> --write-report` and the existing persistent `VULPES_SMOKE_BATCH_ID`. Current null rates/evidence block before credential discovery. Cancellation/disconnect use the same allocation and explicit attempt IDs. Do not replenish a batch or reset it while costs are uncertain. Missing Vertex cache-write billing information remains unknown, retains its reservation and prevents a false successful cost-verification result.
+
 ## 4. Decision Engine is a different endpoint
 
 Microsoft-Decision-1 returns scores over supplied choices rather than conversational text. OpenRouter exposes it through `/api/alpha/decisions`; do not pass it through a chat-completion SDK and expect a prose answer. [S13](SOURCES.md#s13)
@@ -64,7 +68,7 @@ Never place provider secrets in `VITE_` variables. No actual credentials belong 
 Implement exactly one authoritative configuration module at `server/config/models.ts` (or equivalent). Define distinct types for each provider API family:
 
 - **OpenRouter Responses generation (`everyday`):** Selected `openai/gpt-6-luna`, low default reasoning, output/context limits, streaming and tool capability checks, enforced ZDR routing.
-- **Vertex GenerateContent (`intermediate`, `advanced`):** Selected `gemini-3.8-flash` and `gemini-4-argon`, provider-supported thinking levels, tool/stream/cache configuration, location and privacy constraints.
+- **Vertex GenerateContent (`intermediate`, `advanced`):** Selected `gemini-3.8-flash` (bounded handoff) and `gemini-4-argon` (backend verification only), catalog-owned thinking levels, tool/stream/cache configuration, location and privacy constraints.
 - **OpenRouter Decisions (`decision`):** Selected `microsoft/microsoft-decision-1`, typed choices/scoring instead of a chat/reasoning model; off until evaluated.
 
 Illustrative shape:

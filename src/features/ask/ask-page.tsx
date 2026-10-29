@@ -31,7 +31,6 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
   const {state:auth,scope}=useAuth();const session=auth.kind==='signed_in'?auth.session:null;const epoch=scope.epoch;
   const client=useQueryClient();const root=['conversations',session?.user.id,epoch];const key=[...root,'messages',id];
   const [state,dispatch]=useReducer(askReducer,initialAskState);const lock=useRef(false);const abort=useRef<AbortController|null>(null);
-  const [depth,setDepth]=useState<ChatSendRequest['depth']>('auto');
   const [existingConversation,setExistingConversation]=useState<string|null>(null);
   const [inspection,setInspection]=useState<string|null>(null);
   const inspectionTrigger=useRef<HTMLButtonElement|null>(null);
@@ -55,7 +54,7 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
     if(!session||!id||lock.current)throw new Error('Choose a conversation before sending.');
     if(scope.epoch!==epoch||scope.userId!==session.user.id)throw new DOMException('The account changed.','AbortError');
     lock.current=true;const owner=scope.capture();const controller=new AbortController();abort.current=controller;
-    const input:ChatSendRequest={action:'send',conversation_id:id,client_request_id:crypto.randomUUID(),message:{id:crypto.randomUUID(),text},depth,context_selection:null};
+    const input:ChatSendRequest={action:'send',conversation_id:id,client_request_id:crypto.randomUUID(),message:{id:crypto.randomUUID(),text},depth:'auto',context_selection:null};
     let protocol=askReducer(initialAskState,{type:'submit',text});dispatch({type:'submit',text});
     try {
       const response=await fetch('/api/chat',{method:'POST',cache:'no-store',signal:AbortSignal.any([owner.signal,controller.signal]),headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify(input)});
@@ -115,7 +114,6 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
     </ThreadPrimitive.Viewport><div className="composer-area"><p role="status" aria-live="polite" className="chat-status">{notice}</p>
     {availability==='unavailable'&&<p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true"/>Inference is unavailable until provider verification and activation gates pass.</p>}
     {availability==='synthetic'&&<p className="availability-note">Local synthetic verification. No live provider calls.</p>}
-    <label className="depth-label">Analysis depth<select aria-label="Analysis depth" value={depth} onChange={e=>setDepth(e.target.value as typeof depth)} disabled={busy}><option value="auto">Auto</option><option value="everyday">Everyday</option><option value="intermediate">Intermediate (unavailable)</option><option value="advanced">Advanced (unavailable)</option></select></label>
     <ComposerPrimitive.Root className="composer"><ComposerPrimitive.Input aria-label="Message Ask Vulpes" placeholder="Ask about your measurements…" rows={1}/>{busy?<Button onClick={()=>void stop.mutateAsync()} disabled={stop.isPending||!state.runId&&!activeRun}>Stop</Button>:<ComposerPrimitive.Send asChild><Button>Send</Button></ComposerPrimitive.Send>}</ComposerPrimitive.Root>
     {state.phase==='recovering'&&<Button variant="outline" onClick={()=>void recover('Reading saved status.')}>Refresh saved status</Button>}
     {existingConversation&&<Button asChild variant="outline"><Link to={`/ask?conversation=${encodeURIComponent(existingConversation)}`}>Open current run</Link></Button>}

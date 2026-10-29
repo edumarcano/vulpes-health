@@ -12,7 +12,7 @@ describe('chat proposal authority and bounded catalogue',()=>{
    const definition=GoalDefinitionSchema.parse({...goalDraft,method:'device_reported',granularity:'instant',currentMethod:'daily_median_mean_7d'});
    expect(toolArguments.propose_goal.safeParse({definition}).success).toBe(true);
    for(const extra of [{ownerId:goalDraft.sourceId},{state:'active'},{baseline:{value:'70'}},{client_request_id:goalDraft.sourceId},{run_id:goalDraft.sourceId}])expect(toolArguments.propose_goal.safeParse({definition,...extra}).success).toBe(false);
-   expect(readToolDefinitions.map(x=>x.name)).toEqual(['list_metrics','get_measurements','summarize_metric','list_goals','get_goal_progress','propose_goal','propose_goal_revision']);
+   expect(readToolDefinitions.map(x=>x.name)).toEqual(['request_escalation','list_metrics','get_measurements','summarize_metric','list_goals','get_goal_progress','propose_goal','propose_goal_revision']);
    expect(toolArguments.propose_goal_revision.safeParse({goal_id:goalDraft.sourceId,expected_revision:1,changes:{title:'Revised'},baseline_resolution:'retain'}).success).toBe(false);
    expect(toolArguments.propose_goal_revision.safeParse({goal_id:goalDraft.sourceId,expected_version:1,changes:{title:'Revised'},baseline_resolution:'retain',rationale:'Explain the requested change.'}).success).toBe(true);
    expect(ChatPartSchema.safeParse({type:'goal_proposal',proposal:{state:'approved'}}).success).toBe(false);

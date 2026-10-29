@@ -134,3 +134,9 @@ Seven-day envelope expiry is enforced on reads. Bounded maintenance removes expi
 Conversation and cancellation receipts use `audit_events` and contain only request IDs, hashes, object IDs and outcomes. All new write RPCs are service-only with empty search paths. `read_metric_inventory_v1()` is the narrow authenticated read projection; identity comes from `auth.uid()`, and it groups only owned, undeleted observations by metric/source/method/granularity.
 
 `checkpoint_message_v1` validates the execution fence and commits the assistant prefix before SSE emission. It never replaces captured raw provider bytes. Encrypted `provider_state` in the step continuation reference retains complete logical call/result groups and opaque response items. Only completed, current-revision, eligible history enters later context. Expired or invalid state excludes the entire group. Conversation deletion invalidates executors, removes every run-bound payload purpose and message, nulls retained accounting links, and preserves unsettled cost for reconciliation.
+
+### PR 13 provider policy and handoff
+
+`vertex_policy_approval` holds at most one operator-maintained Google policy approval, binding its version, project, processing location, notice and privacy fingerprint. It contains no credentials. RLS and grants deny ordinary client access. An absent approval rejects Google consent. No migration installs approval.
+
+`ai_runs.route_history` records at most one Everyday-to-Intermediate transition. The service-only handoff transaction checks the execution fence, owned completed orchestration step, consent, remaining requests and eligible task code. Existing paired reservations and the original accounting month remain unchanged. Argon cannot be a handoff target.

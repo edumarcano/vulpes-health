@@ -36,7 +36,7 @@ export const boundaries = {
       const lexicalTarget = specifier.startsWith('.')
         ? path.relative(root, path.resolve(path.dirname(filename), specifier)).replaceAll('\\', '/')
         : specifier.replace(/^@server\//, 'server/').replace(/^@shared\//, 'shared/');
-      const implementationImport = /^server\/ai\/adapters\//.test(localTarget || lexicalTarget);
+      const implementationImport = /^server\/ai\/(?:adapters|providers)\//.test(localTarget || lexicalTarget);
       const harnessImport = /^(?:tests|scripts)\//.test(localTarget || lexicalTarget);
       const serverImport = /^(?:server|api)\//.test(localTarget) || /^@server\//.test(specifier);
       const uiImport = localTarget.startsWith('src/') || /^(?:react(?:-dom)?(?:\/|$)|@assistant-ui\/)/.test(specifier);

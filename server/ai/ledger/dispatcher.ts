@@ -1,3 +1,4 @@
+import {isVertexVerificationTransport} from '../providers/vertex-verification.js';
 import { HttpFailure } from '../../http/failure.js';
 import { MAX_PAYLOAD_BYTES } from '../../security/encryption.js';
 import type { ExecutionService, PreparedStep,RunLease,StepInput } from './execution.js';
@@ -31,7 +32,7 @@ export function createDispatcher(ledger: ExecutionService, transport: RequestTra
       }};
     },
     async *send(step, signal) {
-    if (transport.mode !== 'mock' && !isVerificationTransport(transport)) throw new Error('live_transport_unavailable');
+    if (transport.mode !== 'mock' && !isVerificationTransport(transport) && !isVertexVerificationTransport(transport)) throw new Error('live_transport_unavailable');
     signal.throwIfAborted();
     // Never retry this transition after an ambiguous reply. Only true permits a
     // send; a repeated call with the same step cannot execute the transport.

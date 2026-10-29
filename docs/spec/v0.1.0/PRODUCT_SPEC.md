@@ -20,7 +20,7 @@ Each account chooses a display unit system, IANA timezone and approved model pro
 
 ### 3.1 Ask Vulpes
 
-Streaming text, persisted conversation history, new-conversation action, bounded server-side tools, visible working/cancelled/failed states and predefined result cards. Compact mobile navigation label is **Ask**, and the page heading is **Ask Vulpes**. The user can choose Auto, Everyday, Intermediate or Advanced when those roles are available. The selected route, effective model and cost state are inspectable.
+Streaming text, persisted conversation history, new-conversation action, bounded server-side tools, visible working/cancelled/failed states and predefined result cards. Compact mobile navigation label is **Ask**, and the page heading is **Ask Vulpes**. Chat starts on Luna and can make one evidence-backed, server-authorized handoff to Flash. No model, depth or effort selector is exposed. Argon remains a backend capability excluded from chat routing. The selected route, effective model and cost state are inspectable.
 
 No response is generated merely because the home screen opened. Empty-state suggested prompts are static. Opening an existing conversation retrieves history; it does not regenerate it. Editing, branching and automatic regeneration are deferred to avoid hidden history and repeated spend.
 
@@ -48,7 +48,7 @@ Show excluded/truncated context with reasons, but never label reconstructed text
 
 ### 3.5 Settings
 
-Profile/timezone/units, approved providers, available analysis depths, per-user lower spending preference, remaining operator allocation, trace retention, data export and account deletion. API keys and operator spending ceilings are not editable by ordinary family users. Settings changes are explicit user actions, not model-generated writes.
+Profile/timezone/units, approved providers, provider availability, per-user lower spending preference, remaining operator allocation, trace retention, data export and account deletion. API keys and operator spending ceilings are not editable by ordinary family users. Settings changes are explicit user actions, not model-generated writes.
 
 ## 4. Evidence and health boundary
 

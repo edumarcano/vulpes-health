@@ -42,7 +42,7 @@ These fill gaps without reopening the approved product direction. They are edita
 | assistant-ui ExternalStoreRuntime | Vulpes owns persisted messages, approvals and stream state |
 | Owner-controlled provider list and spending ceilings | Family accounts cannot change the payer's credentials or raise allocated ceilings |
 | Explicit per-user consent to approved model providers | The owner's acceptance does not stand in for family members' consent |
-| Deterministic routes plus explicit user-selected depth | Simple routing baseline before semantic classifier evaluation |
+| Luna-first routing plus one evidence-backed Flash handoff | Simple routing baseline before semantic classifier evaluation |
 | Complete trace payloads retained 7 days by default | Balance exact inspection with sensitive-data duplication and storage |
 | Usage/accounting metadata retained 90 days by default | Cost reconciliation without retaining prompts indefinitely |
 | No source CSV retained after validated commit | Parsed observations retain provenance, not duplicate raw files |

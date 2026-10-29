@@ -14,6 +14,7 @@ const count = z.number().int().nonnegative().nullable();
 export const InspectionOverviewSchema = z.strictObject({
   run: RunSummarySchema,
   evidenceRevision: z.enum(['current','stale','removed']),
+  routeHistory:z.array(z.strictObject({sourceStepId:UUIDSchema,from:z.json(),to:z.json(),reason:z.enum(['goal_progress_review','multi_metric_comparison']),at:z.string()})).max(1).default([]),
   steps: z.array(z.strictObject({
     id: UUIDSchema, sequence: z.number().int().positive(), type: z.enum(['generation', 'decision', 'tool']),
     status: z.enum(['started', 'completed', 'failed', 'cancelled', 'interrupted']),

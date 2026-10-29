@@ -69,7 +69,7 @@ export const RoleAvailabilitySchema = z.discriminatedUnion('state', [
 export type RoleAvailability = z.infer<typeof RoleAvailabilitySchema>;
 export function getRoleAvailability(role: ModelRole,liveEnabled=true): RoleAvailability {
   if(role==='decision')return {state:'disabled',reason:'optional_decision_disabled'};
-  if(role!=='everyday')return {state:'unavailable',reason:'live_inference_not_implemented'};
+  if(role!=='everyday')return {state:'unavailable',reason:'price_unverified'};
   const model=models.everyday;const price=VerifiedPriceSchema.safeParse(model.price);
   const readiness=assessEverydayPreflight({enabled:liveEnabled,mode:'production',model:model.modelId,effort:model.reasoning.effort,
     adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,

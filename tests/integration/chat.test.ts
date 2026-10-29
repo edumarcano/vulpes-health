@@ -1,3 +1,4 @@
+import {VertexGenerationAdapter,vertexEndpoint} from '../../server/ai/providers/vertex.js';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
 import {once} from 'node:events';
@@ -58,6 +59,52 @@ async function stream(response:Response) {
 }
 const send=(id:string,text='How has my imported weight changed?')=>({action:'send',conversation_id:id,client_request_id:randomUUID(),message:{id:randomUUID(),text},depth:'auto'});
 describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
+  it('refuses an unapproved or foreign handoff without changing the run route',async()=>{
+    const ledger=new ExecutionService(a,{maxRunCostUSD:'0.25'});
+    const admitted=await ledger.admit(admission(await conversation()));if(!admitted.lease)throw new Error('Expected lease');
+    await expect(ledger.handoff(admitted.lease,randomUUID(),'multi_metric_comparison')).rejects.toMatchObject({status:403});
+    const run=await ledger.summary(admitted.lease.runId);expect(run.route?.role).toBe('everyday');
+    const stored=await rows('ai_runs',`id=eq.${run.id}&select=route_history`);expect(stored[0]!.route_history).toEqual([]);
+    await expect(new ExecutionService(b).handoff(admitted.lease,randomUUID(),'multi_metric_comparison')).rejects.toMatchObject({status:404});
+  });
+
+  it('hands off once from Luna to Flash with owned summaries and exact persisted Vertex input',async()=>{
+    const acceptedAt=new Date().toISOString();
+    await db.admin('/rest/v1/vertex_policy_approval','POST',{id:true,policy_version:'synthetic-google-v1',project:'synthetic-project',location:'us',notice:'Synthetic verification only',privacy_fingerprint:'a'.repeat(64)});
+    try {
+      await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`,'PATCH',{consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:acceptedAt},vertex_ai:{accepted_version:'synthetic-google-v1',accepted_at:acceptedAt}}});
+      const captured:Buffer[]=[];
+      const primary:RequestTransport={mode:'mock',async *send(body){
+        const request=JSON.parse(Buffer.from(body).toString());
+        const results=request.input.filter((x:{type:string})=>x.type==='function_call_output').map((x:{output:string})=>JSON.parse(x.output));
+        const summaries=results.filter((x:{result:{kind:string}})=>x.result.kind==='summary');
+        const metrics=results.find((x:{result:{kind:string}})=>x.result.kind==='metrics');
+        const call=(name:string,args:unknown,n:string)=>({type:'function_call',id:n,call_id:n,name,arguments:JSON.stringify(args)});
+        if(summaries.length===2)yield responseFrame([call('request_escalation',{task:'multi_metric_comparison',rationale:'Compare two calculated series',evidenceIds:summaries.map((x:{evidence:{resultId:string}})=>x.evidence.resultId)},'handoff')]);
+        else if(metrics)yield responseFrame(['weight','body_fat_percent'].map(metric=>{
+          const item=metrics.result.items.find((x:{metric:string})=>x.metric===metric);
+          return call('summarize_metric',{metric,source_id:item.source_id,method:item.method,granularity:item.granularity,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC'},metric);
+        }));
+        else yield responseFrame([call('list_metrics',{},'inventory')]);
+      }};
+      const flash:RequestTransport={mode:'mock',async *send(body){captured.push(Buffer.from(body));yield Buffer.from('data: '+JSON.stringify({candidates:[{content:{role:'model',parts:[{text:'Calculated comparison of the synthetic series.'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:10,thoughtsTokenCount:5,cachedContentTokenCount:0}})+'\n\n');}};
+      const dependencies=syntheticChatDependencies(primary);dependencies.flash={adapter:new VertexGenerationAdapter('intermediate',vertexEndpoint('synthetic-project','us','intermediate')),transport:flash,price:{...dependencies.price,inputBoundTokens:24000,outputBoundTokens:8192},consentVersion:'synthetic-google-v1'};
+      await withApi(dependencies,async api=>{
+        const preview=await api('/api/data',{action:'preview_csv',client_request_id:randomUUID(),csv:readFileSync('docs/spec/v0.1.0/fixtures/measurements-synthetic.csv','utf8'),source:{kind:'new',label:'Synthetic routing',origin_app:null,device_label:null},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}});
+        expect(preview.status).toBe(200);const p=(await preview.json()).data;
+        expect((await api('/api/data',{action:'commit_import',batch_id:p.batch_id,payload_hash:p.payload_hash,client_request_id:randomUUID()})).status).toBe(200);
+        const events=await stream(await api('/api/chat',send(await conversation(),'Compare the two synthetic series.')));
+        expect(events.at(-1)?.type,JSON.stringify(events.at(-1))).toBe('run.completed');expect(captured).toHaveLength(1);
+        expect(events.filter(e=>e.type==='route.selected').map(e=>e.payload.role)).toEqual(['everyday','intermediate']);
+        const inspector=new InspectionService(a);const overview=await inspector.overview(events[0]!.run_id);
+        expect(overview.routeHistory).toHaveLength(1);
+        const vertex=overview.steps.find(step=>step.provider==='vertex_ai')!;
+        const payload=await inspector.evidence({view:'payload',run:events[0]!.run_id,step:vertex.id,part:'input'});
+        expect(payload.state).toBe('available');if(payload.state==='available')expect(payload.bytes.equals(captured[0]!)).toBe(true);
+      });
+    }finally{await db.admin('/rest/v1/vertex_policy_approval?id=eq.true','DELETE');}
+  });
+
   it('fits the live-observed fourteen-measurement path through a deterministic summary and answer',async()=>{
     const transport=new SyntheticChatTransport('measurements');
     await withApi(syntheticChatDependencies(transport),async api=>{

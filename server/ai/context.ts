@@ -65,7 +65,8 @@ export async function buildContext(context:AuthContext,input:ChatSendRequest,run
     try{parsed=JSON.parse(payload.bytes.toString('utf8'));}catch{exclusions.push({referenceId:id,reason:'continuation_invalid'});continue;}
     const saved=GenerationRequestSchema.safeParse(parsed);
     if(!saved.success){exclusions.push({referenceId:id,reason:'continuation_invalid'});continue;}
-    groups.push({id,turns:saved.data.turns,continuation:saved.data.continuation});
+    if(saved.data.continuation?.family==='vertex_generate_content')exclusions.push({referenceId:id,reason:'provider_continuation_not_transferable'});
+    groups.push({id,turns:saved.data.turns,continuation:saved.data.continuation?.family==='vertex_generate_content'?null:saved.data.continuation});
   }
   const essential:GenerationRequest={turns:[{type:'message',role:'system',text:safetyInstructions},{type:'message',role:'system',text:JSON.stringify({profile:profile.data,selection:input.context_selection,selectedGoal})},{type:'message',role:'user',text:input.message.text}],tools,continuation:null};
   const bounded=boundContext(essential,groups,maxBytes);

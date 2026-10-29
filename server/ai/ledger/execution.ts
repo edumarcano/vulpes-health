@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { Decimal } from 'decimal.js';
 import { z } from 'zod';
 import { AdmissionResultSchema, RunSummarySchema, type AdmissionResult, type TerminalRunState } from '../../../shared/executions.js';
 import { AnalysisDepthSchema, HashSchema, UUIDSchema } from '../../../shared/primitives.js';
@@ -13,6 +14,7 @@ import { executionPolicy } from './policy.js';
 import { GoalProposalToolResultSchema,GoalProposalReferenceSchema } from '../../../shared/goals.js';
 import { ChatPartSchema } from '../../../shared/chat.js';
 import { priceUsage, reserveMaximum, VerifiedPriceSchema, type VerifiedPrice } from './pricing.js';
+import { isVertexEndpoint } from '../../config/vertex-endpoint.js';
 
 export interface RunLease { readonly runId: string; readonly executor: string; readonly fence: number; readonly deadlineAt: string }
 type Admission={result:Extract<AdmissionResult,{kind:'admitted'}>;lease:RunLease} | {result:Exclude<AdmissionResult,{kind:'admitted'}>;lease:null};
@@ -83,9 +85,9 @@ export class ExecutionService {
   }
   async prepare(lease: RunLease, input: StepInput): Promise<PreparedStep> {
     if (input.body.byteLength>2*1024*1024) throw new HttpFailure(413,'request_too_large','The provider request is too large.');
-    const metadata = z.strictObject({ endpoint:z.string().max(200),headers:z.record(z.string(),z.string().max(200)),redactedHeaders:z.array(z.string().max(100)).max(20) }).parse(input.metadata);
+    const metadata = z.strictObject({ endpoint:z.string().max(512),headers:z.record(z.string(),z.string().max(200)),redactedHeaders:z.array(z.string().max(100)).max(20) }).parse(input.metadata);
     if (Object.keys(metadata.headers).some((key) => !['accept','content-type'].includes(key.toLowerCase()))) throw new Error('unsafe_request_header');
-    if (!['https://openrouter.ai/api/v1/responses','https://aiplatform.googleapis.com','tool:read','tool:proposal'].includes(metadata.endpoint)) throw new Error('unapproved_endpoint');
+    if (!['https://openrouter.ai/api/v1/responses','tool:read','tool:proposal'].includes(metadata.endpoint) && !isVertexEndpoint(metadata.endpoint)) throw new Error('unapproved_endpoint');
     const body = Buffer.from(input.body);const id = randomUUID();
     const price = input.type === 'tool' ? null : VerifiedPriceSchema.parse(input.price);
     if(price && body.byteLength>price.inputBoundTokens)throw new HttpFailure(413,'input_bound_exceeded','The request exceeds its verified input bound.');
@@ -109,6 +111,28 @@ export class ExecutionService {
   }
   async heartbeat(lease: RunLease) {
     return RunSummarySchema.parse(await this.rpc('heartbeat_run_v1',{ p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_fence:lease.fence }));
+  }
+  async handoff(lease:RunLease,stepId:string,reason:string) {
+    return RunSummarySchema.parse(await this.rpc('handoff_flash_v1',{p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_fence:lease.fence,p_step:stepId,p_reason:reason}));
+  }
+  async canHandoffToFlash(lease:RunLease,price:VerifiedPrice,consentVersion:string):Promise<boolean> {
+    const Money=Decimal.clone({precision:128});const amount=new Money(reserveMaximum(price));
+    const run=await this.summary(lease.runId);
+    const [buckets,profile,stored,approval]=await Promise.all([
+      this.db.from('usage_buckets').select('scope,ceiling:allocated_ceiling_usd::text,reserved:reserved_usd::text,spent:spent_usd::text,lower:lower_preference_usd::text').eq('period_start',run.accountingPeriod).or(`scope.eq.app,user_id.eq.${this.context.userId}`),
+      this.context.db.from('profiles').select('preference:monthly_preference_usd::text,consent_versions').eq('user_id',this.context.userId).single(),
+      this.db.from('ai_runs').select('consent_versions').eq('user_id',this.context.userId).eq('id',lease.runId).single(),
+      this.db.from('vertex_policy_approval').select('policy_version').eq('id',true).maybeSingle(),
+    ]);
+    if(buckets.error||profile.error||stored.error||approval.error||approval.data?.policy_version!==consentVersion||buckets.data.length!==2||Date.now()>=Date.parse(run.deadlineAt))return false;
+    const consent=z.object({vertex_ai:z.object({accepted_version:z.literal(consentVersion),accepted_at:z.string()})}).safeParse(profile.data.consent_versions);
+    const frozen=z.object({vertex_ai:z.json()}).safeParse(stored.data.consent_versions);
+    if(!consent.success||!frozen.success||requestHash(consent.data.vertex_ai)!==requestHash(frozen.data.vertex_ai))return false;
+    if(new Money(run.knownCostUSD).plus(run.reservationUSD).plus(amount).gt(this.policy.maxRunCostUSD))return false;
+    return buckets.data.every(bucket=>{
+      const ceiling=bucket.scope==='account'?Money.min(bucket.ceiling,bucket.lower??bucket.ceiling,profile.data.preference??bucket.ceiling):new Money(bucket.ceiling);
+      return new Money(bucket.spent).plus(bucket.reserved).plus(amount).lte(ceiling);
+    });
   }
   async checkpoint(step: PreparedStep, bytes: Uint8Array, message?: {id:string;parts:Json[]}) {
     if (bytes.byteLength>MAX_PAYLOAD_BYTES) throw new HttpFailure(413,'response_too_large','The provider response exceeded its trace limit.');

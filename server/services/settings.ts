@@ -8,9 +8,12 @@ async function settingsDTO(context:AuthContext,profile: Database['public']['Tabl
   const {data:budget,error}=await context.db.rpc('read_budget_v1');
   if(error)throw new HttpFailure(503,'settings_unavailable','Spending information could not be loaded.');
   const stored = profile.consent_versions && typeof profile.consent_versions === 'object' && !Array.isArray(profile.consent_versions) ? profile.consent_versions : {};
+  const {data:approval,error:policyError}=await context.db.rpc('read_vertex_policy_v1',{p_project:process.env.GOOGLE_CLOUD_PROJECT??'',p_location:process.env.GOOGLE_CLOUD_LOCATION??''});
+  if(policyError)throw new HttpFailure(503,'settings_unavailable','Provider policy could not be checked.');
+  const google=approval&&typeof approval==='object'&&!Array.isArray(approval)&&typeof approval.version==='string'&&typeof approval.notice==='string'?{version:approval.version,acceptanceAvailable:true,notice:approval.notice}:undefined;
   return SettingsSchema.parse({
     profile: { userId: profile.user_id, displayName: profile.display_name, timezone: profile.timezone, units: profile.units, updatedAt: profile.updated_at },
-    providerConsents: (['openrouter', 'vertex_ai'] as const).map((provider) => consentState(stored[provider], provider)),
+    providerConsents: (['openrouter', 'vertex_ai'] as const).map((provider) => consentState(stored[provider], provider,provider==='vertex_ai'?google:undefined)),
     retention: { traceDays: 7, importStagingHours: 24 },
     budget,
   });

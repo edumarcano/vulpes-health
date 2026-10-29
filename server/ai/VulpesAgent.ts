@@ -1,3 +1,4 @@
+import { EscalationRequestSchema,qualifiesForFlash,type RoutingEvidence } from './routing.js';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ChatSendRequest } from '../../shared/api.js';
@@ -19,7 +20,7 @@ import { executeReadTool,prepareGoalTool,readToolDefinitions,providerToolResult,
 import { DataSummarySchema } from '../../shared/data.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
 
-export interface AgentDependencies {adapter:GenerationAdapter;transport:RequestTransport;price:VerifiedPrice;maxRunCostUSD:string}
+export interface AgentDependencies {adapter:GenerationAdapter;transport:RequestTransport;price:VerifiedPrice;maxRunCostUSD:string;verificationRole?:'intermediate'|'advanced';flash?:{adapter:GenerationAdapter;transport:RequestTransport;price:VerifiedPrice;consentVersion:string}}
 type EventInput=StreamEvent extends infer E ? E extends StreamEvent ? Omit<E,'v'|'seq'|'run_id'> : never : never;
 export class VulpesAgent {
   readonly ledger:ExecutionService;
@@ -40,10 +41,11 @@ export class VulpesAgent {
     await this.ledger.reconcile();
     const prior=await this.ledger.replayChat({conversationId:input.conversation_id,clientRequestId:input.client_request_id,requestHash:hash},input.message);
     if(prior)return {result:prior,lease:null,baseline};
-    if(!baseline && (input.depth==='intermediate'||input.depth==='advanced'))throw new HttpFailure(503,'depth_unavailable','This analysis depth is unavailable. Select Auto or Everyday explicitly to try another depth.');
+    if(!baseline && (input.depth==='intermediate'||input.depth==='advanced'))throw new HttpFailure(503,'depth_unavailable','This analysis depth is unavailable. Manual analysis-depth selection is not supported in this version.');
     if(!baseline && !this.dependencies)throw new HttpFailure(503,'inference_unavailable','Ask Vulpes inference is unavailable until provider verification and activation gates pass.');
+    const initialRole=this.dependencies?.verificationRole??'everyday';const initialModel=models[initialRole];
     const admission=await this.ledger.admit({conversationId:input.conversation_id,clientRequestId:input.client_request_id,requestHash:hash,depth:input.depth,
-      route:{role:'everyday',provider:'openrouter',model:models.everyday.modelId,effort:models.everyday.reasoning.effort},consentVersion:'openrouter_zdr_v1',...(baseline ? {baseline:'safety-v1' as const} : {})},input.message);
+      route:{role:initialRole,provider:initialModel.provider,model:initialModel.modelId,effort:'thinking' in initialModel?initialModel.thinking.level:initialModel.reasoning.effort},consentVersion:'openrouter_zdr_v1',...(baseline ? {baseline:'safety-v1' as const} : {})},input.message);
     return {...admission,baseline};
   }
   async *run(input:ChatSendRequest,lease:RunLease,initial:RunSummary,baseline:string|null,signal:AbortSignal):AsyncIterable<StreamEvent> {
@@ -56,26 +58,32 @@ export class VulpesAgent {
         last=await this.ledger.baseline(lease,baseline);
         yield event({type:'text.delta',payload:{message_id:messageId,text:baseline}});
       } else {
-        const dependencies=this.dependencies;if(!dependencies)throw new Error('inference_unavailable');
-        const context=await buildContext(this.context,input,lease.runId,readToolDefinitions,Math.min(models.everyday.maxInputTokens,dependencies.price.inputBoundTokens)-1000);
+        if(!this.dependencies)throw new Error('inference_unavailable');let dependencies:AgentDependencies=this.dependencies;let role:'everyday'|'intermediate'|'advanced'=dependencies.verificationRole??'everyday';const routingEvidence:RoutingEvidence[]=[];if(!dependencies)throw new Error('inference_unavailable');
+        const context=await buildContext(this.context,input,lease.runId,dependencies.flash&&input.depth==='auto'?readToolDefinitions:readToolDefinitions.filter(t=>t.name!=='request_escalation'),Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000);
         let request=context.request;
+        if(role!=='everyday')request={...request,continuation:null};
+        if(!dependencies.flash || input.depth!=='auto')request={...request,tools:request.tools.filter(t=>t.name!=='request_escalation')};
         let groupStart=request.turns.length-1;
         let toolCount=0;const calls=new Set<string>();
-        const dispatcher=createDispatcher(this.ledger,dependencies.transport,'failed');
-        yield event({type:'route.selected',payload:{role:'everyday',provider:'openrouter',model:models.everyday.modelId,effort:models.everyday.reasoning.effort,reason:'Everyday selected for this bounded conversation. Goal changes require explicit confirmation.'}});
+        let dispatcher=createDispatcher(this.ledger,dependencies.transport,'failed');
+        yield event({type:'route.selected',payload:{role,provider:models[role].provider,model:models[role].modelId,effort:role==='everyday'?models.everyday.reasoning.effort:models[role].thinking.level,reason:role==='everyday'?'Everyday selected for this bounded conversation. Goal changes require explicit confirmation.':'Backend role verification. Goal changes require explicit confirmation.'}});
         for(let modelCall=0;modelCall<4;modelCall++) {
           signal.throwIfAborted();await this.ledger.heartbeat(lease);
           if(modelCall===3||toolCount===6)request={...request,tools:[]};
-          while(Buffer.byteLength(JSON.stringify(request))>Math.min(models.everyday.maxInputTokens,dependencies.price.inputBoundTokens)-1000 && context.selected.length) {
+          if(role==='everyday'&&dependencies.flash&&request.tools.some(t=>t.name==='request_escalation')&&routingEvidence.length&&Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000){
+            request={...request,tools:request.tools.filter(t=>t.name==='request_escalation')};
+            context.manifest.excluded.push({referenceId:'tools:domain',reason:'context_limit_handoff_or_final_answer'});
+          }
+          while(Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000 && context.selected.length) {
             const excluded=context.selected.shift()!;const count=excluded.turns.length;
-            request={...request,turns:[request.turns[0]!,...request.turns.slice(1+count)],continuation:continuationFor(blocksOf(request.continuation).filter(block=>block.at>=1+count).map(block=>({...block,at:block.at-count})))};
+            request={...request,turns:[request.turns[0]!,...request.turns.slice(1+count)],continuation:continuationFor(blocksOf(request.continuation).filter(block=>block.at>=1+count).map(block=>({...block,at:block.at-count})),dependencies.adapter.family,request.continuation?.model)};
             groupStart-=count;context.manifest.included=context.manifest.included.filter(item=>item.reference.id!==excluded.id);context.manifest.excluded.push({referenceId:excluded.id,reason:'context_limit_after_tool'});
           }
-          if(Buffer.byteLength(JSON.stringify(request))>Math.min(models.everyday.maxInputTokens,dependencies.price.inputBoundTokens)-1000)throw new HttpFailure(413,'context_too_large','The complete tool result cannot fit within this request. Ask for a narrower selection.');
+          if(Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000)throw new HttpFailure(413,'context_too_large','The complete tool result cannot fit within this request. Ask for a narrower selection.');
           GenerationRequestSchema.parse(request);
           let text='';let usage:NormalizedUsage|null=null;let completion:Extract<GenerationEvent,{type:'completed'}>|null=null;const toolCalls:Extract<GenerationEvent,{type:'tool.call'}>['call'][]=[];
           let announced=false;
-          const dispatch=dispatcher.bind(lease,{provider:'openrouter',model:models.everyday.modelId,price:dependencies.price,context:context.manifest},step=>{active=step;});
+          const dispatch=dispatcher.bind(lease,{provider:role==='everyday'?'openrouter':'vertex_ai',model:models[role].modelId,price:dependencies.price,context:context.manifest},step=>{active=step;});
           for await(const raw of dependencies.adapter.generate(request,{signal,dispatch})) {
             const next=GenerationEventSchema.parse(raw);
             const prepared=active as PreparedStep|null;
@@ -107,12 +115,41 @@ export class VulpesAgent {
           if(completion.finishReason==='tool_calls' && !toolCalls.length || completion.finishReason!=='tool_calls' && toolCalls.length)throw new Error('invalid_finish_state');
           if(!toolCalls.length) {
             if(!text)throw new Error('empty_response');
-            const history:GenerationRequest={turns:request.turns.slice(groupStart),tools:[],continuation:continuationFor(blocksOf(request.continuation).filter(b=>b.at>=groupStart).map(b=>({...b,at:b.at-groupStart})))};
+            const history:GenerationRequest={turns:request.turns.slice(groupStart),tools:[],continuation:continuationFor(blocksOf(request.continuation).filter(b=>b.at>=groupStart).map(b=>({...b,at:b.at-groupStart})),dependencies.adapter.family,request.continuation?.model)};
             await this.ledger.saveState(active,history);active=null;
             last=await this.ledger.finish(lease,'completed');break;
           }
           const generationStep=active;active=null;
           if(modelCall===3 || toolCount+toolCalls.length>6)throw new HttpFailure(429,'run_call_limit','This conversation reached its bounded request or tool limit.');
+          if(toolCalls.some(call=>call.name==='request_escalation')) {
+            if(toolCalls.length!==1 || text)throw new Error('invalid_escalation_turn');
+            const call=toolCalls[0]!;const escalation=EscalationRequestSchema.parse(call.arguments);
+            const flash:AgentDependencies['flash']=dependencies.flash;
+            let evidenceCurrent=true;
+            for(const item of routingEvidence.filter(item=>escalation.evidenceIds.includes(item.id))){
+              const progress=GoalProgressResultSchema.safeParse(item.result);
+              if(progress.success&&progress.data.kind==='progress'){
+                if(!progress.data.goalId||progress.data.goalVersion===undefined){evidenceCurrent=false;continue;}
+                const goal=await this.context.db.from('goals').select('version,review_status').eq('user_id',this.context.userId).eq('id',progress.data.goalId).maybeSingle();
+                if(goal.error||goal.data?.version!==progress.data.goalVersion||goal.data?.review_status!=='clear')evidenceCurrent=false;
+              }
+            }
+            const permitted=evidenceCurrent&&role==='everyday'&&input.depth==='auto'&&!!flash&&qualifiesForFlash(escalation,routingEvidence)&&await this.ledger.canHandoffToFlash(lease,flash.price,flash.consentVersion);
+            const step=await this.ledger.prepare(lease,{type:'tool',body:Buffer.from(JSON.stringify(call)),toolName:call.name,adapterVersion:'vulpes-routing-v1',metadata:{endpoint:'tool:read',headers:{},redactedHeaders:[]}});active=step;
+            calls.add(call.callId);
+            const result={kind:'routing',outcome:permitted?'eligible':'denied',task:escalation.task};
+            await this.ledger.checkpoint(step,Buffer.from(JSON.stringify({projectionVersion:3,evidence:{version:1,ownerId:this.context.userId,runId:lease.runId,stepId:step.id,resultId:randomUUID(),dataRevision:context.dataRevision},result,providerResult:result})));await this.ledger.settle(step,null,'completed');active=null;toolCount++;
+            request.turns.push({type:'tool_result',callId:call.callId,name:call.name,result});
+            if(permitted&&flash){
+              await this.ledger.handoff(lease,step.id,escalation.task);
+              role='intermediate';dependencies={...flash,maxRunCostUSD:dependencies.maxRunCostUSD};
+              dispatcher=createDispatcher(this.ledger,flash.transport,'failed');
+              request={...request,continuation:null,tools:request.tools.filter(t=>t.name!=='request_escalation')};
+              context.manifest.excluded.push({referenceId:(generationStep as PreparedStep).id,reason:'provider_continuation_not_transferable'});context.manifest.consentVersion=flash.consentVersion;
+              yield event({type:'route.selected',payload:{role,provider:'vertex_ai',model:models.intermediate.modelId,effort:models.intermediate.thinking.level,reason:escalation.task}});
+            }
+            await this.ledger.saveState(generationStep,request);continue;
+          }
           for(const call of toolCalls) {
             signal.throwIfAborted();calls.add(call.callId);toolCount++;
             const proposing=call.name==='propose_goal'||call.name==='propose_goal_revision';
@@ -120,6 +157,7 @@ export class VulpesAgent {
             yield event({type:'step.started',payload:{step_id:toolStep.id,step_type:'tool',label:proposing?'Preparing a proposal for your review':'Reading your data'}});
             const output=proposing?await prepareGoalTool(this.context,call.name as 'propose_goal'|'propose_goal_revision',call.arguments,toolStep.id):await executeReadTool(this.context,call.name,call.arguments);
             const evidence={version:1 as const,ownerId:this.context.userId,runId:lease.runId,stepId:toolStep.id,resultId:randomUUID(),dataRevision:context.dataRevision};
+            routingEvidence.push({id:evidence.resultId,result:output});
             const result={evidence,result:JSON.parse(JSON.stringify(providerToolResult(output))) as z.infer<ReturnType<typeof z.json>>};
             const trace={projectionVersion:toolProjectionVersion,evidence,result:output,providerResult:result.result};
             if(proposing){

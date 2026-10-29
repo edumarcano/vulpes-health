@@ -20,6 +20,7 @@ function mappedTurns(request:GenerationRequest):unknown[] {
   return input;
 }
 export function serializeEveryday(input:GenerationRequest):Uint8Array {
+  if(input.continuation?.model&&input.continuation.model!==models.everyday.modelId)throw new Error('incompatible_continuation');
   const request=requireGenerationCapabilities({family:'openrouter_responses',capabilities:{streaming:true,tools:true}},input);
   return Buffer.from(JSON.stringify({model:models.everyday.modelId,input:mappedTurns(request),tools:request.tools.map(tool=>({type:'function',...tool,strict:false})),
     stream:true,store:false,reasoning:models.everyday.reasoning,max_output_tokens:models.everyday.maxOutputTokens,provider:{zdr:true},plugins:[],parallel_tool_calls:false}));
@@ -82,7 +83,7 @@ export class OpenRouterResponsesAdapter implements GenerationAdapter {
       for(const call of calls)out.push({type:'tool.call',call});
       if(done.response.usage)out.push({type:'usage',usage:providerUsage(done.response.usage)});
       const count=(finalText ? 1 : 0)+calls.length;
-      const continuation=continuationFor([...blocksOf(request.continuation),...(count ? [{at:request.turns.length,count,items:done.response.output}] : [])]);
+      const continuation=continuationFor([...blocksOf(request.continuation),...(count ? [{at:request.turns.length,count,items:done.response.output}] : [])],'openrouter_responses',models.everyday.modelId);
       terminal=true;out.push({type:'completed',finishReason:blocked ? 'blocked' : done.type==='response.incomplete' ? 'length' : calls.length ? 'tool_calls' : 'stop',continuation,
         metadata:{providerRequestId:done.response.id??null,effectiveModel:done.response.model??null,effectiveEffort:done.response.reasoning?.effort??null}});return out;
     };

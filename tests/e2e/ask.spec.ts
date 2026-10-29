@@ -99,8 +99,8 @@ test('Ask account switching discards the pending stream and private history',asy
   await signIn(page,1);await expect(page.getByText('Private synthetic account A question',{exact:true})).toHaveCount(0);await expect(page.getByText('Saved synthetic partial response.',{exact:true})).toHaveCount(0);await expect(page.getByLabel('Message Ask Vulpes')).toBeDisabled();
   expect(accounts[1]!.id).not.toBe(accounts[2]!.id);
 });
-test('Ask unavailable depths, history archive, and confirmed deletion use the real API',async({page})=>{
-  await start(page);await page.getByLabel('Analysis depth',{exact:true}).selectOption('advanced');await page.getByLabel('Message Ask Vulpes').fill('Synthetic unavailable depth');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByText(/This analysis depth is unavailable/)).toBeVisible();
+test('Ask has no depth selector; history archive and confirmed deletion use the real API',async({page})=>{
+  await start(page);await expect(page.getByLabel('Analysis depth',{exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Archive conversation',exact:true}).click();await page.getByLabel('Archived',{exact:true}).check();await expect(page.getByLabel('Message Ask Vulpes')).toBeDisabled();
   await page.getByText('Delete conversation',{exact:true}).click();await page.getByRole('button',{name:'Confirm delete conversation',exact:true}).click();await expect(page.getByText('Conversation deleted.',{exact:true})).toBeVisible();
 });

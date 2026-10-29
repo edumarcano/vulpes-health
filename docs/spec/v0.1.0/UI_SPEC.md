@@ -28,11 +28,11 @@ Content widths: conversation approximately 760 px maximum; analytic screens appr
 
 **First use:** brand header, short explanation, import-data action, static prompts and a visible empty-data state. No fabricated "today's insights" and no automatic inference on page load.
 
-**Ready:** conversation history, compact available-data/active-goal context, optional depth selector and composer. Use assistant-ui message/stream primitives but keep state/persistence under Vulpes control.
+**Ready:** conversation history, compact available-data/active-goal context, composer without model, depth or effort selectors. Use assistant-ui message/stream primitives but keep state/persistence under Vulpes control.
 
 **Working:** precise status such as "Calculating your trend" or "Generating a response" based on real steps. Do not animate invented reasoning. Provide Stop.
 
-**Result:** readable text, an evidence chip, optional typed result card and an Inspect action. Advanced responses remain visually part of the same conversation; the user should not see a separate app for each model.
+**Result:** readable text, an evidence chip, optional typed result card and an Inspect action. A Flash handoff remains in the same conversation, with its actual route visible in the inspector.
 
 **Failure:** retain the user's text, preserve partial output with an incomplete badge, offer explicit retry without silently spending again. Missing credentials/unavailable role/budget block has clear specific wording.
 
@@ -79,7 +79,7 @@ Provide copy/export only after an explicit sensitive-content warning. Do not put
 
 ## 9. Settings
 
-Profile, units/timezone, approved providers, available role controls, user spending preference versus operator cap, trace retention and export/delete. A connection panel clearly says **CSV/manual now; Android Health Connect planned**. No working-looking Connect button that only simulates success.
+Profile, units/timezone, approved providers, provider availability, user spending preference versus operator cap, trace retention and export/delete. A connection panel clearly says **CSV/manual now; Android Health Connect planned**. No working-looking Connect button that only simulates success.
 
 Display no advanced module controls that secretly invoke unimplemented or unapproved capabilities. A simple roadmap label is acceptable; no large disabled-settings maze.
 
