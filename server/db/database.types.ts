@@ -7,14 +7,14 @@ export type Database = {
           Tables: {
             "action_proposals": {
                   Row: {
-                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"result": Json | null,"source_run_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
+                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"result": Json | null,"source_message_id": string | null,"source_run_id": string | null,"source_step_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"result"?: Json | null,"source_run_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
                   }
                   Update: {
-                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"result"?: Json | null,"source_run_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -34,6 +34,18 @@ isOneToOne: false
       columns: ["user_id","target_id"]
 isOneToOne: false
       referencedRelation: "goals"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "proposal_source_message"
+      columns: ["user_id","source_message_id"]
+isOneToOne: false
+      referencedRelation: "messages"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "proposal_source_step"
+      columns: ["user_id","source_step_id"]
+isOneToOne: false
+      referencedRelation: "ai_steps"
       referencedColumns: ["user_id","id"]
     }
                   ]
@@ -509,6 +521,9 @@ isOneToOne: false
                            },
 "cancel_run_v1":
 { Args: { "p_owner": string,"p_run": string }; Returns: Json
+                           },
+"checkpoint_goal_proposal_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_output": Json,"p_owner": string,"p_payload": Json,"p_request": Json,"p_run": string,"p_step": string }; Returns: Json
                            },
 "checkpoint_message_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_parts": Json,"p_run": string }; Returns: undefined

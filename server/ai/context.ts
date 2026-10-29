@@ -25,9 +25,12 @@ export function boundContext(essential:GenerationRequest,groups:ContextGroup[],m
 export async function buildContext(context:AuthContext,input:ChatSendRequest,runId:string,tools:GenerationRequest['tools'],maxBytes:number) {
   const profile=await context.db.from('profiles').select('timezone,units,data_revision').eq('user_id',context.userId).single();
   if(profile.error)throw new HttpFailure(503,'context_unavailable','Context could not be loaded.');
+  const goals=await context.db.from('goals').select('id').eq('user_id',context.userId).neq('state','draft').neq('state','archived').not('current_revision_id','is',null).limit(1);
+  if(goals.error)throw new HttpFailure(503,'context_unavailable','Goal context could not be loaded.');
+  if(!goals.data.length)tools=tools.filter(tool=>tool.name!=='propose_goal_revision');
   let selectedGoal:unknown=null;
   if(input.context_selection?.goal_id) {
-    const goal=await context.db.from('goals').select('id,title,state,review_status,current_revision_id').eq('user_id',context.userId).eq('id',input.context_selection.goal_id).single();
+    const goal=await context.db.from('goals').select('id,title,state,version,review_status,current_revision_id').eq('user_id',context.userId).eq('id',input.context_selection.goal_id).single();
     if(goal.error)throw new HttpFailure(404,'goal_not_found','The selected goal was not found.');
     selectedGoal={id:goal.data.id,state:'unavailable',reason:'No approved goal revision is available.'};
     if(goal.data.state!=='draft'&&goal.data.current_revision_id) {

@@ -56,6 +56,15 @@ export class GoalService {
     const receipt=await administrativeClient().from('audit_events').select('object_id,safe_metadata').eq('user_id',this.context.userId).eq('event_type','goal_propose_v1').filter('safe_metadata->>request_id','eq',request.client_request_id).maybeSingle();
     if(receipt.error)this.fail(receipt.error.message);
     if(receipt.data){const result=await administrativeClient().rpc('register_goal_proposal_v1',{p_owner:this.context.userId,p_request:request,p_payload:{}});if(result.error)this.fail(result.error.message);return this.proposal(z.uuid().parse(result.data));}
+    const payload=await this.prepareProposal(request);
+    const {data,error}=await administrativeClient().rpc('register_goal_proposal_v1',{p_owner:this.context.userId,p_request:request,p_payload:payload});
+    if(error)this.fail(error.message);return this.proposal(z.uuid().parse(data));
+  }
+  async prepareProposal(request:GoalMutation):Promise<GoalRevisionPayload>{
+    if(request.action!=='propose_state'){
+      const source=await this.context.db.from('data_sources').select('id').eq('user_id',this.context.userId).eq('id',request.definition.sourceId).maybeSingle();
+      if(source.error)this.fail(source.error.message);if(!source.data)this.fail('goal_not_found');
+    }
     let payload:GoalRevisionPayload;
     if(request.action==='propose_create'){
       const definition=GoalDefinitionSchema.parse(request.definition);const baseline=await this.baseline(definition);
@@ -75,8 +84,7 @@ export class GoalService {
       }
     }
     if(!goalPolicyAllows(payload.definition))throw new HttpFailure(403,'goal_policy','Vulpes cannot help pursue unsafe treatment or targets.');
-    const {data,error}=await administrativeClient().rpc('register_goal_proposal_v1',{p_owner:this.context.userId,p_request:request,p_payload:payload});
-    if(error)this.fail(error.message);return this.proposal(z.uuid().parse(data));
+    return payload;
   }
   async decide(request:ApprovalRequest){
     const current=await this.proposal(request.proposal_id);
@@ -99,6 +107,6 @@ export class GoalService {
     const current=await this.baseline({...p.definition,baselineMethod:p.definition.currentMethod,baselineFrom:p.definition.currentMethod==='latest_value'?'0001-01-01T00:00:00Z':end.subtract({days:7}).toInstant().toString(),baselineTo:p.definition.currentMethod==='latest_value'?Temporal.Now.instant().toString():end.toInstant().toString()});
     const fresh=await this.owned(id);if(fresh.version!==goal.version||fresh.review_status!=='clear')return {kind:'unavailable',reason:'needs_review'};
     if(current.value===null)return {kind:'insufficient_data'};
-    return {kind:'progress',baseline:p.baseline.value,current:current.value,result:goalProgress(p.baseline.value,current.value,p.definition.target),selection:current.selection,dataRevision:current.dataRevision};
+    return {kind:'progress',goalId:goal.id,goalVersion:goal.version,revision:revision.revision_number,baseline:p.baseline.value,current:current.value,result:goalProgress(p.baseline.value,current.value,p.definition.target),selection:current.selection,dataRevision:current.dataRevision};
   }
 }

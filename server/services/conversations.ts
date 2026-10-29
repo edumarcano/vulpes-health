@@ -30,7 +30,24 @@ export class ConversationService {
     const parts=[];
     for(const part of message.parts) {
       if(part.type==='text'){parts.push(part);continue;}
-      let valid=message.contextState==='eligible'&&part.evidence.ownerId===this.context.userId&&part.evidence.runId===message.runId&&part.evidence.dataRevision===revision&&part.result.dataRevision===revision;
+      if(part.type==='goal_proposal'){
+        // Resolve only the owned message binding here. Pending-body RLS expiry
+        // must not erase the reference needed to display its terminal status.
+        const {data,error}=await this.db.from('action_proposals').select('id,payload_hash,target_version,source_message_id').eq('user_id',this.context.userId).eq('source_message_id',message.id).eq('id',part.reference.proposalId).maybeSingle();
+        if(error)throw failed();
+        const valid=message.role==='assistant'&&data?.source_message_id===message.id&&data.payload_hash===part.reference.payloadHash&&data.target_version===part.reference.expectedVersion;
+        parts.push(valid?part:{type:'text' as const,text:'The saved goal proposal is unavailable.'});continue;
+      }
+      let valid=message.contextState==='eligible'&&part.evidence.ownerId===this.context.userId&&part.evidence.runId===message.runId&&part.evidence.dataRevision===revision;
+      if(valid&&part.type==='goal_progress'&&part.result.kind==='progress'){
+        const goal=await this.context.db.from('goals').select('version,review_status,current_revision_id').eq('user_id',this.context.userId).eq('id',part.goalId).maybeSingle();
+        if(goal.error)throw failed();valid=!!goal.data&&goal.data.review_status==='clear'&&(!part.result.goalId||part.result.goalId===part.goalId);
+        if(valid&&part.result.goalVersion!==undefined)valid=goal.data!.version===part.result.goalVersion;
+        else if(valid){
+          const current=await this.context.db.from('goal_revisions').select('revision_number').eq('user_id',this.context.userId).eq('goal_id',part.goalId).eq('id',goal.data!.current_revision_id!).maybeSingle();
+          if(current.error)throw failed();valid=current.data?.revision_number===part.result.revision;
+        }
+      }
       if(valid) {
         const step=await this.context.db.from('ai_steps').select('output_payload_id,status,step_type').eq('user_id',this.context.userId).eq('run_id',message.runId!).eq('id',part.evidence.stepId).maybeSingle();
         if(step.error)throw failed();
@@ -38,12 +55,13 @@ export class ConversationService {
         if(valid) {
           const payload=await readPayload(this.context,step.data!.output_payload_id!,'tool_output');valid=false;
           if(payload.state==='available')try{
-            const stored=z.object({evidence:ChatPartSchema.options[1].shape.evidence,result:z.object({kind:z.literal('summary'),data:ChatPartSchema.options[1].shape.result})}).parse(JSON.parse(payload.bytes.toString('utf8')));
-            valid=requestHash(stored.evidence)===requestHash(part.evidence)&&requestHash(stored.result.data)===requestHash(part.result);
+            const stored=z.object({evidence:ChatPartSchema.options[1].shape.evidence,result:z.json()}).parse(JSON.parse(payload.bytes.toString('utf8')));
+            const result=part.type==='metric_summary'?{kind:'summary',data:part.result}:part.result;
+            valid=requestHash(stored.evidence)===requestHash(part.evidence)&&requestHash(stored.result)===requestHash(result);
           }catch{/* Unverifiable content cannot become a resolved card. */}
         }
       }
-      parts.push(valid?part:{type:'text' as const,text:'The saved calculation evidence is unavailable or belongs to an earlier data revision. Open Data for current measurements.'});
+      parts.push(valid?part:{type:'text' as const,text:part.type==='goal_progress'?'The saved goal calculation is unavailable or belongs to an earlier goal or data revision. Open Goals for current progress.':'The saved calculation evidence is unavailable or belongs to an earlier data revision. Open Data for current measurements.'});
     }
     return {...message,parts};
   }

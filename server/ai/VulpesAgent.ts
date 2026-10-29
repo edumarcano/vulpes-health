@@ -15,8 +15,9 @@ import { GenerationEventSchema,GenerationRequestSchema,type GenerationAdapter,ty
 import { baselineSafety,rejectCredentials } from './prompts/everyday.js';
 import { buildContext } from './context.js';
 import { blocksOf,continuationFor } from './continuation.js';
-import { executeReadTool,readToolDefinitions,providerToolResult } from './tools.js';
+import { executeReadTool,prepareGoalTool,readToolDefinitions,providerToolResult,toolProjectionVersion } from './tools.js';
 import { DataSummarySchema } from '../../shared/data.js';
+import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
 
 export interface AgentDependencies {adapter:GenerationAdapter;transport:RequestTransport;price:VerifiedPrice;maxRunCostUSD:string}
 type EventInput=StreamEvent extends infer E ? E extends StreamEvent ? Omit<E,'v'|'seq'|'run_id'> : never : never;
@@ -61,9 +62,10 @@ export class VulpesAgent {
         let groupStart=request.turns.length-1;
         let toolCount=0;const calls=new Set<string>();
         const dispatcher=createDispatcher(this.ledger,dependencies.transport,'failed');
-        yield event({type:'route.selected',payload:{role:'everyday',provider:'openrouter',model:models.everyday.modelId,effort:models.everyday.reasoning.effort,reason:'Everyday selected for this bounded read-only conversation.'}});
+        yield event({type:'route.selected',payload:{role:'everyday',provider:'openrouter',model:models.everyday.modelId,effort:models.everyday.reasoning.effort,reason:'Everyday selected for this bounded conversation. Goal changes require explicit confirmation.'}});
         for(let modelCall=0;modelCall<4;modelCall++) {
           signal.throwIfAborted();await this.ledger.heartbeat(lease);
+          if(modelCall===3||toolCount===6)request={...request,tools:[]};
           while(Buffer.byteLength(JSON.stringify(request))>Math.min(models.everyday.maxInputTokens,dependencies.price.inputBoundTokens)-1000 && context.selected.length) {
             const excluded=context.selected.shift()!;const count=excluded.turns.length;
             request={...request,turns:[request.turns[0]!,...request.turns.slice(1+count)],continuation:continuationFor(blocksOf(request.continuation).filter(block=>block.at>=1+count).map(block=>({...block,at:block.at-count})))};
@@ -113,13 +115,20 @@ export class VulpesAgent {
           if(modelCall===3 || toolCount+toolCalls.length>6)throw new HttpFailure(429,'run_call_limit','This conversation reached its bounded request or tool limit.');
           for(const call of toolCalls) {
             signal.throwIfAborted();calls.add(call.callId);toolCount++;
-            const toolStep=await this.ledger.prepare(lease,{type:'tool',body:Buffer.from(JSON.stringify(call)),toolName:call.name,adapterVersion:'vulpes-read-tools-v1',metadata:{endpoint:'tool:read',headers:{},redactedHeaders:[]}});active=toolStep;
-            yield event({type:'step.started',payload:{step_id:toolStep.id,step_type:'tool',label:'Reading your data'}});
-            const output=await executeReadTool(this.context,call.name,call.arguments);
+            const proposing=call.name==='propose_goal'||call.name==='propose_goal_revision';
+            const toolStep=await this.ledger.prepare(lease,{type:'tool',body:Buffer.from(JSON.stringify(call)),toolName:call.name,adapterVersion:'vulpes-tools-v2',metadata:{endpoint:proposing?'tool:proposal':'tool:read',headers:{},redactedHeaders:[]}});active=toolStep;
+            yield event({type:'step.started',payload:{step_id:toolStep.id,step_type:'tool',label:proposing?'Preparing a proposal for your review':'Reading your data'}});
+            const output=proposing?await prepareGoalTool(this.context,call.name as 'propose_goal'|'propose_goal_revision',call.arguments,toolStep.id):await executeReadTool(this.context,call.name,call.arguments);
             const evidence={version:1 as const,ownerId:this.context.userId,runId:lease.runId,stepId:toolStep.id,resultId:randomUUID(),dataRevision:context.dataRevision};
             const result={evidence,result:JSON.parse(JSON.stringify(providerToolResult(output))) as z.infer<ReturnType<typeof z.json>>};
-            await this.ledger.checkpoint(toolStep,Buffer.from(JSON.stringify({projectionVersion:2,evidence,result:output,providerResult:result.result})));
-            await this.ledger.settle(toolStep,null,'completed');
+            const trace={projectionVersion:toolProjectionVersion,evidence,result:output,providerResult:result.result};
+            if(proposing){
+              const saved=await this.ledger.checkpointGoal(toolStep,output,trace);parts=saved.parts;active=null;
+              yield event({type:'card.ready',payload:{message_id:messageId,card:{type:'goal_proposal',reference:saved.reference}}});
+            }else{
+              await this.ledger.checkpoint(toolStep,Buffer.from(JSON.stringify(trace)));
+              await this.ledger.settle(toolStep,null,'completed');
+            }
             const summary=z.object({kind:z.literal('summary'),data:DataSummarySchema}).safeParse(output);
             if(summary.success) {
               if(summary.data.data.dataRevision!==context.dataRevision)throw new Error('data_changed');
@@ -127,7 +136,13 @@ export class VulpesAgent {
               await this.ledger.checkpointMessage(lease,parts);
               yield event({type:'card.ready',payload:{message_id:messageId,card:{type:'metric_trend',result:summary.data.data.analysis}}});
             }
-            yield event({type:'tool.result',payload:{step_id:toolStep.id,tool_name:call.name,result_reference:`analysis:${toolStep.id}`,summary:summary.success ? 'Deterministic summary saved with source and coverage.' : 'Read-only result saved.'}});
+            if(call.name==='get_goal_progress'){
+              const goalId=z.strictObject({goal_id:z.uuid()}).parse(call.arguments).goal_id;
+              const progress=GoalProgressResultSchema.parse(output);
+              parts.push({type:'goal_progress',evidence,goalId,result:progress});await this.ledger.checkpointMessage(lease,parts);
+              yield event({type:'card.ready',payload:{message_id:messageId,card:{type:'goal_progress',goalId,result:progress}}});
+            }
+            yield event({type:'tool.result',payload:{step_id:toolStep.id,tool_name:call.name,result_reference:`analysis:${toolStep.id}`,summary:proposing?'Pending proposal saved. Explicit review and confirmation required.':summary.success ? 'Deterministic summary saved with source and coverage.' : 'Read-only result saved.'}});
             context.manifest.included.push({reference:{id:evidence.resultId,kind:'tool_result',label:`Result of ${call.name}`},contentHash:requestHash(result),tokenEstimate:Buffer.byteLength(JSON.stringify(result))});
             request.turns.push({type:'tool_result',callId:call.callId,name:call.name,result:JSON.parse(JSON.stringify(result)) as z.infer<ReturnType<typeof z.json>>});active=null;
           }
@@ -145,7 +160,7 @@ export class VulpesAgent {
       last=await this.ledger.finish(lease,signal.aborted?'cancelled':'failed').catch(()=>last);
       if(last.state==='cancellation_requested')last=await this.ledger.summary(lease.runId).catch(()=>last);
       yield last.state==='cancelled' ? event({type:'run.cancelled',payload:{partial_output:last.partialOutput,cost_status:last.costStatus}})
-        : event({type:'run.failed',payload:{code:error instanceof HttpFailure ? error.code : 'execution_interrupted',message:'The response stopped. The saved prefix may be incomplete. Read its status before explicitly sending another request.',partial_output:last.partialOutput,retryable:false}});
+        : event({type:'run.failed',payload:{code:error instanceof HttpFailure ? error.code : 'execution_interrupted',message:error instanceof HttpFailure?error.message:'The response stopped. The saved prefix may be incomplete. Read its status before explicitly sending another request.',partial_output:last.partialOutput,retryable:false}});
     }
   }
 }

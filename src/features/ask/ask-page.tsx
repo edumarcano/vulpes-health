@@ -13,6 +13,7 @@ import { ChatPartSchema,ConversationsPageSchema,MessagesPageSchema,type ChatMess
 import { StreamDecoder,isTerminalEvent } from '../../../shared/stream';
 import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer,initialAskState } from './state';
+import { ProposalPart,ProgressPart } from './goal-parts';
 const Inspector=lazy(()=>import('../executions/inspector'));
 
 function Welcome() {
@@ -79,6 +80,7 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
               if(!items.some(m=>m.id===event.payload.assistant_message_id))items.push({id:event.payload.assistant_message_id,role:'assistant',parts:[],runId:event.run_id,status:'streaming',contextState:'eligible',createdAt:new Date().toISOString()});
             }
             if(event.type==='text.delta')items=items.map(m=>m.id!==event.payload.message_id?m:{...m,parts:[...m.parts.filter(p=>p.type!=='text'),{type:'text',text:m.parts.filter(p=>p.type==='text').map(p=>p.text).join('')+event.payload.text}]});
+            if(event.type==='card.ready'&&event.payload.card.type==='goal_proposal'&&'reference' in event.payload.card){const part=ChatPartSchema.parse({type:'goal_proposal',reference:event.payload.card.reference});items=items.map(m=>m.id===event.payload.message_id?{...m,parts:[...m.parts,part]}:m);}
             return {...old,pages:[{...first,items},...old.pages.slice(1)]};
           });
           if(isTerminalEvent(event))terminal=true;
@@ -100,15 +102,16 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
     hasEarlier:query.hasNextPage,onLoadEarlier:async()=>{await query.fetchNextPage();},
     convertMessage:message=>({id:message.id,role:message.role,createdAt:new Date(message.createdAt),content:message.parts.map(part=>{
       if(part.type==='text')return {type:'text' as const,text:part.text};
-      if(message.contextState!=='eligible'||part.evidence.ownerId!==session?.user.id||part.evidence.runId!==message.runId||part.result.dataRevision!==part.evidence.dataRevision)return {type:'text' as const,text:'Evidence is unavailable or was invalidated.'};
-      return {type:'data' as const,name:'metric_summary',data:part};
+      if(part.type==='goal_proposal')return {type:'data' as const,name:'goal_proposal',data:part};
+      if(message.contextState!=='eligible'||part.evidence.ownerId!==session?.user.id||part.evidence.runId!==message.runId||part.type==='metric_summary'&&part.result.dataRevision!==part.evidence.dataRevision)return {type:'text' as const,text:'Evidence is unavailable or was invalidated.'};
+      return {type:'data' as const,name:part.type,data:part};
     }),...(message.role==='assistant'?{status:message.status==='streaming'?{type:'running' as const}:message.status==='completed'?{type:'complete' as const,reason:'stop' as const}:{type:'incomplete' as const,reason:'error' as const}}:{}),metadata:{...(message.runId?{runId:message.runId}:{})}}),
   });
   const notice=state.notice || (activeRun?'Recovering saved run status. Inference will not restart.':query.isPending&&id?'Loading conversation…':query.isError?'Conversation could not be loaded.':'');
   return <AssistantRuntimeProvider runtime={runtime}><ThreadPrimitive.Root className="conversation" aria-label="Conversation"><ThreadPrimitive.Viewport className="conversation-viewport">
     {query.hasNextPage&&<Button variant="outline" onClick={()=>void query.fetchNextPage()} disabled={query.isFetchingNextPage}>Load earlier messages</Button>}
     {!messages.length&&!query.isError&&<Welcome/>}
-    <ThreadPrimitive.Messages>{({message})=>{const runId=messages.find(item=>item.id===message.id)?.runId;return <MessagePrimitive.Root className={`chat-message chat-${message.role}`}><p className="chat-speaker">{message.role==='user'?'You':'Vulpes'}</p><MessagePrimitive.Parts components={{Text:plainText,data:{by_name:{metric_summary:SummaryPart}}}}/>{message.role==='assistant'&&message.status.type==='incomplete'&&<p className="incomplete-badge">Incomplete response</p>}{message.role==='assistant'&&runId&&<Button variant="outline" onClick={event=>{inspectionTrigger.current=event.currentTarget;setInspection(runId);}}>Inspect execution</Button>}</MessagePrimitive.Root>;}}</ThreadPrimitive.Messages>
+    <ThreadPrimitive.Messages>{({message})=>{const runId=messages.find(item=>item.id===message.id)?.runId;return <MessagePrimitive.Root className={`chat-message chat-${message.role}`}><p className="chat-speaker">{message.role==='user'?'You':'Vulpes'}</p><MessagePrimitive.Parts components={{Text:plainText,data:{by_name:{metric_summary:SummaryPart,goal_proposal:ProposalPart,goal_progress:ProgressPart}}}}/>{message.role==='assistant'&&message.status.type==='incomplete'&&<p className="incomplete-badge">Incomplete response</p>}{message.role==='assistant'&&runId&&<Button variant="outline" onClick={event=>{inspectionTrigger.current=event.currentTarget;setInspection(runId);}}>Inspect execution</Button>}</MessagePrimitive.Root>;}}</ThreadPrimitive.Messages>
     </ThreadPrimitive.Viewport><div className="composer-area"><p role="status" aria-live="polite" className="chat-status">{notice}</p>
     {availability==='unavailable'&&<p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true"/>Inference is unavailable until provider verification and activation gates pass.</p>}
     {availability==='synthetic'&&<p className="availability-note">Local synthetic verification. No live provider calls.</p>}
