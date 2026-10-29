@@ -11,8 +11,28 @@ async function say(page:Page,text:string){await page.getByLabel('Message Ask Vul
 async function imported(page:Page){
  const preview=await page.request.post('/api/data',{headers:headers(),data:{action:'preview_csv',client_request_id:randomUUID(),csv:fixture.toString(),source:{kind:'new',label:'Synthetic M4 browser',origin_app:null,device_label:null},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}}});expect(preview.status()).toBe(200);const p=(await preview.json()).data;expect((await page.request.post('/api/data',{headers:headers(),data:{action:'commit_import',batch_id:p.batch_id,payload_hash:p.payload_hash,client_request_id:randomUUID()}})).status()).toBe(200);return p.source_id as string;
 }
-async function start(page:Page){await signIn(page,3);await page.getByRole('button',{name:'New conversation',exact:true}).click();await expect(page.getByLabel('Message Ask Vulpes',{exact:true})).toBeEnabled();}
+async function start(page:Page){
+ await signIn(page,3);const created=page.waitForResponse(r=>r.url().endsWith('/api/conversations')&&r.request().method()==='POST'&&r.request().postDataJSON()?.action==='create');
+ await page.getByRole('button',{name:'New conversation',exact:true}).click();const response=await created;expect(response.status()).toBe(200);const id=(await response.json()).data.id;
+ await expect(page).toHaveURL(new RegExp('conversation='+id));await expect(page.getByLabel('Message Ask Vulpes',{exact:true})).toBeEnabled();
+}
 test.beforeEach(async({page})=>{await restrictNetwork(page);});
+
+test('Ask goal proposal approval synchronizes existing progress without reload or inference',async({page},info)=>{
+ const db=new LocalSupabase();const source=randomUUID();
+ await db.admin('/rest/v1/data_sources','POST',{id:source,user_id:account.id,kind:'manual',label:'Synthetic revision progress',source_namespace:randomUUID()});
+ async function post(path:string,input:unknown){const response=await page.request.post(path,{headers:headers(),data:input});expect(response.status()).toBe(200);return (await response.json()).data;}
+ await post('/api/data',{action:'add_measurement',client_request_id:randomUUID(),source:{kind:'existing',id:source},observation:{metric:'weight',value:'69',unit:'kg',observed_at:new Date(Date.now()-86400000).toISOString(),timezone:'UTC',local_date:null,granularity:'instant',method:'device_reported',quality_flags:[]}});
+ const p=await post('/api/goals',{action:'propose_create',client_request_id:randomUUID(),definition:{schemaVersion:1,title:'Synthetic chat goal',metric:'weight',unit:'kg',sourceId:source,target:{direction:'decrease_to',value:68},baselineMethod:'user_reported',reportedBaseline:70,baselineFrom:'2026-10-01T00:00:00Z',baselineTo:'2026-10-08T00:00:00Z',currentMethod:'latest_value',method:'device_reported',granularity:'instant',timezone:'UTC',targetDate:null,constraints:[],proposedStrategy:null}});
+ const approved=await post('/api/approvals',{action:'approve',proposal_id:p.id,payload_hash:p.payload_hash,expected_version:p.target_version,client_request_id:randomUUID()});
+ let sends=0;page.on('request',r=>{if(r.url().endsWith('/api/chat')&&r.postDataJSON()?.action==='send')sends++;});
+ await scenario(page,'goal_progress');await start(page);await say(page,'Show goal progress.');const progress=page.getByRole('region',{name:'Goal progress',exact:true});await expect(progress).toContainText('50%');
+ await scenario(page,'goal_revise');await say(page,'Propose revising my target to 67 kg.');const pending=page.getByRole('region',{name:'Review goal proposal'}).filter({hasText:'pending'});await expect(pending).toBeVisible();
+ await pending.getByRole('button',{name:'Approve goal proposal',exact:true}).click();await expect(page.getByText('Goal approved.',{exact:true})).toBeVisible();
+ await expect(progress).toHaveCount(0);await expect(page.getByText(/The saved goal calculation is unavailable or belongs to an earlier goal or data revision/)).toBeVisible();
+ const current=await page.request.get('/api/goals?view=progress&id='+approved.goalId,{headers:headers()});expect(current.status()).toBe(200);expect((await current.json()).data.result.rawPercent).toBeCloseTo(100/3,10);expect(sends).toBe(2);
+ await page.getByText(/The saved goal calculation is unavailable or belongs to an earlier goal or data revision/).scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('m4-revision-synchronized.png'),fullPage:true});
+});
 test.afterEach(async()=>{const db=new LocalSupabase();await db.admin(`/rest/v1/goals?user_id=eq.${account.id}`,'PATCH',{state:'draft',current_revision_id:null});for(const table of ['goal_revisions','action_proposals','goals'])await db.admin(`/rest/v1/${table}?user_id=eq.${account.id}`,'DELETE');});
 
 test('Ask goal proposal journey imports, reviews, approves, calculates progress and reloads without extra inference',async({page},info)=>{

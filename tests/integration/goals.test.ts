@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { Temporal } from '@js-temporal/polyfill';
 import { beforeAll,afterAll,it,expect,vi } from 'vitest';
 import { projectId,localEnvironment,localStatus } from '../../scripts/local-database.js';
 import { LocalSupabase } from '../helpers/local-supabase.js';
@@ -63,4 +64,37 @@ it('rolls back the goal and revision when the final state update fails',async()=
  sql("alter table public.goals add constraint pr11_test_rollback check (title<>'Synthetic rollback goal' or state='draft') not valid");
  try{expect((await post('/api/approvals',approval(proposal))).status).toBe(503);expect(await rows('goals')).toEqual(beforeGoals);expect(await rows('goal_revisions')).toEqual(beforeRevisions);expect((await rows('action_proposals')).find((p:{id:string})=>p.id===proposal.id)).toMatchObject({state:'pending',payload_hash:proposal.payload_hash});}
  finally{sql('alter table public.goals drop constraint pr11_test_rollback');}
+});
+
+it.each([
+ ['UTC','2026-03-08T00:00:00Z'],
+ ['Pacific/Kiritimati','2026-03-08T12:00:00Z'],
+ ['Pacific/Honolulu','2026-03-08T00:00:00Z'],
+ ['America/New_York','2026-03-08T06:59:59Z'],
+ ['America/New_York','2026-03-08T07:00:00Z'],
+ ['America/New_York','2025-11-02T05:59:59Z'],
+ ['America/New_York','2025-11-02T06:00:00Z'],
+ ['America/New_York','2026-03-09T03:59:59Z'],
+ ['America/New_York','2026-03-09T04:00:00Z'],
+])('latest daily progress includes today and excludes tomorrow in %s at %s',async(timezone,instant)=>{
+ const now=Temporal.Instant.from(instant);const today=now.toZonedDateTimeISO(timezone).startOfDay();const selectedSource=randomUUID();
+ await db.admin('/rest/v1/data_sources','POST',{id:selectedSource,user_id:a.id,kind:'manual',label:'Synthetic date boundary',source_namespace:randomUUID()});
+ for(const [offset,value] of [[-1,'6000'],[0,'8000'],[1,'9000']] as const){
+  const day=today.add({days:offset});const response=await post('/api/data',{action:'add_measurement',client_request_id:randomUUID(),source:{kind:'existing',id:selectedSource},observation:{metric:'steps_daily',value,unit:'count',observed_at:day.toInstant().toString(),timezone,local_date:day.toPlainDate().toString(),granularity:'daily_total',method:'device_reported',quality_flags:[]}});expect(response.status).toBe(200);
+ }
+ const response=await post('/api/goals',{action:'propose_create',client_request_id:randomUUID(),definition:{...definition(),sourceId:selectedSource,metric:'steps_daily',unit:'count',granularity:'daily_total',timezone,reportedBaseline:4000,target:{direction:'increase_to',value:10000}}});expect(response.status).toBe(200);
+ const p=(await response.json()).data;const approved=await post('/api/approvals',approval(p));expect(approved.status).toBe(200);const goal=(await approved.json()).data.goalId;
+ const clock=vi.spyOn(Temporal.Now,'instant').mockReturnValue(now);
+ try{
+  const result=await fetch(origin+'/api/goals?view=progress&id='+goal,{headers:{Authorization:`Bearer ${a.token}`}});expect(result.status).toBe(200);const progress=(await result.json()).data;
+  expect(progress).toMatchObject({kind:'progress',current:'8000',selection:{to:today.add({days:1}).toInstant().toString()}});expect(progress.result.rawPercent).toBeCloseTo(200/3,10);
+ }finally{clock.mockRestore();}
+});
+it('latest timestamped progress excludes later readings on the same local day',async()=>{
+ const now=Temporal.Instant.from('2026-03-08T07:00:00Z');const selectedSource=randomUUID();
+ await db.admin('/rest/v1/data_sources','POST',{id:selectedSource,user_id:a.id,kind:'manual',label:'Synthetic instant boundary',source_namespace:randomUUID()});
+ for(const [seconds,value] of [[-1,'69'],[1,'68']] as const){const response=await post('/api/data',{action:'add_measurement',client_request_id:randomUUID(),source:{kind:'existing',id:selectedSource},observation:{metric:'weight',value,unit:'kg',observed_at:now.add({seconds}).toString(),timezone:'America/New_York',local_date:null,granularity:'instant',method:'device_reported',quality_flags:[]}});expect(response.status).toBe(200);}
+ const proposed=await post('/api/goals',{action:'propose_create',client_request_id:randomUUID(),definition:{...definition(),sourceId:selectedSource,timezone:'America/New_York'}});expect(proposed.status).toBe(200);const approved=await post('/api/approvals',approval((await proposed.json()).data));expect(approved.status).toBe(200);const goal=(await approved.json()).data.goalId;
+ const clock=vi.spyOn(Temporal.Now,'instant').mockReturnValue(now);
+ try{const response=await fetch(origin+'/api/goals?view=progress&id='+goal,{headers:{Authorization:`Bearer ${a.token}`}});expect(response.status).toBe(200);expect((await response.json()).data).toMatchObject({kind:'progress',current:'69',selection:{to:now.toString()},result:{rawPercent:50}});}finally{clock.mockRestore();}
 });

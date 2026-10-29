@@ -26,7 +26,7 @@ function OwnedProposal({reference}:{reference:Extract<z.infer<typeof ChatPartSch
    setBusy(true);setNotice('');
    try{await ownedJson('/api/approvals',token,scope,epoch,{method:'POST',body:JSON.stringify({action,proposal_id:reference.proposalId,payload_hash:reference.payloadHash,expected_version:reference.expectedVersion,client_request_id:crypto.randomUUID()})});scope.commit(epoch,()=>setNotice(action==='approve'?'Goal approved.':'Proposal rejected.'));}
    catch(error){scope.commit(epoch,()=>setNotice(error instanceof Error?error.message:'Refresh and review the proposal.'));}
-   finally{scope.commit(epoch,()=>{setBusy(false);void client.invalidateQueries({queryKey:root});});}
+   finally{scope.commit(epoch,()=>{setBusy(false);void client.invalidateQueries({queryKey:root});void client.invalidateQueries({queryKey:['conversations',scope.userId,epoch]});});}
  }
  const result=z.object({goalId:z.uuid()}).safeParse(proposal?.result);
  return <Card className="chat-evidence">{query.isPending?<p>Loading goal proposal…</p>:!valid?<p role="alert">The goal proposal is unavailable. Refresh the conversation to review saved state.</p>:<GoalProposalReview proposal={proposal} busy={busy||query.isFetching} decide={decide}/>}<p ref={status} tabIndex={-1} role="status">{notice}</p>{result.success&&<Link to={'/goals?goal='+result.data.goalId}>Open approved goal</Link>}{query.isError&&<button onClick={()=>void query.refetch()}>Refresh proposal</button>}</Card>;
