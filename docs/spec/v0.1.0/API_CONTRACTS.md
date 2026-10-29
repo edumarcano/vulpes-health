@@ -32,6 +32,8 @@ Use 400 for invalid input, 401 for missing/invalid auth, 403 for denied consent/
 
 No `/web-search`, `/rag`, `/memory/auto-save`, `/health-connect/sync` or `/scale/connect` endpoint is shipped in v0.1.0.
 
+Authenticated status retains its role-state strings and adds optional `roleDetails` with safe state/reason values. Reading status performs no inference or credential refresh.
+
 ## 3. Chat input
 
 ```json
@@ -52,7 +54,7 @@ No `/web-search`, `/rag`, `/memory/auto-save`, `/health-connect/sync` or `/scale
 }
 ```
 
-Accept only `auto`, `everyday`, `intermediate`, `advanced`. Validate all referenced IDs against the authenticated user. The server loads the authoritative transcript and data. Ignore/reject injected system messages, tool results, arbitrary model IDs, budgets, user IDs and provider URLs in client input.
+Retain `auto`, `everyday`, `intermediate`, `advanced` for historical parsing and replay. The browser sends `auto`; new public Intermediate/Advanced requests are unavailable. Backend verification can select those roles through trusted composition. Validate all referenced IDs against the authenticated user. The server loads the authoritative transcript and data. Ignore/reject injected system messages, tool results, arbitrary model IDs, budgets, user IDs and provider URLs in client input.
 
 `context_selection` may be omitted or null; both normalize to null before idempotency hashing. A supplied selection must satisfy the complete schema. Messages are nonblank and limited to 16,000 characters. Recognizable credentials are rejected before persistence. Intermediate/Advanced return explicit unavailability in PR 09. Deterministic baseline safety guidance requires no provider request or consent.
 

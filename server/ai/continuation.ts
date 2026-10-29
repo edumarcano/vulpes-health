@@ -6,6 +6,6 @@ export function blocksOf(continuation:GenerationRequest['continuation']) {
   if(!continuation)return [];
   return z.strictObject({blocks:BlocksSchema}).parse(continuation.data).blocks;
 }
-export function continuationFor(blocks:z.infer<typeof BlocksSchema>):GenerationRequest['continuation'] {
-  return blocks.length ? {family:'openrouter_responses',data:{blocks}} : null;
+export function continuationFor(blocks:z.infer<typeof BlocksSchema>,family:'openrouter_responses'|'vertex_generate_content'='openrouter_responses',model?:string):GenerationRequest['continuation'] {
+  return blocks.length ? {family,data:{blocks},...(model?{model}: {})} : null;
 }

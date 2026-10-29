@@ -8,7 +8,7 @@ export const GenerationFamilySchema = z.enum(['openrouter_responses', 'vertex_ge
 export type GenerationFamily = z.infer<typeof GenerationFamilySchema>;
 export const GenerationCapabilitiesSchema = z.strictObject({ streaming: z.boolean(), tools: z.boolean() });
 export type GenerationCapabilities = z.infer<typeof GenerationCapabilitiesSchema>;
-export const ProviderContinuationSchema = z.strictObject({ family: GenerationFamilySchema, data: z.json() });
+export const ProviderContinuationSchema = z.strictObject({ family: GenerationFamilySchema, model:z.string().optional(), data: z.json() });
 export const ToolCallSchema = z.strictObject({ callId: z.string().min(1), name: z.string().min(1), arguments: z.json() });
 export const GenerationRequestSchema = z.strictObject({
   turns: z.array(z.discriminatedUnion('type', [

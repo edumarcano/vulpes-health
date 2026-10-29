@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-29: M5 routing and provider controls
+
+The approved M5 plan removes manual model/depth/effort selection from v0.1.0. Luna remains primary. One server-authorized Flash handoff requires current-run deterministic evidence for goal-progress review or comparison of two metrics. Argon remains a backend capability and is excluded from chat routing; its eventual automatic/explicit product policy is deferred beyond v0.1.0. PR 14 is deferred without blocking M6.
+
+Implementation and an open PR are authorized. Provider calls, spending, production activation and merging are not authorized. Google policy, project/location, credentials, prices and live evidence remain unapproved. Historical live bindings remain historical and the changed v4 instruction template invalidates them. [PR 13 evidence and self-review](evidence/pr13-vertex-routing.md) distinguish local verification from pending live gates.
+
 ## 2026-10-28: Chat proposal workflow (execution-plan PR 12)
 
 The approved M4 batch extends the verified PR 11 branch with two pending-proposal tools and typed chat references. GoalService prepares direct and chat payloads using the same ownership, policy, baseline and lifecycle rules. A narrow service-only transaction reuses PR 11 registration and M3 checkpoint/settlement functions; it commits proposal, encrypted tool evidence, tool completion and message reference together under the existing profile/executor fence. One source step creates at most one proposal. No approval or direct goal-mutation tool is exposed.

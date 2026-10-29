@@ -1,3 +1,4 @@
+import {getRoleAvailability} from '../config/models.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readServerEnvironment } from '../config/environment.js';
 import { sendError, sendJson } from './responses.js';
@@ -16,10 +17,10 @@ export async function handleStatus(request: IncomingMessage, response: ServerRes
       sendError(response, 405, 'method_not_allowed', 'Use GET for this endpoint.');
       return;
     }
-    readServerEnvironment(process.env);
+    const environment=readServerEnvironment(process.env);
     if (request.headers.authorization !== undefined) {
       await verifySession(request);
-      sendJson(response, 200, { data: { status: 'ok', features: { settings: true, healthWorkflows: true, inference: false }, roles: { everyday: 'unavailable', intermediate: 'unavailable', advanced: 'unavailable', decision: 'disabled' } } });
+      sendJson(response, 200, { data: { status: 'ok', features: { settings: true, healthWorkflows: true, inference: false }, roles: { everyday: 'unavailable', intermediate: 'unavailable', advanced: 'unavailable', decision: 'disabled' }, roleDetails:Object.fromEntries((['everyday','intermediate','advanced','decision'] as const).map(role=>[role,getRoleAvailability(role,environment.liveAiRequested)])) } });
       return;
     }
     sendJson(response, 200, { data: { status: 'ok' } });

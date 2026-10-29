@@ -56,7 +56,8 @@ export default function Inspector({run,onClose}:{run:string;onClose:()=>void}) {
     {query.data&&<><section><h3>Overview</h3><p>{query.data.run.state} · trace {query.data.run.traceState} · {query.data.run.admittedAt}</p>
       <p>{query.data.run.route?.role ?? 'No model'} · {query.data.run.route?.provider ?? 'unknown provider'} · {query.data.run.route?.model ?? 'unknown model'}</p>
       <p>Cost {query.data.run.costStatus}: {query.data.run.costUSD===null?'unknown':`$${query.data.run.costUSD}`} · known ${query.data.run.knownCostUSD} · reserved ${query.data.run.reservationUSD}</p>
-      <p>Evidence revision: {query.data.evidenceRevision}{query.data.evidenceRevision==='stale'?' (historical; current data has changed)':''}.</p>
+      {query.data.routeHistory.map(change=><p key={change.sourceStepId}>Authorized handoff: Everyday → Intermediate · {change.reason}</p>)}
+        <p>Evidence revision: {query.data.evidenceRevision}{query.data.evidenceRevision==='stale'?' (historical; current data has changed)':''}.</p>
       <p>Seven-day private trace retention. RAG and web research were not used. This view shows what Vulpes sent and received, not hidden provider instructions or reasoning.</p></section>
       {query.data.steps.map(step=><section key={step.id} className="inspection-step" data-step-id={step.id}><h3>Step {step.sequence}: {step.type}{step.toolName?` · ${step.toolName}`:''}</h3>
         <p>{step.status} · dispatch {step.dispatchState} · {step.startedAt}</p><p>{step.provider??'Local tool'} · adapter {step.adapterVersion??'unknown'}</p>

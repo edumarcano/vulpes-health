@@ -1,3 +1,6 @@
+import {VertexGenerationAdapter,vertexEndpoint,vertexAdapterVersion} from '../server/ai/providers/vertex.js';
+import {issueVertexVerificationTransport} from '../server/ai/providers/vertex-verification.js';
+import {vertexEvidence} from '../server/ai/vertex-readiness.js';
 import { randomUUID } from 'node:crypto';
 import { Decimal } from 'decimal.js';
 import { UUIDSchema } from '../shared/primitives.js';
@@ -30,19 +33,20 @@ export interface LiveSmokeReport {
   costUSD:string|null;costStatus:string;reservationUSD:string|null;traceState:string;
   exactRequestsVerified:boolean;ownedToolEvidenceVerified:boolean;reloadVerified:boolean;
   maxCostUSD:string;fixtureHash:string;batchSpentUSD:string|null;batchReservedUSD:string|null;
-  checkedAt:string;requested:{provider:'openrouter';model:string;effort:string;adapterVersion:string;templateVersion:string;priceId:string;priceHash:string};
+  checkedAt:string;requested:{provider:'openrouter'|'vertex_ai';model:string;effort:string;adapterVersion:string;templateVersion:string;priceId:string;priceHash:string};
   effective:{model:string|null;effort:string|null};
   limitations:string;
 }
 // This function is reachable from the CLI only after opt-in and static
 // capability/price/privacy preflight. It runs one attempt, never a retry.
-export async function runLiveEveryday(ceiling:string,allowSpend:boolean,env:NodeJS.ProcessEnv=process.env,network:typeof fetch=fetch,scenario:'tool_loop'|'cancel'|'disconnect'='tool_loop',attemptId:string=randomUUID()):Promise<LiveSmokeReport> {
+export async function runLiveEveryday(ceiling:string,allowSpend:boolean,env:NodeJS.ProcessEnv=process.env,network:typeof fetch=fetch,scenario:'tool_loop'|'cancel'|'disconnect'='tool_loop',attemptId:string=randomUUID(),vertexRole?:'intermediate'|'advanced'):Promise<LiveSmokeReport> {
   if(!allowSpend)throw new Error('live_opt_in_required');
   const parsedBatch=UUIDSchema.safeParse(env.VULPES_SMOKE_BATCH_ID);if(!parsedBatch.success)throw new Error('invalid_verification_batch');
   const batchId=parsedBatch.data;
   UUIDSchema.parse(attemptId);
-  const price=VerifiedPriceSchema.parse(models.everyday.price);
-  const requested={provider:'openrouter' as const,model:models.everyday.modelId,effort:models.everyday.reasoning.effort,adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,priceId:price.id,priceHash:priceFingerprint(price)};
+  const config=models[vertexRole??'everyday'];
+  const price=VerifiedPriceSchema.parse(config.price);
+  const requested={provider:config.provider,model:config.modelId,effort:vertexRole?models[vertexRole].thinking.level:models.everyday.reasoning.effort,adapterVersion:vertexRole?vertexAdapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,priceId:price.id,priceHash:priceFingerprint(price)};
   const {context,fixtureHash}=await prepareSyntheticBatch(batchId,ceiling);
   const controller=new AbortController();let runId:string|null=null;
   const interruption:LiveSmokeReport['interruption']={state:scenario==='tool_loop'?'not_requested':'unavailable',capturedBeforeTerminal:false};
@@ -78,17 +82,21 @@ export async function runLiveEveryday(ceiling:string,allowSpend:boolean,env:Node
       if(buffered.length>4*1024*1024)throw new Error('verification_stream_limit');
       const frames=buffered.replaceAll('\r\n','\n').split('\n\n');buffered=frames.pop()!;
       for(const frame of frames)for(const line of frame.split('\n').filter(line=>line.startsWith('data:'))) {
-        try{const event=JSON.parse(line.slice(5)) as {type?:string};if(['response.completed','response.incomplete','response.failed','error'].includes(event.type??''))terminal=true;else if(event.type?.startsWith('response.'))nonterminal=true;}catch{/* Malformed events remain the adapter's responsibility. */}
+        try{const event=JSON.parse(line.slice(5)) as {type?:string};if(vertexRole){const raw=JSON.parse(line.slice(5));if(raw.candidates?.some((c:{finishReason?:string})=>c.finishReason))terminal=true;else if(raw.candidates?.some((c:{content?:{parts?:unknown[]}})=>c.content?.parts?.length))nonterminal=true;}if(['response.completed','response.incomplete','response.failed','error'].includes(event.type??''))terminal=true;else if(event.type?.startsWith('response.'))nonterminal=true;}catch{/* Malformed events remain the adapter's responsibility. */}
       }
       stream.enqueue(next.value);
     },async cancel(){upstream.abort();await reader.cancel().catch(()=>undefined);}},{highWaterMark:0}),{status:response.status,headers:response.headers});
   };
-  const transport=await issueVerificationTransport(context,batchId,ceiling,fixtureHash,allowSpend,env,tracked);
+  if(vertexRole){const evidence=vertexEvidence[vertexRole];if(!evidence)throw new Error('capability_privacy_unverified');
+    const profile=await administrativeClient().from('profiles').select('consent_versions').eq('user_id',context.userId).single();if(profile.error)throw new Error('verification_account_unavailable');
+    const consent=profile.data.consent_versions;await administrativeClient().from('profiles').update({consent_versions:{...(consent&&typeof consent==='object'&&!Array.isArray(consent)?consent:{}),vertex_ai:{accepted_version:evidence.policyVersion,accepted_at:new Date().toISOString()}}}).eq('user_id',context.userId);
+  }
+  const transport=vertexRole?await issueVertexVerificationTransport(vertexRole,context,batchId,ceiling,fixtureHash,allowSpend,env,tracked):await issueVerificationTransport(context,batchId,ceiling,fixtureHash,allowSpend,env,tracked);
   const conversations=new ConversationService(context);const conversation=attemptId;
   await conversations.mutate({action:'create',id:conversation,client_request_id:attemptId});
   const input=ChatSendRequestSchema.parse({action:'send',client_request_id:attemptId,conversation_id:conversation,
-    message:{id:attemptId,text:'Using the imported synthetic scale records, calculate the seven-day weight mean and change for 2026-09-01 through 2026-09-14 UTC. Use the available read tool and explain its coverage.'},depth:'everyday'});
-  const agent=new VulpesAgent(context,{adapter:new OpenRouterResponsesAdapter(),transport,price,maxRunCostUSD:ceiling});
+    message:{id:attemptId,text:'Using the imported synthetic scale records, calculate the seven-day weight mean and change for 2026-09-01 through 2026-09-14 UTC. Use the available read tool and explain its coverage.'},depth:vertexRole?'auto':'everyday'});
+  const agent=new VulpesAgent(context,{adapter:vertexRole?new VertexGenerationAdapter(vertexRole,vertexEndpoint(env.GOOGLE_CLOUD_PROJECT!,env.GOOGLE_CLOUD_LOCATION!,vertexRole)):new OpenRouterResponsesAdapter(),transport,price,maxRunCostUSD:ceiling,...(vertexRole?{verificationRole:vertexRole}:{})});
   let outcome:'passed'|'failed'='failed';let exact=false;let tools=false;let reload=false;
   let failureCode:string|null=null;
   let costUSD:string|null=null;let costStatus='unavailable';let reservationUSD:string|null=null;let traceState='unavailable';

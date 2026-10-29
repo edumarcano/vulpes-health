@@ -13,8 +13,8 @@ export const providerPolicies = {
   },
 } as const;
 const StoredConsentSchema = z.object({ accepted_version: z.string().nullable(), accepted_at: ISOInstantSchema.nullable() });
-export function consentState(value: unknown, provider: Provider) {
-  const policy = providerPolicies[provider];
+export function consentState(value: unknown, provider: Provider, approvedPolicy?:{version:string;acceptanceAvailable:boolean;notice:string}) {
+  const policy = approvedPolicy ?? providerPolicies[provider];
   const parsed = StoredConsentSchema.safeParse(value);
   const stored = parsed.success ? parsed.data : { accepted_version: null, accepted_at: null };
   return {

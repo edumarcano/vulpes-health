@@ -34,7 +34,8 @@
     "db:types": "tsx scripts/database.ts types",
     "db:types:check": "tsx scripts/database.ts types-check",
     "test:db": "tsx scripts/database.ts test",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:vertex-upgrade": "tsx scripts/verify-vertex-upgrade.ts"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.31",
@@ -46,6 +47,7 @@
     "clsx": "2.1.1",
     "csv-parse": "7.0.3",
     "decimal.js": "10.6.0",
+    "google-auth-library": "11.3.2",
     "lucide-react": "1.61.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",

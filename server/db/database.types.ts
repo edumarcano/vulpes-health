@@ -65,14 +65,14 @@ isOneToOne: false
                   ]
                 },"ai_runs": {
                   Row: {
-                    "accounting_period": string,"admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string | null,"cost_status": string,"cost_usd": number | null,"data_revision": number,"deadline_at": string,"executor_hash": string | null,"expires_at": string,"fence": number,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"lease_expires_at": string,"limits": NonNullable<Json>,"max_cost_usd": number,"output_tokens": number | null,"partial_output": boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"started_at": string | null,"status": string,"trace_content_removed_at": string | null,"trace_state": string,"user_id": string
+                    "accounting_period": string,"admitted_at": string,"cancellation_requested_at": string | null,"client_request_id": string,"consent_versions": NonNullable<Json>,"conversation_id": string | null,"cost_status": string,"cost_usd": number | null,"data_revision": number,"deadline_at": string,"executor_hash": string | null,"expires_at": string,"fence": number,"finished_at": string | null,"heartbeat_at": string | null,"id": string,"input_tokens": number | null,"lease_expires_at": string,"limits": NonNullable<Json>,"max_cost_usd": number,"output_tokens": number | null,"partial_output": boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route": Json | null,"route_history": NonNullable<Json>,"started_at": string | null,"status": string,"trace_content_removed_at": string | null,"trace_state": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "accounting_period"?: string,"admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string | null,"cost_status"?: string,"cost_usd"?: number | null,"data_revision"?: number,"deadline_at"?: string,"executor_hash"?: string | null,"expires_at"?: string,"fence"?: number,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"lease_expires_at"?: string,"limits"?: NonNullable<Json>,"max_cost_usd"?: number,"output_tokens"?: number | null,"partial_output"?: boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"trace_state"?: string,"user_id": string
+                    "accounting_period"?: string,"admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id": string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string | null,"cost_status"?: string,"cost_usd"?: number | null,"data_revision"?: number,"deadline_at"?: string,"executor_hash"?: string | null,"expires_at"?: string,"fence"?: number,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"lease_expires_at"?: string,"limits"?: NonNullable<Json>,"max_cost_usd"?: number,"output_tokens"?: number | null,"partial_output"?: boolean,"policy_version": string,"request_hash": string,"requested_depth": string,"route"?: Json | null,"route_history"?: NonNullable<Json>,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"trace_state"?: string,"user_id": string
                   }
                   Update: {
-                    "accounting_period"?: string,"admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string | null,"cost_status"?: string,"cost_usd"?: number | null,"data_revision"?: number,"deadline_at"?: string,"executor_hash"?: string | null,"expires_at"?: string,"fence"?: number,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"lease_expires_at"?: string,"limits"?: NonNullable<Json>,"max_cost_usd"?: number,"output_tokens"?: number | null,"partial_output"?: boolean,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"trace_state"?: string,"user_id"?: string
+                    "accounting_period"?: string,"admitted_at"?: string,"cancellation_requested_at"?: string | null,"client_request_id"?: string,"consent_versions"?: NonNullable<Json>,"conversation_id"?: string | null,"cost_status"?: string,"cost_usd"?: number | null,"data_revision"?: number,"deadline_at"?: string,"executor_hash"?: string | null,"expires_at"?: string,"fence"?: number,"finished_at"?: string | null,"heartbeat_at"?: string | null,"id"?: string,"input_tokens"?: number | null,"lease_expires_at"?: string,"limits"?: NonNullable<Json>,"max_cost_usd"?: number,"output_tokens"?: number | null,"partial_output"?: boolean,"policy_version"?: string,"request_hash"?: string,"requested_depth"?: string,"route"?: Json | null,"route_history"?: NonNullable<Json>,"started_at"?: string | null,"status"?: string,"trace_content_removed_at"?: string | null,"trace_state"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -495,6 +495,20 @@ isOneToOne: false
       referencedColumns: ["user_id","id","run_id"]
     }
                   ]
+                },"vertex_policy_approval": {
+                  Row: {
+                    "id": boolean,"location": string,"notice": string,"policy_version": string,"privacy_fingerprint": string,"project": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: boolean,"location": string,"notice": string,"policy_version": string,"privacy_fingerprint": string,"project": string
+                  }
+                  Update: {
+                    "id"?: boolean,"location"?: string,"notice"?: string,"policy_version"?: string,"privacy_fingerprint"?: string,"project"?: string
+                  }
+                  Relationships: [
+
+                  ]
                 }
           }
           Views: {
@@ -555,6 +569,9 @@ isOneToOne: false
 "finish_run_v1":
 { Args: { "p_executor": string,"p_owner": string,"p_run": string,"p_status": string }; Returns: Json
                            },
+"handoff_flash_v1":
+{ Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_reason": string,"p_run": string,"p_step": string }; Returns: Json
+                           },
 "heartbeat_run_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string }; Returns: Json
                            },
@@ -592,6 +609,7 @@ isOneToOne: false
 "request_hash": string,
 "requested_depth": string,
 "route": Json | null,
+"route_history": NonNullable<Json>,
 "started_at": string | null,
 "status": string,
 "trace_content_removed_at": string | null,
@@ -624,6 +642,9 @@ isOneToOne: false
                            },
 "read_metric_inventory_v1":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"read_vertex_policy_v1":
+{ Args: { "p_location": string,"p_project": string }; Returns: Json
                            },
 "reconcile_runs_v1":
 { Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: Json

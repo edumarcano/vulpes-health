@@ -26,6 +26,7 @@ export const SettingsSchema = z.strictObject({
 });
 export const AuthenticatedStatusSchema = z.strictObject({
   status: z.literal('ok'), features: z.strictObject({ settings: z.literal(true), healthWorkflows: z.literal(true), inference: z.literal(false) }),
+  roleDetails:z.record(z.string(),z.strictObject({state:z.enum(['available','unavailable','disabled']),reason:z.string()})).optional(),
   roles: z.strictObject({ everyday: z.literal('unavailable'), intermediate: z.literal('unavailable'), advanced: z.literal('unavailable'), decision: z.literal('disabled') }),
 });
 export type Provider = z.infer<typeof ProviderSchema>;

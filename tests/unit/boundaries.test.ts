@@ -16,6 +16,7 @@ it.each([
   ['server/services/boundary-fixture.ts', "import '@assistant-ui/react'"],
   ['server/analytics/boundary-fixture.ts', "import '@google/genai'"],
   ['server/services/boundary-fixture.ts', "import '../ai/adapters/openrouter.js'"],
+  ['server/services/boundary-fixture.ts', "import '../ai/providers/vertex.js'"],
   ['server/services/boundary-fixture.ts', "export * from '@server/ai/adapters/vertex'"],
   ['server/analytics/boundary-fixture.ts', "import('@server/ai/adapters/vertex')"],
   ['server/services/boundary-fixture.ts', "type Adapter = import('../ai/adapters/openrouter.js').Adapter"],

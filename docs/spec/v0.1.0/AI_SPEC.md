@@ -19,16 +19,14 @@ These are starting configuration defaults, not claims that one effort setting ha
 
 ## 3. Routing policy v1
 
-Apply these rules in order:
+Ordinary chat starts on Everyday (Luna). v0.1.0 exposes no model, depth or effort selector. Backend role names and catalog controls remain stable; deciding automatic versus explicit Advanced use is deferred beyond v0.1.0.
 
-1. Reject unauthorized access, missing provider consent, disallowed actions and exhausted budgets. For urgent safety-related content, do not require paid inference merely to display the baseline safety response.
-2. UI-only and deterministic data operations use no model.
-3. Respect an explicit available user depth selection. If unavailable or unaffordable, explain; do not silently weaken the requested analysis.
-4. Auto selects Everyday for ordinary questions and simple tool-backed summaries. A bounded progress review or multi-metric comparison can select Intermediate through explicit task metadata. Deep cross-goal/evidence tasks select Advanced only when the feature and context actually exist.
-5. Optionally call Decision once when meaning is genuinely ambiguous, the operator enabled it and the user consented to that provider. It receives the minimum message/context needed, not raw longitudinal health records.
-6. An invalid/uncertain decision response falls back to a documented conservative route or a clarification question. Scores are routing signals, not medical confidence.
-
-A generation model can request escalation with a short reason, but the server authorizes it against cost and consent. Maximum one escalation per run and four total model calls, counting the decision call and all tool-follow-up generations. Do not routinely have Luna rewrite Flash/Argon output: display the selected model's answer directly with its route visible.
+1. Reject unauthorized access, missing provider consent, disallowed actions and exhausted budgets. Baseline safety guidance requires no paid call.
+2. UI-only and deterministic operations use no model.
+3. Luna may request one `request_escalation` handoff to Flash in a tool-only turn. The server requires current-run owned evidence: successful approved-goal progress, or successful summaries for two distinct metrics. Missing data, a pending proposal or a safety question does not qualify.
+4. Recheck role availability, current consent, context, spending, remaining requests and deadline. Denial returns a typed tool result; a failed dispatched Flash request ends without retry or fallback. Flash answers directly and cannot escalate onward.
+5. Argon is a backend verification capability and is excluded from user-chat routing. Decision scoring remains disabled and PR 14 is deferred.
+6. Four model requests include all continuations and handoffs; six tools include escalation. No automatic frontier rewrite, critic pass, long decode or background inference is permitted.
 
 ## 4. Tools shipped in v0.1.0
 
@@ -36,6 +34,7 @@ All arguments are strict schemas. Identity, permission and query bounds come fro
 
 | Tool | Arguments | Behavior |
 |---|---|---|
+| `request_escalation` | Task code, short rationale, current-run evidence IDs | One server-authorized Flash handoff; no domain mutation |
 | `list_metrics` | None | Available owned metrics/sources, ranges, counts and semantic limitations |
 | `get_measurements` | Metric, source, interval, limit | Bounded permitted observations; max 200 per call |
 | `summarize_metric` | Metric, source, interval, timezone, approved method | Deterministic daily summary/change with provenance |
@@ -43,6 +42,8 @@ All arguments are strict schemas. Identity, permission and query bounds come fro
 | `get_goal_progress` | Goal ID | Approved baseline/current comparison and coverage |
 | `propose_goal` | Validated goal fields | Persists a pending proposal and returns a card; does not activate |
 | `propose_goal_revision` | Owned goal ID, expected_version, changed definition fields, baseline_resolution, short rationale | Pending proposal, not an applied update; version is the concurrency token, not the revision number; rationale is captured with encrypted tool input |
+
+The orchestration tool is offered only when Flash is supplied by trusted composition. When complete results leave insufficient context for domain tool schemas, the next request offers only escalation or a final answer and records that exclusion.
 
 No tools for arbitrary SQL, arbitrary URLs, code execution, database deletion, sending messages, changing model settings, increasing spending, altering privacy consent or reading another account. Tool arguments that try these operations are rejected and logged safely.
 
@@ -68,7 +69,7 @@ The approved-goal projection excludes drafts and requires an owned current revis
 
 Proposal tools accept definition fields only; the server supplies owner, run/step identity, request key, expiry, frozen baseline and resulting state. Creation and revision use GoalService's direct-form preparation and policy checks. A profile-serialized transaction validates the execution lease/fence and data revision, then commits the pending proposal, encrypted tool result, completed tool step and message reference together. No tool approves, activates or applies a goal mutation. Conversation deletion closes its pending drafts while preserving approved goals.
 
-The current instruction template is `vulpes-everyday-v3`; tool evidence uses projectionVersion 3. Versions 1 and 2 remain inspectable. Proposal projections report pending status and required user confirmation; full definitions and baselines remain in encrypted evidence and the owned review record. Revision tools are omitted when no editable approved goal exists. At the last model request or after six tools, the request advertises no further tools. The context and wire ceilings remain 11,000 and 12,000 UTF-8 bytes, with four model calls and six tools. Reviewed live capability/smoke bindings are literal historical evidence; changing the template does not refresh or authorize them.
+The current instruction template is `vulpes-everyday-v4`; tool evidence uses projectionVersion 3. Versions 1 and 2 remain inspectable. Proposal projections report pending status and required user confirmation; full definitions and baselines remain in encrypted evidence and the owned review record. Revision tools are omitted when no editable approved goal exists. At the last model request or after six tools, the request advertises no further tools. Everyday retains its 11,000-byte context and 12,000-byte wire ceilings. Vertex uses its catalog-specific bounds. All roles share four model calls and six tools. Reviewed live capability/smoke bindings are literal historical evidence; changing the template does not refresh or authorize them.
 
 For a follow-up such as "what about last month?", retain enough recent context to resolve the metric and source. If ambiguous, ask; a cheap router that only receives the latest fragment is insufficient.
 

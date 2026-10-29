@@ -46,3 +46,4 @@ tmp/
 # Local cloud and IDE auth/session files
 .google/
 .gcloud/
+.scratch/

@@ -1,3 +1,4 @@
+import { EscalationRequestSchema } from './routing.js';
 import { GoalService } from '../services/goals.js';
 import { GoalDefinitionSchema,GoalRevisionPayloadSchema,GoalProposalToolResultSchema } from '../../shared/goals.js';
 export { GoalProgressResultSchema } from '../../shared/goal-progress.js';
@@ -14,11 +15,11 @@ import { HttpFailure } from '../http/failure.js';
 import type { GenerationRequest } from './contracts.js';
 
 const selection=z.strictObject({metric:MetricKeySchema,source_id:UUIDSchema.nullish(),from:ISOInstantSchema,to:ISOInstantSchema,timezone:IanaTimezoneSchema,method:MeasurementMethodSchema.optional(),granularity:GranularitySchema.optional()});
-export const toolArguments={list_metrics:z.strictObject({}),get_measurements:selection.extend({limit:z.number().int().min(1).max(200).default(200)}),summarize_metric:selection,list_goals:z.strictObject({status:GoalStateSchema.exclude(['draft']).optional()}),get_goal_progress:z.strictObject({goal_id:UUIDSchema}),
+export const toolArguments={request_escalation:EscalationRequestSchema,list_metrics:z.strictObject({}),get_measurements:selection.extend({limit:z.number().int().min(1).max(200).default(200)}),summarize_metric:selection,list_goals:z.strictObject({status:GoalStateSchema.exclude(['draft']).optional()}),get_goal_progress:z.strictObject({goal_id:UUIDSchema}),
   propose_goal:z.strictObject({definition:GoalDefinitionSchema}),
   propose_goal_revision:z.strictObject({goal_id:UUIDSchema,expected_version:z.number().int().positive(),changes:z.strictObject(GoalDefinitionSchema.shape).partial(),baseline_resolution:z.enum(['retain','replace']),rationale:z.string().trim().min(1).max(1000)}),
 };
-const descriptions={list_metrics:'List owned series, counts, intervals and source limitations.',get_measurements:'Read at most 200 observations in an explicit interval. Clarify ambiguous series.',summarize_metric:'Deterministic summary of complete local days; sparse coverage stays insufficient.',list_goals:'List approved owned goals, versions and definitions.',get_goal_progress:'Read approved goal progress; stale or unsupported baselines stay unavailable.',propose_goal:'Propose a goal for explicit user review. Never activates. Server freezes the baseline.',propose_goal_revision:'Propose changed fields of an approved goal. expected_version is its version, not revision number. Never applies changes.'};
+const descriptions={request_escalation:'Request Flash once using current-run progress or two metric-summary evidence IDs. Tool-only turn; no medical judgment or approval.',list_metrics:'List owned series, counts, intervals and source limitations.',get_measurements:'Read at most 200 observations in an explicit interval. Clarify ambiguous series.',summarize_metric:'Deterministic summary of complete local days; sparse coverage stays insufficient.',list_goals:'List approved owned goals, versions and definitions.',get_goal_progress:'Read approved goal progress; stale or unsupported baselines stay unavailable.',propose_goal:'Propose a goal for explicit user review. Never activates. Server freezes the baseline.',propose_goal_revision:'Propose changed fields of an approved goal. expected_version is its version, not revision number. Never applies changes.'};
 export const readToolDefinitions:GenerationRequest['tools']=Object.entries(toolArguments).map(([name,schema])=>{
   // Formats already describe these values to the model. Keep Zod's full
   // calendar/UUID validation server-side rather than repeating its regex on wire.

@@ -1,3 +1,4 @@
+import {assessVertex,vertexEvidence} from '../server/ai/vertex-readiness.js';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -55,7 +56,14 @@ export async function runSmoke(args: string[], env: NodeJS.ProcessEnv): Promise<
     let environment;
     try { environment = readServerEnvironment(env); } catch { throw new SmokeDenied('invalid_live_switch'); }
     if (!environment.liveAiRequested) throw new SmokeDenied('live_ai_disabled');
-    if(selectedRole.data!=='everyday')throw new SmokeDenied('live_role_unavailable');
+    if(selectedRole.data==='decision')throw new SmokeDenied('live_role_unavailable');
+    if(selectedRole.data!=='everyday'){
+      const role=selectedRole.data;const ready=assessVertex(role,{enabled:environment.liveAiRequested,project:env.GOOGLE_CLOUD_PROJECT,location:env.GOOGLE_CLOUD_LOCATION,ceiling:ceiling.data,evidence:vertexEvidence[role]});
+      if(ready.state!=='ready')throw new SmokeDenied(ready.reason);
+      const attempt=UUIDSchema.safeParse(values['attempt-id']);if(!attempt.success)throw new SmokeDenied('verification_attempt_required');
+      const scenario=values.scenario??'tool_loop';if(!['tool_loop','cancel','disconnect'].includes(scenario))throw new SmokeDenied('invalid_scenario');
+      return {report:await runLiveEveryday(ceiling.data,true,env,fetch,scenario as 'tool_loop'|'cancel'|'disconnect',attempt.data,role),writeReport:values['write-report']??false};
+    }
     const scenario=values.scenario ?? 'tool_loop';if(scenario!=='tool_loop' && scenario!=='cancel' && scenario!=='disconnect')throw new SmokeDenied('invalid_scenario');
     const config=models.everyday;
     const readiness=assessEverydayPreflight({enabled:environment.liveAiRequested,mode:'verification',model:config.modelId,effort:config.reasoning.effort,
@@ -119,7 +127,7 @@ async function main(): Promise<void> {
     if (writeReport && report.mode==='synthetic') await writeFile(new URL('../docs/evidence/PROVIDER_SMOKE_TESTS.md', import.meta.url), renderSmokeReport(report), 'utf8');
     console.info(JSON.stringify(report, null, 2));
     if (writeReport && report.mode==='live') {
-      const name=`live-everyday-${report.batchId}-${report.scenario}-${report.runId ?? randomUUID()}.json`;
+      const name=`live-${report.requested.provider==='vertex_ai'?'vertex':'everyday'}-${report.batchId}-${report.scenario}-${report.runId ?? randomUUID()}.json`;
       try {await writeFile(new URL(`../docs/evidence/${name}`,import.meta.url),JSON.stringify(report,null,2)+'\n',{encoding:'utf8',flag:'wx'});}
       catch {console.error(JSON.stringify({code:'evidence_write_failed',actualProviderRequests:report.actualProviderRequests,costUSD:report.costUSD,costStatus:report.costStatus}));process.exitCode=1;return;}
     }

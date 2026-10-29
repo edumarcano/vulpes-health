@@ -11,13 +11,14 @@ import { ContextManifestSchema } from '../../shared/domain.js';
 import { DataSummarySchema } from '../../shared/data.js';
 import { ToolCallSchema } from '../ai/contracts.js';
 import { providerToolResult, toolArguments } from '../ai/tools.js';
+import { isVertexEndpoint } from '../config/vertex-endpoint.js';
 
 type Step = Awaited<ReturnType<InspectionService['steps']>>[number];
 type Part = 'input' | 'output' | 'context' | 'usage';
 type Evidence = { state: 'available'; bytes: Buffer; expiresAt: string; completeness?:'complete'|'partial' } |
   { state: 'expired' | 'removed' | 'incomplete' | 'corrupt' | 'unavailable' };
 const RequestMetadata = z.strictObject({
-  endpoint:z.enum(['https://openrouter.ai/api/v1/responses','https://aiplatform.googleapis.com','tool:read','tool:proposal']),
+  endpoint:z.string().refine(value=>['https://openrouter.ai/api/v1/responses','https://aiplatform.googleapis.com','tool:read','tool:proposal'].includes(value)||isVertexEndpoint(value)),
   headers:z.record(z.string(),z.string().max(200)),redactedHeaders:z.array(z.string().max(100)).max(20),
 }).refine(value=>Object.entries(value.headers).every(([key,header])=>key.toLowerCase()==='accept' ? header==='text/event-stream' : key.toLowerCase()==='content-type' && header==='application/json') && value.redactedHeaders.every(name=>['authorization','x-api-key'].includes(name.toLowerCase())));
 
@@ -36,11 +37,11 @@ export class InspectionService {
     const steps = await this.steps(runId);
     const [profile,storedRun]=await Promise.all([
       this.context.db.from('profiles').select('data_revision').eq('user_id',this.context.userId).single(),
-      this.context.db.from('ai_runs').select('data_revision').eq('user_id',this.context.userId).eq('id',runId).single(),
+      this.context.db.from('ai_runs').select('data_revision,route_history').eq('user_id',this.context.userId).eq('id',runId).single(),
     ]);
     if (profile.error || storedRun.error) throw new HttpFailure(503,'execution_unavailable','Execution revision could not be checked.');
     const evidenceRevision=run.traceState==='removed' ? 'removed' : profile.data.data_revision===storedRun.data.data_revision ? 'current' : 'stale';
-    return { run, evidenceRevision, steps: steps.map(step => ({
+    return { run, evidenceRevision, routeHistory:storedRun.data.route_history, steps: steps.map(step => ({
       id: step.id, sequence: step.sequence, type: step.step_type, status: step.status,
       provider: step.provider, model: step.model_id, effectiveModel:step.effective_model_id, adapterVersion: step.adapter_version,
       requestedEffort: step.requested_effort, effectiveEffort: step.effective_effort,
@@ -91,8 +92,8 @@ export class InspectionService {
         } else {
           const result=z.strictObject({projectionVersion:z.union([z.literal(1),z.literal(2),z.literal(3)]).optional(),evidence:EvidenceSchema,result:z.json(),providerResult:z.json()}).parse(parsed);
           if (result.evidence.ownerId!==this.context.userId || result.evidence.runId!==query.run || result.evidence.stepId!==step.id) throw new Error('invalid_evidence');
-          const output=z.object({kind:z.enum(['goal_proposal','metrics','goals','measurements','summary','no_data','clarification_required','unavailable','insufficient_data','progress'])}).passthrough().parse(result.result);
-          const kinds:Record<string,string[]>={list_metrics:['metrics'],list_goals:['goals'],get_measurements:['measurements','no_data','clarification_required'],summarize_metric:['summary','no_data','clarification_required'],get_goal_progress:['unavailable','insufficient_data','progress'],propose_goal:['goal_proposal'],propose_goal_revision:['goal_proposal']};
+          const output=z.object({kind:z.enum(['goal_proposal','metrics','goals','measurements','summary','no_data','clarification_required','unavailable','insufficient_data','progress','routing'])}).passthrough().parse(result.result);
+          const kinds:Record<string,string[]>={request_escalation:['routing'],list_metrics:['metrics'],list_goals:['goals'],get_measurements:['measurements','no_data','clarification_required'],summarize_metric:['summary','no_data','clarification_required'],get_goal_progress:['unavailable','insufficient_data','progress'],propose_goal:['goal_proposal'],propose_goal_revision:['goal_proposal']};
           if (!step.tool_name || !kinds[step.tool_name]?.includes(output.kind)) throw new Error('invalid_tool_result');
           if (output.kind==='summary' && DataSummarySchema.parse(output.data).dataRevision!==result.evidence.dataRevision) throw new Error('invalid_revision');
           if (requestHash(providerToolResult(result.result,result.projectionVersion??1))!==requestHash(result.providerResult)) throw new Error('invalid_projection');

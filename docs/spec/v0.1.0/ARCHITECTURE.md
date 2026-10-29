@@ -94,7 +94,7 @@ A closed browser connection triggers an abort attempt but is not evidence that a
 
 Implement small, replaceable adapters for OpenRouter Responses (`everyday`), Vertex GenerateContent (`intermediate`, `advanced`), and OpenRouter Decisions (`decision`). Maintain strict boundaries:
 
-1. **One typed model catalog:** Model roles live in one typed, server-only catalog (`server/config/models.ts` or equivalent); no per-model `.env` duplication. Provider-specific parameter mapping, reasoning and caching live in provider adapters; see [PROVIDER_SETUP.md](PROVIDER_SETUP.md).
+1. **One typed model catalog:** Model roles live in one typed, server-only catalog (`server/config/models.ts` or equivalent); no per-model `.env` duplication. Catalog reasoning settings are read-only to users. Luna starts chat; one bounded Flash handoff is permitted; Argon is backend-only. Provider-specific parameter mapping, reasoning and caching live in provider adapters; see [PROVIDER_SETUP.md](PROVIDER_SETUP.md).
 2. **Provider independence:** Core domain services and UI cannot import OpenRouter, Vertex, or any vendor SDK. Provider adapters implement narrow capability-oriented interfaces: generation/streaming, typed decision scoring, and normalized usage. Validate capabilities and fail closed.
 3. **Model changes:** A compatible replacement model requires edits only to the catalog, the responsible adapter if needed, and tests. Do not rework goals, analytics, memory, conversation state, or client screens when a model changes.
 4. **Data source normalization:** CSV/manual and future Health Connect adapters normalize through one measurement schema before analytics or goals access them.
