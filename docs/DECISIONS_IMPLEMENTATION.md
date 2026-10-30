@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-30: PR 17 integrated evidence and handoff
+
+PR 17 uses the existing test/browser/database harnesses and a small fixed-command evidence collector. It records actual exits, safe numeric output, candidate/workspace fingerprints, installed versions and build hashes. A separate disposable local copy preserves retained M3 verification allocations. Missing/stale records remain unverified; earlier failures remain in history. No dependency, application architecture, model catalog or safety/retention policy changes.
+
+The [release checklist](operations/release-readiness.md) owns external gates and reproducible procedures. The [acceptance report](evidence/release/m6-local.json) separates local test scope from current-template model quality, hosted infrastructure, physical-device and family/human recovery evidence. Historical v3 Everyday evidence cannot validate v4. PR 14 remains deferred and disabled. Combined independent M5/M6 review follows the PR 17 candidate; self-review and a focused open PR do not grant full acceptance, merge, deployment or pilot authorization.
+
 ## 2026-10-29: PR 16 account lifecycle and recovery
 
 The approved M6 batch adds `/api/account` through the existing Settings deployment entry point. Strict requests derive ownership from verified Auth identity. Ordinary operations require an active profile/live owned session; only account status and deletion continuation accept a verified deleting identity. Password AMR freshness is five minutes; token refresh does not reauthenticate.

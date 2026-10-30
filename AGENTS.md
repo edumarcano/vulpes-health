@@ -20,6 +20,7 @@ You are working in `vulpes-health`, which contains the authoritative v0.1.0 spec
    - [`ACCEPTANCE_TESTS.md`](docs/spec/v0.1.0/ACCEPTANCE_TESTS.md) — Functional, numerical, security, modularity, and release acceptance gates.
 3. **[`docs/plans/v0.1.0-execution.md`](docs/plans/v0.1.0-execution.md)** — Canonical execution sequence, PR boundaries, dependencies, verification gates, and session-resilient progress tracking for v0.1.0.
 4. **[`docs/DECISIONS_IMPLEMENTATION.md`](docs/DECISIONS_IMPLEMENTATION.md)** — Dated decisions, trade-offs, and approved deviations during implementation.
+   Current integrated acceptance evidence is in [`docs/evidence/release/m6-local.json`](docs/evidence/release/m6-local.json); [`docs/operations/release-readiness.md`](docs/operations/release-readiness.md) owns reproduction and deployment/pilot gates. Local verification is separate from release readiness and the pending combined independent M5/M6 review.
 5. **[`.remora/standards/`](.remora/standards/)** — Engineering baseline, testing, and documentation standards:
    - Before applying shared guidance, read [`engineering.md`](.remora/standards/engineering.md) and any applicable scoped project instructions.
    - [`testing.md`](.remora/standards/testing.md) — Empirical verification and testing harness requirements.

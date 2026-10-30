@@ -18,7 +18,7 @@ Use the supplied Vercel domain initially. Do not buy a domain or upgrade a plan 
 
 Owner-controlled private Git repository; Vercel Hobby project; Supabase project; OpenRouter key with the intended privacy/spending controls; Google Cloud billing/project and model access; a secure server trace-encryption key.
 
-Use the current supported Node LTS and a pinned package-manager version compatible with the selected dependencies. Record versions after installing; this package intentionally does not freeze an untested lockfile.
+Use Node 24 and the npm version pinned in `package.json`, with `npm ci` and the committed lockfile. The release-evidence report records installed dependency versions and the tested build identity.
 
 ## 4. Development environments
 
@@ -35,7 +35,8 @@ Repository scripts:
 | `npm test` | Deterministic unit tests without paid calls |
 | `npm run test:integration` | Local database, RLS, approvals and budgets |
 | `npm run test:e2e` | Browser workflows with synthetic users/data |
-| `npm run test:providers` | Explicit opt-in paid smoke tests, with a bounded budget |
+| `npm run test:providers` | Synthetic normalized-protocol smoke; live mode needs separate authorization and all fail-closed gates |
+| `npm run evidence:release` | Assemble recorded local results, build hashes, acceptance status and reviewed synthetic screenshots; missing records remain `not_run` |
 | `npm run maintenance:cleanup` | Delete expired staging/trace/export payloads |
 | `npm run backup:verify` | Documented backup/restore checks; not merely a file-exists check |
 | `npm run test:lifecycle-upgrade -- --allow-disposable-reset` | Populated forward migration proof on an empty disposable synthetic stack |
@@ -47,7 +48,7 @@ Never enable live model tests in ordinary CI. Log only safe operational metadata
 
 Apply reviewed migrations, RLS policies, indexes, strict function grants and storage policies. Disable public signup. Provision the owner through trusted admin tooling; do not expose an account-creation endpoint to the public.
 
-Configure production and local redirect URLs narrowly. Do not make health buckets public. Configure legitimate invitation/recovery email delivery before relying on email flows for family accounts; default Supabase SMTP has restrictions. [S19](SOURCES.md#s19)
+Configure production and local redirect URLs narrowly. Do not make health buckets public. The approved recovery path is operator-assisted identity verification, trusted reset and session revocation, without SMTP. Rehearse the human handoff before family use. Email invitations/recovery need separate supported delivery approval if introduced. [S19](SOURCES.md#s19)
 
 Export and test backups before real use. Keep schema, RLS, functions, Storage objects and necessary encryption key versions recoverable. Document Supabase Auth recovery separately; a measurements CSV is not a complete account/database restore.
 
@@ -75,7 +76,7 @@ Use two test users to prove separation at API, database, Storage, exported trace
 
 Test secure onboarding/recovery, export, interrupted deletion, backup/restore, logout/account switching and a revoked provider consent. Explain that the app is a private wellness prototype and that its operator can access backend data.
 
-Family users can use the PWA with imports immediately after these gates. Automatic Health Connect requires the later native Android integration on each person's phone and that person's authorization; no family-wide phone-health permission exists.
+Family use additionally requires explicit invitation and real-data authorization after all applicable gates. Automatic Health Connect requires the later native Android integration on each person's phone and that person's authorization; no family-wide phone-health permission exists.
 
 ## 9. Operational runbook
 

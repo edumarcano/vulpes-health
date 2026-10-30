@@ -79,6 +79,11 @@ jobs:
         run: npm run db:types:check
       - name: HTTP and integration tests
         run: npm run test:integration
+      - name: Synthetic accounting and adapter controls
+        run: |
+          npm run test:executions
+          npm run test:evaluations
+          npm run test:providers
       - name: Bounded lifecycle maintenance
         run: npm run maintenance:cleanup
       - name: Encrypted separate-environment restore and recovery
