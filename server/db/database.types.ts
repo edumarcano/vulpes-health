@@ -5,7 +5,21 @@ export type Database = {
 
   "public": {
           Tables: {
-            "action_proposals": {
+            "account_deletion_receipts": {
+                  Row: {
+                    "completed_at": string | null,"id": string,"outcome": string,"phase": string,"requested_at": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "completed_at"?: string | null,"id"?: string,"outcome"?: string,"phase": string,"requested_at"?: string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "completed_at"?: string | null,"id"?: string,"outcome"?: string,"phase"?: string,"requested_at"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+
+                  ]
+                },"action_proposals": {
                   Row: {
                     "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"result": Json | null,"source_message_id": string | null,"source_run_id": string | null,"source_step_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
                   }
@@ -515,7 +529,18 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "add_measurement_v1":
+            "account_export_manifest_v1":
+{ Args: { "p_owner": string }; Returns: Json
+                           },
+"account_export_rows_v1":
+{ Args: { "p_owner": string,"p_section": string }; Returns: {
+              "body": Json,"id": string
+            }[]
+                           },
+"account_status_v1":
+{ Args: { "p_owner": string }; Returns: Json
+                           },
+"add_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
                            },
 "admit_chat_v1":
@@ -529,6 +554,9 @@ isOneToOne: false
                            },
 "baseline_chat_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_text": string }; Returns: Json
+                           },
+"begin_account_deletion_v1":
+{ Args: { "p_owner": string,"p_password_at": string }; Returns: Json
                            },
 "cancel_chat_v1":
 { Args: { "p_owner": string,"p_request": string,"p_run": string }; Returns: Json
@@ -548,6 +576,9 @@ isOneToOne: false
 "classify_import_v1":
 { Args: { "p_owner": string,"p_rows": Json,"p_source": string }; Returns: Json
                            },
+"cleanup_account_retention_v1":
+{ Args: { "p_batch_size"?: number }; Returns: Json
+                           },
 "cleanup_data_v1":
 { Args: { "p_batch_size"?: number,"p_owner"?: string }; Returns: Json
                            },
@@ -557,6 +588,9 @@ isOneToOne: false
 "commit_import_v1":
 { Args: { "p_bytes": string,"p_request": Json }; Returns: Json
                            },
+"continue_account_deletion_v1":
+{ Args: { "p_batch_size"?: number,"p_owner": string }; Returns: Json
+                           },
 "decide_goal_proposal_v1":
 { Args: { "p_owner": string,"p_request": Json }; Returns: Json
                            },
@@ -565,6 +599,9 @@ isOneToOne: false
                            },
 "expire_goal_proposals_v1":
 { Args: { "p_owner": string }; Returns: undefined
+                           },
+"finish_account_deletion_v1":
+{ Args: { "p_auth_absent": boolean,"p_owner": string }; Returns: Json
                            },
 "finish_run_v1":
 { Args: { "p_executor": string,"p_owner": string,"p_run": string,"p_status": string }; Returns: Json
@@ -628,8 +665,17 @@ isOneToOne: false
 "mutate_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
                            },
+"owned_session_valid_v1":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"pending_account_deletions_v1":
+{ Args: { "p_batch_size"?: number }; Returns: string[]
+                           },
 "prepare_step_v1":
 { Args: { "p_context"?: Json,"p_executor": string,"p_fence": number,"p_input": Json,"p_owner": string,"p_run": string,"p_step": Json }; Returns: string
+                           },
+"read_account_export_v1":
+{ Args: { "p_after"?: string,"p_owner": string,"p_section": string }; Returns: Json
                            },
 "read_budget_v1":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -663,6 +709,9 @@ isOneToOne: false
                            },
 "replay_chat_v1":
 { Args: { "p_message": Json,"p_owner": string,"p_request": Json }; Returns: Json
+                           },
+"revoke_account_sessions_v1":
+{ Args: { "p_owner": string }; Returns: undefined
                            },
 "run_summary_v1":
 { Args: { "p_owner": string,"p_run": string }; Returns: Json

@@ -1,6 +1,6 @@
 # Private account setup
 
-Email/password authentication supports operator-provisioned accounts. Manual/CSV Data workflows and selected measurement export/deletion are available. Public signup, invitations, email recovery, complete account export/deletion, goal workflows and inference are not available. Local test tooling uses synthetic accounts only. Cloud provisioning or real-account changes still require explicit owner authorization.
+Email/password authentication supports operator-provisioned accounts. Manual/CSV Data, Goals, owned JSON export and resumable account deletion are implemented. Public signup, email invitations/recovery and production inference remain unavailable. Operator-assisted recovery has a guarded local verification path in the [account lifecycle runbook](../operations/account-lifecycle.md). Tests use synthetic accounts only; hosted provisioning and real-account operations require separate approval.
 
 ## Configuration
 
@@ -11,7 +11,7 @@ Use the root `.env.example`; keep populated values in ignored `.env.local` or de
 | `VITE_SUPABASE_URL` | Exact Supabase API origin; HTTPS except for local loopback |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Public publishable key or legacy anonymous key; never an administrative key |
 | `VULPES_APP_ORIGIN` | Exact browser origin, normally `http://127.0.0.1:5173` for development or port 4173 for preview |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only; required for private-payload storage and trusted administrative operations |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only; required for account status/lifecycle, private payloads and trusted administrative operations |
 | `VULPES_TRACE_ENCRYPTION_KEY_ID` | Identifier of the active encryption key |
 | `VULPES_TRACE_ENCRYPTION_KEY_B64` | Secret base64 encoding of a cryptographically random 32-byte key |
 | `VULPES_TRACE_PREVIOUS_KEYS_JSON` | Optional secret JSON object mapping previous IDs to base64 keys for reads |
@@ -30,7 +30,7 @@ Restart the full app after configuration changes. Development and preview CSP al
 
 Use the existing guarded local integration/browser tests for disposable synthetic provisioning and cleanup. They do not grant permission to create real or family accounts.
 
-Before family use, choose and test a supported SMTP invitation/recovery flow or explicitly approved operator-assisted reset process. Do not assume default Supabase mail reaches arbitrary recipients or make family users project administrators. This remains the separate OPS-05 gate, alongside export/deletion, backups and budgets.
+The approved small-pilot policy is operator-assisted reset without SMTP. Before real/family use, verify out-of-band identity checks, protected credential handoff and the hosted operator/Auth/session path. Do not assume default mail delivery or make family users project administrators. Local admin/Auth verification does not close the external OPS-05 gate.
 
 ## Encryption and retention
 
@@ -40,4 +40,4 @@ Payloads use AES-256-GCM with random 12-byte nonces and a 16-byte tag appended t
 
 Import staging expires after 24 hours; AI/tool/provider-state payloads after seven days. Reads deny expired content before decrypting it. Data requests and successful payload access/write attempt bounded owned cleanup. After inactivity, run `npm run maintenance:cleanup` against the disposable local stack; it reports removed envelopes, expired import batches and work limits without payload content. Repeat after concurrent operations finish or if the reported transaction maximum is reached. Deleting a measurement also purges the owner's retained exact trace payloads, while preserving safe accounting and frozen goal decisions with review markers. Hosted maintenance requires a separately authorized operating procedure, not an implied scheduler.
 
-Normal account/health rows rely on access controls and managed storage protections. Payload encryption does not encrypt every database field or hide data from the operator. Local sign-out clears this device's supported SDK session and app state; issued access JWTs can remain valid until their configured expiry.
+Normal account/health rows rely on access controls and managed storage protections. Payload encryption does not encrypt every database field or hide data from the operator. Sign-out clears this device's session and app state. Revoked sessions are denied by app verification, RLS reads and direct mutations even before JWT expiry. If remote sign-out fails, only local clearing is confirmed; reconnect and verify revocation before relying on it.

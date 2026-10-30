@@ -32,10 +32,11 @@ export async function writePayload(context: AuthContext, purpose: 'import_stagin
   } catch { throw new HttpFailure(503, 'payload_unavailable', 'Private payload storage is unavailable.'); }
 }
 export type PayloadRead = { state: 'available'; bytes: Buffer } | { state: 'expired' | 'not_found' | 'unavailable' };
-export async function readPayload(context: AuthContext, id: string, expectedPurpose: PayloadPurpose): Promise<PayloadRead> {
+export async function readPayload(context: AuthContext, id: string, expectedPurpose: PayloadPurpose,signal?:AbortSignal): Promise<PayloadRead> {
   if (!UUIDSchema.safeParse(id).success || !PayloadPurposeSchema.safeParse(expectedPurpose).success) return { state: 'not_found' };
   try {
-    const { data, error } = await administrativeClient().from('private_payloads').select('*').eq('user_id', context.userId).eq('id', id).eq('purpose', expectedPurpose).maybeSingle();
+    signal?.throwIfAborted();const query=administrativeClient().from('private_payloads').select('*').eq('user_id', context.userId).eq('id', id).eq('purpose', expectedPurpose);
+    const { data, error } = await (signal?query.abortSignal(signal):query).maybeSingle();signal?.throwIfAborted();
     if (error) return { state: 'unavailable' };
     if (!data) return { state: 'not_found' };
     if (Date.parse(data.expires_at) <= Date.now()) return { state: 'expired' };

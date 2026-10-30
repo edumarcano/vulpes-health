@@ -33,17 +33,18 @@ describe('server auth', () => {
   });
   it('derives the owner from Auth, then uses the original bearer under RLS', async () => {
     vi.stubEnv('VITE_SUPABASE_URL', 'http://127.0.0.1:54321'); vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_synthetic');
-    const transport = vi.fn().mockResolvedValueOnce(Response.json({ id })).mockResolvedValueOnce(Response.json({ account_state: 'active' }));
+    const transport = vi.fn().mockResolvedValueOnce(Response.json({ id })).mockResolvedValueOnce(Response.json(true)).mockResolvedValueOnce(Response.json({ account_state: 'active' }));
     vi.stubGlobal('fetch', transport);
     const context = await verifySession({ headers: { authorization: 'Bearer synthetic-token' } });
     expect(context.userId).toBe(id);
     expect(String(transport.mock.calls[0]![0])).toContain('/auth/v1/user');
-    expect(String(transport.mock.calls[1]![0])).toContain(`user_id=eq.${id}`);
+    expect(String(transport.mock.calls[1]![0])).toContain('/rpc/owned_session_valid_v1');
+    expect(String(transport.mock.calls[2]![0])).toContain(`user_id=eq.${id}`);
     for (const call of transport.mock.calls) expect(new Headers(call[1].headers).get('authorization')).toBe('Bearer synthetic-token');
   });
   it.each([null, { account_state: 'deleting' }])('denies an unavailable profile', async (profile) => {
     vi.stubEnv('VITE_SUPABASE_URL', 'http://127.0.0.1:54321'); vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_synthetic');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ id })).mockResolvedValueOnce(Response.json(profile)));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ id })).mockResolvedValueOnce(Response.json(true)).mockResolvedValueOnce(Response.json(profile)));
     await expect(verifySession({ headers: { authorization: 'Bearer synthetic-token' } })).rejects.toMatchObject({ status: 403 });
   });
   it('fails closed when Auth cannot be reached', async () => {
@@ -55,5 +56,10 @@ describe('server auth', () => {
     vi.stubEnv('VITE_SUPABASE_URL','http://127.0.0.1:54321'); vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY','sb_publishable_synthetic');
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({ msg:'Synthetic JWT expired',code:'bad_jwt' },{ status:401 })));
     await expect(verifySession({ headers:{ authorization:'Bearer synthetic-expired-token' } })).rejects.toMatchObject({ status:401,message:'Sign in to continue.' });
+  });
+  it('does not start authentication reads for an already cancelled request',async()=>{
+    vi.stubEnv('VITE_SUPABASE_URL','http://127.0.0.1:54321');vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY','sb_publishable_synthetic');const transport=vi.fn();vi.stubGlobal('fetch',transport);
+    const controller=new AbortController();controller.abort();
+    await expect(verifySession({headers:{authorization:'Bearer synthetic-token'}},controller.signal)).rejects.toMatchObject({name:'AbortError'});expect(transport).not.toHaveBeenCalled();
   });
 });

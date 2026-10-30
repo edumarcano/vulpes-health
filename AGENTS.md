@@ -1,6 +1,6 @@
 # Agent instructions — Vulpes
 
-You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification, assets, authenticated application shell, owned settings, encrypted private-payload foundation, manual measurements, CSV preview/import, measurement correction/deletion/export, and deterministic Data analysis. Persistent Ask Vulpes conversations, the bounded synthetic tool loop, and the owned execution inspector are implemented. Direct goals and chat-based pending proposals share explicit approval/rejection, revisions and deterministic progress. Chat proposal workflows have local synthetic verification; production live inference remains unavailable.
+You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification, assets, authenticated application shell, owned settings, encrypted private-payload foundation, manual measurements, CSV preview/import, measurement correction/deletion/export, and deterministic Data analysis. Persistent Ask Vulpes conversations, the bounded synthetic tool loop, and the owned execution inspector are implemented. Owned account export, resumable deletion, bounded retention and guarded local backup/recovery verification are implemented; operational procedures are in `docs/operations/account-lifecycle.md`. Direct goals and chat-based pending proposals share explicit approval/rejection, revisions and deterministic progress. Chat proposal workflows have local synthetic verification; production live inference remains unavailable.
 
 ## Core documentation references
 

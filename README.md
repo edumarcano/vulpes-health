@@ -27,7 +27,9 @@ The production service worker caches only an explicit public-asset list; health
 data, conversations, API responses and private traces remain online. Inspector
 and chart load failures preserve the surrounding workflow. See [PR 15 evidence](docs/evidence/pr15-mobile-pwa.md)
 for local verification and remaining physical-device, assistive-technology and
-hosted gates. Account export/deletion remains PR 16.
+hosted gates.
+
+**Account lifecycle (execution-plan PR 16).** Settings supports complete owned JSON export with explicit trace inclusion and password-confirmed resumable deletion. Deletion fences activity before private purges, preserves uncertain accounting holds, and confirms identity removal through a durable journal. Guarded maintenance, encrypted separate-environment restore verification and operator-assisted recovery use synthetic local infrastructure. See the [operating procedure](docs/operations/account-lifecycle.md). Hosted recovery, real-account operations and family readiness remain separate gates.
 
 ## Planned technology stack
 
@@ -112,7 +114,7 @@ The frontend supports Vite hot reload. Restart the stack after server/API code o
 
 Without configuration, the app shows an honest sign-in-unavailable state. Configure Supabase and provision private accounts using the [account setup guide](docs/setup/private-accounts.md). Protected routes redirect to `/login`; there is no signup interface. Supabase manages the persisted authentication session; app settings and health content remain memory-only.
 
-`GET /api/status` without authorization returns minimal public liveness. With a valid bearer it returns safe feature/role availability; invalid authorization is denied. `/api/settings` GET/PATCH and `/api/data` GET/POST verify the bearer against Auth and use owned reads/narrow transactions. Data supports manual entry, CSV import, correction/deletion, deterministic analysis and selected CSV export. Goals and approvals use owned proposal transactions; conversations, chat and executions retain their M3 contracts. The account-lifecycle endpoint remains unavailable. Data, Settings and Goals operations invoke no model.
+`GET /api/status` without authorization returns minimal public liveness. With a valid bearer it returns safe feature/role availability; invalid authorization is denied. `/api/settings` GET/PATCH and `/api/data` GET/POST verify the bearer against Auth and use owned reads/narrow transactions. Data supports manual entry, CSV import, correction/deletion, deterministic analysis and selected CSV export. Goals and approvals use owned proposal transactions; conversations, chat and executions retain their M3 contracts. `/api/account` supplies owned export and resumable deletion; its status/retry path admits verified deleting identities without enabling ordinary account activity. Data, Settings and Goals operations invoke no model.
 
 ### Verify the foundation
 

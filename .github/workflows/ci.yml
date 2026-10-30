@@ -69,6 +69,8 @@ jobs:
         run: npm run db:start
       - name: Apply migrations from a clean database
         run: npm run db:reset:test
+      - name: Populated lifecycle forward upgrade
+        run: npm run test:lifecycle-upgrade -- --allow-disposable-reset
       - name: Database lint
         run: npm run db:lint
       - name: pgTAP tests
@@ -77,6 +79,10 @@ jobs:
         run: npm run db:types:check
       - name: HTTP and integration tests
         run: npm run test:integration
+      - name: Bounded lifecycle maintenance
+        run: npm run maintenance:cleanup
+      - name: Encrypted separate-environment restore and recovery
+        run: npm run backup:verify
       # This runner rebuilds, provisions synthetic sessions in memory and redacts output.
       # Never upload browser reports, traces, screenshots, or local service logs.
       - name: Playwright Chromium tests

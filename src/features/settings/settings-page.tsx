@@ -6,6 +6,7 @@ import { ownedJson } from '@/lib/api';
 import { useAuth } from '@/lib/auth/auth-context';
 import { SettingsSchema, type Settings, type SettingsPatch } from '../../../shared/auth';
 import { successEnvelopeSchema } from '../../../shared/api';
+import {AccountActions} from './account-actions';
 
 function ProfileForm({ settings,busy,save }: { settings: Settings; busy: boolean; save: (changes: SettingsPatch['changes']) => void }) {
   const [name,setName] = useState(settings.profile.displayName ?? '');
@@ -66,7 +67,7 @@ export function SettingsPage() {
           <BudgetForm key={settings.data.profile.updatedAt} settings={settings.data} busy={mutation.isPending} save={(changes)=>mutation.mutate(changes)} />
           <p className="detail-note">Unknown charges retain their reservation for 24 hours, then settle conservatively when checked or maintained. Provider verification and inference remain unavailable.</p>
         </Card>
-        <Card className="settings-card"><h2>Privacy and availability</h2><dl className="settings-facts"><div><dt>Full AI payload retention</dt><dd>{settings.data.retention.traceDays} days; expired content is unavailable even before cleanup.</dd></div><div><dt>Import staging retention</dt><dd>{settings.data.retention.importStagingHours} hours</dd></div><div><dt>Connections</dt><dd>CSV/manual now; Android Health Connect planned.</dd></div><div><dt>AI</dt><dd>Unavailable. Consent does not enable inference.</dd></div></dl><p className="detail-note">Account export and deletion workflows are not implemented yet. The deployment operator controls the database and encryption keys. Vulpes is not end-to-end encrypted against the operator.</p></Card>
+        <Card className="settings-card"><h2>Privacy and availability</h2><dl className="settings-facts"><div><dt>Full AI payload retention</dt><dd>{settings.data.retention.traceDays} days; expired content is unavailable even before cleanup.</dd></div><div><dt>Import staging retention</dt><dd>{settings.data.retention.importStagingHours} hours</dd></div><div><dt>Connections</dt><dd>CSV/manual now; Android Health Connect planned.</dd></div><div><dt>AI</dt><dd>Unavailable. Consent does not enable inference.</dd></div></dl><p className="detail-note">The deployment operator controls the database and encryption keys. Vulpes is not end-to-end encrypted against the operator.</p></Card><AccountActions />
       </>}
     </div>
   </>;
