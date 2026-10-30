@@ -19,17 +19,17 @@ export async function ownedJson(path: string, token: string, scope: IdentityScop
     return value;
   } finally { owner.release(); }
 }
-export async function ownedDownload(path:string,token:string,scope:IdentityScope,expectedEpoch:number):Promise<void> {
+export async function ownedDownload(path:string,token:string,scope:IdentityScope,expectedEpoch:number,accountRequest?:{action:'export';trace_parts:('input'|'output'|'context'|'usage')[];sensitive_content_acknowledged:boolean}):Promise<void> {
   if(!path.startsWith('/api/'))throw new Error('Invalid application API path.');
   if(scope.epoch!==expectedEpoch || scope.userId===null)throw new DOMException('The account changed.','AbortError');
   const owner=scope.capture();let url:string|undefined;
   try{
-    const response=await fetch(path,{cache:'no-store',signal:owner.signal,headers:{Authorization:`Bearer ${token}`}});
+    const response=await fetch(path,{cache:'no-store',signal:owner.signal,...(accountRequest?{method:'POST',body:JSON.stringify(accountRequest)}:{}),headers:{Authorization:`Bearer ${token}`,...(accountRequest?{'Content-Type':'application/json'}:{})}});
     if(!owner.current())throw new DOMException('The account changed.','AbortError');
     if(!response.ok){const parsed=ErrorEnvelopeSchema.safeParse(await response.json());throw new ApiError(response.status,parsed.success ? parsed.data.error.message : 'The export could not be completed.');}
-    if(!response.headers.get('content-type')?.startsWith('text/csv'))throw new Error('The export was not a CSV file.');
+    if(!response.headers.get('content-type')?.startsWith(accountRequest?'application/json':'text/csv'))throw new Error('The export format could not be verified.');
     const blob=await response.blob();
     if(!owner.current())throw new DOMException('The account changed.','AbortError');
-    url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='vulpes-measurements-v1.csv';link.click();
+    url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=accountRequest?'vulpes-account-v1.json':'vulpes-measurements-v1.csv';link.click();
   }finally{if(url)URL.revokeObjectURL(url);owner.release();}
 }

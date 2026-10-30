@@ -1,8 +1,8 @@
 # Deployment and operating checklist
 
-## 1. What this package does not do
+## 1. Operational scope
 
-It does not provision Vercel, Supabase, Google Cloud, model credits, DNS or a GitHub repository. It does not contain runnable app source. The commands below describe the scripts Codex must create during implementation; do not run `npm install` in the spec-only folder and expect an application.
+The repository contains the application and guarded local verification scripts. It does not provision hosted resources, credits or DNS. Local proof does not approve hosted migrations, real-data use or a family pilot. Follow the [account lifecycle/recovery runbook](../../operations/account-lifecycle.md) for storage inventory, interrupted deletion, retention, restoration and operator-assisted credentials.
 
 ## 2. Intended cost baseline
 
@@ -24,7 +24,7 @@ Use the current supported Node LTS and a pinned package-manager version compatib
 
 Prefer local Supabase for automated integration tests. Use synthetic fixtures only. The browser talks to the local API through a deliberate proxy or `vercel dev`; `vite dev` alone does not make Node function routes work. Provide one documented command that starts a full working local stack.
 
-Required build-created scripts:
+Repository scripts:
 
 | Command | Expected behavior |
 |---|---|
@@ -38,6 +38,8 @@ Required build-created scripts:
 | `npm run test:providers` | Explicit opt-in paid smoke tests, with a bounded budget |
 | `npm run maintenance:cleanup` | Delete expired staging/trace/export payloads |
 | `npm run backup:verify` | Documented backup/restore checks; not merely a file-exists check |
+| `npm run test:lifecycle-upgrade -- --allow-disposable-reset` | Populated forward migration proof on an empty disposable synthetic stack |
+| `npm run account:recover` | Local operator-assisted reset through protected interactive input and session revocation |
 
 Never enable live model tests in ordinary CI. Log only safe operational metadata.
 
@@ -51,7 +53,7 @@ Export and test backups before real use. Keep schema, RLS, functions, Storage ob
 
 ## 6. Vercel setup
 
-Use Vite framework detection and the tested build/output configuration. The example in `config/vercel.example.json` reserves API routes and rewrites only known SPA routes. Confirm direct navigation to each screen and that unknown API paths return API errors rather than `index.html`.
+Use Vite framework detection and the root `vercel.json` build/output and route configuration, including `/api/account` through the Settings entry point. `config/vercel.example.json` is a minimal SPA shape reference. Verify hosted deep links and API errors separately; unknown API paths must not return `index.html`.
 
 Set server secrets only in server environments; the public client receives only Supabase's URL/publishable key and public app metadata. Disable live inference and use synthetic data in preview deployments. Do not give fork/PR previews production credentials or production database access.
 

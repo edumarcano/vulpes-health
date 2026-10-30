@@ -166,9 +166,20 @@ Future evidence references may add document passages and web snapshots. Do not c
 
 ## 8. Export and deletion
 
-Exports contain only the authenticated user's data, a schema version, units/source metadata and available traces chosen by the user. For large exports, stream owned table pages or use a private short-lived artifact; never create a public Storage bucket. Trace export warns that it may include sensitive health content.
+Strict requests/status are defined in [`shared/account.ts`](../../../shared/account.ts). `/api/account` shares the Settings deployment entry point through an explicit rewrite and never accepts an owner ID or query filter.
 
-Account deletion requires a recently reauthenticated session, an explicit confirmation string and cancellation of new inference admission. Return a completion receipt only after owned app data and identity removal succeed. Failed partial deletion remains a visible actionable state. Export/delete endpoints do not allow an arbitrary `user_id` parameter.
+| Request | Contract |
+|---|---|
+| GET | Verified identity returns active state or the owned deletion phase, receipt, timestamps, safe outcome and settlement retry time. |
+| POST `export` | `{action:"export",trace_parts:[],sensitive_content_acknowledged:false}`. Choose `input`, `output`, `context`, `usage`; nonempty selection requires acknowledgement. Active account required. |
+| POST `delete` | `{action:"delete",confirmation:"DELETE MY VULPES ACCOUNT"}`. Password AMR must be within five minutes; refresh alone is insufficient. Atomically fences the account and creates one journal entry. |
+| POST `continue_delete` | `{action:"continue_delete"}`. Verified identity resumes bounded deletion after profile removal; retries cannot recreate content or repeat charges. |
+
+Export is an authenticated `no-store` JSON attachment with schema version 1, safe account email/phone identity, all owned product sections, exact decimal strings, source/units/version metadata, available staging and chosen trace parts. Credentials, sessions, executor authority, opaque continuation content and shared operator configuration are excluded. Trace reads use inspector integrity/expiry checks and explicit unavailable states. Pages contain at most 200 rows; section/data-revision fingerprints are revalidated before sending. Concurrent changes return JSON 409 without an attachment. Capture interval, inventory and integrity hashes describe the output; it is not a transactional backup.
+
+Capture uses an encrypted temporary file and request-only key. Cancellation/error/completion clean the file/key. Account changes abort/discard browser downloads and revoke their object URLs.
+
+Deletion phases are `fenced`, `private_content_purged`, `awaiting_settlement`, `app_data_purged`, `auth_removal_pending`, `completed`. Private purges are bounded/resumable. Unknown charges retain the 24-hour hold; shared app charges and route-cost blocks survive owned ledger removal. Ordinary APIs require active account/live owned session; only status/continuation accepts a verified deleting identity. Completion requires confirmed app/Auth removal. Authentication failure or a lost final response is unconfirmed. See the [operating procedure](../../operations/account-lifecycle.md).
 
 ## 9. Settings foundation
 

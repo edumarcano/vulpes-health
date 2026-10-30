@@ -23,21 +23,21 @@ const RequestMetadata = z.strictObject({
 }).refine(value=>Object.entries(value.headers).every(([key,header])=>key.toLowerCase()==='accept' ? header==='text/event-stream' : key.toLowerCase()==='content-type' && header==='application/json') && value.redactedHeaders.every(name=>['authorization','x-api-key'].includes(name.toLowerCase())));
 
 export class InspectionService {
-  constructor(private readonly context: AuthContext) {}
+  constructor(private readonly context: AuthContext,private readonly signal:AbortSignal=new AbortController().signal) {}
 
   async steps(run: string) {
     const { data, error } = await this.context.db.from('ai_steps').select('*,cost_text:cost_usd::text')
-      .eq('user_id', this.context.userId).eq('run_id', run).order('sequence');
+      .eq('user_id', this.context.userId).eq('run_id', run).order('sequence').abortSignal(this.signal);
     if (error) throw new HttpFailure(503, 'execution_unavailable', 'Execution steps could not be loaded.');
     return data;
   }
 
   async overview(runId: string) {
-    const run = await new ExecutionService(this.context).summary(runId);
+    const run = await new ExecutionService(this.context,undefined,this.signal).summary(runId);
     const steps = await this.steps(runId);
     const [profile,storedRun]=await Promise.all([
-      this.context.db.from('profiles').select('data_revision').eq('user_id',this.context.userId).single(),
-      this.context.db.from('ai_runs').select('data_revision,route_history').eq('user_id',this.context.userId).eq('id',runId).single(),
+      this.context.db.from('profiles').select('data_revision').eq('user_id',this.context.userId).abortSignal(this.signal).single(),
+      this.context.db.from('ai_runs').select('data_revision,route_history').eq('user_id',this.context.userId).eq('id',runId).abortSignal(this.signal).single(),
     ]);
     if (profile.error || storedRun.error) throw new HttpFailure(503,'execution_unavailable','Execution revision could not be checked.');
     const evidenceRevision=run.traceState==='removed' ? 'removed' : profile.data.data_revision===storedRun.data.data_revision ? 'current' : 'stale';
@@ -63,14 +63,14 @@ export class InspectionService {
   }
 
   async evidence(query: Extract<InspectionQuery, { view: 'payload' | 'export' }>): Promise<Evidence> {
-    const summary = await new ExecutionService(this.context).summary(query.run);
+    const summary = await new ExecutionService(this.context,undefined,this.signal).summary(query.run);
     const step = (await this.steps(query.run)).find(item => item.id === query.step);
     if (!step) throw new HttpFailure(404, 'step_not_found', 'The execution step was not found.');
     if (summary.traceState === 'removed') return { state: 'removed' };
     const binding = this.binding(step, query.part);
     if (!binding.id) return { state: summary.traceState === 'incomplete' ? 'incomplete' : query.part === 'input' && summary.traceState === 'expired' ? 'expired' : 'unavailable' };
     const { data, error } = await administrativeClient().from('private_payloads').select('*')
-      .eq('user_id', this.context.userId).eq('id', binding.id).eq('purpose', binding.purpose).maybeSingle();
+      .eq('user_id', this.context.userId).eq('id', binding.id).eq('purpose', binding.purpose).abortSignal(this.signal).maybeSingle();
     if (error) return { state: 'unavailable' };
     if (!data) return { state: summary.traceState === 'incomplete' ? 'incomplete' : 'unavailable' };
     if (Date.parse(data.expires_at) <= Date.now()) return { state: 'expired' };
@@ -102,7 +102,7 @@ export class InspectionService {
     }
     // Recheck the owned binding after decryption: deletion or checkpoint replacement must not expose stale content.
     const latest = (await this.steps(query.run)).find(item => item.id === query.step);
-    const current = await new ExecutionService(this.context).summary(query.run);
+    const current = await new ExecutionService(this.context,undefined,this.signal).summary(query.run);
     if (current.traceState === 'removed') return { state: 'removed' };
     if (!latest || this.binding(latest, query.part).id !== binding.id) return { state: 'unavailable' };
     if (Date.parse(data.expires_at) <= Date.now()) return { state: 'expired' };

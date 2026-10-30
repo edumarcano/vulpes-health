@@ -4,6 +4,16 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-29: PR 16 account lifecycle and recovery
+
+The approved M6 batch adds `/api/account` through the existing Settings deployment entry point. Strict requests derive ownership from verified Auth identity. Ordinary operations require an active profile/live owned session; only account status and deletion continuation accept a verified deleting identity. Password AMR freshness is five minutes; token refresh does not reauthenticate.
+
+Deletion uses explicit durable phases and a small service-only receipt journal without profile/Auth foreign keys. It removes private content through bounded steps, preserves the approved 24-hour uncertain-charge policy, then removes owned accounting/allocation rows, profile and Auth identity. Shared app charges and durable route-cost blocks survive. Completed journal entries remain at least 31 days, covering the approved 30-day encrypted backup maximum. Cancellation receipts and profile reactivation cannot bypass the fence. Maintenance selects remaining work after both late and conservative settlement.
+
+Account export uses owned pages, existing inspector checks, encrypted temporary capture and section/revision fingerprints. Its integrity inventory describes a capture interval, not a transactional backup. Opaque continuation state and executor authority are excluded. The restore rehearsal uses existing Supabase/PostgreSQL tooling and Node cryptography with a separate disconnected destination, retained key versions and a current independent deletion journal. Operator-assisted reset uses protected input and persisted session revocation; no SMTP or new runtime dependency is added.
+
+The operating procedure is [account lifecycle and recovery](operations/account-lifecycle.md). Local evidence and both self-review axes belong to [PR 16 evidence](evidence/pr16-account-lifecycle.md). Hosted infrastructure, real-account recovery/deletion, human identity/handoff, physical devices and family use remain separately gated. PR 14 stays deferred. The combined independent M5/M6 review remains after PR 17; this implementation does not claim milestone acceptance.
+
 ## 2026-10-29: PR 15 static PWA and mobile presentation
 
 PR 15 uses a build-generated public-asset allowlist and a separate data-free

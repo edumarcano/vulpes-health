@@ -125,7 +125,7 @@ All applicable mutations acquire profile, conversation, run, step, app bucket, a
 
 Seven-day envelope expiry is enforced on reads. Bounded maintenance removes expired 90-day terminal execution records only after settling reservations and clearing nullable transcript/proposal links. Core messages and their request receipts remain with conversation history. The authenticated execution inspector resolves payloads only through an owned run and step and retains explicit expiry, removal, corruption and incomplete states.
 
-`live_verification_allocations` binds a synthetic verification batch to one account bucket, admission month, fixture hash, data revision and immutable aggregate ceiling. Only the server can register or read it; it cannot update or delete it. The reservation transaction enforces the batch ceiling even if the ordinary account limit is increased and rejects a changed fixture revision or new month. Pending and conservative charges remain in the same bucket; the smoke command never replenishes it. The guarded local test stack and synthetic fixture are prerequisites, not production inference activation.
+`live_verification_allocations` binds a synthetic verification batch to one account bucket, admission month, fixture hash, data revision and immutable aggregate ceiling. Only the server can register or read it; ordinary verification/maintenance cannot reset or remove it. Account deletion removes the owned allocation only after settlement. The reservation transaction enforces the batch ceiling even if the ordinary account limit is increased and rejects a changed fixture revision or new month. Pending and conservative charges remain in the same bucket; the smoke command never replenishes it. The guarded local test stack and synthetic fixture are prerequisites, not production inference activation.
 
 ### PR 09 conversations
 
@@ -140,3 +140,11 @@ Conversation and cancellation receipts use `audit_events` and contain only reque
 `vertex_policy_approval` holds at most one operator-maintained Google policy approval, binding its version, project, processing location, notice and privacy fingerprint. It contains no credentials. RLS and grants deny ordinary client access. An absent approval rejects Google consent. No migration installs approval.
 
 `ai_runs.route_history` records at most one Everyday-to-Intermediate transition. The service-only handoff transaction checks the execution fence, owned completed orchestration step, consent, remaining requests and eligible task code. Existing paired reservations and the original accounting month remain unchanged. Argon cannot be a handoff target.
+
+### PR 16 account lifecycle
+
+`account_deletion_receipts` holds one owner identity, unique receipt ID, explicit phase, lifecycle timestamps and safe outcome. It has no profile/Auth foreign keys or content. Narrow service RPCs alone mutate it; ordinary clients cannot read it. Unfinished entries persist, completed entries remain at least 31 days, and retained receipts prevent profile recreation/reactivation.
+
+Deletion locks profile before journal and purges private rows before settling/removing accounting. Revision leaves precede proposals/goals; transcript references precede run detachment. Unknown requests retain their original-month 24-hour hold. Profile removal precedes Auth removal; the independent journal bridges that gap. Shared app charges and route-cost blocks remain.
+
+`owned_session_valid_v1()` derives identity/session from signed claims and checks the persisted Auth session. Restrictive read policies and mutation triggers reject revoked sessions. Operator-assisted reset revokes sessions/refresh tokens after changing the password; an unexpired JWT cannot bypass revocation. The [account lifecycle runbook](../../operations/account-lifecycle.md) owns the full inventory and recovery boundary.

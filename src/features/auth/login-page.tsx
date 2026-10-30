@@ -10,8 +10,9 @@ export function LoginPage() {
   const [password,setPassword] = useState('');
   const [email,setEmail] = useState('');
   if (state.kind === 'signed_in') return <Navigate to={['/ask','/goals','/data','/settings'].includes(search.get('returnTo') ?? '') ? search.get('returnTo')! : '/ask'} replace />;
+  if(state.kind==='deleting' || state.kind==='account_unavailable' || state.kind==='deletion_completed')return <Navigate to="/settings" replace />;
   const unavailable = state.kind === 'unconfigured';
-  const busy = state.kind === 'restoring' || state.kind === 'signing_in' || state.kind === 'signing_out';
+  const busy = state.kind === 'restoring' || state.kind === 'checking_account' || state.kind === 'signing_in' || state.kind === 'signing_out';
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault(); const secret = password; setPassword(''); await signIn(email.trim(),secret);
   }
@@ -22,7 +23,7 @@ export function LoginPage() {
         <label>Email<input name="email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} /></label>
         <Button type="submit" disabled={busy}>{state.kind === 'signing_in' ? 'Signing in…' : 'Sign in'}</Button>
-        <p role="status">{state.kind === 'restoring' ? 'Restoring your session…' : state.kind === 'signing_out' ? 'Signing out…' : state.message}</p>
+        <p role="status">{state.kind === 'restoring'||state.kind==='checking_account' ? 'Verifying your account…' : state.kind === 'signing_out' ? 'Signing out…' : 'message' in state?state.message:undefined}</p>
       </form>}
       <p className="detail-note">Private accounts are provisioned by the operator. Public signup is unavailable. Vulpes is a wellness prototype, not a diagnostic or emergency-monitoring service. The operator controls the backend and can access stored data.</p>
     </Card>

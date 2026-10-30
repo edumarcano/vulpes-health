@@ -77,7 +77,8 @@ export class LocalSupabase {
       try {
         await this.admin(`/rest/v1/goals?user_id=eq.${userId}`, 'PATCH', { state:'draft',current_revision_id: null });
         for (const table of cleanupTables) await this.admin(`/rest/v1/${table}?user_id=eq.${userId}`, 'DELETE');
-        await this.admin(`/auth/v1/admin/users/${userId}`, 'DELETE');
+        const removed=await this.request(`/auth/v1/admin/users/${userId}`,'admin',{method:'DELETE'});
+        assert(removed.ok || removed.status===404,'Synthetic Auth cleanup failed.');
       } catch {
         failures.push('Synthetic user cleanup failed; inspect the disposable local database.');
       }

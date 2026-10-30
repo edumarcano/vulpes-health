@@ -13,8 +13,9 @@ insert into public.data_sources(id,user_id,kind,label,source_namespace)
 insert into public.measurements(id,user_id,source_id,metric_key,canonical_value,canonical_unit,original_value,original_unit,observed_at,granularity,fingerprint)
   select reading_id,owner_id,source_id,'weight',70,'kg','70','kg','2026-09-01T23:59:59.123456Z','instant',repeat('a',64) from timestamp_fixture;
 
+insert into auth.sessions(id,user_id) select owner_id,owner_id from timestamp_fixture;
 set local role authenticated;
-select set_config('request.jwt.claims',json_build_object('sub',(select owner_id from timestamp_fixture),'role','authenticated')::text,true);
+select set_config('request.jwt.claims',json_build_object('sub',(select owner_id from timestamp_fixture),'role','authenticated','session_id',(select owner_id from timestamp_fixture))::text,true);
 select throws_ok(format('select public.add_measurement_v1(%L::jsonb)',jsonb_build_object(
   'action','add_measurement','client_request_id',gen_random_uuid(),
   'source',jsonb_build_object('kind','new','label','Synthetic rejected source','origin_app',null,'device_label',null),

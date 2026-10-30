@@ -44,9 +44,10 @@ export function requestHash(value: unknown): string {
 
 export class ExecutionService {
   private readonly db = administrativeClient();
-  constructor(private readonly context: AuthContext, private readonly policy: { maxRunCostUSD: string } = executionPolicy) {}
+  constructor(private readonly context: AuthContext, private readonly policy: { maxRunCostUSD: string } = executionPolicy,private readonly signal?:AbortSignal) {}
   private async rpc<K extends keyof Functions>(name: K, args: Functions[K]['Args']) {
-    const { data, error } = await this.db.rpc(name, args);
+    this.signal?.throwIfAborted();const query=this.db.rpc(name,args);
+    const { data, error } = await (this.signal?query.abortSignal(this.signal):query);this.signal?.throwIfAborted();
     if (error) {
       const codes: Record<string,number> = { run_not_found:404, account_unavailable:403, run_policy_denied:403, executor_denied:403,
         idempotency_conflict:409, run_not_writable:409, step_in_progress:409, settlement_conflict:409,

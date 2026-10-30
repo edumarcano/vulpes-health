@@ -9,6 +9,7 @@ import { DataPage } from '@/features/data/data-page';
 import { GoalsPage } from '@/features/goals/goals-page';
 import { SettingsPage } from '@/features/settings/settings-page';
 import { Button } from '@/components/ui/button';
+import {DeletionPage} from '@/features/settings/deletion-page';
 
 const destinations = [
   { to: '/ask', label: 'Ask', icon: MessageCircle },
@@ -20,7 +21,8 @@ const destinations = [
 function Protected({ children }: { children: ReactNode }) {
   const { state,scope } = useAuth();
   const { pathname } = useLocation();
-  if (state.kind === 'restoring') return <p role="status">Restoring your session…</p>;
+  if (state.kind === 'restoring'||state.kind==='checking_account') return <p role="status">Verifying your account…</p>;
+  if(state.kind==='deleting'||state.kind==='deletion_completed'||state.kind==='account_unavailable')return <DeletionPage />;
   if (state.kind !== 'signed_in') return <Navigate to={`/login?returnTo=${encodeURIComponent(pathname)}`} replace />;
   return <div key={`${state.session.user.id}:${scope.epoch}`}>{children}</div>;
 }

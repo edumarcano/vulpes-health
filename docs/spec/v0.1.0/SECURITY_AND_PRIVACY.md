@@ -47,6 +47,8 @@ Normal health and account rows rely on access controls and the managed service's
 | Raw uploaded CSV | Not retained after processing | Original values and mapping provenance remain in records |
 | App caches | Revision-bound, tenant-bound, short-lived | Invalidate on edits, deletion and account switch |
 | Export artifact, if temporary storage is used | 24 hours or shorter | Private, authenticated, no public URL |
+| Encrypted operational backups | Maximum 30 days | Apply current deletion journal before restored access |
+| Completed deletion journal entries | At least 31 days | No content/credentials; outlives profile/Auth and backup window |
 
 Expiration must be enforced on reads even before physical cleanup. Perform bounded opportunistic cleanup plus an operator maintenance command for v0.1.0; document how to run it after inactivity. No paid/background model task is necessary. A routine infrastructure cron can be considered later, not used as an implicit promise that idle data was physically deleted at the exact expiry second.
 
@@ -58,7 +60,7 @@ Exports include schema version, units, timestamps, source information and user-c
 
 Account deletion first blocks new runs, requests cancellation, purges owned app records/private payloads/storage artifacts, then removes the Auth identity. Test interrupted cleanup and safe retries. No residual online row may be used to personalize later responses.
 
-Offline backups may retain data until their documented rotation expires. Keep encrypted backups for a stated maximum (proposed 30 days) and document how deletion requests apply during restoration. Never promise instant deletion from third-party provider abuse/security records beyond available contractual controls.
+Offline backups may retain data until their rotation expires, at most 30 days. Restoration requires current independently retained deletion records; missing evidence blocks access. Revoke restored sessions before access. Never promise instant deletion from third-party provider abuse/security records beyond available contractual controls. The [account lifecycle runbook](../../operations/account-lifecycle.md) owns maintenance, restoration and operator-assisted recovery procedures.
 
 Before family use, perform a restore to a separate nonproduction database. Verify ownership policies, row counts and encryption recovery. A CSV export is not a complete database/auth/policy backup.
 

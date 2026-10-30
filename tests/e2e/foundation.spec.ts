@@ -133,6 +133,7 @@ test('built HTTP surface preserves JSON errors and security headers', async ({ r
 test('dark navigation and card accent text meet normal-text contrast', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/ask');
+  await expect(page.getByRole('heading',{name:'Ask Vulpes',exact:true})).toBeVisible();
   const ratios = await page.locator('.nav-link.active, .welcome-card .eyebrow').evaluateAll((elements) => {
     function luminance(rgb: string): number {
       const values = rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number).map((value) => {
