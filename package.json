@@ -8,6 +8,8 @@
   },
   "packageManager": "npm@11.18.0",
   "scripts": {
+    "evidence:release": "tsx scripts/release-evidence.ts",
+    "test:spec": "python docs/spec/v0.1.0/scripts/validate_spec_package.py",
     "maintenance:cleanup": "tsx scripts/cleanup.ts",
     "backup:verify": "tsx scripts/backup-verify.ts",
     "account:recover": "tsx scripts/operator-recover.ts",

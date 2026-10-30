@@ -1,0 +1,788 @@
+[
+  {
+    "id": "SEC-01",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-02",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-03",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-04",
+    "checks": [
+      "bundle",
+      "build"
+    ],
+    "scope": "Built public assets: secret canaries, source-map exclusion and server/provider/test-harness boundary scan. Hosted preview configuration remains a separate gate.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-05",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-06",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-07",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "SEC-08",
+    "checks": [
+      "integrationThreads",
+      "dbTests",
+      "browser"
+    ],
+    "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+    "external": "Hosted deep-link/API rewrite and CSP/header behavior requires an approved synthetic deployment.",
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-01",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-02",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-03",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-04",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-05",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-06",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-07",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-08",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-09",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-10",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-11",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-12",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-13",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-14",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "DATA-15",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Exact deterministic fixtures, import/correction/replay HTTP transactions and built-browser Data workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "GOAL-01",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Pending-only proposals, explicit approvals, replay/hash/owner/version guards and exact deterministic progress.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "GOAL-02",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Pending-only proposals, explicit approvals, replay/hash/owner/version guards and exact deterministic progress.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "GOAL-03",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Pending-only proposals, explicit approvals, replay/hash/owner/version guards and exact deterministic progress.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "GOAL-04",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Pending-only proposals, explicit approvals, replay/hash/owner/version guards and exact deterministic progress.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "GOAL-05",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Pending-only proposals, explicit approvals, replay/hash/owner/version guards and exact deterministic progress.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "GOAL-06",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "browser"
+    ],
+    "scope": "Pending-only proposals, explicit approvals, replay/hash/owner/version guards and exact deterministic progress.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "AI-01",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Current v4 real-model missing-data behavior not evaluated.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-02",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Current v4 real-model unavailable-index behavior not evaluated.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-03",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Current v4 real-model adverse safety scenarios not evaluated; synthetic guards are not clinical validation.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-04",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Current v4 real-model association/causality behavior not evaluated.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-05",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Current v4 real-model research/citation behavior not evaluated.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-06",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "AI-07",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Luna/Flash current-bound live tool/handoff evidence remains absent; production unavailable.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-08",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Scripted follow-up resolution does not establish current v4 real-model contextual quality.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-09",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": "Current-bound live escalation cost/privacy/access evidence remains absent.",
+    "applicability": "required"
+  },
+  {
+    "id": "AI-10",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "evaluations",
+      "providers",
+      "browser"
+    ],
+    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
+    "external": null,
+    "applicability": "optional_disabled"
+  },
+  {
+    "id": "COST-01",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "COST-02",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "COST-03",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "COST-04",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "COST-05",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "COST-06",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "COST-07",
+    "checks": [
+      "unit",
+      "integrationThreads",
+      "executions"
+    ],
+    "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "TRACE-01",
+    "checks": [
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "TRACE-02",
+    "checks": [
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "TRACE-03",
+    "checks": [
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "TRACE-04",
+    "checks": [
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "TRACE-05",
+    "checks": [
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "TRACE-06",
+    "checks": [
+      "integrationThreads",
+      "executions",
+      "browser"
+    ],
+    "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "UI-01",
+    "checks": [
+      "browser",
+      "development"
+    ],
+    "scope": "Chromium viewport/theme/reduced-motion/text-zoom, focus, DOM labels and synthetic failure states.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "UI-02",
+    "checks": [
+      "browser",
+      "development"
+    ],
+    "scope": "Chromium viewport/theme/reduced-motion/text-zoom, focus, DOM labels and synthetic failure states.",
+    "external": "Physical on-screen keyboard, safe areas and installed PWA behavior not tested.",
+    "applicability": "required"
+  },
+  {
+    "id": "UI-03",
+    "checks": [
+      "browser",
+      "development"
+    ],
+    "scope": "Chromium viewport/theme/reduced-motion/text-zoom, focus, DOM labels and synthetic failure states.",
+    "external": "Real screen reader and physical assistive-technology usability not tested.",
+    "applicability": "required"
+  },
+  {
+    "id": "UI-04",
+    "checks": [
+      "browser",
+      "development"
+    ],
+    "scope": "Chromium viewport/theme/reduced-motion/text-zoom, focus, DOM labels and synthetic failure states.",
+    "external": "Physical device legibility remains unverified; local contrast/zoom/motion checks are bounded evidence.",
+    "applicability": "required"
+  },
+  {
+    "id": "UI-05",
+    "checks": [
+      "browser",
+      "development"
+    ],
+    "scope": "Chromium viewport/theme/reduced-motion/text-zoom, focus, DOM labels and synthetic failure states.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "UI-06",
+    "checks": [
+      "browser",
+      "development"
+    ],
+    "scope": "Chromium viewport/theme/reduced-motion/text-zoom, focus, DOM labels and synthetic failure states.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "OPS-01",
+    "checks": [
+      "pwa",
+      "browser"
+    ],
+    "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "OPS-02",
+    "checks": [
+      "integrationThreads",
+      "browser",
+      "upgrade",
+      "cleanup"
+    ],
+    "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "OPS-03",
+    "checks": [
+      "integrationThreads",
+      "browser",
+      "upgrade",
+      "cleanup"
+    ],
+    "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "OPS-04",
+    "checks": [
+      "restore",
+      "dbTests"
+    ],
+    "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+    "external": "Separate local encrypted restore passes do not establish hosted backup rotation/key custody/cutover recovery.",
+    "applicability": "required"
+  },
+  {
+    "id": "OPS-05",
+    "checks": [
+      "restore",
+      "integrationThreads"
+    ],
+    "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+    "external": "Local operator reset/session revocation does not verify human identity/credential handoff or an invited nonoperator hosted flow.",
+    "applicability": "required"
+  },
+  {
+    "id": "OPS-06",
+    "checks": [
+      "providers"
+    ],
+    "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+    "external": "No current configuration-bound live smoke for configured generation roles; all unavailable, decision disabled.",
+    "applicability": "required"
+  },
+  {
+    "id": "MOD-01",
+    "checks": [
+      "lint",
+      "unit",
+      "integrationThreads",
+      "providers"
+    ],
+    "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "MOD-02",
+    "checks": [
+      "lint",
+      "unit",
+      "integrationThreads",
+      "providers"
+    ],
+    "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "MOD-03",
+    "checks": [
+      "lint",
+      "unit",
+      "integrationThreads",
+      "providers"
+    ],
+    "scope": "Decision scoring remains disabled while synthetic Everyday tool loop, Data and goal services operate.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "MOD-04",
+    "checks": [
+      "lint",
+      "unit",
+      "integrationThreads",
+      "providers"
+    ],
+    "scope": "Manual/CSV/fixture-only Health Connect normalization equivalence; native Android delivery remains out of scope.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "MOD-05",
+    "checks": [
+      "lint",
+      "unit",
+      "integrationThreads",
+      "providers"
+    ],
+    "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+    "external": null,
+    "applicability": "required"
+  },
+  {
+    "id": "MOD-06",
+    "checks": [
+      "integrationThreads",
+      "browser",
+      "restore"
+    ],
+    "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+    "external": null,
+    "applicability": "required"
+  }
+]
