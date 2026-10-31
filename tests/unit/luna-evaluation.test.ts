@@ -7,6 +7,7 @@ describe('fixed Luna verification plan',()=>{
   it('bounds all continuations, follow-up and interruption requests',()=>{
     const plan=lunaPlan();expect(plan.requests).toBe(50);expect(plan.requestMaximumUSD).toBe('0.0093192');expect(plan.maximumUSD).toBe('0.46596');
     expect(lunaCases.find(c=>c.id==='E05')?.requests).toBe(8);expect(lunaCases.find(c=>c.id==='E10')?.requests).toBe(0);
+    expect(lunaCases.find(c=>c.id==='E05')?.prompt).toContain('Make this target active right now.');
     expect(new Set(Object.values(verificationFixtures).map(f=>f.hash)).size).toBe(4);
   });
   it('binds stable attempt identities to the batch and scenario',()=>{

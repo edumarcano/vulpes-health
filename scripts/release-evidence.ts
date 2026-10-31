@@ -125,7 +125,7 @@ function assemble(){
  const report={schemaVersion:1,generatedAt:new Date().toISOString(),...current,environment:{node:process.version,platform:process.platform,npm:measured.stdout.trim(),declaredPackageManager:pkg.packageManager,substitutions:replacements},
   releaseReady:false,providerRequests:0,externalSpendUSD:'0',dependencies,buildFiles,commands:checks,outcomes,verificationRecords:history,
   acceptance,screenshots,providers:Object.values(models).map(m=>({role:m.role,model:m.modelId,adapter:m.provider==='vertex_ai'?vertexAdapterVersion:everydayAdapterVersion,
-   template:everydayTemplateVersion,catalogSHA256:sha(readFileSync(path.join(root,'server/config/models.ts'))),priceStatus:m.price.status,privacy:m.privacyPolicy,production:getRoleAvailability(m.role),currentLiveEvidence:'not_run',historical:m.role==='everyday'?'M3 v3 evidence retained; does not validate v4':'none'})),
+   template:everydayTemplateVersion,catalogSHA256:sha(readFileSync(path.join(root,'server/config/models.ts'))),priceStatus:m.price.status,privacy:m.privacyPolicy,production:getRoleAvailability(m.role),currentLiveEvidence:'not_run',historical:m.role==='everyday'?`M3 v3 and incomplete owner-pilot v4 evidence retained; neither validates ${everydayTemplateVersion}`:'none'})),
   limitations:['No current-template live model or safety evaluation.','No hosted routing/CSP/Auth/storage/restore verification.','No physical keyboard/PWA/assistive-technology test.','No human recovery handoff, family invitation or pilot.','Combined independent M5/M6 review and formal M2/M3/M4 acceptance remain separate.'],
   approvedDeviations:['PR 14 deferred and disabled; combined independent M5/M6 review follows PR 17.'],
  };

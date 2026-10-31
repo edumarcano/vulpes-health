@@ -184,15 +184,9 @@ The last command explicitly refreshes the tracked provider evidence report. Ordi
 
 `npm run test:evaluations -- --write-report` runs the synthetic control cases and writes a machine-readable report. It does not assess a live model.
 
-`npm run test:providers -- --mode=live --role=everyday` exits with `live_opt_in_required` before credential discovery. With spend flags and the switch enabled, the changed v4 prompt fails with `capability_evidence_mismatch`; the reviewed v2 capability record is retained. A future live batch requires separate approval of the selected model, complete rates, privacy/capability evidence and an exact aggregate ceiling. Configure the local synthetic stack, trace key, provider credential, a current-month operator app bucket, and a fresh `VULPES_SMOKE_BATCH_ID`; keep the same ID and ceiling for all attempts. After those gates are approved, run `npm run test:providers -- --mode=live --role=everyday --allow-spend --max-cost-usd=<approved-ceiling> --write-report`. A separately authorized cancellation attempt adds `--scenario=cancel` and consumes the same allocation. The CLI also requires a unique `--attempt-id=<UUID>` for each authorized attempt and never automatically retries or replenishes the batch. Do not reset its local database while spend is uncertain. A live pass and the independent M3 review are still required for full M3 acceptance; the CLI does not enable production inference.
+`npm run test:providers -- --mode=live --role=everyday` refuses requests without explicit spend opt-in before credential discovery. Ordinary verification must omit spend flags. Current synthetic Luna verification uses the fixed-case, aggregate-budget runner in [the owner/operator procedure](docs/operations/luna-verification.md), with a dedicated disposable stack and private server-side credentials.
 
-For a separately approved batch on the dedicated local test stack, an operator can create the current-month app bucket once using PostgreSQL. Substitute the approved numeric ceiling; an existing bucket causes an error and must not be silently increased:
-
-```powershell
-docker exec supabase_db_vulpes-health-pr03-test psql -U postgres -d postgres -c "insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values ('app',date_trunc('month',clock_timestamp() at time zone 'UTC')::date,0.01)"
-```
-
-The provider command reads the shell environment; it does not automatically load `.env.local`. Set the local trace key and server-only credential in that environment only after approval. `server/config/models.ts` must contain the verified price snapshot, and `server/config/everyday-verification.ts` must contain the matching approved capability/privacy record. Current mismatched or absent evidence fails closed.
+The authorized v4 batch stopped after a goal-proposal validation failure: 14 requests, $0.001251535 reported spend, zero reserved. [Observed evidence](docs/evidence/luna-v4-live.md) preserves the failure and partial results. The v5 tool-instruction repair passes offline checks but has no live acceptance. A new batch requires fresh approval; do not reuse or reset the failed batch. Production approval remains absent and its run ceiling remains zero. No provider smoke grants deployment, real-data, optional-model or production activation permission.
 
 ## Privacy and license
 

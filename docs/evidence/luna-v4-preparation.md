@@ -1,6 +1,6 @@
 # Luna v4 verification preparation
 
-Base: `2e13a09b8af8317d57ef6e655457b08f048d48b4`, stacked on open PR #26. This packet prepares the approved current-Luna verification step. Live acceptance is **not run** and production stays disabled; no external inference or infrastructure mutation occurred.
+Historical preparation record at `efe629b`, based on `2e13a09b8af8317d57ef6e655457b08f048d48b4` and stacked on PR #26. The results below describe preparation before owner authorization. The subsequent authorized batch failed at E05; [current live results and v5 repair](luna-v4-live.md) supersede its pending-action status. Production stays disabled.
 
 ## Public evidence and bounded proposal
 

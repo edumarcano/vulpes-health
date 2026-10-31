@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: Stopped Luna batch and comparable-method guidance
+
+The owner approved one synthetic-only $0.50 batch, the screening/flagged-retention exception and account privacy controls. A dedicated nonrecurring capped key replaced an unsuitable recurring-limit key before dispatch. The v4 batch stopped at E05 after 14 requests, $0.001251535 settled usage and zero held reservations; provider key metadata matched the ledger. Luna combined a seven-day-average baseline with latest-value current tracking. The server rejected it without saving a proposal/goal. No subsequent case or paid retry was sent.
+
+The shared model instruction now exposes the existing comparable-method rule for both proposals and revisions. Duplicating lengthy guidance in both tool descriptions overflowed the bounded goal follow-up during local testing; the compact shared instruction passes that unchanged workflow without raising limits. Server validation/approval authority, model, effort and token limits remain unchanged. Advance the template to v5 so incomplete v4 results cannot count as current acceptance. The repair is verified offline, not live. Preserve the failed allocation and private evidence; a new full v5 batch needs fresh approval, proposed at $0.47 additional maximum. Production evidence remains null, run ceiling zero and optional models disabled. [Observed evidence and review](evidence/luna-v4-live.md).
+
 ## 2026-10-31: Current Luna verification preparation
 
 Refresh the public conservative rate snapshot without changing model identity, effort or token limits. Bind public capability evidence to v4. Add fixed empty, sparse heart-rate and source-injection fixtures behind the existing immutable verification allocations; original scale fixture identity remains valid. A fixed-case operator runner uses one aggregate app ceiling, deterministic attempt identities, create-only plan bindings and no automatic model retries. Structural checks leave semantic model assessment pending. Owner consent, key/privacy checks and separate capped spending approval remain required; production approval is not installed. [Procedure](operations/luna-verification.md).

@@ -48,12 +48,12 @@ Every canonical acceptance ID has a row. `localStatus` describes only the named 
 
 | Role | Current binding | Evidence and required action |
 |---|---|---|
-| Everyday | Luna, Responses v2 adapter, `vulpes-everyday-v4`, catalog limits and ZDR policy | M3 v3 live tool-loop/cancellation/disconnect and exact inspection evidence is historical. Public rates and capability evidence now bind v4. Account access, actual privacy-compatible routing, bounded live batch and real synthetic safety/evaluation evidence still require separate authorization. Production smoke approval remains absent. |
-| Intermediate | Flash, Vertex adapter, current v4 template, explicit Google project/location/policy | Local wire/handoff tests only. Prices, account access, accepted region/retention, capability/privacy evidence, terminal usage/cache billing and live tool/failure smoke remain unverified. |
+| Everyday | Luna, Responses v2 adapter, `vulpes-everyday-v5`, catalog limits and ZDR policy | Authorized v4 batch stopped at E05: 14 requests, $0.001251535, zero reserved. Partial results and rejected mixed-method proposal are retained. Tool guidance is repaired in v5; its full live batch needs fresh approval. Production smoke approval remains absent. |
+| Intermediate | Flash, Vertex adapter, current v5 template, explicit Google project/location/policy | Local wire/handoff tests only. Prices, account access, accepted region/retention, capability/privacy evidence, terminal usage/cache billing and live tool/failure smoke remain unverified. |
 | Advanced | Argon, Vertex adapter, backend-only | Same external verification gaps as Flash. Argon remains excluded from chat even if a future smoke succeeds. |
 | Decision | Separate Decisions interface, disabled | PR 14 and AI-10 remain deferred. No activation or comparative quality/cost claim. MOD-03 verifies the application without it. |
 
-The generated inventory hashes the tested source through its candidate digest. Catalog prices and older public records are dated snapshots, not a fresh provider lookup. No provider documentation, account settings or prices were refreshed during this offline PR.
+The generated inventory hashes the tested source through its candidate digest. Catalog prices and older public records are dated snapshots, not a fresh provider lookup. The original offline release report did not refresh provider documentation, account settings or prices. The separately authorized owner-pilot batch refreshed public rates, confirmed key limits and recorded owner-confirmed privacy settings; see [live evidence](../evidence/luna-v4-live.md).
 
 The generated adapter/template fields identify the configured provider family's generation implementation. For the disabled decision role they do not represent an implemented Decisions adapter or decision prompt; PR 14 supplies neither in this candidate. Use its disabled availability and this inventory's separate capability boundary.
 
@@ -92,4 +92,4 @@ OpenRouter consent version `openrouter_zdr_v2` describes the announced screening
 
 Credentials are not needed for ordinary verification. Later, supply provider and administrative keys only through an ignored local environment file or approved server-side deployment secret settings. Never paste keys into chat, command arguments, screenshots or `VITE_` variables. The exact dashboard procedure and spending ceiling must accompany the separate live-verification approval request.
 
-Current Luna preparation and the required owner setup/spending decision are owned by [the Luna verification procedure](luna-verification.md). Public capability evidence now binds v4; actual current-model results remain not run.
+Current Luna results and the next owner spending decision are owned by [the Luna verification procedure](luna-verification.md). The failed v4 batch is retained; public capability evidence binds the repaired v5 template, whose live results remain not run. Hosting/security/recovery and device gates cannot be marked complete from partial provider evidence.
