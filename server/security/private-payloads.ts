@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { UUIDSchema } from '../../shared/primitives.js';
+import { UUIDSchema,ISOInstantSchema } from '../../shared/primitives.js';
 import type { AuthContext } from '../auth/session.js';
 import { administrativeClient } from '../db/administrative.js';
 import { HttpFailure } from '../http/failure.js';
@@ -19,10 +19,15 @@ export async function cleanupExpiredData(ownerId: string | null = null) {
   if (error || !data || typeof data!=='object' || Array.isArray(data) || typeof data.payloadsRemoved!=='number' || typeof data.batchesExpired!=='number' || typeof data.workCount!=='number') throw new HttpFailure(503, 'payload_unavailable', 'Private payload cleanup is unavailable.');
   return {payloadsRemoved:data.payloadsRemoved,batchesExpired:data.batchesExpired,workCount:data.workCount};
 }
+export async function payloadExpiry(purpose:PayloadPurpose):Promise<string> {
+  const {data,error}=await administrativeClient().rpc('private_payload_expiry_v1',{p_purpose:PayloadPurposeSchema.parse(purpose)});
+  const expiry=ISOInstantSchema.safeParse(data);
+  if(error||!expiry.success)throw new HttpFailure(503,'payload_unavailable','Private payload expiry could not be verified.');
+  return new Date(expiry.data).toISOString();
+}
 export async function writePayload(context: AuthContext, purpose: 'import_staging', bytes: Uint8Array) {
   const checkedPurpose = PayloadPurposeSchema.parse(purpose);
-  const ttl = checkedPurpose === 'import_staging' ? 24 * 3600_000 : 7 * 24 * 3600_000;
-  const expiresAt = new Date(Date.now() + ttl).toISOString();
+  const expiresAt = await payloadExpiry(checkedPurpose);
   try {
     const envelope = encryptBytes({ id: randomUUID(), user_id: context.userId, purpose: checkedPurpose, expires_at: expiresAt }, bytes, readEncryptionKeys());
     const { data, error } = await administrativeClient().rpc('store_private_payload_v1', { p_payload: envelope });

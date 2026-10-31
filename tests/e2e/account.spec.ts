@@ -1,6 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {accounts,signIn,restrictNetwork} from './auth-helpers';
+const sessionTokens=JSON.parse(process.env.VULPES_TEST_ACCOUNTS_JSON??'[]') as Array<{token:string}>;
 
 test.beforeEach(async({page})=>{await restrictNetwork(page);});
 async function initiate(page:Page,index:number){
@@ -54,4 +55,30 @@ test('account lifecycle discards an export response after sign-out',async({page}
  await page.route('**/api/account',async route=>{if(route.request().method()!=='POST'){await route.continue();return;}const response=await route.fetch();started();await waiting;await route.fulfill({response}).catch(()=>undefined);});
  await page.getByRole('button',{name:'Download account JSON'}).click();await captured;await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page.getByRole('heading',{name:'Sign in to Vulpes'})).toBeVisible();release();
  await expect(page.locator('html')).not.toHaveAttribute('data-account-download','created');
+});
+
+test('account lifecycle same-owner token refresh preserves a pending deletion continuation',async({page})=>{
+ await initiate(page,7);
+ let release!:()=>void;let started!:()=>void;
+ const gate=new Promise<void>(resolve=>{release=resolve;});const reached=new Promise<void>(resolve=>{started=resolve;});
+ await page.route('**/api/account',async route=>{
+  if(route.request().postDataJSON()?.action==='continue_delete'){started();await gate;}
+  await route.continue().catch(()=>undefined);
+ });
+ const isContinuation=(request:import('@playwright/test').Request)=>request.url().endsWith('/api/account')&&request.method()==='POST'&&request.postDataJSON()?.action==='continue_delete';
+ const outcome=Promise.race([page.waitForResponse(r=>isContinuation(r.request())).then(r=>r.status()),page.waitForEvent('requestfailed',{predicate:isContinuation}).then(()=>0)]);
+ try{
+  await page.getByRole('button',{name:'Continue account deletion',exact:true}).click();await reached;
+  const checked=page.waitForResponse(r=>r.url().endsWith('/api/account')&&r.request().method()==='GET');
+  await page.evaluate((accessToken)=>{const key='vulpes.auth.session.v1';const session=JSON.parse(localStorage.getItem(key)!);session.access_token=accessToken;const channel=new BroadcastChannel(key);channel.postMessage({event:'TOKEN_REFRESHED',session});channel.close();},sessionTokens[7]!.token);
+  expect((await checked).status()).toBe(200);
+  await expect(page.getByRole('heading',{name:'Account deletion in progress'})).toBeVisible();
+  release();expect(await outcome).toBe(200);
+  await expect(page.getByRole('alert')).not.toContainText('completion is unconfirmed');
+  const next=page.waitForRequest(isContinuation);const response=page.waitForResponse(r=>isContinuation(r.request()));
+  await page.getByRole('button',{name:'Continue account deletion',exact:true}).click();
+  const request=await next;
+  expect((await response).status()).toBe(200);
+  expect(request.headers().authorization==='Bearer '+sessionTokens[7]!.token).toBe(true);
+ }finally{release();}
 });

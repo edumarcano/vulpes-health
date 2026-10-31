@@ -1,6 +1,6 @@
 # Release evidence and deployment handoff
 
-Vulpes is **not release ready or pilot authorized**. Local synthetic verification does not establish current-model quality, hosted behavior, physical-device usability or a supported family credential handoff. The [generated report](../evidence/release/m6-local.json) owns current recorded local outcomes; the [PR 17 evidence](../evidence/pr17-integrated-acceptance.md) explains their scope and remaining gates.
+Vulpes is **not release ready or pilot authorized**. Local synthetic verification does not establish current-model quality, hosted behavior, physical-device usability or a supported family credential handoff. The [generated report](../evidence/release/m6-local.json) preserves PR 17's recorded outcomes; the [PR 17 evidence](../evidence/pr17-integrated-acceptance.md) explains their scope and remaining gates. The [M5/M6 remediation record](../evidence/m56-review-remediation.md) owns follow-up local verification without overwriting historical failures.
 
 ## Reproduce local evidence
 

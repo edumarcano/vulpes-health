@@ -64,6 +64,8 @@ Run after inactivity/interruption. The command refuses hosted/linked stacks and 
 | Supabase Storage | Disabled. Restore verification refuses nonempty object storage without supported object-byte recovery. |
 | Backups and independent journal copies | Encrypted/access-controlled, separately managed with keys; never public or source-controlled |
 
+PostgreSQL assigns staging and AI payload expiry before application encryption. The expiry remains authenticated with the ciphertext; application/database clock differences cannot extend the stored retention ceiling. Expired pending proposal bodies are unavailable through authenticated row reads and account export before maintenance runs.
+
 ## Separate-environment backup rehearsal
 
 ```sh

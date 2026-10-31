@@ -110,3 +110,26 @@ test('Ask conversation mutation failures stay in the UI without an unhandled rej
   await page.route('**/api/conversations',async route=>{if(route.request().method()==='POST')await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'conversations_unavailable',message:'Synthetic conversation storage unavailable.',retryable:false},request_id:randomUUID()})});else await route.continue();});
   await page.getByRole('button',{name:'New conversation',exact:true}).click();await expect(page.getByText('Synthetic conversation storage unavailable.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New conversation',exact:true})).toBeEnabled();expect(errors).toEqual([]);
 });
+
+test('mobile inspector remains open across the final persisted-message refresh',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:'light',reducedMotion:'reduce'});
+ const headers={Authorization:`Bearer ${chatAccount.token}`};
+ const preview=await page.request.post('/api/data',{headers,data:{action:'preview_csv',client_request_id:randomUUID(),csv:readFileSync('docs/spec/v0.1.0/fixtures/measurements-synthetic.csv','utf8'),source:{kind:'new',label:'Synthetic inspector refresh',origin_app:null,device_label:null},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}}});
+ expect(preview.status()).toBe(200);const p=(await preview.json()).data;
+ expect((await page.request.post('/api/data',{headers,data:{action:'commit_import',batch_id:p.batch_id,payload_hash:p.payload_hash,client_request_id:randomUUID()}})).status()).toBe(200);
+ await start(page);
+ let release!:()=>void;let reached!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});const held=new Promise<void>(resolve=>{reached=resolve;});let captured=false;let heldUrl='';
+ await page.route('**/api/conversations?*',async route=>{
+  if(!captured&&new URL(route.request().url()).searchParams.get('view')==='messages'){
+   captured=true;heldUrl=route.request().url();const response=await route.fetch();reached();await gate;await route.fulfill({response}).catch(()=>undefined);
+  }else await route.continue();
+ });
+ try{
+  await page.getByLabel('Message Ask Vulpes',{exact:true}).fill('How has my imported weight changed?');await page.getByRole('button',{name:'Send',exact:true}).click();
+  await expect(page.getByText('Response saved.',{exact:true})).toBeVisible();await held;
+  await page.getByRole('button',{name:'Inspect execution',exact:true}).click();
+  const inspector=page.getByRole('dialog',{name:'Execution inspector'});await expect(inspector.getByRole('heading',{name:'Step 5: generation'})).toBeVisible();
+  const refreshed=page.waitForResponse(r=>r.url()===heldUrl);release();expect((await refreshed).status()).toBe(200);
+  await expect(page.getByText(/Run completed · reported/)).toBeVisible();await expect(inspector).toBeVisible();
+ }finally{release();}
+});
