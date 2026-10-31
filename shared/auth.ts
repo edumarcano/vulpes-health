@@ -23,11 +23,12 @@ export const SettingsSchema = z.strictObject({
   providerConsents: z.array(ProviderConsentSchema).length(2),
   retention: z.strictObject({ traceDays: z.literal(7), importStagingHours: z.literal(24) }),
   budget: BudgetStateSchema,
+  inferenceAvailability:z.object({state:z.enum(['available','unavailable','disabled']),reason:z.string()}).optional(),
 });
 export const AuthenticatedStatusSchema = z.strictObject({
-  status: z.literal('ok'), features: z.strictObject({ settings: z.literal(true), healthWorkflows: z.literal(true), inference: z.literal(false) }),
+  status: z.literal('ok'), features: z.strictObject({ settings: z.literal(true), healthWorkflows: z.literal(true), inference: z.boolean() }),
   roleDetails:z.record(z.string(),z.strictObject({state:z.enum(['available','unavailable','disabled']),reason:z.string()})).optional(),
-  roles: z.strictObject({ everyday: z.literal('unavailable'), intermediate: z.literal('unavailable'), advanced: z.literal('unavailable'), decision: z.literal('disabled') }),
+  roles: z.strictObject({ everyday: z.enum(['available','unavailable']), intermediate: z.literal('unavailable'), advanced: z.literal('unavailable'), decision: z.literal('disabled') }),
 });
 export type Provider = z.infer<typeof ProviderSchema>;
 export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;

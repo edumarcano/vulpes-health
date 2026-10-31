@@ -60,7 +60,7 @@ describe('real authentication and settings', () => {
   });
   it('accepts current OpenRouter policy, revokes it, and blocks stale reacceptance', async () => {
     const current = await settings(a.token);
-    const patch = { client_request_id: randomUUID(), expected_updated_at: current.profile.updatedAt, changes: { provider_consent: { provider: 'openrouter', accepted: true, policy_version: 'openrouter_zdr_v1' } } };
+    const patch = { client_request_id: randomUUID(), expected_updated_at: current.profile.updatedAt, changes: { provider_consent: { provider: 'openrouter', accepted: true, policy_version: 'openrouter_zdr_v2' } } };
     expect((await request(a.token, 'PATCH', patch)).status).toBe(200);
     const context = await verifySession({ headers: { authorization: `Bearer ${a.token}` } });
     expect(await hasProviderConsent(context, 'openrouter')).toBe(true);
@@ -77,7 +77,7 @@ describe('real authentication and settings', () => {
   });
   it('rejects invalid inputs through API and direct RPC without granting direct writes', async () => {
     const current = await settings(a.token);
-    for (const changes of [{ user_id: b.id }, { timezone: 'not/a/timezone' }, { timezone: 'Factory' }, { units: 'bogus' }, { account_state: 'deleting' }, { preferences: {} }, { provider_consent: { provider: 'vertex_ai', accepted: true, policy_version: 'google_cloud_pending_v1' } }, { provider_consent: { provider: 'openrouter', accepted: true, policy_version: 'future' } }]) {
+    for (const changes of [{ user_id: b.id }, { timezone: 'not/a/timezone' }, { timezone: 'Factory' }, { units: 'bogus' }, { account_state: 'deleting' }, { preferences: {} }, { provider_consent: { provider: 'vertex_ai', accepted: true, policy_version: 'google_cloud_pending_v1' } }, { provider_consent: { provider: 'openrouter', accepted: true, policy_version: 'future' } }, { provider_consent: { provider: 'openrouter', accepted: true, policy_version: 'openrouter_zdr_v1' } }]) {
       const patch = { client_request_id: randomUUID(), expected_updated_at: current.profile.updatedAt, changes };
       expect([400,403]).toContain((await request(a.token, 'PATCH', patch)).status);
       const rpc = await db.request('/rest/v1/rpc/update_settings_v1', a.token, { method: 'POST', body: JSON.stringify({ p_request: patch }) });

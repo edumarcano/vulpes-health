@@ -4,8 +4,8 @@ import { ISOInstantSchema } from '../../shared/primitives.js';
 
 export const providerPolicies = {
   openrouter: {
-    version: 'openrouter_zdr_v1', acceptanceAvailable: true,
-    notice: 'Allow future requests through OpenRouter only with required zero-retention routing. Consent does not enable inference. Revoking stops future routing; it cannot retract data already transmitted.',
+    version: 'openrouter_zdr_v2', acceptanceAvailable: true,
+    notice: 'Allow requests through OpenRouter with required ZDR endpoint routing. OpenRouter announces in-flight safety screening of all traffic, including ZDR; flagged content may be retained for review, reporting or legal preservation. Effective terms must be verified before activation. Consent does not enable inference. Revoking stops future routing; it cannot retract data already transmitted.',
   },
   vertex_ai: {
     version: 'google_cloud_pending_v1', acceptanceAvailable: false,

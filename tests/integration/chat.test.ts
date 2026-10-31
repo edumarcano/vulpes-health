@@ -1,3 +1,6 @@
+import * as catalog from '../../server/config/models.js';
+import { composeEverydayProduction } from '../../server/ai/providers/openrouter-production.js';
+vi.mock('../../server/config/everyday-production.js',async(importOriginal)=>({...await importOriginal<object>(),everydayMaxRunCostUSD:'0.25'}));
 import {VertexGenerationAdapter,vertexEndpoint} from '../../server/ai/providers/vertex.js';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
@@ -29,7 +32,7 @@ import {goalDraft} from '../fixtures/contracts.js';
 let db:LocalSupabase;let a:AuthContext;let b:AuthContext;let app:string;let tokenA:string;let tokenB:string;
 const service=()=>new ConversationService(a);
 async function conversation(){const id=randomUUID();await service().mutate({action:'create',id,client_request_id:randomUUID()});return id;}
-const admission=(id:string)=>({conversationId:id,clientRequestId:randomUUID(),requestHash:requestHash({text:'Synthetic question'}),depth:'auto' as const,route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1'});
+const admission=(id:string)=>({conversationId:id,clientRequestId:randomUUID(),requestHash:requestHash({text:'Synthetic question'}),depth:'auto' as const,route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v2'});
 async function rows(table:string,filter:string){return (await (await db.admin(`/rest/v1/${table}?${filter}`,'GET')).json()) as Record<string,unknown>[];}
 beforeEach(async()=>{
   const status=localStatus();vi.stubEnv('VITE_SUPABASE_URL',status.apiUrl);vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY',status.anonKey);vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY',status.adminKey);
@@ -39,15 +42,15 @@ beforeEach(async()=>{
   await db.admin('/rest/v1/usage_buckets','POST',{id:app,scope:'app',period_start:period,allocated_ceiling_usd:'10'});
   const contexts=[];
   for(let i=0;i<2;i++){
-    const user=await db.createUser();if(i===0)tokenA=user.token;else tokenB=user.token;await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+    const user=await db.createUser();if(i===0)tokenA=user.token;else tokenB=user.token;await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
     await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
     contexts.push(await verifySession({headers:{authorization:`Bearer ${user.token}`}}));
   }
   [a,b]=contexts as [AuthContext,AuthContext];
 });
 
-async function withApi(dependencies:AgentDependencies|null,work:(api:(path:string,body?:unknown,token?:string|null)=>Promise<Response>)=>Promise<void>) {
-  const compose=()=>dependencies;const chat=createChatHandler(compose);const conversations=createConversationsHandler(compose);
+async function withApi(dependencies:AgentDependencies|null|'production',work:(api:(path:string,body?:unknown,token?:string|null)=>Promise<Response>)=>Promise<void>) {
+  const compose=dependencies==='production'?composeEverydayProduction:()=>dependencies;const chat=createChatHandler(compose);const conversations=createConversationsHandler(compose);
   const server=createServer((req,res)=>{const path=new URL(req.url!,'http://localhost').pathname;void(path==='/api/chat' ? chat(req,res) : path==='/api/conversations' ? conversations(req,res) : localRouter(req,res));});
   server.listen(0,'127.0.0.1');await once(server,'listening');const address=server.address();if(!address||typeof address==='string')throw new Error();
   try{await work((path,body,token=tokenA)=>fetch(`http://127.0.0.1:${address.port}${path}`,{...(body===undefined?{}:{method:'POST',body:JSON.stringify(body)}),headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})}}));}
@@ -58,6 +61,41 @@ async function stream(response:Response) {
   const decoder=new StreamDecoder();const output:StreamEvent[]=[];for await(const chunk of response.body!)output.push(...decoder.push(chunk));decoder.finish();return output;
 }
 const send=(id:string,text='How has my imported weight changed?')=>({action:'send',conversation_id:id,client_request_id:randomUUID(),message:{id:randomUUID(),text},depth:'auto'});
+it('executes the production composition through HTTP, ledger, exact capture and reload with a synthetic provider',async()=>{
+  const readiness=vi.spyOn(catalog,'getRoleAvailability').mockReturnValue({state:'available',reason:'verified'});
+  vi.stubEnv('VULPES_LIVE_AI_ENABLED','true');vi.stubEnv('OPENROUTER_API_KEY','synthetic-key');
+  const originalFetch=globalThis.fetch;const transport=new SyntheticChatTransport();
+  vi.stubGlobal('fetch',async(input:RequestInfo|URL,options?:RequestInit)=>{
+    if(String(input)!=='https://openrouter.ai/api/v1/responses')return originalFetch(input,options);
+    expect(options?.redirect).toBe('error');
+    return new Response(new ReadableStream({async start(controller){try{for await(const chunk of transport.send(Buffer.from(options!.body as Uint8Array),options!.signal!))controller.enqueue(chunk);controller.close();}catch(error){controller.error(error);}}}),{headers:{'Content-Type':'text/event-stream'}});
+  });
+  try{await withApi('production',async api=>{
+    const id=await conversation();const input=send(id,'How has my weight changed?');
+    const events=await stream(await api('/api/chat',input));expect(events.at(-1)?.type).toBe('run.completed');
+    const count=transport.requests.length;expect(count).toBeGreaterThan(0);
+    const inspector=new InspectionService(a);const overview=await inspector.overview(events[0]!.run_id);
+    const generations=overview.steps.filter(step=>step.type==='generation');expect(generations).toHaveLength(count);
+    for(let i=0;i<count;i++){const payload=await inspector.evidence({view:'payload',run:events[0]!.run_id,step:generations[i]!.id,part:'input'});expect(payload.state).toBe('available');if(payload.state==='available')expect(payload.bytes.equals(transport.requests[i]!)).toBe(true);}
+    expect((await api('/api/chat',input)).headers.get('content-type')).toContain('application/json');
+    expect((await api('/api/conversations?view=messages&id='+id)).status).toBe(200);expect(transport.requests).toHaveLength(count);
+  });}finally{readiness.mockRestore();vi.unstubAllGlobals();}
+});
+
+it('provisions budgets idempotently without resetting balances or granting client access',async()=>{
+  await db.admin(`/rest/v1/usage_buckets?id=eq.${app}`,'PATCH',{spent_usd:'0.2',reserved_usd:'0.1'});
+  const before=await rows('usage_buckets',`id=eq.${app}`);
+  const request={p_owner:a.userId,p_app_ceiling:'10',p_account_ceiling:'1'};
+  for(let i=0;i<2;i++)await db.admin('/rest/v1/rpc/provision_pilot_budget_v1','POST',request);
+  expect(await rows('usage_buckets',`id=eq.${app}`)).toEqual(before);
+  await db.admin(`/rest/v1/usage_buckets?user_id=eq.${b.userId}`,'DELETE');
+  await db.admin('/rest/v1/rpc/provision_pilot_budget_v1','POST',{...request,p_owner:b.userId});
+  expect((await rows('usage_buckets',`user_id=eq.${b.userId}`))[0]!.allocated_ceiling_usd).toBe(1);
+  expect((await db.request('/rest/v1/rpc/provision_pilot_budget_v1',tokenA,{method:'POST',body:JSON.stringify(request)})).status).toBe(403);
+  const changed=await db.request('/rest/v1/rpc/provision_pilot_budget_v1','admin',{method:'POST',body:JSON.stringify({...request,p_app_ceiling:'11'})});
+  expect(changed.ok).toBe(false);expect(await rows('usage_buckets',`id=eq.${app}`)).toEqual(before);
+});
+
 describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
   it('refuses an unapproved or foreign handoff without changing the run route',async()=>{
     const ledger=new ExecutionService(a,{maxRunCostUSD:'0.25'});
@@ -72,7 +110,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE',()=>{
     const acceptedAt=new Date().toISOString();
     await db.admin('/rest/v1/vertex_policy_approval','POST',{id:true,policy_version:'synthetic-google-v1',project:'synthetic-project',location:'us',notice:'Synthetic verification only',privacy_fingerprint:'a'.repeat(64)});
     try {
-      await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`,'PATCH',{consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:acceptedAt},vertex_ai:{accepted_version:'synthetic-google-v1',accepted_at:acceptedAt}}});
+      await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`,'PATCH',{consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:acceptedAt},vertex_ai:{accepted_version:'synthetic-google-v1',accepted_at:acceptedAt}}});
       const captured:Buffer[]=[];
       const primary:RequestTransport={mode:'mock',async *send(body){
         const request=JSON.parse(Buffer.from(body).toString());

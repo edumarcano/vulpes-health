@@ -20,7 +20,8 @@ export async function handleStatus(request: IncomingMessage, response: ServerRes
     const environment=readServerEnvironment(process.env);
     if (request.headers.authorization !== undefined) {
       await verifySession(request);
-      sendJson(response, 200, { data: { status: 'ok', features: { settings: true, healthWorkflows: true, inference: false }, roles: { everyday: 'unavailable', intermediate: 'unavailable', advanced: 'unavailable', decision: 'disabled' }, roleDetails:Object.fromEntries((['everyday','intermediate','advanced','decision'] as const).map(role=>[role,getRoleAvailability(role,environment.liveAiRequested)])) } });
+      const everyday=getRoleAvailability('everyday',environment.liveAiRequested);
+      sendJson(response, 200, { data: { status: 'ok', features: { settings: true, healthWorkflows: true, inference: everyday.state==='available' }, roles: { everyday: everyday.state, intermediate: 'unavailable', advanced: 'unavailable', decision: 'disabled' }, roleDetails:Object.fromEntries((['everyday','intermediate','advanced','decision'] as const).map(role=>[role,getRoleAvailability(role,environment.liveAiRequested)])) } });
       return;
     }
     sendJson(response, 200, { data: { status: 'ok' } });

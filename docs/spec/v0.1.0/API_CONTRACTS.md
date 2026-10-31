@@ -32,7 +32,7 @@ Use 400 for invalid input, 401 for missing/invalid auth, 403 for denied consent/
 
 No `/web-search`, `/rag`, `/memory/auto-save`, `/health-connect/sync` or `/scale/connect` endpoint is shipped in v0.1.0.
 
-Authenticated status retains its role-state strings and adds optional `roleDetails` with safe state/reason values. Reading status performs no inference or credential refresh.
+Authenticated status retains its role-state strings and adds optional `roleDetails` with safe state/reason values. Reading status performs no inference or credential refresh. Everyday can be `available`; the inference boolean reports configuration readiness, not user consent or spending authorization. Settings also returns optional `inferenceAvailability` from the same assessment.
 
 ## 3. Chat input
 
@@ -66,7 +66,7 @@ After 90-day execution retention removes the run, an identical retained user-mes
 
 | Operation | Fields / response |
 |---|---|
-| GET list | Optional `view=list`, `archived=true/false` (default false), `page_size` (default 50, maximum 200), `cursor`. Returns `items`, `nextCursor`, and inference `availability`. Production availability remains `unavailable`; `synthetic` exists only in test composition. |
+| GET list | Optional `view=list`, `archived=true/false` (default false), `page_size` (default 50, maximum 200), `cursor`. Returns `items`, `nextCursor`, and inference `availability`. Availability is `available` only after the production evidence and enablement gates pass; otherwise `unavailable`. `synthetic` exists only in test composition. |
 | GET messages | `view=messages`, `id`, optional `page_size` (default 100, maximum 200), `cursor`. Returns conversation metadata, messages, `nextCursor`, and active/latest `RunSummary`. |
 | POST create | `{action:"create",id,client_request_id}`. Default title `New conversation`; first admitted text normalizes whitespace and supplies at most 80 characters. |
 | POST archive | `{action:"archive",id,client_request_id}`. Stops future content writes and requests cancellation of active runs. |

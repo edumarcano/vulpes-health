@@ -14,11 +14,11 @@ try {
   const status = localStatus();
   const a = await db.createUser(); const b = await db.createUser();const chat=await db.createUser();const goalChat=await db.createUser();
   const lifecycle=await db.createUser();const lostDeletion=await db.createUser();const journey=await db.createUser();const refreshDeletion=await db.createUser();
-  await db.admin('/rest/v1/profiles','POST',{user_id:journey.id,display_name:'Synthetic release journey',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+  await db.admin('/rest/v1/profiles','POST',{user_id:journey.id,display_name:'Synthetic release journey',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
   for(const user of [lifecycle,lostDeletion,refreshDeletion])await db.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic lifecycle'});
   for (const [user,name] of [[a,'Synthetic A'],[b,'Synthetic B']] as const) await db.admin('/rest/v1/profiles','POST',{ user_id:user.id,display_name:name });
-  await db.admin('/rest/v1/profiles','POST',{user_id:chat.id,display_name:'Synthetic Ask',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
-  await db.admin('/rest/v1/profiles','POST',{user_id:goalChat.id,display_name:'Synthetic M4 Ask',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+  await db.admin('/rest/v1/profiles','POST',{user_id:chat.id,display_name:'Synthetic Ask',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
+  await db.admin('/rest/v1/profiles','POST',{user_id:goalChat.id,display_name:'Synthetic M4 Ask',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
   appId=randomUUID();const period=new Date().toISOString().slice(0,7)+'-01';
   await db.admin('/rest/v1/usage_buckets','POST',{id:appId,scope:'app',period_start:period,allocated_ceiling_usd:'1'});
   await db.admin('/rest/v1/usage_buckets','POST',{user_id:a.id,scope:'account',period_start:period,allocated_ceiling_usd:'0.05'});

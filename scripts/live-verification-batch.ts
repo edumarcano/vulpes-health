@@ -43,7 +43,7 @@ export async function prepareSyntheticBatch(batchId:string,ceiling:string):Promi
     let registered=false;
     try {
       const user=await helper.createUser();
-      await helper.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic verification',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+      await helper.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic verification',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
       const bucket=randomUUID();await helper.admin('/rest/v1/usage_buckets','POST',{id:bucket,user_id:user.id,scope:'account',period_start:period,allocated_ceiling_usd:ceiling});
       context=await verifySession({headers:{authorization:`Bearer ${user.token}`}});
       const preview=await previewCsv(context,PreviewCsvSchema.parse({action:'preview_csv',client_request_id:randomUUID(),csv,

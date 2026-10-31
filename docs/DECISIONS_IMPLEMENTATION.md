@@ -4,6 +4,14 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: Disabled owner-pilot Luna composition
+
+Normal chat now has a separately issued Luna production transport through the existing dispatcher and execution ledger. Status, conversation availability and Settings share configuration readiness without reading provider credentials. Current smoke and explicit owner approval bind the privacy notice/version, price and adapter/template; no production evidence or positive run ceiling is installed. The transport rechecks enablement before its single fixed-endpoint request.
+
+OpenRouter consent v2 prepares disclosure of announced screening and possible flagged-content retention. A forward settings-function migration requires explicit acceptance of v2 while retaining historical consent. Current synthetic fixtures use v2; historical migrations and evidence remain unchanged. The service-only budget transaction creates missing UTC-month buckets and refuses ceiling drift; matching repeats preserve balances. The interactive CLI remains local-only until hosted operations are separately approved.
+
+No provider call, real data, hosting change, policy acceptance or inference activation is authorized by this implementation.
+
 ## 2026-10-31: M5/M6 review remediation
 
 Vertex step preparation records a digest of the complete approved policy in internal request metadata; final authorization checks that digest under an approval-row lock. The issued verification transport also rechecks its original binding after credential acquisition. Policy/version changes do not install consent or enable a provider. Google verification admission and context manifests use the approved/admitted Google version.

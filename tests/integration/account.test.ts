@@ -22,7 +22,7 @@ let a:User,b:User;
 async function request(user:User|null,body?:unknown){return fetch(origin+'/api/account',{method:body?'POST':'GET',headers:{...(user?{Authorization:`Bearer ${user.token}`} : {}),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});}
 async function status(user:User){const response=await request(user);expect(response.status).toBe(200);return AccountStatusSchema.parse((await response.json()).data);}
 async function rows(table:string,user:string){return await(await db.admin(`/rest/v1/${table}?user_id=eq.${user}`,'GET')).json() as Record<string,unknown>[];}
-async function provision(){const user=await db.createUser();await db.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic lifecycle',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});return user;}
+async function provision(){const user=await db.createUser();await db.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic lifecycle',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});return user;}
 beforeAll(async()=>{
  const config=localStatus();vi.stubEnv('VITE_SUPABASE_URL',config.apiUrl);vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY',config.anonKey);vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY',config.adminKey);
  vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID','synthetic-account');vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_B64',randomBytes(32).toString('base64'));
@@ -149,7 +149,7 @@ it.each(['reported','conservative'] as const)('fences delayed content/tools/admi
  const user=await provision();const context=await verifySession({headers:{authorization:`Bearer ${user.token}`}});const app=randomUUID();const conversation=randomUUID();const period='2026-09-01';
  await db.admin('/rest/v1/usage_buckets','POST',{id:app,scope:'app',period_start:period,allocated_ceiling_usd:'1'});await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
  await db.admin('/rest/v1/conversations','POST',{id:conversation,user_id:user.id,title:'Synthetic delayed completion'});
- const ledger=new ExecutionService(context,{maxRunCostUSD:'0.25'});const input={conversationId:conversation,clientRequestId:randomUUID(),requestHash:requestHash('Synthetic delayed response'),depth:'everyday' as const,route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1'};
+ const ledger=new ExecutionService(context,{maxRunCostUSD:'0.25'});const input={conversationId:conversation,clientRequestId:randomUUID(),requestHash:requestHash('Synthetic delayed response'),depth:'everyday' as const,route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v2'};
  const admitted=await ledger.admit(input);const lease=admitted.lease as RunLease;
  await db.admin(`/rest/v1/ai_runs?id=eq.${lease.runId}`,'PATCH',{accounting_period:period});
  const prepared=await ledger.prepare(lease,{type:'generation',body:Buffer.from('{"synthetic":"delayed"}'),provider:'openrouter',model:'openai/gpt-6-luna',price:syntheticPrice,adapterVersion:'synthetic-v1',metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{'Content-Type':'application/json'},redactedHeaders:['authorization']}});

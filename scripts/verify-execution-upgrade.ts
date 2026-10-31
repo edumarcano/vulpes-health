@@ -129,7 +129,7 @@ try{
   await db.admin(`/rest/v1/ai_runs?id=eq.${ga.ids.ai_runs}`,'PATCH',{status:'completed',finished_at:new Date().toISOString()});
   const conversation=randomUUID();const executor=randomUUID();const requestId=randomUUID();const messageId=randomUUID();
   await db.admin('/rest/v1/rpc/mutate_conversation_v1','POST',{p_owner:a.id,p_request:{action:'create',id:conversation,client_request_id:randomUUID()}});
-  const chatInput={p_owner:a.id,p_executor:executor,p_request:{conversationId:conversation,clientRequestId:requestId,requestHash:'b'.repeat(64),depth:'auto',route:{role:'everyday',provider:'openrouter',model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1',baseline:'safety-v1',maxCostUSD:'0'},p_message:{id:messageId,text:'Synthetic baseline safety question'}};
+  const chatInput={p_owner:a.id,p_executor:executor,p_request:{conversationId:conversation,clientRequestId:requestId,requestHash:'b'.repeat(64),depth:'auto',route:{role:'everyday',provider:'openrouter',model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v2',baseline:'safety-v1',maxCostUSD:'0'},p_message:{id:messageId,text:'Synthetic baseline safety question'}};
   const admitted=await(await db.admin('/rest/v1/rpc/admit_chat_v1','POST',chatInput)).json();assert.equal(admitted.kind,'admitted');
   assert.equal((await(await db.admin('/rest/v1/rpc/admit_chat_v1','POST',chatInput)).json()).kind,'existing');
   const completed=await(await db.admin('/rest/v1/rpc/baseline_chat_v1','POST',{p_owner:a.id,p_run:admitted.run.id,p_executor:executor,p_fence:1,p_text:'Synthetic deterministic safety guidance.'})).json();assert.equal(completed.state,'completed');assert.equal(completed.costUSD,'0');

@@ -23,7 +23,7 @@ describe('verification transport',()=>{
   });
   it('uses the fixed endpoint and exact bytes only after local allocation and preflight',async()=>{
     const allocation={id:batch,user_id:owner,account_bucket_id:bucket,period_start:month,ceiling_text:'0.1',data_revision:1,fixture_hash:fixture};
-    const profile={account_state:'active',display_name:'Synthetic verification',data_revision:1,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:'2026-10-26T00:00:00Z'}}};
+    const profile={account_state:'active',display_name:'Synthetic verification',data_revision:1,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:'2026-10-26T00:00:00Z'}}};
     const account={id:bucket,user_id:owner,scope:'account',period_start:month};
     const chain=(data:unknown)=>{const value={select:()=>value,eq:()=>value,single:async()=>({data,error:null}),maybeSingle:async()=>({data,error:null})};return value;};
     vi.doMock('../../server/config/models.js',()=>({models:{everyday:{modelId:'synthetic-model',reasoning:{effort:'low'},maxInputTokens:100,maxOutputTokens:100,price}}}));
