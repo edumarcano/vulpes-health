@@ -2,6 +2,8 @@
 
 **Failed and stopped at E05.** The owner authorized one synthetic Luna batch up to $0.50, accepted the announced screening/flagged-content retention exception, confirmed the privacy/logging controls, and supplied a dedicated capped key. This did not authorize production activation, hosting, real data or optional models. [Safe machine-readable evidence](luna-v4-live.json) retains report hashes, run IDs, structural outcomes, separate host semantic assessments and accounting.
 
+> Historical failed-batch record. Subsequent standing authorization, additional failures/repairs and the completed v7 checkpoint are recorded in [current evidence](luna-owner-pilot-live.md).
+
 ## Executed candidate and accounting
 
 Candidate `efe629b0420d24f062fd3b79ebbaf3cb9eae8714`, `vulpes-everyday-v4`, Responses v2, `openai/gpt-6-luna`, low effort. Compared 250 executable/test files in the isolated copy against the candidate after fixed project/port substitutions: zero mismatches. The dedicated project was `vulpes-health-luna-v4-test`, API/database ports 30421/30422. Public endpoint rates were rechecked before dispatch and remained within the approved conservative snapshot.

@@ -186,7 +186,7 @@ The last command explicitly refreshes the tracked provider evidence report. Ordi
 
 `npm run test:providers -- --mode=live --role=everyday` refuses requests without explicit spend opt-in before credential discovery. Ordinary verification must omit spend flags. Current synthetic Luna verification uses the fixed-case, aggregate-budget runner in [the owner/operator procedure](docs/operations/luna-verification.md), with a dedicated disposable stack and private server-side credentials.
 
-The authorized v4 batch stopped after a goal-proposal validation failure: 14 requests, $0.001251535 reported spend, zero reserved. [Observed evidence](docs/evidence/luna-v4-live.md) preserves the failure and partial results. The v5 tool-instruction repair passes offline checks but has no live acceptance. A new batch requires fresh approval; do not reuse or reset the failed batch. Production approval remains absent and its run ceiling remains zero. No provider smoke grants deployment, real-data, optional-model or production activation permission.
+The bounded v7 Luna checkpoint passed all 14 fixed synthetic cases, with separate host review of completed answers. [Observed evidence](docs/evidence/luna-owner-pilot-live.md) preserves five batches, functional repairs and pending interruption charges. The dedicated key retained its $0.50 total cap. Production approval remains absent and its run ceiling zero; live verification does not grant deployment, real-data, optional-model or production activation permission.
 
 ## Privacy and license
 

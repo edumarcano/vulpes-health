@@ -13,6 +13,10 @@ async function events(bytes:Buffer,fragment=1) {
   return result;
 }
 describe('chat contracts, bounded context and safety',()=>{
+  it('states the shipped account and data-input boundaries',()=>{
+    expect(safetyInstructions).toContain('Accounts are isolated. v0.1.0 has no family selector, data sharing or external data connections; manual entry and CSV import only.');
+    expect(safetyInstructions).toContain('Conversations persist, but only eligible bounded history is supplied; no permanent memory-write tool exists.');
+  });
   it('projects measurements losslessly for the provider while preserving historical projection behavior',()=>{
     const source='11111111-1111-4111-8111-111111111111';
     const selection={metric:'weight',source_id:source,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC',method:'device_reported',granularity:'instant'};

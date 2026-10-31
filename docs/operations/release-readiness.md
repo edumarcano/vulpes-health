@@ -48,12 +48,12 @@ Every canonical acceptance ID has a row. `localStatus` describes only the named 
 
 | Role | Current binding | Evidence and required action |
 |---|---|---|
-| Everyday | Luna, Responses v2 adapter, `vulpes-everyday-v5`, catalog limits and ZDR policy | Authorized v4 batch stopped at E05: 14 requests, $0.001251535, zero reserved. Partial results and rejected mixed-method proposal are retained. Tool guidance is repaired in v5; its full live batch needs fresh approval. Production smoke approval remains absent. |
-| Intermediate | Flash, Vertex adapter, current v5 template, explicit Google project/location/policy | Local wire/handoff tests only. Prices, account access, accepted region/retention, capability/privacy evidence, terminal usage/cache billing and live tool/failure smoke remain unverified. |
+| Everyday | Luna, Responses v2 adapter, `vulpes-everyday-v7`, catalog limits and ZDR policy | All 14 fixed current synthetic cases passed with separate host answer review. Five batches and failures are retained in current evidence; two interrupted requests retain $0.0186384 in holds. Formal acceptance and production approval remain absent. |
+| Intermediate | Flash, Vertex adapter, current v7 template, explicit Google project/location/policy | Local wire/handoff tests only. Prices, account access, accepted region/retention, capability/privacy evidence, terminal usage/cache billing and live tool/failure smoke remain unverified. |
 | Advanced | Argon, Vertex adapter, backend-only | Same external verification gaps as Flash. Argon remains excluded from chat even if a future smoke succeeds. |
 | Decision | Separate Decisions interface, disabled | PR 14 and AI-10 remain deferred. No activation or comparative quality/cost claim. MOD-03 verifies the application without it. |
 
-The generated inventory hashes the tested source through its candidate digest. Catalog prices and older public records are dated snapshots, not a fresh provider lookup. The original offline release report did not refresh provider documentation, account settings or prices. The separately authorized owner-pilot batch refreshed public rates, confirmed key limits and recorded owner-confirmed privacy settings; see [live evidence](../evidence/luna-v4-live.md).
+The generated inventory hashes the tested source through its candidate digest. Catalog prices and older public records are dated snapshots, not a fresh provider lookup. The original offline release report did not refresh provider documentation, account settings or prices. The separately authorized owner-pilot batch refreshed public rates, confirmed key limits and recorded owner-confirmed privacy settings; see [live evidence](../evidence/luna-owner-pilot-live.md).
 
 The generated adapter/template fields identify the configured provider family's generation implementation. For the disabled decision role they do not represent an implemented Decisions adapter or decision prompt; PR 14 supplies neither in this candidate. Use its disabled availability and this inventory's separate capability boundary.
 
@@ -92,4 +92,4 @@ OpenRouter consent version `openrouter_zdr_v2` describes the announced screening
 
 Credentials are not needed for ordinary verification. Later, supply provider and administrative keys only through an ignored local environment file or approved server-side deployment secret settings. Never paste keys into chat, command arguments, screenshots or `VITE_` variables. The exact dashboard procedure and spending ceiling must accompany the separate live-verification approval request.
 
-Current Luna results and the next owner spending decision are owned by [the Luna verification procedure](luna-verification.md). The failed v4 batch is retained; public capability evidence binds the repaired v5 template, whose live results remain not run. Hosting/security/recovery and device gates cannot be marked complete from partial provider evidence.
+Current Luna results, standing synthetic-batch authorization and operator bounds are owned by [the Luna verification procedure](luna-verification.md). The v7 technical checkpoint passed; production evidence remains uninstalled. Hosting/security/recovery, device and formal acceptance gates cannot be marked complete from provider-only evidence.
