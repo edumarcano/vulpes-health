@@ -30,14 +30,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state,setState] = useState<AuthState>({ kind:client ? 'restoring' : 'unconfigured' });
   const operation = useRef<'idle'|'signing_in'|'signing_out'>('idle');
   const checkSequence=useRef(0);
+  const knownAccount=useRef<{userId:string;mode:'active'|'deleting'}|null>(null);
+  const restrictDeletion=useCallback((owner:string)=>{
+    if(knownAccount.current?.userId===owner&&knownAccount.current.mode==='deleting')return;
+    scope.transition(owner,true);knownAccount.current={userId:owner,mode:'deleting'};
+  },[scope]);
   const completeDeletion=useCallback(async(receiptId:string)=>{
-    checkSequence.current++;operation.current='signing_out';scope.transition(null,true);
+    checkSequence.current++;operation.current='signing_out';knownAccount.current=null;scope.transition(null,true);
     try{const message=await forgetDeviceSession();setState({kind:'deletion_completed',receiptId,...(message?{message}:{})});}
     finally{operation.current='idle';}
   },[scope]);
   const loadAccount=useCallback(async(session:Session)=>{
     const sequence=++checkSequence.current;
-    scope.transition(session.user.id);const epoch=scope.epoch;setState({kind:'checking_account',session});
+    scope.transition(session.user.id);const epoch=scope.epoch;
+    if(knownAccount.current?.userId!==session.user.id)setState({kind:'checking_account',session});
+    else setState(current=>'session' in current&&current.session.user.id===session.user.id?{...current,session}:current);
     try{
       const status=successEnvelopeSchema(AccountStatusSchema).parse(await ownedJson('/api/account',session.access_token,scope,epoch)).data;
       if(status.state==='deleting' && status.phase==='completed'){
@@ -46,11 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       scope.commit(epoch,()=>{
         if(checkSequence.current!==sequence)return;
-        if(status.state==='active')setState({kind:'signed_in',session});
-        else {scope.transition(session.user.id,true);setState({kind:'deleting',session,status});}
+        if(status.state==='active'){knownAccount.current={userId:session.user.id,mode:'active'};setState({kind:'signed_in',session});}
+        else {restrictDeletion(session.user.id);setState({kind:'deleting',session,status});}
       });
     }catch{scope.commit(epoch,()=>{if(checkSequence.current===sequence)setState({kind:'account_unavailable',session,message:'Account access could not be verified. If deletion was underway, authentication failure does not confirm completion. Retry or contact the operator with your saved receipt.'});});}
-  },[scope,completeDeletion]);
+  },[scope,completeDeletion,restrictDeletion]);
   useEffect(() => {
     if (!client) return;
     const { data } = client.auth.onAuthStateChange((event,session) => {
@@ -59,13 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session) {
         // Avoid awaiting another auth operation inside Supabase's state callback.
         const epoch=scope.epoch;queueMicrotask(()=>{if(operation.current==='idle'&&scope.epoch===epoch)void loadAccount(session);});
-      } else { scope.transition(null); setState({ kind:'signed_out' }); }
+      } else { knownAccount.current=null;scope.transition(null); setState({ kind:'signed_out' }); }
     });
     return () => { data.subscription.unsubscribe(); };
   },[scope,loadAccount]);
   async function signIn(email: string,password: string) {
     if (!client || operation.current !== 'idle') return;
-    checkSequence.current++;operation.current = 'signing_in'; scope.transition(null,true); setState({ kind:'signing_in' });
+    checkSequence.current++;operation.current = 'signing_in';knownAccount.current=null;scope.transition(null,true); setState({ kind:'signing_in' });
     try {
       const { data,error } = await client.auth.signInWithPassword({ email,password });
       if (error || !data.session) { setState({ kind:'signed_out',message:'Sign-in failed. Check your credentials and connection.' }); return; }
@@ -75,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   async function signOut() {
     if (!client || operation.current !== 'idle') return;
-    checkSequence.current++;operation.current = 'signing_out'; scope.transition(null,true); setState({ kind:'signing_out' });
+    checkSequence.current++;operation.current = 'signing_out';knownAccount.current=null;scope.transition(null,true); setState({ kind:'signing_out' });
     try{const message=await forgetDeviceSession();setState({kind:'signed_out',...(message?{message}:{})});}
     finally{operation.current='idle';}
   }
@@ -94,7 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if(session.user.id!==scope.userId)return;
     if(status.phase==='completed'){
       await completeDeletion(status.receiptId);
-    }else {checkSequence.current++;scope.transition(session.user.id,true);setState({kind:'deleting',session,status});}
+    }else {
+      checkSequence.current++;restrictDeletion(session.user.id);
+      setState(current=>'session' in current&&current.session.user.id===session.user.id
+        ?{kind:'deleting',session:fresh??current.session,status}:current);
+    }
   }
   async function checkAccount(){if('session' in state)await loadAccount(state.session);}
   return <AuthContext.Provider value={{ state,scope,signIn,signOut,checkAccount,reauthenticate,enterDeletion }}>{children}</AuthContext.Provider>;

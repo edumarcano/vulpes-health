@@ -44,8 +44,9 @@ export class VulpesAgent {
     if(!baseline && (input.depth==='intermediate'||input.depth==='advanced'))throw new HttpFailure(503,'depth_unavailable','This analysis depth is unavailable. Manual analysis-depth selection is not supported in this version.');
     if(!baseline && !this.dependencies)throw new HttpFailure(503,'inference_unavailable','Ask Vulpes inference is unavailable until provider verification and activation gates pass.');
     const initialRole=this.dependencies?.verificationRole??'everyday';const initialModel=models[initialRole];
+    const consentVersion=initialRole==='everyday'?'openrouter_zdr_v1':await this.ledger.vertexConsentVersion();
     const admission=await this.ledger.admit({conversationId:input.conversation_id,clientRequestId:input.client_request_id,requestHash:hash,depth:input.depth,
-      route:{role:initialRole,provider:initialModel.provider,model:initialModel.modelId,effort:'thinking' in initialModel?initialModel.thinking.level:initialModel.reasoning.effort},consentVersion:'openrouter_zdr_v1',...(baseline ? {baseline:'safety-v1' as const} : {})},input.message);
+      route:{role:initialRole,provider:initialModel.provider,model:initialModel.modelId,effort:'thinking' in initialModel?initialModel.thinking.level:initialModel.reasoning.effort},consentVersion,...(baseline ? {baseline:'safety-v1' as const} : {})},input.message);
     return {...admission,baseline};
   }
   async *run(input:ChatSendRequest,lease:RunLease,initial:RunSummary,baseline:string|null,signal:AbortSignal):AsyncIterable<StreamEvent> {
@@ -60,6 +61,7 @@ export class VulpesAgent {
       } else {
         if(!this.dependencies)throw new Error('inference_unavailable');let dependencies:AgentDependencies=this.dependencies;let role:'everyday'|'intermediate'|'advanced'=dependencies.verificationRole??'everyday';const routingEvidence:RoutingEvidence[]=[];if(!dependencies)throw new Error('inference_unavailable');
         const context=await buildContext(this.context,input,lease.runId,dependencies.flash&&input.depth==='auto'?readToolDefinitions:readToolDefinitions.filter(t=>t.name!=='request_escalation'),Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000);
+        if(role!=='everyday')context.manifest.consentVersion=await this.ledger.vertexConsentVersion(lease.runId);
         let request=context.request;
         if(role!=='everyday')request={...request,continuation:null};
         if(!dependencies.flash || input.depth!=='auto')request={...request,tools:request.tools.filter(t=>t.name!=='request_escalation')};

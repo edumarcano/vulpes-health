@@ -7,7 +7,7 @@ import type { AuthContext } from '../../auth/session.js';
 import { administrativeClient } from '../../db/administrative.js';
 import type { Database, Json } from '../../db/database.types.js';
 import { HttpFailure } from '../../http/failure.js';
-import { readPayload } from '../../security/private-payloads.js';
+import { readPayload,payloadExpiry } from '../../security/private-payloads.js';
 import { encryptBytes, MAX_PAYLOAD_BYTES, readEncryptionKeys, type PayloadPurpose } from '../../security/encryption.js';
 import { normalizeUsage, GenerationCompletionSchema, type GenerationCompletion, type NormalizedUsage } from '../contracts.js';
 import { executionPolicy } from './policy.js';
@@ -45,6 +45,17 @@ export function requestHash(value: unknown): string {
 export class ExecutionService {
   private readonly db = administrativeClient();
   constructor(private readonly context: AuthContext, private readonly policy: { maxRunCostUSD: string } = executionPolicy,private readonly signal?:AbortSignal) {}
+  async vertexConsentVersion(runId?:string):Promise<string> {
+    if(runId){
+      const result=await this.db.from('ai_runs').select('consent_versions').eq('user_id',this.context.userId).eq('id',runId).single();
+      const consent=z.object({vertex_ai:z.object({accepted_version:z.string().min(1)})}).safeParse(result.data?.consent_versions);
+      if(result.error||!consent.success)throw new HttpFailure(403,'run_policy_denied','The approved Google policy could not be verified.');
+      return consent.data.vertex_ai.accepted_version;
+    }
+    const result=await this.db.from('vertex_policy_approval').select('policy_version').eq('id',true).single();
+    if(result.error||!result.data)throw new HttpFailure(503,'inference_unavailable','The approved Google policy is unavailable.');
+    return result.data.policy_version;
+  }
   private async rpc<K extends keyof Functions>(name: K, args: Functions[K]['Args']) {
     this.signal?.throwIfAborted();const query=this.db.rpc(name,args);
     const { data, error } = await (this.signal?query.abortSignal(this.signal):query);this.signal?.throwIfAborted();
@@ -81,8 +92,8 @@ export class ExecutionService {
     if (value === null) throw new HttpFailure(404,'run_not_found','The execution was not found.');
     return RunSummarySchema.parse(value);
   }
-  private envelope(purpose: PayloadPurpose, bytes: Uint8Array) {
-    return encryptBytes({ id:randomUUID(),user_id:this.context.userId,purpose,expires_at:new Date(Date.now()+7*24*3600_000).toISOString() },bytes,readEncryptionKeys());
+  private async envelope(purpose: PayloadPurpose, bytes: Uint8Array) {
+    return encryptBytes({ id:randomUUID(),user_id:this.context.userId,purpose,expires_at:await payloadExpiry(purpose) },bytes,readEncryptionKeys());
   }
   async prepare(lease: RunLease, input: StepInput): Promise<PreparedStep> {
     if (input.body.byteLength>2*1024*1024) throw new HttpFailure(413,'request_too_large','The provider request is too large.');
@@ -95,8 +106,8 @@ export class ExecutionService {
     const step = { id,type:input.type,provider:input.provider ?? null,model:input.model ?? null,toolName:input.toolName ?? null,
       adapterVersion:input.adapterVersion,requestedEffort:input.requestedEffort ?? null,effectiveEffort:input.effectiveEffort ?? null,
       price,reservationUSD:price ? reserveMaximum(price) : '0',metadata };
-    const envelope = this.envelope(input.type === 'tool' ? 'tool_input' : 'ai_request',body);
-    const context = input.context === undefined ? undefined : this.envelope('provider_state',Buffer.from(JSON.stringify(input.context)));
+    const envelope = await this.envelope(input.type === 'tool' ? 'tool_input' : 'ai_request',body);
+    const context = input.context === undefined ? undefined : await this.envelope('provider_state',Buffer.from(JSON.stringify(input.context)));
     await this.rpc('prepare_step_v1',{ p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_fence:lease.fence,
       p_step:step,p_input:envelope,...(context ? {p_context:context} : {}) });
     return Object.freeze({ id,lease,body,bodyHash:envelope.content_hash,price,type:input.type });
@@ -137,7 +148,7 @@ export class ExecutionService {
   }
   async checkpoint(step: PreparedStep, bytes: Uint8Array, message?: {id:string;parts:Json[]}) {
     if (bytes.byteLength>MAX_PAYLOAD_BYTES) throw new HttpFailure(413,'response_too_large','The provider response exceeded its trace limit.');
-    const output = this.envelope(step.type === 'tool' ? 'tool_output' : 'ai_response',bytes);
+    const output = await this.envelope(step.type === 'tool' ? 'tool_output' : 'ai_response',bytes);
     return this.rpc('checkpoint_step_v1',{ p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,
       p_step:step.id,p_output:output,...(message ? {p_message:message} : {}) });
   }
@@ -147,7 +158,7 @@ export class ExecutionService {
     if(bytes.length>MAX_PAYLOAD_BYTES)throw new HttpFailure(413,'response_too_large','The tool evidence exceeded its trace limit.');
     return z.strictObject({reference:GoalProposalReferenceSchema,parts:z.array(ChatPartSchema)}).parse(await this.rpc('checkpoint_goal_proposal_v1',{
       p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,p_step:step.id,
-      p_request:result.request,p_payload:result.payload,p_output:this.envelope('tool_output',bytes),
+      p_request:result.request,p_payload:result.payload,p_output:await this.envelope('tool_output',bytes),
     }));
   }
   async settle(step: PreparedStep, usage: NormalizedUsage | null, status: 'completed'|'failed'|'cancelled'|'interrupted', expectedVersion=0, notSent=false, completion?:GenerationCompletion) {
@@ -156,7 +167,7 @@ export class ExecutionService {
     if(checked && !notSent && step.type!=='tool') {
       const {rawUsage:_raw,reportedCostUSD:_cost,...safeUsage}=checked;void _raw;void _cost;
       try {
-        const payload=this.envelope('provider_state',Buffer.from(JSON.stringify(checked)));
+        const payload=await this.envelope('provider_state',Buffer.from(JSON.stringify(checked)));
         usageEvidence={usagePayload:payload,usageHash:payload.content_hash,usage:safeUsage,executor:step.lease.executor,fence:step.lease.fence};
       } catch {traceIncomplete=true;}
     }
@@ -173,7 +184,7 @@ export class ExecutionService {
     return RunSummarySchema.parse(await this.rpc('cancel_chat_v1',{p_owner:this.context.userId,p_run:UUIDSchema.parse(runId),p_request:UUIDSchema.parse(requestId)}));
   }
   async saveState(step:PreparedStep,state:unknown) {
-    return this.rpc('save_chat_state_v1',{p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,p_step:step.id,p_state:this.envelope('provider_state',Buffer.from(JSON.stringify(state)))});
+    return this.rpc('save_chat_state_v1',{p_owner:this.context.userId,p_run:step.lease.runId,p_executor:step.lease.executor,p_fence:step.lease.fence,p_step:step.id,p_state:await this.envelope('provider_state',Buffer.from(JSON.stringify(state)))});
   }
   async checkpointMessage(lease:RunLease,parts:Json[]) {
     return this.rpc('checkpoint_message_v1',{p_owner:this.context.userId,p_run:lease.runId,p_executor:lease.executor,p_fence:lease.fence,p_parts:parts});

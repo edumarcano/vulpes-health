@@ -21,6 +21,15 @@ async function answer(page:Page) {
   await expect(page.getByText('Response saved.',{exact:true})).toBeVisible();
 }
 
+test('mobile message controls keep conversation geometry stable when focused',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:'light',reducedMotion:'reduce'});
+ await answer(page);
+ await page.evaluate(()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();});
+ const conversation=page.locator('.conversation');const before=await conversation.evaluate(node=>node.getBoundingClientRect().height);
+ await page.getByRole('button',{name:'Inspect execution',exact:true}).focus();
+ expect(await conversation.evaluate(node=>node.getBoundingClientRect().height)).toBe(before);
+});
+
 test('mobile inspector API failure supports explicit retry and returns focus',async({page})=>{
   await answer(page);
   await page.route('**/api/executions?*',route=>route.abort());
@@ -33,6 +42,19 @@ test('mobile inspector API failure supports explicit retry and returns focus',as
   await expect(inspector.getByRole('heading',{name:'Overview',exact:true})).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
+});
+
+test('mobile inspector survives same-owner session revalidation',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:'light',reducedMotion:'reduce'});
+ await answer(page);
+ await page.getByRole('button',{name:'Inspect execution',exact:true}).click();
+ const inspector=page.getByRole('dialog',{name:'Execution inspector'});
+ await expect(inspector.getByRole('heading',{name:'Overview',exact:true})).toBeVisible();
+ const checked=page.waitForResponse(r=>r.url().endsWith('/api/account')&&r.request().method()==='GET');
+ await page.evaluate(()=>{const key='vulpes.auth.session.v1';const channel=new BroadcastChannel(key);channel.postMessage({event:'TOKEN_REFRESHED',session:JSON.parse(localStorage.getItem(key)!)});channel.close();});
+ expect((await checked).status()).toBe(200);
+ await expect(page.getByRole('heading',{name:'Ask Vulpes',exact:true})).toBeVisible();
+ await expect(inspector).toBeVisible();
 });
 
 test.describe('inspector chunk unavailable',()=>{

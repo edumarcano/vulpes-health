@@ -8,13 +8,14 @@ const require = createRequire(import.meta.url);
 const db = new LocalSupabase();
 let appId:string|undefined;
 try {
-  const args=process.argv.slice(2);const devProof=args.includes('--dev-proof');const diagnostics=args.includes('--diagnostic');const goalsProof=args.includes('--goals-proof');const mobileProof=args.includes('--mobile-proof');const lifecycleProof=args.includes('--lifecycle-proof');
-  if(new Set(args).size!==args.length||args.some(arg=>!['--dev-proof','--diagnostic','--goals-proof','--mobile-proof','--lifecycle-proof'].includes(arg)))throw new Error('Browser tests accept only named proof flags; no connection overrides.');
+  const args=process.argv.slice(2);const devProof=args.includes('--dev-proof');const diagnostics=args.includes('--diagnostic');const goalsProof=args.includes('--goals-proof');const mobileProof=args.includes('--mobile-proof');const lifecycleProof=args.includes('--lifecycle-proof');const clockProof=args.includes('--clock-proof');
+  if(new Set(args).size!==args.length||args.some(arg=>!['--dev-proof','--diagnostic','--goals-proof','--mobile-proof','--lifecycle-proof','--clock-proof'].includes(arg)))throw new Error('Browser tests accept only named proof flags; no connection overrides.');
+  if(clockProof&&!devProof)throw new Error('Clock proof requires the separate development test API.');
   const status = localStatus();
   const a = await db.createUser(); const b = await db.createUser();const chat=await db.createUser();const goalChat=await db.createUser();
-  const lifecycle=await db.createUser();const lostDeletion=await db.createUser();const journey=await db.createUser();
+  const lifecycle=await db.createUser();const lostDeletion=await db.createUser();const journey=await db.createUser();const refreshDeletion=await db.createUser();
   await db.admin('/rest/v1/profiles','POST',{user_id:journey.id,display_name:'Synthetic release journey',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
-  for(const user of [lifecycle,lostDeletion])await db.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic lifecycle'});
+  for(const user of [lifecycle,lostDeletion,refreshDeletion])await db.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic lifecycle'});
   for (const [user,name] of [[a,'Synthetic A'],[b,'Synthetic B']] as const) await db.admin('/rest/v1/profiles','POST',{ user_id:user.id,display_name:name });
   await db.admin('/rest/v1/profiles','POST',{user_id:chat.id,display_name:'Synthetic Ask',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
   await db.admin('/rest/v1/profiles','POST',{user_id:goalChat.id,display_name:'Synthetic M4 Ask',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
@@ -25,8 +26,8 @@ try {
   await db.admin('/rest/v1/usage_buckets','POST',{user_id:goalChat.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
   await db.admin('/rest/v1/usage_buckets','POST',{user_id:journey.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
   const encryptionKey=randomBytes(32).toString('base64');
-  const secrets = [a.password,b.password,a.token,b.token,chat.password,chat.token,goalChat.password,goalChat.token,lifecycle.password,lifecycle.token,lostDeletion.password,lostDeletion.token,journey.password,journey.token,status.adminKey,encryptionKey];
-  const env = { ...localEnvironment(),...(diagnostics?{DEBUG:'pw:webserver'}:{}), SUPABASE_SERVICE_ROLE_KEY:status.adminKey,VULPES_TRACE_ENCRYPTION_KEY_ID:'synthetic-browser',VULPES_TRACE_ENCRYPTION_KEY_B64:encryptionKey,VITE_SUPABASE_URL:status.apiUrl,VITE_SUPABASE_PUBLISHABLE_KEY:status.anonKey,VULPES_APP_ORIGIN:`http://127.0.0.1:${devProof ? 5173 : 4173}`,VULPES_LIVE_AI_ENABLED:'false',VULPES_TEST_ACCOUNTS_JSON:JSON.stringify([a,b,chat,goalChat,lifecycle,lostDeletion,journey]),VULPES_TEST_CHAT_OWNER:chat.id,VULPES_TEST_GOAL_OWNER:goalChat.id,VULPES_TEST_JOURNEY_OWNER:journey.id,VULPES_TEST_MODE:devProof ? 'dev_proof' : 'preview' };
+  const secrets = [a.password,b.password,a.token,b.token,chat.password,chat.token,goalChat.password,goalChat.token,lifecycle.password,lifecycle.token,lostDeletion.password,lostDeletion.token,journey.password,journey.token,refreshDeletion.password,refreshDeletion.token,status.adminKey,encryptionKey];
+  const env = { ...localEnvironment(),VULPES_TEST_API_CLOCK_LEAD:clockProof ? '1000' : '0',...(diagnostics?{DEBUG:'pw:webserver'}:{}), SUPABASE_SERVICE_ROLE_KEY:status.adminKey,VULPES_TRACE_ENCRYPTION_KEY_ID:'synthetic-browser',VULPES_TRACE_ENCRYPTION_KEY_B64:encryptionKey,VITE_SUPABASE_URL:status.apiUrl,VITE_SUPABASE_PUBLISHABLE_KEY:status.anonKey,VULPES_APP_ORIGIN:`http://127.0.0.1:${devProof ? 5173 : 4173}`,VULPES_LIVE_AI_ENABLED:'false',VULPES_TEST_ACCOUNTS_JSON:JSON.stringify([a,b,chat,goalChat,lifecycle,lostDeletion,journey,refreshDeletion]),VULPES_TEST_CHAT_OWNER:chat.id,VULPES_TEST_GOAL_OWNER:goalChat.id,VULPES_TEST_JOURNEY_OWNER:journey.id,VULPES_TEST_MODE:devProof ? 'dev_proof' : 'preview' };
   async function run(args: string[]) {
     const child = spawn(process.execPath,args,{ env,stdio:['ignore','pipe','pipe'] });
     for (const stream of [child.stdout,child.stderr]) {

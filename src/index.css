@@ -189,5 +189,4 @@ summary { min-height: 44px; padding-block: 0.75rem; cursor: pointer; }
 @media (max-width: 767px) {
   .main-ask { padding-top: 1.25rem; }
   .ask-page .conversation { min-height: 16rem; }
-  .ask-page:focus-within .conversation { height: min(65dvh, 50rem); }
 }

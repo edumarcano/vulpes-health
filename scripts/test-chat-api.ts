@@ -16,6 +16,9 @@ const id=process.env.VULPES_TEST_CHAT_OWNER;
 const goalOwner=process.env.VULPES_TEST_GOAL_OWNER;
 const journeyOwner=process.env.VULPES_TEST_JOURNEY_OWNER;
 if(!id || process.env.VULPES_LIVE_AI_ENABLED!=='false' || process.env.VITE_SUPABASE_URL!=='http://127.0.0.1:54321')throw new Error('Use the guarded local browser runner.');
+const clockLead=process.env.VULPES_TEST_API_CLOCK_LEAD??'0';
+if(!['0','1000'].includes(clockLead))throw new Error('Unsupported synthetic API clock lead.');
+if(clockLead==='1000'){const now=Date.now.bind(Date);Date.now=()=>now()+1000;}
 const built=process.argv[2]==='--serve-built';
 if(process.argv.length!==(built?3:2))throw new Error('Unsupported local test composition.');
 const dist=path.resolve('dist');

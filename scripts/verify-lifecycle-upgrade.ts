@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync,renameSync,mkdtempSync,mkdirSync} from 'node:fs';
+import {readFileSync,renameSync,mkdtempSync,mkdirSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {LocalSupabase} from '../tests/helpers/local-supabase.js';
 import {localStatus,projectRoot,runSupabase} from './local-database.js';
@@ -11,7 +11,7 @@ import {localEnvironment} from './local-database.js';
 assert.deepEqual(process.argv.slice(2),['--allow-disposable-reset'],'Explicit disposable-reset opt-in required.');localStatus();
 const db=new LocalSupabase();const users=await(await db.admin('/auth/v1/admin/users?page=1&per_page=1','GET')).json() as {users:unknown[]};assert.equal(users.users.length,0,'Refusing a populated database.');
 for(const table of [...databaseTables,'live_verification_allocations','account_deletion_receipts','ai_route_cost_blocks','vertex_policy_approval'])assert.equal((await(await db.admin(`/rest/v1/${table}?limit=1`,'GET')).json() as unknown[]).length,0,'Refusing retained product, verification, accounting or operator records.');
-const names=['20261030000100_account_lifecycle.sql','20261030000200_account_export.sql','20261030000300_account_retention.sql','20261030000400_session_recovery.sql'];
+const names=readdirSync(join(projectRoot,'supabase/migrations')).filter(name=>name.endsWith('.sql')&&name>='20261030000100_account_lifecycle.sql').sort();
 mkdirSync(join(projectRoot,'test-results'),{recursive:true});const parked=mkdtempSync(join(projectRoot,'test-results/lifecycle-upgrade-'));const moved:string[]=[];const originals=new Map(names.map(name=>[name,readFileSync(join(projectRoot,'supabase/migrations',name))]));
 let populated:LocalSupabase|undefined;let phase='base schema';let passed=false;
 try{

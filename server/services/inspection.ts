@@ -20,7 +20,9 @@ type Evidence = { state: 'available'; bytes: Buffer; expiresAt: string; complete
 const RequestMetadata = z.strictObject({
   endpoint:z.string().refine(value=>['https://openrouter.ai/api/v1/responses','https://aiplatform.googleapis.com','tool:read','tool:proposal'].includes(value)||isVertexEndpoint(value)),
   headers:z.record(z.string(),z.string().max(200)),redactedHeaders:z.array(z.string().max(100)).max(20),
-}).refine(value=>Object.entries(value.headers).every(([key,header])=>key.toLowerCase()==='accept' ? header==='text/event-stream' : key.toLowerCase()==='content-type' && header==='application/json') && value.redactedHeaders.every(name=>['authorization','x-api-key'].includes(name.toLowerCase())));
+  vertexPolicyHash:z.string().regex(/^[a-f0-9]{64}$/).optional(),
+}).refine(value=>Object.entries(value.headers).every(([key,header])=>key.toLowerCase()==='accept' ? header==='text/event-stream' : key.toLowerCase()==='content-type' && header==='application/json') && value.redactedHeaders.every(name=>['authorization','x-api-key'].includes(name.toLowerCase())))
+  .transform(({vertexPolicyHash,...metadata})=>{void vertexPolicyHash;return metadata;});
 
 export class InspectionService {
   constructor(private readonly context: AuthContext,private readonly signal:AbortSignal=new AbortController().signal) {}

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync,renameSync,mkdtempSync,mkdirSync} from 'node:fs';
+import {readFileSync,renameSync,mkdtempSync,mkdirSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {LocalSupabase} from '../tests/helpers/local-supabase.js';
 import {localStatus,projectRoot,runSupabase} from './local-database.js';
@@ -9,7 +9,7 @@ localStatus();
 const original=new LocalSupabase();
 const users=await(await original.admin('/auth/v1/admin/users?page=1&per_page=1','GET')).json() as {users:unknown[]};
 assert.equal(users.users.length,0,'Refusing a populated database, including retained verification accounts.');
-const names=['20261029000100_vertex_routing.sql','20261029000200_vertex_dispatch_policy.sql','20261029000300_vertex_policy_read.sql'];
+const names=readdirSync(join(projectRoot,'supabase/migrations')).filter(name=>name.endsWith('.sql')&&name>='20261029000100_vertex_routing.sql').sort();
 mkdirSync(join(projectRoot,'test-results'),{recursive:true});
 const parked=mkdtempSync(join(projectRoot,'test-results/vertex-upgrade-'));const moved:string[]=[];
 const hashes=new Map(names.map(name=>[name,readFileSync(join(projectRoot,'supabase/migrations',name))]));

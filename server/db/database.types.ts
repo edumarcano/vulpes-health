@@ -674,6 +674,9 @@ isOneToOne: false
 "prepare_step_v1":
 { Args: { "p_context"?: Json,"p_executor": string,"p_fence": number,"p_input": Json,"p_owner": string,"p_run": string,"p_step": Json }; Returns: string
                            },
+"private_payload_expiry_v1":
+{ Args: { "p_purpose": string }; Returns: string
+                           },
 "read_account_export_v1":
 { Args: { "p_after"?: string,"p_owner": string,"p_section": string }; Returns: Json
                            },

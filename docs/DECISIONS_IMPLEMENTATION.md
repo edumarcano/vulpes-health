@@ -4,6 +4,18 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: M5/M6 review remediation
+
+Vertex step preparation records a digest of the complete approved policy in internal request metadata; final authorization checks that digest under an approval-row lock. The issued verification transport also rechecks its original binding after credential acquisition. Policy/version changes do not install consent or enable a provider. Google verification admission and context manifests use the approved/admitted Google version.
+
+Expired pending proposals are hidden from direct authenticated reads until cleanup removes the draft. Account export projects an expired receipt with a null body without depending on cleanup timing. Approved historical decisions remain retained.
+
+Entering account deletion invalidates the private scope once for that owner. Same-owner auth refresh/status reads preserve the verified active or deleting view while rechecking account status; completion of an older deletion request preserves the latest session. Initial restoration and new identities still wait for verification, and a failed status check shows unavailable. Account changes, sign-out and confirmed deletion invalidate the scope. Controlled browser regressions demonstrated an aborted deletion continuation, stale-session rollback and an inspector lost during active-account revalidation before their respective repairs.
+
+The mobile conversation no longer changes height when an Ask control receives focus. The existing dynamic viewport height still responds to available screen space. Native pointer/focus tracing demonstrated a 42-pixel control movement between press and release, and a deterministic browser check reproduced the 70dvh-to-65dvh resize. Live-stream inspection remains available. Physical keyboard/device behavior still requires the separate device gate.
+
+Payload creation obtains an expiry from PostgreSQL before encryption, preserving the authenticated expiry field and existing 24-hour/seven-day ceilings. This adds a local database round trip per new envelope. Adding a clock tolerance or changing expiry after encryption would weaken retention or break authenticated decryption. A controlled browser API clock lead reproduced the rejection; the same six original browser cases pass after the fix. This demonstrates the clock failure mode without attributing every historical failure to it. [Remediation evidence](evidence/m56-review-remediation.md) preserves actual outcomes and remaining gates. No model, budget, approval, deletion or retention policy deviation is authorized.
+
 ## 2026-10-30: PR 17 integrated evidence and handoff
 
 PR 17 uses the existing test/browser/database harnesses and a small fixed-command evidence collector. It records actual exits, safe numeric output, candidate/workspace fingerprints, installed versions and build hashes. A separate disposable local copy preserves retained M3 verification allocations. Missing/stale records remain unverified; earlier failures remain in history. No dependency, application architecture, model catalog or safety/retention policy changes.

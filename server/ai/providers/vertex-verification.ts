@@ -42,8 +42,13 @@ export async function issueVertexVerificationTransport(role:'intermediate'|'adva
   if(approval.error||approval.data.project!==readiness.evidence.project||approval.data.location!==readiness.evidence.location||approval.data.policy_version!==readiness.evidence.policyVersion||approval.data.privacy_fingerprint!==readiness.evidence.privacyFingerprint)throw new Error('vertex_policy_unavailable');
   const token=vertexAuthentication();
   const transport:RequestTransport={mode:'verification',async *send(body,signal) {
+    const accessToken=await token();
+    const current=await db.from('vertex_policy_approval').select('*').eq('id',true).abortSignal(signal).single();
+    if(current.error||current.data.project!==approval.data.project||current.data.location!==approval.data.location
+      ||current.data.policy_version!==approval.data.policy_version||current.data.privacy_fingerprint!==approval.data.privacy_fingerprint
+      ||current.data.notice!==approval.data.notice)throw new Error('vertex_policy_unavailable');
     const response=await send(endpoint,{method:'POST',redirect:'error',cache:'no-store',signal,
-      headers:{Authorization:`Bearer ${await token()}`,'Content-Type':'application/json',Accept:'text/event-stream'},body:Buffer.from(body)});
+      headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json',Accept:'text/event-stream'},body:Buffer.from(body)});
     if(!response.ok || !response.body || !response.headers.get('content-type')?.toLowerCase().startsWith('text/event-stream'))throw new Error('provider_response_unavailable');
     for await(const chunk of response.body)yield chunk;
   }};
