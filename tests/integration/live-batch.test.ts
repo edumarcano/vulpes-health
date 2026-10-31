@@ -1,4 +1,8 @@
-import { randomBytes,randomUUID } from 'node:crypto';
+import {mkdir,writeFile,unlink} from 'node:fs/promises';
+import {join} from 'node:path';
+import {projectRoot} from '../../scripts/local-database.js';
+import type {RequestTransport} from '../../server/ai/ledger/dispatcher.js';
+import { randomBytes,randomUUID,createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { afterEach,beforeEach,expect,it,vi } from 'vitest';
 import { localStatus } from '../../scripts/local-database.js';
@@ -27,6 +31,7 @@ afterEach(async()=>{
       const removed=spawnSync('docker',['exec','supabase_db_vulpes-health-pr03-test','psql','-U','postgres','-d','postgres','-c',sql],{encoding:'utf8'});
       expect(removed.status).toBe(0);
       const user=records[0].user_id;
+      await db.admin(`/rest/v1/goals?user_id=eq.${user}`,'PATCH',{state:'draft',current_revision_id:null});
       for(const table of cleanupTables)await db.admin(`/rest/v1/${table}?user_id=eq.${user}`,'DELETE');
       await db.admin(`/auth/v1/admin/users/${user}`,'DELETE');
     }
@@ -44,9 +49,9 @@ async function configuredSmoke(){
   vi.doMock('../../server/config/everyday-verification.js',()=>({everydayCapabilityEvidence:evidence}));
   vi.stubEnv('VULPES_LIVE_AI_ENABLED','true');vi.stubEnv('VULPES_SMOKE_BATCH_ID',batch);vi.stubEnv('OPENROUTER_API_KEY','synthetic-not-a-real-key');
   const {SyntheticChatTransport,responseFrame,assistantOutput}=await import('../fixtures/chat.js');
-  let transport=new SyntheticChatTransport();
+  let transport:RequestTransport=new SyntheticChatTransport();
   const network=vi.fn(async(_url:string|URL|Request,init?:RequestInit)=>{
-    const iterator=transport.send(new Uint8Array(init!.body as Uint8Array),init!.signal as AbortSignal);
+    const iterator=transport.send(new Uint8Array(init!.body as Uint8Array),init!.signal as AbortSignal)[Symbol.asyncIterator]();
     const stream=new ReadableStream<Uint8Array>({async pull(controller){const next=await iterator.next();if(next.done)controller.close();else controller.enqueue(next.value);},async cancel(){await iterator.return?.();}});
     return new Response(stream,{status:200,headers:{'Content-Type':'text/event-stream'}});
   }) as unknown as typeof fetch;
@@ -59,7 +64,7 @@ async function configuredSmoke(){
     return localFetch(input,init);
   });
   const {runSmoke}=await import('../../scripts/provider-smoke.js');
-  return {network,runLiveEveryday,runSmoke,SyntheticChatTransport,responseFrame,assistantOutput,setTransport:(next:typeof transport)=>{transport=next;}};
+  return {network,runLiveEveryday,runSmoke,SyntheticChatTransport,responseFrame,assistantOutput,setTransport:(next:RequestTransport)=>{transport=next;}};
 }
 
 it('runs the same guarded dispatcher with a synthetic provider, then retains the shared ceiling',async()=>{
@@ -120,4 +125,50 @@ it('creates one synthetic fixture allocation, reuses it, and refuses changed cei
   await expect(prepareSyntheticBatch(batch,'0.2')).rejects.toThrow('verification_allocation_mismatch');
   await db.admin(`/rest/v1/profiles?user_id=eq.${first.context.userId}`,'PATCH',{data_revision:999});
   await expect(prepareSyntheticBatch(batch,'0.1')).rejects.toThrow('verification_fixture_invalid');
+});
+
+
+it.each(['E01','E10'])('runs fixed %s evaluation through real persistence with a synthetic provider',async caseId=>{
+  const {network}=await configuredSmoke();
+  const {lunaPlan,stableAttempt}=await import('../../scripts/luna-evaluation.js');
+  const {verifyLuna}=await import('../../scripts/verify-luna.js');
+  const root=join(projectRoot,'.scratch/luna-batches');await mkdir(root,{recursive:true});const path=join(root,batch+'.json');
+  const planHash=createHash('sha256').update(JSON.stringify(lunaPlan())).digest('hex');const attempt=stableAttempt(batch,caseId);
+  batches.push(stableAttempt(batch,caseId+':allocation'));
+  await writeFile(path,JSON.stringify({batch,ceiling:'1',period:new Date().toISOString().slice(0,7)+'-01',planHash,attempts:{[caseId]:attempt}}),{flag:'wx'});
+  try{
+    const report=await verifyLuna(['--allow-spend',`--batch-id=${batch}`,'--max-cost-usd=1',`--case=${caseId}`,`--attempt-id=${attempt}`],network);
+    expect(report).toMatchObject({case:caseId,structural:'passed',actualProviderRequests:caseId==='E10'?0:2,modelAssessment:caseId==='E10'?'not_applicable':'pending_review'});
+    await expect(verifyLuna(['--allow-spend',`--batch-id=${batch}`,'--max-cost-usd=2',`--case=${caseId}`,`--attempt-id=${attempt}`],network)).rejects.toThrow('immutable_suite_mismatch');
+    expect(vi.mocked(network)).toHaveBeenCalledTimes(caseId==='E10'?0:2);
+  }finally{await unlink(path);}
+});
+
+
+it('verifies pending approval, contextual goal progress and deterministic reimport using a synthetic model',async()=>{
+  const {network,setTransport}=await configuredSmoke();
+  const {SyntheticGoalTransport}=await import('../fixtures/chat-goals.js');
+  const creation=new SyntheticGoalTransport('goal_create'),progress=new SyntheticGoalTransport('goal_progress');
+  setTransport({mode:'mock',async *send(body,signal){
+    const request=JSON.parse(Buffer.from(body).toString());const turns=request.input as Array<{role?:string;content?:string}>;
+    const text=String(turns.findLast(t=>t.role==='user')?.content??'');
+    const selected=text.includes('What about progress')?progress:creation;
+    for await(const chunk of selected.send(body,signal))yield Buffer.from(Buffer.from(chunk).toString().replaceAll('daily_median_mean_7d','latest_value'));
+  }});
+  const {lunaPlan,stableAttempt}=await import('../../scripts/luna-evaluation.js');const {verifyLuna}=await import('../../scripts/verify-luna.js');
+  const root=join(projectRoot,'.scratch/luna-batches');await mkdir(root,{recursive:true});const path=join(root,batch+'.json');
+  const attempt=stableAttempt(batch,'E05');batches.push(stableAttempt(batch,'E05:allocation'));
+  await writeFile(path,JSON.stringify({batch,ceiling:'1',period:new Date().toISOString().slice(0,7)+'-01',planHash:createHash('sha256').update(JSON.stringify(lunaPlan())).digest('hex'),attempts:{E05:attempt}}),{flag:'wx'});
+  try{expect(await verifyLuna(['--allow-spend',`--batch-id=${batch}`,'--max-cost-usd=1','--case=E05',`--attempt-id=${attempt}`],network)).toMatchObject({case:'E05',structural:'passed',actualProviderRequests:6,modelAssessment:'pending_review'});}
+  finally{await unlink(path);}
+});
+
+
+it.each(['sparse_hr','injection'] as const)('binds the fixed %s fixture and refuses reuse as another fixture',async fixture=>{
+  const {verificationFixtures}=await import('../../server/ai/verification-fixture.js');
+  const prepared=await prepareSyntheticBatch(batch,'1',fixture);
+  expect(prepared.fixtureHash).toBe(verificationFixtures[fixture].hash);
+  const measurements=await prepared.context.db.from('measurements').select('id',{count:'exact',head:true}).eq('user_id',prepared.context.userId);
+  expect(measurements.count).toBe(verificationFixtures[fixture].rows);
+  await expect(prepareSyntheticBatch(batch,'1','empty')).rejects.toThrow('verification_allocation_mismatch');
 });

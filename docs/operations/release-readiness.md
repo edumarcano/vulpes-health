@@ -48,7 +48,7 @@ Every canonical acceptance ID has a row. `localStatus` describes only the named 
 
 | Role | Current binding | Evidence and required action |
 |---|---|---|
-| Everyday | Luna, Responses v2 adapter, `vulpes-everyday-v4`, catalog limits and ZDR policy | M3 v3 live tool-loop/cancellation/disconnect and exact inspection evidence is historical. The retained capability record does not match v4. Refresh current rates, access, capability/privacy/template bindings, bounded batch and real synthetic safety/evaluation evidence after separate authorization. Production smoke approval remains absent. |
+| Everyday | Luna, Responses v2 adapter, `vulpes-everyday-v4`, catalog limits and ZDR policy | M3 v3 live tool-loop/cancellation/disconnect and exact inspection evidence is historical. Public rates and capability evidence now bind v4. Account access, actual privacy-compatible routing, bounded live batch and real synthetic safety/evaluation evidence still require separate authorization. Production smoke approval remains absent. |
 | Intermediate | Flash, Vertex adapter, current v4 template, explicit Google project/location/policy | Local wire/handoff tests only. Prices, account access, accepted region/retention, capability/privacy evidence, terminal usage/cache billing and live tool/failure smoke remain unverified. |
 | Advanced | Argon, Vertex adapter, backend-only | Same external verification gaps as Flash. Argon remains excluded from chat even if a future smoke succeeds. |
 | Decision | Separate Decisions interface, disabled | PR 14 and AI-10 remain deferred. No activation or comparative quality/cost claim. MOD-03 verifies the application without it. |
@@ -91,3 +91,5 @@ OpenRouter consent version `openrouter_zdr_v2` describes the announced screening
 `npm run budget:provision` requires a private interactive terminal, the synthetic owner's UUID, approved app/account USD ceilings and the exact confirmation shown. It targets only the guarded local stack. It creates missing current UTC-month buckets atomically, accepts matching existing ceilings and refuses changed ceilings without resetting balances. Production ceilings and hosted operator targeting remain separately approved deployment work. Missing next-month buckets deny admission; provisioning is an explicit operator task.
 
 Credentials are not needed for ordinary verification. Later, supply provider and administrative keys only through an ignored local environment file or approved server-side deployment secret settings. Never paste keys into chat, command arguments, screenshots or `VITE_` variables. The exact dashboard procedure and spending ceiling must accompany the separate live-verification approval request.
+
+Current Luna preparation and the required owner setup/spending decision are owned by [the Luna verification procedure](luna-verification.md). Public capability evidence now binds v4; actual current-model results remain not run.

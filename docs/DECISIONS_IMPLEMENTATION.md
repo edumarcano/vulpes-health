@@ -4,6 +4,10 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: Current Luna verification preparation
+
+Refresh the public conservative rate snapshot without changing model identity, effort or token limits. Bind public capability evidence to v4. Add fixed empty, sparse heart-rate and source-injection fixtures behind the existing immutable verification allocations; original scale fixture identity remains valid. A fixed-case operator runner uses one aggregate app ceiling, deterministic attempt identities, create-only plan bindings and no automatic model retries. Structural checks leave semantic model assessment pending. Owner consent, key/privacy checks and separate capped spending approval remain required; production approval is not installed. [Procedure](operations/luna-verification.md).
+
 ## 2026-10-31: Disabled owner-pilot Luna composition
 
 Normal chat now has a separately issued Luna production transport through the existing dispatcher and execution ledger. Status, conversation availability and Settings share configuration readiness without reading provider credentials. Current smoke and explicit owner approval bind the privacy notice/version, price and adapter/template; no production evidence or positive run ceiling is installed. The transport rechecks enablement before its single fixed-endpoint request.

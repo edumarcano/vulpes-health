@@ -9,19 +9,22 @@ import { verifySession,type AuthContext } from '../server/auth/session.js';
 import { administrativeClient } from '../server/db/administrative.js';
 import { readEncryptionKeys } from '../server/security/encryption.js';
 import { previewCsv,commitImport } from '../server/services/imports.js';
-import { verificationFixtureHash } from '../server/ai/verification-fixture.js';
+import { verificationFixtures,type VerificationFixture } from '../server/ai/verification-fixture.js';
 
 // Caller must perform the live opt-in and static preflight before invoking this.
 // The allocation ID is explicitly supplied and is never replaced automatically.
-export async function prepareSyntheticBatch(batchId:string,ceiling:string):Promise<{context:AuthContext;fixtureHash:string}> {
+export async function prepareSyntheticBatch(batchId:string,ceiling:string,fixture:VerificationFixture='scale'):Promise<{context:AuthContext;fixtureHash:string}> {
   UUIDSchema.parse(batchId);if(!new Decimal(ceiling).isPositive())throw new Error('invalid_spend_limit');
   const local=localStatus();
   process.env.VITE_SUPABASE_URL=local.apiUrl;process.env.VITE_SUPABASE_PUBLISHABLE_KEY=local.anonKey;process.env.SUPABASE_SERVICE_ROLE_KEY=local.adminKey;
   readEncryptionKeys();
   const db=administrativeClient();const helper=new LocalSupabase();const period=new Date().toISOString().slice(0,7)+'-01';
-  const csv=(await readFile(new URL('../docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',import.meta.url),'utf8')).replaceAll('\r\n','\n');
-  const fixtureHash=createHash('sha256').update(csv).digest('hex');
-  if(fixtureHash!==verificationFixtureHash)throw new Error('verification_fixture_invalid');
+  const selected=verificationFixtures[fixture];
+  if(!selected)throw new Error('verification_fixture_invalid');
+  const csv=selected.csv??(await readFile(new URL('../docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+  const displayName=selected.displayLabel;
+  const fixtureHash=fixture==='injection'?createHash('sha256').update(createHash('sha256').update(csv).digest('hex')+'source-injection-v1').digest('hex'):fixture==='empty'?selected.hash:createHash('sha256').update(csv).digest('hex');
+  if(fixtureHash!==selected.hash)throw new Error('verification_fixture_invalid');
   const app=await db.from('usage_buckets').select('id').eq('scope','app').eq('period_start',period).maybeSingle();
   if(app.error || !app.data)throw new Error('verification_app_budget_unconfigured');
   const existing=await db.from('live_verification_allocations').select('*,ceiling_text:ceiling_usd::text').eq('id',batchId).maybeSingle();
@@ -46,12 +49,16 @@ export async function prepareSyntheticBatch(batchId:string,ceiling:string):Promi
       await helper.admin('/rest/v1/profiles','POST',{user_id:user.id,display_name:'Synthetic verification',consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
       const bucket=randomUUID();await helper.admin('/rest/v1/usage_buckets','POST',{id:bucket,user_id:user.id,scope:'account',period_start:period,allocated_ceiling_usd:ceiling});
       context=await verifySession({headers:{authorization:`Bearer ${user.token}`}});
+      let revision=0;
+      if(selected.rows>0){
       const preview=await previewCsv(context,PreviewCsvSchema.parse({action:'preview_csv',client_request_id:randomUUID(),csv,
-        source:{kind:'new',label:'Synthetic verification import',origin_app:null,device_label:null},
-        mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}}));
+        source:{kind:'new',label:displayName,origin_app:null,device_label:null},
+        mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:selected.sourceLabel}}));
       const imported=await commitImport(context,{action:'commit_import',client_request_id:randomUUID(),batch_id:preview.batch_id,payload_hash:preview.payload_hash});
-      if(imported.inserted!==28 || imported.conflict!==0)throw new Error('verification_fixture_invalid');
-      await helper.admin('/rest/v1/live_verification_allocations','POST',{id:batchId,user_id:user.id,account_bucket_id:bucket,period_start:period,ceiling_usd:ceiling,data_revision:imported.dataRevision,fixture_hash:fixtureHash});
+      if(imported.inserted!==selected.rows || imported.conflict!==0)throw new Error('verification_fixture_invalid');
+      revision=imported.dataRevision;
+      }
+      await helper.admin('/rest/v1/live_verification_allocations','POST',{id:batchId,user_id:user.id,account_bucket_id:bucket,period_start:period,ceiling_usd:ceiling,data_revision:revision,fixture_hash:fixtureHash});
       registered=true;
     } catch(error) {if(!registered)await helper.cleanup();throw error;}
   }
@@ -62,7 +69,7 @@ export async function prepareSyntheticBatch(batchId:string,ceiling:string):Promi
     context.db.from('profiles').select('data_revision,display_name').eq('user_id',context.userId).single(),
     db.from('live_verification_allocations').select('data_revision').eq('id',batchId).eq('user_id',context.userId).single(),
   ]);
-  if(sources.error || measurements.error || goals.error || profile.error || allocation.error || profile.data.display_name!=='Synthetic verification' || profile.data.data_revision!==allocation.data.data_revision || sources.data.length!==1 || sources.data[0]?.label!=='Synthetic verification import'
-    || measurements.count!==28 || goals.count!==0)throw new Error('verification_fixture_invalid');
+  if(sources.error || measurements.error || goals.error || profile.error || allocation.error || profile.data.display_name!=='Synthetic verification' || profile.data.data_revision!==allocation.data.data_revision || sources.data.length!==selected.sources || selected.sources>0&&sources.data[0]?.label!==displayName
+    || measurements.count!==selected.rows || goals.count!==0)throw new Error('verification_fixture_invalid');
   return {context,fixtureHash};
 }
