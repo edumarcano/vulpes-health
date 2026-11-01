@@ -10,6 +10,7 @@
   "scripts": {
     "hosting:prepare": "tsx scripts/prepare-hosting.ts",
     "hosting:probe": "tsx scripts/probe-hosting.ts",
+    "hosting:security": "tsx scripts/verify-hosted-security.ts",
     "build:hosted": "tsx scripts/build-hosted.ts",
     "verify:luna": "tsx scripts/verify-luna.ts",
     "budget:provision": "tsx scripts/provision-pilot-budget.ts",

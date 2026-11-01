@@ -92,6 +92,8 @@ Bind the project's build command to the generated `build:hosted` command with it
 
 The approved Step 3C deployment is [vulpes-synthetic.vercel.app](https://vulpes-synthetic.vercel.app). Its [dated evidence](../evidence/owner-pilot-hosted-setup.md) identifies the immutable deployment and bounded checks. Only synthetic identities are provisioned; public signup and anonymous signup are disabled. No email is sent. Ask remains unavailable, provider consent/budgets are absent and production evidence is uninstalled.
 
+The owner confirmed this sign-in/navigation/logout handoff worked on 2026-11-01. This closes the initial owner login check, not the later trusted password-reset/revocation or family identity-verification gates.
+
 On the setup Windows account, the owner can run the ignored `.scratch/hosting-owner-pilot/show-pilot-login.ps1` from a private PowerShell window. The script reads only the DPAPI-protected synthetic owner credential file, validates its project/email binding, and displays credentials only after the owner types `SHOW`. It has no network calls and changes no account settings. Store that login in a password manager, close the terminal, open the site and sign in. Never paste the password, terminal output or a screenshot into chat. If PowerShell blocks the script, report the policy error without changing execution policy.
 
 Verify **Ask Vulpes** shows the unavailable explanation and disabled Send; open **Data**, **Goals**, and **Settings**; use **Sign out**, wait until **Sign in** is enabled, then reload to confirm it stays signed out. Report only whether these steps work and any exact nonsecret error. Do not enter personal measurements, enable consent/budgets or invite another person. This is synthetic review, not real-data pilot authorization. Windows DPAPI protects the files under this Windows account; it is not separate backup/key custody.
@@ -107,6 +109,29 @@ npm run hosting:probe -- --manifest=.scratch/hosting/<target-hash-prefix>/manife
 This sends at most 14 unauthenticated GETs, no cookies/tokens, no redirect following. It checks public deep links, exact HTML CSP/security headers, status JSON, unknown API JSON and unauthenticated rejection/no-store on named APIs. It stops at first failure and emits only paths/outcomes. Unexpected bodies are not logged; expected public JSON is limited to 4 KiB. Vercel login/protection redirects fail the probe; do not disable protection or mint a bypass token without reviewing the reason and scope.
 
 The public probe cannot bind an alias to a commit, verify authenticated inference state, prove two-user isolation or establish recovery. Complete these separate checks and record safe results against the immutable deployment:
+
+### Repeatable security preflight
+
+`npm run hosting:security -- --plan` is inert: no credentials, files or network. After approved synthetic reads, the operator may run `npm run hosting:security -- --manifest=<generated-manifest> --allow-hosted` with a private stdin JSON object containing only `projectRef`, `publishableKey` and exactly two `users` (`id`, `.invalid` email, `password`). Extra administrative/trace/provider keys and non-synthetic addresses are rejected. Read the existing DPAPI files into memory and project only those fields; never paste credentials into arguments, chat, Git or a command transcript.
+
+The preflight permits at most 100 requests per invocation, no redirects/cookies, 15-second request deadlines and 64 KiB JSON responses. It reads all 19 table access boundaries, samples only owner IDs (two rows per readable table), checks foreign profiles, owned API schemas, unavailable inference, absent consent/allocation and malformed-query JSON/no-store responses. Password sign-in creates only its own test sessions; local sign-out revokes those sessions and old access tokens must fail both application and direct profile reads. It leaves existing browser sessions alone. Ordinary API read-time expiry can still run. No fixture/domain writes, export, deletion, password reset, maintenance, backup, deployment or model calls occur.
+
+The report contains check names/counts and sampled row counts, never identities, tokens, passwords or private response bodies. Empty samples remain explicit and `populatedIsolation` remains `pending` even when the preflight passes. This prevents empty tables from being presented as full SEC-02/SEC-03 proof. [Step 3D evidence](../evidence/owner-pilot-step3d.md) owns observed results and approval boundaries.
+
+### Remaining Step 3D packets
+
+| Packet | Scope and checkpoint | Required owner decision |
+|---|---|---|
+| 3D.1 security preflight | Current deployment, all table access boundaries, malformed reads and ended test-session denial; no application deployment | Approved synthetic reads; passed, with populated-isolation gaps |
+| 3D.2 populated security/lifecycle | New `vulpes-3d-a@example.invalid` and `vulpes-3d-b@example.invalid` identities; synthetic manual/CSV, correction, goal approval, conversation and export checks; foreign-parent/direct-write attempts, trusted reset and interrupted/resumed account deletion | Explicitly authorize creating and permanently deleting only these disposable accounts/data, their synthetic goal approvals/reset, and bounded denial tests. Existing owner/isolation identities remain untouched; no positive budgets/provider consent |
+| 3D.3 hosted maintenance | Implement an explicitly bound, bounded hosted operator path without weakening local guards; verify expiry, deletion resumption and operator cadence | Approve named synthetic cleanup targets and maintenance ownership before hosted execution; no paid scheduler |
+| 3D.4 hosted-source recovery | Implement compatible encrypted capture, current independent deletion journal, separate trace/backup key custody, fenced disposable local destination and failure cases | Choose/approve backup and separate key/journal custody locations, local destination/ports and source-read/local-destructive scope before capture/restore. No source/unrelated project overwrite |
+
+The next execution approval is 3D.2 only, at $0 paid spending. Its ordinary product paths already exist; use the application contracts and synthetic fixtures rather than adding a public administration endpoint. Reconfirm named identities are newly created by this rehearsal before any reset/deletion, preserve safe evidence on failure, and stop instead of deleting an existing account with the same email. Exported synthetic documents remain ignored/private and are not backups. Do not reset retained Luna allocations or install provider credentials.
+
+Supabase documents [platform-to-self-hosted restoration](https://supabase.com/docs/guides/self-hosting/restore-from-platform), including separate configuration and version-compatibility checks. That supports investigating a local destination; it does not establish Vulpes recovery correctness. Compare the actual hosted/local Auth/schema/grants/ownership versions and preserve required data. Do not adopt troubleshooting shortcuts that discard unknown Auth rows/columns or skip failed restores. The existing superuser local-source `backup:verify` remains insufficient for managed hosted-source evidence.
+
+### Acceptance still required
 
 | Required hosted check | Pass condition |
 |---|---|
