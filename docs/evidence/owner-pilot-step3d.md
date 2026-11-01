@@ -1,6 +1,6 @@
 # Owner-pilot Step 3D: hosted security and lifecycle
 
-Current checkpoint: Step 3D.1 preflight and the explicitly approved Step 3D.2 disposable-account lifecycle passed. Step 3D.3 database-maintenance implementation is prepared; its hosted migration/rehearsal/manual ownership approval is pending. Hosted-source recovery/custody and export crash-file cleanup remain pending. Inference remains off and real data is not authorized.
+Current checkpoint: Steps 3D.1, 3D.2 and the approved 3D.3 hosted database-maintenance rehearsal passed. The owner accepted manual maintenance ownership. Hosted-source recovery/custody and export crash-file cleanup remain pending. Inference remains off and real data is not authorized.
 
 ## Step 3D.1 preflight record
 
@@ -165,3 +165,40 @@ The local additive migration was applied without resetting data. Its uncommitted
 **Axis 2:** Approved. Mandatory owner and service-only grants, pinned search path, explicit target/account/mode/expiry binding, whole-allowlist validation, lock ordering, request/pass/deletion caps and conservative hold handling preserve the boundary. The local-only CLI remains unchanged. Security-definer inventory remains exact and has stronger assertions for the new function. No demonstrated blocking defect remains in the prepared packet; historical failed attempts are retained rather than relabeled as passes.
 
 The [operator procedure](../operations/synthetic-hosting.md#hosted-maintenance-operator-procedure) defines the concrete next approval: apply only the reviewed 39th migration, create new `vulpes-maintenance-a@example.invalid` and `vulpes-maintenance-b@example.invalid` fixtures, inspect/clean in bounded passes with a foreign control, resume only their requested deletions, and age/prune only A's completed synthetic receipt while preserving B's fresh and earlier 3D.2 receipts. Preallocate credentials/UUIDs privately and refuse existing names. Maximum paid spending is $0, with no model consent/allocations/calls, app deployment, scheduler, backups or restore. The two original accounts remain outside the mutation scope. No dashboard or secret entry is needed for this approval; manual operator ownership/cadence must be agreed before hosted use. No PR merge is authorized.
+
+## Step 3D.3 approved hosted maintenance
+
+Date: 2026-11-01. The owner approved the exact rehearsal above and accepted manual maintenance ownership. Reviewed implementation candidate `da72629a091deaa54810da8ff77f7a9fdf83a77e` passed both required checks in [CI run 41326185988](https://github.com/edumarcano/vulpes-health/actions/runs/41326185988) before migration execution. Work remains on open PR #29; no merge occurred.
+
+### Migration and private fixture binding
+
+A new ignored migration work directory retained all original deployment artifacts. The original 38 migration hashes matched the prior manifest; the new copy matched all 39 reviewed files. CLI dry-run listed only `20261101000100_owned_maintenance.sql`, then the approved push applied only that migration to `vatwmqzjymbhaodwatyn` (Free/us-east-1). The ordered remote history exactly matched all 39 versions. Migration SHA-256: `186a77eb0bf810ac6d2b3a686bb732726d54e2ca7e9715403bc1c352bf2468fa`. Independent catalog checks confirmed security-definer, empty search path, service-role execution and denied anonymous/authenticated execution.
+
+The private fixture adapter bound the existing target manifest, approved source and app origin. It preallocated new UUIDs, random passwords and an independent synthetic encryption key into Windows DPAPI before provisioning; neither approved email/UUID existed. Remote rehearsal/run metadata and create-only local receipts guarded all subsequent writes. Five expired encrypted request payloads and five expired pending proposals were seeded per fixture. No provider request, consent, positive allocation or goal activation was needed. The adapter called the real `hostedMaintenanceCommand` parser/service/RPC path with fresh mode/target/owner-bound authorization; each invocation allowed one fixture, batch size two, at most five passes and 20 deletion continuations. The final separate CLI invocation also exercised private stdin against the hosted source.
+
+| Hosted phase | Observed result | Requests / grouped checks |
+|---|---|---|
+| Provision | Only the two approved new identities/profiles created; ten encrypted payloads and ten pending proposals seeded; original-account/receipt/budget hashes preserved | 18 / 6 |
+| Inspect and bounded cleanup | Inspection reported five due payloads/proposals and changed neither; one pass removed exactly two payloads and expired two proposals, leaving three each; later passes drained A. B's complete fixture/profile snapshot and original state remained unchanged | 33 / 3 |
+| Delete start A | Fresh password authentication; existing product API created only A's `fenced` deletion request; process exited, B/originals unchanged | 7 / 2 |
+| Resume A | Separate operator process completed the existing request; Auth absence plus all 16 owned table categories independently verified; fresh completed receipt retained | 34 / 2 |
+| Delete start B | Existing product API initiated only B's deletion after preservation checks passed | 4 / 2 |
+| Resume B | Separate operator process completed B's request; Auth absence and all 16 owned table categories verified; originals and earlier receipts unchanged | 32 / 2 |
+| Receipt retention | A's completed receipt alone aged to 32 days. Inspection retained it; execute pruned exactly one. B's fresh receipt and both earlier 3D.2 receipts remained byte-equivalent | 52 / 4 |
+| Actual CLI inspection | `node node_modules/tsx/dist/cli.mjs scripts/hosted-maintenance.ts --manifest=.scratch/hosting/b956bd10911ee9ff/manifest.json --inspect --allow-hosted`, private stdin, exit 0; B's retained receipt allowed inspection after Auth removal. One owner, zero passes/deletion steps/changes, no due work or pending holds | 3 / separate CLI proof |
+
+All seven fixture phases passed on their first hosted attempt: **180 requests and 21 grouped checks**, plus three final CLI requests. This count excludes migration/preflight/catalog queries and read-only Vercel metadata. A local closure-record command initially used an empty interactive `$PSScriptRoot`; it failed before any cloud call or closure write. Correcting the local path completed the same read-only check; no fixture phase was rerun. Raw migration logs, protected credentials, creation receipts, snapshots, command reports and a closed-run record remain ignored/private. The completed plan is retained and does not authorize replacement fixtures or a repeated batch.
+
+### Independent postcheck and scope limits
+
+The final Management API query reported two original Auth identities and two profiles, zero measurements/private payloads/proposals, three completed receipts, zero unfinished deletions, zero Storage objects and 39 migrations. Separate checks showed no rows in any of the 16 owned table categories for either deleted fixture. Hashes of the original Auth/profile metadata, earlier receipts and all usage buckets stayed unchanged. The three retained receipts are the two earlier 3D.2 records plus B's fresh record; only A's intentionally aged new receipt was pruned.
+
+Vercel independently resolved the canonical alias to unchanged READY deployment `dpl_Cdw4DeExKHYHzT66wdDu1Njd3UXN` in the approved project/`iad1`. The hosted app remains the Step 3C candidate, not this operator implementation. Additional paid spending **$0**, provider calls **0**, application deployments **0**. No real data, source reset, scheduler, backup capture, restore, optional-model activation or infrastructure beyond the explicitly approved additive migration occurred.
+
+The follow-up changes only six canonical evidence/runbook/decision/plan documents. The specification validator passed **518 checks**, including the new relative evidence link; `git diff --check` passed. No application, migration, test or dependency bytes changed after the verified implementation candidate. The current diff was reviewed separately for requirements/evidence accuracy and standards/security; no private scratch artifact or credential is included.
+
+**Axis 1:** Approved for the named 3D.3 hosted database scope. Real inspection, bounded cleanup, foreign preservation, process-separated deletion resumption, receipt-age boundary and independent postchecks establish the requested behavior. Hosted uncertainty accounting and positive execution/trace/allocation isolation still lack populated hosted evidence; their local tests are not relabeled as hosted passes. Recovery/custody, remote export crash-file cleanup, devices and formal acceptance remain open.
+
+**Axis 2:** Approved. Candidate/hash/history checks preceded the additive apply. Protected preallocated secrets, exact new identities, remote metadata/local receipts, explicit owner/mode/expiry authorization, no-write inspection and bounded production maintenance preserved the reviewed boundary. No production-code repair or new dependency was needed during this rehearsal. No demonstrated blocking defect remains in this scope.
+
+The owner accepted the documented manual cadence: request inspection/maintenance at the start of each day of authorized pilot use, after inactivity/interruption, and before relying on retention/recovery evidence. This creates no unattended scheduler or blanket mutation approval. Step 3D.3 database verification is complete. Next is 3D.4 recovery preparation and explicit approval of encrypted backup, independent current-journal and separate key custody plus a fenced disposable destination before any capture/restore. Step 3 and real-data authorization remain incomplete.
