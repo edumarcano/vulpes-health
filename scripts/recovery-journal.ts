@@ -7,6 +7,7 @@ import {z} from 'zod';
 import {DeletionJournalSchema} from '../server/services/account.js';
 import {HostingTargetSchema,targetHash,type HostingTarget} from './hosting.js';
 import {sealArchive,openArchive} from './backup-archive.js';
+import {recoveryAccountingExpression} from './recovery-accounting.js';
 
 const maxRows=10_000,maxBytes=5*1024*1024;
 const hashSchema=z.string().regex(/^[a-f0-9]{64}$/);
@@ -14,7 +15,7 @@ const keySchema=z.string().regex(/^[A-Za-z0-9+/]{43}=$/);
 const keysSchema=z.strictObject({keyId:z.string().min(1).max(100),journalKeyB64:keySchema});
 const captureSchema=keysSchema.extend({accessToken:z.string().regex(/^sbp_[\w-]+$/).max(4096),authorization:z.strictObject({purpose:z.literal('synthetic-recovery-journal-capture'),targetSHA256:hashSchema,outputPathSHA256:hashSchema,expiresAt:z.iso.datetime(),approved:z.literal(true),independentJournalCustody:z.literal(true),separateKeyCustody:z.literal(true)})});
 export const RecoveryJournalCaptureInputSchema=captureSchema;
-const journalSchema=z.strictObject({version:z.literal(1),purpose:z.literal('synthetic-recovery-journal'),targetSHA256:hashSchema,journal:DeletionJournalSchema}).superRefine((value,ctx)=>{
+const journalSchema=z.strictObject({version:z.literal(1),purpose:z.literal('synthetic-recovery-journal'),targetSHA256:hashSchema,accountingSHA256:hashSchema.optional(),journal:DeletionJournalSchema}).superRefine((value,ctx)=>{
  const rows=value.journal.rows;
  if(rows.length>maxRows||new Set(rows.map(r=>r.user_id.toLowerCase())).size!==rows.length||new Set(rows.map(r=>r.id.toLowerCase())).size!==rows.length)ctx.addIssue({code:'custom',message:'Journal inventory is invalid.'});
  for(const row of rows){
@@ -22,10 +23,11 @@ const journalSchema=z.strictObject({version:z.literal(1),purpose:z.literal('synt
   if(updated<requested||updated>captured||row.completed_at!==null&&(Date.parse(row.completed_at)<requested||Date.parse(row.completed_at)>captured)||((row.phase==='completed')!==(row.outcome==='completed')))ctx.addIssue({code:'custom',message:'Journal lifecycle is invalid.'});
  }
 });
-const snapshotSchema=z.array(z.strictObject({captured_at:z.iso.datetime({offset:true}),nonsynthetic_users:z.number().int().nonnegative(),storage_objects:z.number().int().nonnegative(),receipt_count:z.number().int().min(0).max(maxRows),rows:z.array(z.unknown()).max(maxRows)})).length(1);
+const snapshotSchema=z.array(z.strictObject({captured_at:z.iso.datetime({offset:true}),accounting_sha256:hashSchema.optional(),nonsynthetic_users:z.number().int().nonnegative(),storage_objects:z.number().int().nonnegative(),receipt_count:z.number().int().min(0).max(maxRows),rows:z.array(z.unknown()).max(maxRows)})).length(1);
 
 // One read-only statement/snapshot, with no pagination gap or omitted unfinished requests.
 export const recoveryJournalQuery=`select statement_timestamp() as captured_at,
+ ${recoveryAccountingExpression} as accounting_sha256,
  (select count(*) from auth.users where email is null or lower(email) not like '%@example.invalid') as nonsynthetic_users,
  (select count(*) from storage.objects) as storage_objects,
  (select count(*) from public.account_deletion_receipts) as receipt_count,
@@ -53,7 +55,7 @@ export async function captureRecoveryJournal(target:HostingTarget,path:string,cr
  if(snapshot.nonsynthetic_users!==0||snapshot.storage_objects!==0||snapshot.rows.length!==snapshot.receipt_count)throw new Error('Unsupported or incomplete synthetic source.');
  const now=clock(),captured=Date.parse(snapshot.captured_at);
  if(captured>now+5000||captured<=now-300_000)throw new Error('Source clock or journal freshness unavailable.');
- const journal=journalSchema.parse({version:1,purpose:'synthetic-recovery-journal',targetSHA256:targetHash(checked),journal:{schemaVersion:1,capturedAt:new Date(captured).toISOString(),rows:snapshot.rows}});
+ const journal=journalSchema.parse({version:1,purpose:'synthetic-recovery-journal',targetSHA256:targetHash(checked),accountingSHA256:snapshot.accounting_sha256,journal:{schemaVersion:1,capturedAt:new Date(captured).toISOString(),rows:snapshot.rows}});
  const key=Buffer.from(input.journalKeyB64,'base64'),bytes=Buffer.from(JSON.stringify(journal));
  try{return {archive:sealArchive(bytes,key,input.keyId,'deletion_journal',now),report:{scope:'independent_synthetic_deletion_journal',mode:'capture',targetSHA256:journal.targetSHA256,requests:1,receipts:journal.journal.rows.length,unfinishedRequests:journal.journal.rows.filter(r=>r.phase!=='completed').length,sourceWrites:0,restoreAccessAuthorized:false}};}
  finally{key.fill(0);bytes.fill(0);}
@@ -68,7 +70,7 @@ export function verifyRecoveryJournal(archive:Buffer,target:HostingTarget,creden
   opened=openArchive(archive,new Map([[input.keyId,key]]),'deletion_journal',now);
   const record=journalSchema.parse(JSON.parse(opened.bytes.toString('utf8'))),captured=Date.parse(record.journal.capturedAt),backup=Date.parse(input.backupCreatedAt);
   if(record.targetSHA256!==targetHash(target)||captured<backup||captured>now+5000||captured<=now-300_000||backup>now+5000||Math.abs(captured-Date.parse(opened.header.createdAt))>300_000)throw new Error('Journal target/coverage/freshness mismatch.');
-  return {journal:record.journal,report:{scope:'independent_synthetic_deletion_journal',mode:'verify',targetSHA256:record.targetSHA256,receipts:record.journal.rows.length,unfinishedRequests:record.journal.rows.filter(r=>r.phase!=='completed').length,networkRequests:0,restoreAccessAuthorized:false}};
+  return {journal:record.journal,accountingSHA256:record.accountingSHA256,report:{scope:'independent_synthetic_deletion_journal',mode:'verify',targetSHA256:record.targetSHA256,receipts:record.journal.rows.length,unfinishedRequests:record.journal.rows.filter(r=>r.phase!=='completed').length,networkRequests:0,restoreAccessAuthorized:false}};
  }finally{key.fill(0);opened?.bytes.fill(0);}
 }
 

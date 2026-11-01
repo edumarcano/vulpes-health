@@ -4,6 +4,16 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Consolidate Step 3 recovery and export preparation
+
+**Status:** Implementation under the approved owner-pilot plan; remaining Step 3 work stays in PR #32 at the owner's request. Hosted capture, deployment, custody and access retain explicit approval gates.
+
+**Decision:** Verify actual cached GoTrue/PostgREST services inside the fresh restored database's network-none namespace, with no ports, mounts or outbound access. Require current source accounting fingerprints rather than restoring stale ceilings or resetting balances. SQL-only diagnostics retain an explicit missing HTTP gate; owner-pilot rehearsal requires HTTP mode. Source loss without independently current deletion/accounting completeness keeps restored access blocked.
+
+**Export repair:** Unlink the encrypted spool before consuming private records and retain its sole descriptor until cleanup/process exit. This removes named crash ciphertext without adding a hosted cleanup service, memory ceiling or scheduler. Unsupported unlink semantics fail before capture. Descriptor ownership remains in one helper so pipeline errors preserve original conflict/abort results. Deployment/legacy-instance retirement still needs separate evidence.
+
+**Reason:** Complete necessary privacy/recovery behavior and reduce fragmented preparation PRs while preserving the existing feature set and owner approval boundaries. [Runbook](operations/hosted-recovery.md#combined-step-3-execution-checkpoint).
+
 ## 2026-11-01: Replay authorized deletions before restored access
 
 Step 3D.4C adds an explicit recover mode to the existing fenced restore. It reuses product deletion/hold semantics, preserves independent receipt identity and unaffected data, compares shared costs as exact decimal strings, revokes all restored sessions and tests SQL isolation using rolled-back probes. A separately authorized current journal is captured only after replay/validation and must match the initial records. This demonstrates a fresh reread, not atomic source-loss/cutover completeness or current billing reconciliation; access stays unauthorized. Old session IDs must be captured before replay so deleted identities remain part of denial proof. [Evidence](evidence/owner-pilot-step3d4-replay.md), [procedure](operations/hosted-recovery.md#fenced-journal-replay-and-recovery-validation).

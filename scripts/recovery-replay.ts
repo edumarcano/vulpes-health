@@ -5,9 +5,11 @@ import Decimal from 'decimal.js';
 import {DeletionJournalSchema} from '../server/services/account.js';
 import {AccountStatusSchema} from '../shared/account.js';
 import {recoveryRequiredPublicTables} from './recovery-database.js';
+import {recoveryAccountingExpression} from './recovery-accounting.js';
 
 type Journal=z.infer<typeof DeletionJournalSchema>;
 export interface RecoveryReplayActions {
+ accounting:()=>Promise<string>;
  replay:(journal:Journal)=>Promise<{deletionsReplayed:number;deletionSteps:number;unaffectedRowsPreserved:true;sharedChargesPreserved:true}>;
  revokeSessions:()=>Promise<{sessionsRemoved:number;refreshTokensRemoved:number}>;
  validate:()=>Promise<{sessionsRemaining:0;refreshTokensRemaining:0;profilesTested:number;oldSessionsTested:number;oldSessionsDenied:true;twoOwnerRlsVerified:boolean}>;
@@ -25,6 +27,7 @@ export function recoveryReplayActions(sql:(statement:string,role?:string)=>strin
   if(sql(`select count(*) from auth.users where id='${owner}';`)!=='0')throw new Error('Restored deletion identity remains.');
  }
  return {
+  accounting:async()=>{await guard();return z.string().regex(/^[a-f0-9]{64}$/).parse(sql('begin read only;select '+recoveryAccountingExpression+';rollback;'));},
   replay:async input=>{
    const journal=DeletionJournalSchema.parse(input);if(journal.rows.length>100||journal.rows.some(r=>r.outcome==='waiting_for_accounting'))throw new Error('Journal replay exceeds bounds or has unsettled source accounting.');
    await guard();oldSessions=readSessions();const owners=journal.rows.map(r=>r.user_id),set=owners.length?owners.map(id=>"'"+id+"'").join(','):"null";

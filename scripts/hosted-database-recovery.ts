@@ -4,6 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {resolve,dirname} from 'node:path';
 import {lstat,realpath,readFile,open} from 'node:fs/promises';
 import {z} from 'zod';
+import {RecoveryHttpSchema,type RecoveryHttpInput} from './recovery-http.js';
 import {HostingTargetSchema,targetHash} from './hosting.js';
 import {recoveryPathHash,RecoveryJournalCaptureInputSchema,recoveryJournalCommand} from './recovery-journal.js';
 import {captureDatabase,restoreDatabase} from './recovery-database.js';
@@ -14,20 +15,21 @@ const keysSchema=z.strictObject({backupKeyB64:key,keyId:z.string().min(1).max(10
 const authorizationSchema=z.strictObject({purpose:z.enum(['synthetic-database-capture','synthetic-fenced-database-restore','synthetic-fenced-database-recovery']),targetSHA256:hash,bindingSHA256:hash,expiresAt:z.iso.datetime(),approved:z.literal(true)});
 const captureSchema=keysSchema.extend({connection:RecoveryConnectionSchema,independentBackupCustody:z.literal(true),separateKeyCustody:z.literal(true),authorization:authorizationSchema});
 const restoreSchema=keysSchema.extend({authorization:authorizationSchema});
-const replaySchema=restoreSchema.extend({journal:RecoveryJournalCaptureInputSchema});
+const replaySchema=restoreSchema.extend({journal:RecoveryJournalCaptureInputSchema,httpProof:RecoveryHttpSchema.optional()});
 const digest=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 export const databaseCaptureBinding=(connection:ReturnType<typeof connectionIdentity>,path:string)=>digest({connection,outputPathSHA256:recoveryPathHash(path)});
 export const databaseRestoreBinding=(archive:Buffer,image:string)=>digest({archiveSHA256:createHash('sha256').update(archive).digest('hex'),image});
-export const databaseRecoveryBinding=(archive:Buffer,image:string,journal:Buffer,latestPath:string)=>digest({restore:databaseRestoreBinding(archive,image),journalSHA256:createHash('sha256').update(journal).digest('hex'),latestPathSHA256:recoveryPathHash(latestPath)});
+export const databaseRecoveryBinding=(archive:Buffer,image:string,journal:Buffer,latestPath:string,httpProof?:RecoveryHttpInput)=>digest({...httpProof?{httpProof:{authImage:httpProof.authImage,restImage:httpProof.restImage,users:httpProof.users.map(u=>({id:u.id,email:u.email}))}}:{},restore:databaseRestoreBinding(archive,image),journalSHA256:createHash('sha256').update(journal).digest('hex'),latestPathSHA256:recoveryPathHash(latestPath)});
 export const databaseRecoveryPlan={scope:'synthetic_database_capture_and_fenced_restore',networkRequests:0,sourceWrites:0,maximumDumpMiB:128,maximumBackupDays:30,
  requires:'Exact source/connection/output or archive/image approval, separate retained backup/trace keys, existing private output directory and local cached PostgreSQL client image.',
  restoreFence:'A fresh local container, network none, no published ports or host bind mounts, stopped after verification. No access-enable command.',
- recovery:'Explicit recover mode additionally requires an authenticated initial journal and approval for one current hosted journal read to a new independent file after replay/revocation. Access stays blocked.',
- excludes:['source-loss/cutover completeness','current accounting reconciliation','Auth/API compatibility proof','hosted destination','scheduler','provider calls','real data','access activation']};
+ recovery:'Explicit recover mode requires a fresh accounting-bearing journal and approval for one current hosted journal read after replay/revocation. Current ledger fingerprints must match. Optional --verify-http binds cached Auth/API images and synthetic identities to this approval; all traffic remains inside the network-none namespace.',
+ excludes:['source-loss/cutover authorization','credential custody attestation','hosted destination','scheduler','provider calls','real data','access activation']};
 
-export async function databaseRecoveryCommand(args:string[],readCredentials:()=>Promise<unknown>,network:typeof fetch=fetch){
- const v=parseArgs({args,strict:true,allowPositionals:false,options:{plan:{type:'boolean'},capture:{type:'boolean'},restore:{type:'boolean'},recover:{type:'boolean'},manifest:{type:'string'},output:{type:'string'},archive:{type:'string'},image:{type:'string'},journal:{type:'string'},'journal-latest':{type:'string'},'allow-hosted-capture':{type:'boolean'},'allow-fenced-restore':{type:'boolean'},'allow-hosted-journal-read':{type:'boolean'}}}).values;
+export async function databaseRecoveryCommand(args:string[],readCredentials:()=>Promise<unknown>,network:typeof fetch=fetch,onFailure?:(bytes:Buffer)=>void){
+ const v=parseArgs({args,strict:true,allowPositionals:false,options:{plan:{type:'boolean'},capture:{type:'boolean'},restore:{type:'boolean'},recover:{type:'boolean'},manifest:{type:'string'},output:{type:'string'},archive:{type:'string'},image:{type:'string'},journal:{type:'string'},'journal-latest':{type:'string'},'verify-http':{type:'boolean'},'allow-hosted-capture':{type:'boolean'},'allow-fenced-restore':{type:'boolean'},'allow-hosted-journal-read':{type:'boolean'}}}).values;
  if(v.plan&&Object.keys(v).length===1)return databaseRecoveryPlan;
+ if(v['verify-http']&&!v.recover)throw new Error('HTTP proof requires explicit recovery mode.');
  if(v.plan||!v.manifest||[v.capture,v.restore,v.recover].filter(Boolean).length!==1||v.capture&&(!v['allow-hosted-capture']||v['allow-fenced-restore']||!v.output||v.archive||v.image)||!v.capture&&(!v['allow-fenced-restore']||v['allow-hosted-capture']||!v.archive||!v.image||v.output)||v.recover&&(!v['allow-hosted-journal-read']||!v.journal||!v['journal-latest'])||!v.recover&&(v['allow-hosted-journal-read']||v.journal||v['journal-latest']))throw new Error('Explicit database recovery mode required.');
  const manifest=z.object({target:HostingTargetSchema,targetSHA256:hash}).parse(JSON.parse(await readFile(v.manifest,'utf8')));
  if(manifest.targetSHA256!==targetHash(manifest.target))throw new Error('Invalid source manifest.');
@@ -50,11 +52,13 @@ export async function databaseRecoveryCommand(args:string[],readCredentials:()=>
   const archive=await readFile(path),image=v.image!;
   let journal:Buffer|undefined;
   if(v.recover){const stored=await lstat(v.journal!);if(!stored.isFile()||stored.isSymbolicLink()||stored.size>5*1024*1024+4096)throw new Error('Invalid independent journal.');journal=await readFile(v.journal!);}
-  const binding=journal?databaseRecoveryBinding(archive,image,journal,v['journal-latest']!):databaseRestoreBinding(archive,image),check=()=>authorize(v.recover?'synthetic-fenced-database-recovery':'synthetic-fenced-database-restore',binding);check();
-  const destination=fencedRecoveryDestination(image,check);
+  const replayInput=v.recover?replaySchema.parse(input):undefined;
+  if(!!v['verify-http']!==!!replayInput?.httpProof)throw new Error('Explicit HTTP proof opt-in required.');
+  const binding=journal?databaseRecoveryBinding(archive,image,journal,v['journal-latest']!,replayInput?.httpProof):databaseRestoreBinding(archive,image),check=()=>authorize(v.recover?'synthetic-fenced-database-recovery':'synthetic-fenced-database-restore',binding);check();
+  const destination=fencedRecoveryDestination(image,check,onFailure);
   try{
-   const replay=v.recover?replaySchema.parse(input):undefined;
-   const options=replay&&journal?{journal,keyId:replay.journal.keyId,journalKeyB64:replay.journal.journalKeyB64,current:async()=>{check();await recoveryJournalCommand(['--capture','--allow-hosted','--manifest='+v.manifest,'--output='+v['journal-latest']],async()=>replay.journal,network);return readFile(v['journal-latest']!);}}:undefined;
+   const replay=replayInput;
+   const options=replay&&journal?{journal,...(replay.httpProof?{httpProof:replay.httpProof}:{}),keyId:replay.journal.keyId,journalKeyB64:replay.journal.journalKeyB64,current:async()=>{check();await recoveryJournalCommand(['--capture','--allow-hosted','--manifest='+v.manifest,'--output='+v['journal-latest']],async()=>replay.journal,network);return readFile(v['journal-latest']!);}}:undefined;
    return {...await restoreDatabase(manifest.target,archive,keys,destination,Date.now(),options),destination:destination.name};
   }finally{archive.fill(0);journal?.fill(0);}
  }finally{keys.backup.fill(0);for(const value of keys.traces.keys.values())value.fill(0);}
