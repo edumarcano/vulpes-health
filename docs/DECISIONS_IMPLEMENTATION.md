@@ -4,6 +4,10 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Replay authorized deletions before restored access
+
+Step 3D.4C adds an explicit recover mode to the existing fenced restore. It reuses product deletion/hold semantics, preserves independent receipt identity and unaffected data, compares shared costs as exact decimal strings, revokes all restored sessions and tests SQL isolation using rolled-back probes. A separately authorized current journal is captured only after replay/validation and must match the initial records. This demonstrates a fresh reread, not atomic source-loss/cutover completeness or current billing reconciliation; access stays unauthorized. Old session IDs must be captured before replay so deleted identities remain part of denial proof. [Evidence](evidence/owner-pilot-step3d4-replay.md), [procedure](operations/hosted-recovery.md#fenced-journal-replay-and-recovery-validation).
+
 ## 2026-11-01: Schema-scoped database archive and network-isolated restore
 
 Step 3D.4B prepares a bounded custom PostgreSQL archive for public/Auth/Storage/migration schemas because the installed CLI's default schema dump excludes Auth. It preserves owner/grant metadata and requires full catalog/row/key equality in a fresh pinned-image local container with no network, ports or host binds. Source reads are SELECT-only; equivalent CHECK trees normalize only at the destination. Database-catalog names are excluded from logical comparison after the generated local source name caused a demonstrated mismatch; schema/table/column identities and permissions remain compared. This is local preparation, not managed-source compatibility or restored-access approval. Current-journal replay, session revocation and Auth/API validation remain next. [Evidence](evidence/owner-pilot-step3d4-database.md), [procedure](operations/hosted-recovery.md).

@@ -5,6 +5,7 @@ import {localEnvironment,isLocalDockerHost,assertLocalStack,projectId} from './l
 import {recoveryReadCatalogSql,recoveryReadInventorySql,normalizeRecoveryConstraintsSql} from './recovery-inventory.js';
 import {maximumDumpBytes,type RecoverySource,type RecoveryDestination} from './recovery-database.js';
 import type {HostingTarget} from './hosting.js';
+import {recoveryReplayActions} from './recovery-replay.js';
 
 const maxMetadata=32*1024*1024;
 const client='supabase_db_vulpes-health-pr03-test';
@@ -78,6 +79,7 @@ export function fencedRecoveryDestination(image:string,authorize:()=>void,onFail
   restore:async dump=>{authorize();await assertFenced();sql('drop schema if exists public,auth,storage,supabase_migrations cascade;','supabase_admin');docker(['exec','-i',ownedId!,'pg_restore','-U','supabase_admin','-d','postgres','--exit-on-error','--single-transaction'],dump,{},maximumDumpBytes,onFailure);},
   snapshot:()=>snapshot(async statement=>sql('begin read only;'+statement+'rollback;')),
   normalize:async value=>({...value,catalog:{...value.catalog,constraints:JSON.parse(sql('begin;'+normalizeRecoveryConstraintsSql(value.catalog.constraints??[])+'rollback;')) as unknown[]}}),
+  recovery:recoveryReplayActions(sql,assertFenced,authorize),
   stop:async()=>{if(ownedId)docker(['stop',ownedId]);},
  };
 }

@@ -13,6 +13,7 @@ const hashSchema=z.string().regex(/^[a-f0-9]{64}$/);
 const keySchema=z.string().regex(/^[A-Za-z0-9+/]{43}=$/);
 const keysSchema=z.strictObject({keyId:z.string().min(1).max(100),journalKeyB64:keySchema});
 const captureSchema=keysSchema.extend({accessToken:z.string().regex(/^sbp_[\w-]+$/).max(4096),authorization:z.strictObject({purpose:z.literal('synthetic-recovery-journal-capture'),targetSHA256:hashSchema,outputPathSHA256:hashSchema,expiresAt:z.iso.datetime(),approved:z.literal(true),independentJournalCustody:z.literal(true),separateKeyCustody:z.literal(true)})});
+export const RecoveryJournalCaptureInputSchema=captureSchema;
 const journalSchema=z.strictObject({version:z.literal(1),purpose:z.literal('synthetic-recovery-journal'),targetSHA256:hashSchema,journal:DeletionJournalSchema}).superRefine((value,ctx)=>{
  const rows=value.journal.rows;
  if(rows.length>maxRows||new Set(rows.map(r=>r.user_id.toLowerCase())).size!==rows.length||new Set(rows.map(r=>r.id.toLowerCase())).size!==rows.length)ctx.addIssue({code:'custom',message:'Journal inventory is invalid.'});

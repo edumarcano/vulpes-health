@@ -4,6 +4,8 @@ import {EnvelopeSchema,decryptBytes,type EncryptionKeys} from '../server/securit
 import {HostingTargetSchema,targetHash,type HostingTarget} from './hosting.js';
 import {sealArchive,openArchive} from './backup-archive.js';
 import type {Database} from '../server/db/database.types.js';
+import {verifyRecoveryJournal} from './recovery-journal.js';
+import type {RecoveryReplayActions} from './recovery-replay.js';
 
 export const maximumDumpBytes=128*1024*1024;
 export const recoveryRequiredPublicTables=['profiles','data_sources','import_batches','measurements','conversations','ai_runs','messages','goals','action_proposals','goal_revisions','ai_steps','private_payloads','usage_buckets','usage_reservations','audit_events','account_deletion_receipts','ai_route_cost_blocks','live_verification_allocations','vertex_policy_approval'] as const satisfies readonly (keyof Database['public']['Tables'])[];
@@ -17,7 +19,9 @@ export interface RecoverySource {snapshot:()=>Promise<unknown>;dump:()=>Promise<
 export interface RecoveryDestination {
  create:()=>Promise<void>;assertFenced:()=>Promise<void>;assertEmpty:()=>Promise<void>;
  restore:(dump:Buffer)=>Promise<void>;snapshot:()=>Promise<unknown>;normalize:(value:RecoverySnapshot)=>Promise<RecoverySnapshot>;stop:()=>Promise<void>;
+ recovery?:RecoveryReplayActions;
 }
+export interface RecoveryReplayInput {journal:Buffer;keyId:string;journalKeyB64:string;current:()=>Promise<Buffer>}
 function snapshot(input:unknown){
  const checked=RecoverySnapshotSchema.parse(input);
  if(checked.nonsyntheticUsers||checked.storageObjects)throw new Error('Synthetic source with empty Storage required.');
@@ -40,19 +44,33 @@ export async function captureDatabase(target:HostingTarget,source:RecoverySource
   finally{bytes.fill(0);}
  }finally{dump.fill(0);}
 }
-export async function restoreDatabase(target:HostingTarget,archive:Buffer,keys:{backup:Buffer;keyId:string;traces:EncryptionKeys},destination:RecoveryDestination,now=Date.now()){
+export async function restoreDatabase(target:HostingTarget,archive:Buffer,keys:{backup:Buffer;keyId:string;traces:EncryptionKeys},destination:RecoveryDestination,now=Date.now(),recovery?:RecoveryReplayInput){
  const opened=openArchive(archive,new Map([[keys.keyId,keys.backup]]),'database',now);let dump:Buffer|undefined;
  try{
   const record=bundleSchema.parse(JSON.parse(opened.bytes.toString('utf8')));
   if(record.targetSHA256!==targetHash(target))throw new Error('Backup source mismatch.');
   const expected=snapshot(record.snapshot);verifyTraces(expected,keys.traces);dump=dumpBytes(Buffer.from(record.dumpBase64,'base64'));
   if(dump.toString('base64')!==record.dumpBase64)throw new Error('Invalid dump encoding.');
+  const journalKeys=recovery?{keyId:recovery.keyId,journalKeyB64:recovery.journalKeyB64,backupCreatedAt:opened.header.createdAt}:undefined;
+  const initial=recovery?verifyRecoveryJournal(recovery.journal,target,journalKeys,now):undefined;
+  if(initial&&(!destination.recovery||initial.journal.rows.length>100||initial.journal.rows.some(r=>r.outcome==='waiting_for_accounting')))throw new Error('Recovery actions unavailable or source accounting unresolved.');
   let created=false;
   try{
    // The native destination always creates a fresh, network-none container.
    created=true;await destination.create();await destination.assertFenced();await destination.assertEmpty();
    await destination.restore(dump);await destination.assertFenced();const actual=snapshot(await destination.snapshot());
    if(!isDeepStrictEqual(await destination.normalize(expected),await destination.normalize(actual)))throw new Error('Restored catalog, ownership, grants, policies, rows or keys differ.');verifyTraces(actual,keys.traces);
+   if(recovery&&initial&&destination.recovery){
+    // Recheck freshness after potentially slow restoration, before replay writes.
+    verifyRecoveryJournal(recovery.journal,target,journalKeys);
+    await destination.assertFenced();const replay=await destination.recovery.replay(initial.journal);
+    const revoked=await destination.recovery.revokeSessions(),validation=await destination.recovery.validate();await destination.assertFenced();
+    const current=await recovery.current();
+    try{const latest=verifyRecoveryJournal(current,target,journalKeys);if(!isDeepStrictEqual(initial.journal.rows,latest.journal.rows))throw new Error('Current deletion journal changed; recovery remains fenced.');}
+    finally{current.fill(0);}
+    return {scope:'fenced_synthetic_database_recovery',targetSHA256:record.targetSHA256,encryptedArchiveAuthenticated:true,catalogAndRowsMatchedBeforeReplay:true,...replay,...revoked,...validation,
+     currentJournalRechecked:true,network:'none',publishedPorts:0,restoreAccessAuthorized:false,remaining:['source-loss/cutover completeness and current accounting reconciliation','actual Auth/API compatibility and credential handoff','separate access approval']};
+   }
    return {scope:'fenced_synthetic_database_restore',targetSHA256:record.targetSHA256,tables:Object.keys(expected.inventory).length,traceKeyVersions:expected.traceKeyIds.length,encryptedArchiveAuthenticated:true,
     catalogAndRowsMatched:true,network:'none',publishedPorts:0,restoreAccessAuthorized:false,remaining:['current independent deletion journal completeness and replay','restored session revocation','Auth/API compatibility and isolation','separate access approval']};
   }finally{if(created)await destination.stop();}
