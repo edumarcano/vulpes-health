@@ -49,6 +49,24 @@ npm run maintenance:cleanup
 
 Run after inactivity/interruption. The command refuses hosted/linked stacks and connection overrides. It reports counts and `unfinished`, without account IDs or content. Re-run while work remains; investigate repeated failures. Each invocation permits at most 100 deletion steps and one Auth-removal attempt per affected account. Future accounting holds stay pending. Known local synthetic backup archives older than 30 days are physically removed; other backup destinations need their approved rotation procedure. No detached worker or exact-time physical cleanup is promised.
 
+### Prepared hosted database maintenance
+
+`npm run maintenance:hosted -- --plan` describes the separate hosted operator command with zero credentials or network. It does not weaken the local command's refusals. The additive `20261101000100_owned_maintenance.sql` migration supplies service-only `maintain_account_v1`; its default is inspection, and a null owner is rejected. The migration and hosted execution remain subject to separate approval. See the [hosting procedure](synthetic-hosting.md#hosted-maintenance-operator-procedure).
+
+The operator supplies a hashed target manifest and private stdin credentials/authorization. `--inspect --allow-hosted` reads eligible counts without cleanup. `--execute --allow-hosted` additionally requires an execute-mode authorization for the exact target/account UUIDs, valid for at most 24 hours. The entire allowlist is checked before any execute call: live identities must use synthetic `.invalid` addresses; absent identities need an authoritative owned deletion receipt in a valid phase. This permits recovery after Auth removal succeeded but completion confirmation was interrupted; an absent identity without a journal is refused. No account discovery, password reset or new deletion request occurs.
+
+| Bound | Maximum |
+|---|---|
+| Explicit account IDs | 10, no duplicates |
+| Cleanup passes per account | 5 |
+| Rows per cleanup category/pass | 100; stale-run reconciliation may settle multiple existing steps/reservations within each selected run |
+| Deletion continuations | 20 total; Auth removal at most once per affected account/invocation |
+| Source HTTP requests | 400, no redirects/cookies, 25-second request deadlines |
+
+Database time determines expiry. Existing run/hold settlement rules remain unchanged. `pendingHolds` and `retryAfter` expose deferred accounting even when no work is currently due; `unfinished: false` does not mean all uncertainty has settled. Busy rows, future holds and pass/deletion limits preserve pending work rather than forcing cleanup. Only already-requested deletion can resume. The default deletion service still uses its server client; the operator passes an explicit administrative client through the same implementation.
+
+This command covers owned database retention and Auth deletion resumption. It cannot access another Vercel instance's export temporary files or rotate encrypted backup/current-journal copies. Normal export completion/error paths remove their own temporary artifacts; stale crash ciphertext, backup rotation, custody and any scheduler remain separate verification/approval gates. Do not claim full hosted physical cleanup from a database-only pass.
+
 | Store | Retention/cleanup |
 |---|---|
 | Measurements, goals/revisions, approved proposals, conversations and message receipts | Explicit product/account deletion; execution expiry preserves transcript history |

@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Owner-scoped hosted database maintenance
+
+The existing payload cleanup and run reconciliation accept an owner filter, but proposal/receipt retention is project-wide. Preparation adds service-only `maintain_account_v1` with mandatory owner and default read-only inspection, preserving the existing global/local functions. Execute uses the established database clock, lock ordering, bounded cleanup/reconciliation and 31-day receipt floor. A separate hosted operator command binds fresh authorization to the exact manifest and account allowlist; the deletion service accepts an explicit trusted client so the same Auth-removal implementation runs without ambient hosted secrets. Existing HTTP behavior and local-only CLI guards remain unchanged.
+
+This requires an additive 39th migration, explicit hosted execution/fixture scope and manual operational ownership. None is authorized by local preparation. Remote Vercel export temporary files and backup/current-journal/key custody are outside database maintenance; no scheduler, paid service, inference or source reset is introduced. [Procedure](operations/synthetic-hosting.md#hosted-maintenance-operator-procedure).
+
 ## 2026-11-01: Bind synthetic deployment to an isolated working directory
 
 Under the approved Step 3C scope, Vercel CLI 62.5.0 first failed the target-bound build, then produced a ready deployment whose actual CSP lacked the approved Supabase origin despite the correct uploaded generated config. Executing the CLI from the isolated candidate directory, with generated configuration overlaid as its root `vercel.json` and the exact project build command bound, produced the expected routing/CSP and all 14 public probes passed. Record candidate/config hashes and the immutable deployment separately; a local source receipt is not signed remote Git attestation. The root generic configuration stays fail-closed. [Hosted evidence](evidence/owner-pilot-hosted-setup.md) retains all attempts. No inference, real data, paid upgrade or merge was authorized.

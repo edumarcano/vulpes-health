@@ -1,6 +1,6 @@
 # Owner-pilot Step 3D: hosted security and lifecycle
 
-Current checkpoint: Step 3D.1 preflight and the explicitly approved Step 3D.2 disposable-account lifecycle passed. Hosted maintenance and hosted-source recovery/custody remain pending. Inference remains off and real data is not authorized.
+Current checkpoint: Step 3D.1 preflight and the explicitly approved Step 3D.2 disposable-account lifecycle passed. Step 3D.3 database-maintenance implementation is prepared; its hosted migration/rehearsal/manual ownership approval is pending. Hosted-source recovery/custody and export crash-file cleanup remain pending. Inference remains off and real data is not authorized.
 
 ## Step 3D.1 preflight record
 
@@ -121,3 +121,47 @@ A separate scoped Management API read returned: Auth users **2**, profiles **2**
 **Axis 2:** Approved. Phase/purpose/source/identity/receipt guards precede consequential actions; create-only private artifacts preserve operator state; request/response bounds and safe error summaries limit exposure. Real local production-path rehearsal and direct hosted evidence supplement unit guard tests. No new dependency, infrastructure setting, public admin route or application feature was introduced. No blocking defect remains in the approved batch.
 
 Step 3D.2 is complete. Next is 3D.3 maintenance preparation, followed by separately approved hosted execution/ownership and 3D.4 encrypted backup/current-journal/key custody and a fenced separate recovery destination. No backup or restore occurred. Additional paid spending **$0**, provider requests **0**, migrations/deployments **0**; no real data, optional-model activation or PR merge. Step 3 and formal pilot authorization remain incomplete.
+
+## Step 3D.3 hosted maintenance preparation
+
+Date: 2026-11-01. The owner requested maintenance preparation after 3D.2. This packet stays on PR #29 and does not authorize hosted migration, cleanup, fixture creation/deletion or a scheduler. No hosted maintenance, application deployment, provider request, real data or paid spending occurred during preparation.
+
+### Implementation boundary
+
+The existing local cleanup remains local-only. New `maintenance:hosted` supplies a separate explicit opt-in, target-manifest/account-bound path. Inspection is the default. Private stdin contains only source public/admin keys, bounded limits and an inspect/execute authorization for up to ten explicit UUIDs, expiring within 24 hours. The entire allowlist is checked before an execute RPC: live identities must be synthetic; absent Auth identities require a valid authoritative owned deletion journal. Wrong target/mode, missing approval, real email, missing journal or unavailable RPC fails closed. No provider/trace key or ambient hosted environment is used.
+
+The additive 39th migration, `20261101000100_owned_maintenance.sql`, adds one service-only function, `maintain_account_v1`. A null owner/execute mode or invalid batch size is rejected. Default inspection only reads counts using database time. Execute preserves profile-first lock ordering, existing owner-scoped payload/run reconciliation, bounded pending-proposal expiry and the completed-receipt age floor of more than 31 days. Locked owners remain unfinished. Global legacy functions/grants and all tables remain unchanged.
+
+`maintainAccounts` never discovers accounts or starts deletion. It resumes only an existing request via the existing deletion implementation, passing an explicit trusted client. Default application calls keep their original administrative client and behavior. Limits are five passes per owner, 100 selected rows/category/pass, 20 deletion continuations total, at most one Auth-removal attempt per owner/invocation, and 400 source requests with 25-second deadlines. Selected runs can contain multiple steps/reservations; this is not a 100-total-SQL-row claim. Reports contain indexes/counts, pending holds and retry times, never IDs, content or credentials. Future uncertainty is retained, not reset or shortened.
+
+This is database maintenance preparation. Normal exports remove their own temporary artifacts on completion/error, but remote stale crash-file cleanup cannot be proved by this operator command. Backup/current-journal/key storage and rotation, a scheduler and full operational acceptance remain separate gates.
+
+### Executed verification and retained failures
+
+| Check | Observed result |
+|---|---|
+| Inert CLI plan | `npm run maintenance:hosted -- --plan`, exit 0, zero requests/credentials; exposes migration and scope/limits |
+| Missing hosted opt-in | Real CLI with `--execute --manifest=missing`, exit 1 before manifest/stdin/network access |
+| New unit guards | Target/approval expiry/mode, synthetic identities, whole-allowlist validation before writes, absent identity/journal refusal, inspect execution flag, pass/deletion ceilings, busy owners, future accounting and Auth retry bounds |
+| Final offline/static checks | 407 units across 34 files passed, including 17 new maintenance cases; strict typecheck/lint, generated database types and 517 specification/fixture checks passed |
+| Real local SQL/API checks | Mandatory owner/service-only grants, no-write inspection, expired read-time denial, bounded cleanup, foreign payload/proposal preservation, 31-day receipt boundaries, operator deletion resumption, stale authorized-run reconciliation and uncertainty preservation, actual CLI Auth/RPC over injected loopback transport |
+| Missing-Auth recovery reproduction | Before repair, an explicitly requested deletion with Auth already removed and journal still `auth_removal_pending` was rejected by the CLI's completed-only gate. The regression failed with `Missing synthetic identity/completion receipt` |
+| Missing-Auth recovery repair | Require a valid owned journal phase, including unfinished deletion, for an absent identity. Same real Auth/PostgreSQL regression passed; absent identity without a journal still fails before cleanup |
+| Accounting evidence | Stale authorized local synthetic run interrupted; original $0.022 hold remained reserved. Aging only that local fixture's uncertainty past the existing 24-hour boundary yielded conservative $0.022 settlement with unchanged allocation; zero provider transport |
+| Initial fixture corrections | Split a bulk budget insert whose app/account row shapes differed (`PGRST102`); added the Auth API-version header to a mock so the SDK preserves `user_not_found`. Product assertions were retained |
+| Initial plan launch | Managed sandbox blocked the local TypeScript transform child process (`EPERM`); normal approved local execution passed, without weakening the command guard |
+| Root broad integration attempt | Failed on the retained nonempty local stack: 154 passed, 5 failed, 77 skipped; four setup-suite failures plus fixture uniqueness/global-count conflicts. This is not clean integration proof. No stack reset or allocation replenishment was used to force a pass |
+| Isolated verification | Created fresh `.scratch/maintenance-verification`, project `vulpes-health-maintenance-test`, ports 31421/31422; copied the candidate without credentials/linked state and specialized only project/port literals. Source/copy hashes and final guard sync are retained privately. Preflight confirmed zero profiles/Auth users/buckets and all 39 migrations; full ordinary integration result recorded below |
+| Fresh full ordinary integration | All 237 cases across 16 files passed using the unchanged ordinary command/assertions. The final executable/migration/type/integration/security-test files matched the specialized copy; newly added offline-only unit cases were measured in the root unit run |
+| Database lint/security | Isolated database lint passed. Initial pgTAP run failed only because the new function was absent from the reviewed security-definer allowlist. Added its exact name plus explicit service-only and pinned-search-path assertions; all 738 tests across ten files then passed |
+| Isolated cleanup | Generated types matched the fresh schema. Only the new maintenance verification stack was stopped after checks; its volume/evidence were retained. The original stack was not reset |
+
+The local additive migration was applied without resetting data. Its uncommitted function was refreshed locally while adding pending-hold/retry reporting, without migration-history repair; the fresh verification stack installs the final migration from scratch. Original retained workspaces and hosted resources were not reset or repurposed. Raw runner output, copy hashes and safe receipts remain ignored under `.scratch/hosting-owner-pilot/`.
+
+### Review and next approval
+
+**Axis 1:** Approved for database-maintenance preparation. Actual SQL/Auth/CLI and full isolated integration evidence covers the named local scope, including the reproduced missing-Auth recovery edge. Hosted migration/execution, manual ownership, remote export crash-file cleanup and custody/recovery remain explicitly unverified. No product feature, inference activation or application deployment was added.
+
+**Axis 2:** Approved. Mandatory owner and service-only grants, pinned search path, explicit target/account/mode/expiry binding, whole-allowlist validation, lock ordering, request/pass/deletion caps and conservative hold handling preserve the boundary. The local-only CLI remains unchanged. Security-definer inventory remains exact and has stronger assertions for the new function. No demonstrated blocking defect remains in the prepared packet; historical failed attempts are retained rather than relabeled as passes.
+
+The [operator procedure](../operations/synthetic-hosting.md#hosted-maintenance-operator-procedure) defines the concrete next approval: apply only the reviewed 39th migration, create new `vulpes-maintenance-a@example.invalid` and `vulpes-maintenance-b@example.invalid` fixtures, inspect/clean in bounded passes with a foreign control, resume only their requested deletions, and age/prune only A's completed synthetic receipt while preserving B's fresh and earlier 3D.2 receipts. Preallocate credentials/UUIDs privately and refuse existing names. Maximum paid spending is $0, with no model consent/allocations/calls, app deployment, scheduler, backups or restore. The two original accounts remain outside the mutation scope. No dashboard or secret entry is needed for this approval; manual operator ownership/cadence must be agreed before hosted use. No PR merge is authorized.
