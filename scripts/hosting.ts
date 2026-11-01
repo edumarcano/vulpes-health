@@ -11,13 +11,14 @@ const appOrigin=z.string().max(200).refine(value=>{
   try{const url=new URL(value);return url.origin===value&&url.protocol==='https:'&&/^[a-z0-9][a-z0-9-]*\.vercel\.app$/.test(url.hostname)&&!url.port&&!url.username&&!url.password;}catch{return false;}
 });
 export const HostingTargetSchema=z.strictObject({
-  version:z.literal(1),purpose:z.literal('synthetic-only'),supabaseProjectRef:projectRef,recoveryProjectRef:projectRef,
+  version:z.literal(1),purpose:z.literal('synthetic-only'),supabaseProjectRef:projectRef,recoveryProjectRef:projectRef.nullable(),
   databaseRegion:z.enum(['us-east-1','eu-central-1']),vercelProjectId:projectId,appOrigin,
 }).refine(t=>t.supabaseProjectRef!==t.recoveryProjectRef,'Recovery must use a separate project.');
 export type HostingTarget=z.infer<typeof HostingTargetSchema>;
 export const hostingRegions={'us-east-1':'iad1','eu-central-1':'fra1'} as const;
 export const hostingPlan={purpose:'synthetic-only',networkRequests:0,deploys:false,liveInference:false,
   requiredApproval:'resource creation, migrations and deployment are separate from preparation',
+  recovery:'A separate recovery destination may be deferred for synthetic hosting; recovery verification is required before real data.',
   regions:hostingRegions,requiredSecrets:['SUPABASE_SERVICE_ROLE_KEY','VULPES_TRACE_ENCRYPTION_KEY_B64','VULPES_TRACE_ENCRYPTION_KEY_ID'],
   deferredProviders:['OpenRouter production activation','Flash','Argon','decision scoring'],
 };

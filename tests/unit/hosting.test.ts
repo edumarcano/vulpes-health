@@ -13,6 +13,15 @@ const request_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const statusBody={data:{status:'ok'},request_id};
 const errorBody={error:{code:'unauthorized',message:'Sign in.',retryable:false},request_id};
 describe('synthetic hosting preparation',()=>{
+ it('allows explicit deferred recovery for synthetic hosting without changing inference or source-isolation gates',()=>{
+   const single=HostingTargetSchema.parse({...target,recoveryProjectRef:null});
+   const config=renderHostingConfig(JSON.parse(readFileSync('vercel.json','utf8')),single);
+   expect(config.buildCommand).toBe('npm run build:hosted -- '+hostingBuildArguments(target).join(' '));
+   expect(config.git.deploymentEnabled).toBe(false);
+   expect(HostingTargetSchema.safeParse({...single,recoveryProjectRef:undefined}).success).toBe(false);
+   expect(HostingTargetSchema.safeParse({...single,recoveryProjectRef:single.supabaseProjectRef}).success).toBe(false);
+   expect(HostingTargetSchema.safeParse({...single,purpose:'real-data'}).success).toBe(false);
+ });
  it('renders the exact auth origin, region and explicit API routes without enabling Git deployments',()=>{
    const config=renderHostingConfig(JSON.parse(readFileSync('vercel.json','utf8')),target);
    expect(config.git.deploymentEnabled).toBe(false);expect(config.regions).toEqual(['iad1']);

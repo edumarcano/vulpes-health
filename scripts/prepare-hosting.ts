@@ -21,10 +21,11 @@ export async function prepareHosting(args:string[]){
     manifest.push({file:name,sha256:createHash('sha256').update(bytes).digest('hex')});await copyFile(source,join(migrations,name));
   }
   if(!manifest.length)throw new Error('No reviewed migrations found.');
+  const recoveryVerification=target.recoveryProjectRef===null?'deferred_no_destination':'not_run';
   await writeFile(join(directory,'supabase/config.toml'),'project_id = "vulpes-hosting-preparation"\n',{flag:'wx'});
   await writeFile(join(directory,'vercel.json'),JSON.stringify(config,null,2)+'\n',{flag:'wx'});
   await writeFile(join(directory,'manifest.json'),JSON.stringify({target,targetSHA256:hash,configSHA256:createHash('sha256').update(JSON.stringify(config)).digest('hex'),migrationDirectory:'supabase/migrations',
-    migrationFiles:manifest,approval:'not_granted_by_preparation',hostedVerification:'not_run',liveInference:false},null,2)+'\n',{flag:'wx'});
-  return {prepared:true,targetSHA256:hash,directory:directory.slice(root.length).replaceAll('\\','/'),migrations:manifest.length,networkRequests:0,deploys:false};
+    migrationFiles:manifest,approval:'not_granted_by_preparation',hostedVerification:'not_run',recoveryVerification,realDataAuthorized:false,liveInference:false},null,2)+'\n',{flag:'wx'});
+  return {prepared:true,targetSHA256:hash,directory:directory.slice(root.length).replaceAll('\\','/'),migrations:manifest.length,recoveryVerification,networkRequests:0,deploys:false};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)prepareHosting(process.argv.slice(2)).then(value=>console.info(JSON.stringify(value,null,2))).catch(()=>{console.error('Hosting preparation refused or failed. Existing output is never overwritten; inspect the public target and source configuration.');process.exitCode=1;});

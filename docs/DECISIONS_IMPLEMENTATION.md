@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: Single-project synthetic hosting
+
+The owner reports that the source Supabase project is Free/us-east-1 with account MFA enabled; an unrelated project occupies the second Free slot. A second hosted project is not a prerequisite for initial synthetic hosting. Allow an explicit null recovery reference while retaining source/recovery inequality whenever a reference is supplied. Manifests identify deferred/unverified recovery and never authorize real data. The original CLI rejected null before repair; actual local preparation now succeeds with 38 migrations, deferred recovery and zero network/deployment activity. No unrelated project access, quota workaround, paid upgrade, migration or deployment is authorized.
+
+Before real-data use, demonstrate complete hosted-source recovery into a separate environment. A disposable local Supabase destination is the preferred zero-cost candidate to investigate; the existing local-source rehearsal does not prove its compatibility. This changes initial resource sequencing, not the recovery acceptance gate.
+
 ## 2026-10-31: Controlled synthetic hosting preparation
 
 Initial hosting has no provider credentials and inference remains false with null production evidence/zero ceiling. Generate an exact-origin CSP and target-bound build for one approved Vercel project, source Supabase reference and production hostname. Use the Vercel Production channel for the isolated synthetic site; preview builds refuse server-secret configuration. Disable Git automatic deployments, exclude private local material from CLI uploads and preserve explicit API JSON routing. No infrastructure, public API, model or data schema change is authorized by preparation.
