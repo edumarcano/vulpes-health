@@ -4,6 +4,10 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Bind synthetic deployment to an isolated working directory
+
+Under the approved Step 3C scope, Vercel CLI 62.5.0 first failed the target-bound build, then produced a ready deployment whose actual CSP lacked the approved Supabase origin despite the correct uploaded generated config. Executing the CLI from the isolated candidate directory, with generated configuration overlaid as its root `vercel.json` and the exact project build command bound, produced the expected routing/CSP and all 14 public probes passed. Record candidate/config hashes and the immutable deployment separately; a local source receipt is not signed remote Git attestation. The root generic configuration stays fail-closed. [Hosted evidence](evidence/owner-pilot-hosted-setup.md) retains all attempts. No inference, real data, paid upgrade or merge was authorized.
+
 ## 2026-10-31: Single-project synthetic hosting
 
 The owner reports that the source Supabase project is Free/us-east-1 with account MFA enabled; an unrelated project occupies the second Free slot. A second hosted project is not a prerequisite for initial synthetic hosting. Allow an explicit null recovery reference while retaining source/recovery inequality whenever a reference is supplied. Manifests identify deferred/unverified recovery and never authorize real data. The original CLI rejected null before repair; actual local preparation now succeeds with 38 migrations, deferred recovery and zero network/deployment activity. No unrelated project access, quota workaround, paid upgrade, migration or deployment is authorized.
