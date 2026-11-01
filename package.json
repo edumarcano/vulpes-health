@@ -20,6 +20,7 @@
     "maintenance:hosted": "tsx scripts/hosted-maintenance.ts",
     "backup:verify": "tsx scripts/backup-verify.ts",
     "recovery:journal": "tsx scripts/recovery-journal.ts",
+    "recovery:database": "tsx scripts/hosted-database-recovery.ts",
     "account:recover": "tsx scripts/operator-recover.ts",
     "test:lifecycle-upgrade": "tsx scripts/verify-lifecycle-upgrade.ts",
     "dev:client": "vite --host 127.0.0.1 --port 5173 --strictPort",

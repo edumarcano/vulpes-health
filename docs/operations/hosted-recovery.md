@@ -7,10 +7,53 @@ Step 3D.4 prepares recovery of the approved synthetic Supabase source into a sep
 | Checkpoint | Current behavior | Remaining gate |
 |---|---|---|
 | 3D.4A independent journal | `recovery:journal` captures a complete, source-bound encrypted deletion snapshot; validates it offline against a supplied authenticated backup time | Prepared and locally verified. Include exact capture/output/custody in the eventual recovery execution approval |
-| 3D.4B database capture | Existing local `backup:verify` remains local-only | Implement compatible encrypted hosted capture and verify schema/roles/data/Auth/grants/RLS inventory, trace-key versions and empty Storage; approve destinations and source reads before capture |
-| 3D.4C fenced restoration | Existing local-source rehearsal does not establish hosted compatibility | Prove an empty separate destination, block Auth/API access before restore, replay the current independent journal, settle uncertainty without resets, revoke restored sessions and verify failure cases; separate access approval |
+| 3D.4B database capture | `recovery:database` prepares encrypted schema-scoped capture with source/catalog/row/key comparison and explicit verified TLS | Locally verified with synthetic SQL/CLI evidence. Managed privileges, actual source compatibility, credentials/custody and hosted capture remain unverified |
+| 3D.4C fenced restoration | A fresh cached-image local container has no network, published ports or host bind mounts; full archive/catalog/rows/current-and-retained key comparison passed locally; it stops after verification | Independent current-journal replay/completeness, session revocation and actual Auth/API compatibility remain to implement/verify. Separate access approval; local-source evidence is not hosted acceptance |
 
 Supabase's [platform-to-self-hosted procedure](https://supabase.com/docs/guides/self-hosting/restore-from-platform) uses its filtered CLI roles/schema/data exports and calls out Auth/PostgreSQL compatibility differences. This supports investigating the local destination; it does not prove Vulpes recovery. Do not drop unknown Auth rows/columns, omit grants or skip restore failures. No source overwrite, unrelated-project access, paid upgrade or provider activation is included.
+
+## Encrypted database capture and fenced restore
+
+`npm run recovery:database -- --plan` is inert. Capture requires `--capture --allow-hosted-capture --manifest=<reviewed-manifest> --output=<new-private-file>`; restoration requires `--restore --allow-fenced-restore --manifest=<reviewed-manifest> --archive=<private-file> --image=sha256:<cached-image-id>`. Both require private stdin and fresh target/action/binding authorization, valid for at most 24 hours. The command has no inferred/default action, source reset, hosted destination, access-enable operation or image-pull fallback.
+
+| Input | Capture | Fenced restore |
+|---|---|---|
+| Backup key | `backupKeyB64`, `keyId`: separately retained 32-byte key; never part of the archive | Same retained key/version |
+| Trace keys | `traces: {activeId, keys: {keyId: base64}}`, at most ten versions | All versions needed by the archive's actual encrypted samples |
+| Connection | `connection: {host, port: 5432, user, password, caCertificatePem}` | No source connection or password |
+| Authorization | Purpose `synthetic-database-capture`, exact target hash, `bindingSHA256` from `databaseCaptureBinding(connectionIdentity(...), output)`, expiry and `approved: true`; explicit `independentBackupCustody` and `separateKeyCustody` attestations | Purpose `synthetic-fenced-database-restore`, exact target hash, binding from `databaseRestoreBinding(archive, image)`, expiry and `approved: true` |
+
+Capture accepts only the manifest's direct database identity or its region-bound session pooler identity. Port 6543, arbitrary hosts, different projects/regions and incomplete CA input are refused. The approval binding includes host/user/database, verified-TLS mode, CA certificate SHA-256 and resolved output path. The database password enters only the child process environment, never arguments or persistent container configuration. The public CA travels through stdin to a temporary client-container file that is removed on shell exit. `sslmode=verify-full` verifies both host and certificate; there is no `require`/disabled-verification fallback. Source SQL uses read-only transactions and a read-only session default.
+
+The existing local PostgreSQL client container runs `pg_dump` for only `public`, `auth`, `storage` and `supabase_migrations`, preserving their ownership/grants. Default CLI schema export excludes Auth, so this path deliberately uses a bounded custom archive and strict full-schema comparison rather than assuming the filtered default is complete. This has local proof; managed-role permissions and hosted Auth/service compatibility still require actual verification. Unknown owners, unsupported extensions or restore errors stop the run; do not remove objects/rows/grants to force compatibility.
+
+Source snapshots before and after dumping compare logical schema/functions/triggers/policies/grants/RLS/owners, extension versions, every selected table's count/hash and one encrypted sample per present trace-key version. All 19 current public tables and Auth users must appear. Real identities, Storage objects, missing keys, changing source state and dumps over 128 MiB are refused. Samples must actually decrypt. A changed source produces no completed archive; concurrent changes that evade the before/after checks still cannot pass a later restore unless its rows match the authenticated inventory. The outer AES-256-GCM archive authenticates the source binding, snapshot and dump, with the existing 30-day ceiling. Raw dump bytes remain in memory; the exclusive-created, flushed output contains ciphertext only.
+
+Restore authenticates the entire archive, source and retained trace keys before creating its destination. It creates a fresh UUID-named container from an explicitly pinned cached image with `--pull=never --network=none`; it publishes no ports, mounts no host paths and runs no Auth/API service. Only an empty destination is eligible: image-initialized empty Auth tables/system migration metadata are allowed; product tables or user rows are refused. The operator does not select an existing destination. Restoring into the four fresh schemas is transactional and stops at the first error. The owned immutable container ID is used for operations and cleanup; it stops on success/failure and leaves its volume for operator inspection. A failed stop remains an error requiring inspection.
+
+Restored rows/catalog/extensions/trace samples must match the authenticated source snapshot. Comparison normalizes only physical attribute positions, ACL ordering, equivalent CHECK parse trees and database-catalog names. Source reads never create temporary tables; CHECK definitions are reparsed only inside the fenced destination. Table/schema/column identity, logical types, constraints, owners, grantors/grantees/privileges, policies and row contents remain checked. The result always says `restoreAccessAuthorized: false` and names the remaining journal replay, session revocation and Auth/API gates. A stopped restored volume contains a decrypted database, including synthetic Auth records; it requires the approved private machine/storage even though the backup file stays encrypted.
+
+The existing local-only `backup:verify` retains its source guards and procedure. Shared comparison SQL is extracted without changing its original queries. [3D.4B evidence](../evidence/owner-pilot-step3d4-database.md) records actual interfaces, failed attempts and proof limits.
+
+### Secure connection preparation when execution is ready
+
+Do not perform these owner actions merely to finish code preparation. Group them with the reviewed source-read/output/fenced-rehearsal approval after journal replay/access-fencing preparation is complete.
+
+1. Open the [synthetic Supabase project](https://supabase.com/dashboard/project/vatwmqzjymbhaodwatyn). Confirm the project name/reference before continuing. Click **Connect**, choose **Session pooler**, then view the parameters. Record host, port **5432**, database **postgres** and user **postgres.vatwmqzjymbhaodwatyn**. Do not choose Transaction pooler or copy a password-bearing URL into chat. The approved North Virginia host must match `aws-<index>-us-east-1.pooler.supabase.com`; unexpected values need investigation, not an override.
+2. Open **Database → Settings** (or the Database Settings link from Connect), find the SSL/root certificate download and save it as an ignored private local `.crt` file. Downloading does not require changing SSL settings; do not toggle enforcement or restart the database. Supabase documents the [CA download and verify-full configuration](https://supabase.com/docs/guides/database/psql). The agent can inspect the public certificate/fingerprint without seeing a password.
+3. Retrieve the database password saved when this project was created. This is different from a Supabase access token or API key. If unavailable, report that fact; do not reset it without a separate impact review. A database password is powerful even though this tool enforces read-only source operations.
+4. In a private PowerShell terminal in the repository, save it with hidden input and Windows DPAPI, never as a command literal:
+
+   ```powershell
+   $recoveryDatabasePassword = Read-Host 'Synthetic Supabase database password' -AsSecureString
+   try {
+     $recoveryDatabasePassword | ConvertFrom-SecureString | Out-File -LiteralPath '.scratch/hosting-owner-pilot/recovery-database-password.dpapi' -Encoding ascii -NoClobber
+   } finally { $recoveryDatabasePassword.Dispose() }
+   ```
+
+5. Report only the non-secret host/user/port, certificate filepath and whether password protection succeeded. Existing-file errors mean preserve the file and report the error; do not overwrite it blindly. Never send the password, key material or file contents. Retain backup/journal keys and every needed trace-key version separately in the agreed recoverable key store; DPAPI alone is not off-machine recovery custody.
+
+These preparation steps do not authorize hosted capture. The eventual archive includes synthetic account password hashes/session rows and encrypted traces, so source capture and the stopped restore volume both need explicit privacy/custody scope. Current live TLS/permission/version compatibility remains unverified; no credentials were requested or created during implementation.
 
 ## Independent deletion journal
 
