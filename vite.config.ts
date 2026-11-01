@@ -3,14 +3,14 @@ import { defineConfig, loadEnv } from 'vite';
 import { publicAuthConfig } from './shared/auth.js';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { securityHeaders } from './server/http/security.js';
+import { securityHeadersForSupabase } from './server/http/security.js';
 import { apiProxy, localLogger } from './scripts/local-proxy.js';
 import { pwaShell } from './scripts/pwa.js';
 
 export default defineConfig(({ mode }) => {
  const env = loadEnv(mode, process.cwd(), 'VITE_SUPABASE_');
  const auth = publicAuthConfig(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY);
- const headers = { ...securityHeaders, 'Content-Security-Policy': auth ? securityHeaders['Content-Security-Policy'].replace("connect-src 'self'", `connect-src 'self' ${auth.url}`) : securityHeaders['Content-Security-Policy'] };
+ const headers = securityHeadersForSupabase(auth?.url);
  return {
   customLogger: localLogger,
   plugins: [react(), tailwindcss(), pwaShell()],

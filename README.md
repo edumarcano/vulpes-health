@@ -188,6 +188,8 @@ The last command explicitly refreshes the tracked provider evidence report. Ordi
 
 The bounded v7 Luna checkpoint passed all 14 fixed synthetic cases, with separate host review of completed answers. [Observed evidence](docs/evidence/luna-owner-pilot-live.md) preserves five batches, functional repairs and pending interruption charges. The dedicated key retained its $0.50 total cap. Production approval remains absent and its run ceiling zero; live verification does not grant deployment, real-data, optional-model or production activation permission.
 
+[Synthetic hosting preparation](docs/operations/synthetic-hosting.md) provides create-only configuration, an inference-off build guard and an opt-in public routing/header probe. The root Vercel build intentionally refuses deployment without a bound target. [Local Step 3 evidence](docs/evidence/owner-pilot-step3.md) does not establish hosted security/recovery; resources, deployment and real-data use still need separate approval.
+
 ## Privacy and license
 
 Never commit real health data, prompt/model execution payloads, individual medical documents, production credentials, or personal screenshots. Each family member's data is strictly independent and isolated by authentication and Row Level Security.

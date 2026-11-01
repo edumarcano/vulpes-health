@@ -4,6 +4,14 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: Controlled synthetic hosting preparation
+
+Initial hosting has no provider credentials and inference remains false with null production evidence/zero ceiling. Generate an exact-origin CSP and target-bound build for one approved Vercel project, source Supabase reference and production hostname. Use the Vercel Production channel for the isolated synthetic site; preview builds refuse server-secret configuration. Disable Git automatic deployments, exclude private local material from CLI uploads and preserve explicit API JSON routing. No infrastructure, public API, model or data schema change is authorized by preparation.
+
+A static CSP reproduction showed hosted Supabase was blocked by `connect-src 'self'`; local preview already allowed its validated origin. Shared header construction now supplies the same exact origin to generated hosting configuration. The public probe has an explicit opt-in, 14 credential-free GET maximum, no redirect following and bounded safe response handling; it cannot attest Auth/RLS, candidate identity, inference state or recovery. Its first real local HTTP run exposed a missing request-ID field in the probe's expected envelope; the existing handler contract was retained and the probe corrected.
+
+The resource proposal uses Vercel Hobby and separate source/recovery Supabase Free projects with explicit North Virginia or Frankfurt placement and $0 paid allowance. Resource/region, deployment and recovery custody approvals remain absent. Local operational scripts keep their hosted-target refusals; a supported fenced restore and hosted maintenance procedure must be implemented/verified before real-data use. Flash/Argon stay optional without a Google billing prerequisite. [Procedure](operations/synthetic-hosting.md), [evidence](evidence/owner-pilot-step3.md).
+
 ## 2026-10-31: Current Luna verification and final-answer context
 
 Standing owner authorization covers necessary synthetic Luna batches under the existing $0.50 nonrecurring key cap, retaining confirmed privacy controls and the accepted screening exception. It does not grant production, deployment, real-data or optional-model activation. All 14 fixed v7 cases passed with separate host answer review; prior failed batches and uncertainty holds remain retained. [Current evidence](evidence/luna-owner-pilot-live.md).

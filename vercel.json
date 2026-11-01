@@ -1,7 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build:hosted",
+  "installCommand": "npm install --global npm@11.18.0 && npm ci",
+  "git": { "deploymentEnabled": false },
   "outputDirectory": "dist",
   "functions": { "api/*.ts": { "maxDuration": 240 } },
   "rewrites": [
@@ -9,6 +11,8 @@
     { "source": "/api/settings", "destination": "/api/settings" },
     { "source": "/api/account", "destination": "/api/settings?__vulpes_account=1" },
     { "source": "/api/data", "destination": "/api/data" },
+    { "source": "/api/goals", "destination": "/api/goals" },
+    { "source": "/api/approvals", "destination": "/api/approvals" },
     { "source": "/api/chat", "destination": "/api/chat" },
     { "source": "/api/conversations", "destination": "/api/conversations" },
     { "source": "/api/executions", "destination": "/api/executions" },

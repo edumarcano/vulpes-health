@@ -18,3 +18,11 @@ export const securityHeaders = {
   'Referrer-Policy': 'no-referrer',
   'X-Frame-Options': 'DENY',
 };
+
+export function securityHeadersForSupabase(origin?:string) {
+  if(!origin)return {...securityHeaders};
+  const url=new URL(origin);
+  if(url.origin!==origin || url.username || url.password || url.search || url.hash || url.pathname!=='/' ||
+    url.protocol!=='https:' && !(url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))throw new Error('Invalid authentication origin.');
+  return {...securityHeaders,'Content-Security-Policy':contentSecurityPolicy.replace("connect-src 'self'",`connect-src 'self' ${origin}`)};
+}

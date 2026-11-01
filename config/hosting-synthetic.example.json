@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "purpose": "synthetic-only",
+  "supabaseProjectRef": "REPLACE_AFTER_APPROVAL",
+  "recoveryProjectRef": "DIFFERENT_PROJECT_AFTER_APPROVAL",
+  "databaseRegion": "us-east-1",
+  "vercelProjectId": "REPLACE_AFTER_APPROVAL",
+  "appOrigin": "https://REPLACE_AFTER_APPROVAL.vercel.app"
+}
