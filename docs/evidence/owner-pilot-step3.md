@@ -2,6 +2,8 @@
 
 Date: 2026-10-31. Branch `feat/owner-pilot-hosting-preparation`, base `25319a470126a499cbda5cc6c18f386254293abb` (Step 2, PR #27). This packet prepares synthetic hosting; Step 3's hosted security/recovery checkpoint is unfinished. [Machine-readable record](owner-pilot-step3.json), [operator/owner procedure](../operations/synthetic-hosting.md).
 
+The measured Step 3A implementation was committed as `6e6a5424dd0b063195de7aa194bc2b3ad5c0fffb`; both GitHub checks passed in [CI run 41258199993](https://github.com/edumarcano/vulpes-health/actions/runs/41258199993). Its captured source fingerprints and results remain historical. Subsequent resource approval/creation is tracked in the [execution ledger](../plans/v0.1.0-execution.md#owner-pilot-continuation), without relabeling these local-only observations as hosted verification.
+
 ## Delivered behavior
 
 Preparation validates public source/recovery/project/origin/region bindings and writes create-only ignored Vercel configuration plus 38 migration copies and hashes. It reads no credentials and sends no network requests. The hosted build requires that exact project/production hostname, valid public auth and server-only encryption/admin configuration, disabled inference and no provider configuration. Root unbound builds fail. Git deployments stay off; private local files are excluded from uploads.
