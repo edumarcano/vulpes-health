@@ -7,6 +7,9 @@ Record implementation trade-offs, actual provider capabilities and identifier ve
 ## 2026-11-02: Recovery accounting reconciliation correction
 
 Independent review identified an XML-root mismatch in the current-accounting query. Recovery now requires all seven ledger/dispatch/policy tables and valid row fingerprints; missing evidence fails closed. PostgreSQL regressions cover shared spending/reservation changes, durable route blocks, incomplete inventory and rejection of a stale restored ledger with unchanged deletion records. This corrects reconciliation evidence without changing deletion authorization, provider budgets or restored-access gates. Historical accounting-match claims require corrected reconciliation before operational reliance; see [the recovery runbook](operations/hosted-recovery.md#accounting-fingerprint-correction).
+## 2026-11-01: Authorize bounded hosted Luna use
+
+The owner authorized activation/use after the Step 3 ciphertext handoff. Install the existing exact v7 tool-loop/safety evidence and current-policy approval in the server catalog, retaining the disabled default switch and independent consent/encryption/budget gates. Add an explicit Luna pilot hosted-build mode instead of weakening the ordinary inference-off build. The dedicated key remains capped at $0.50 for its lifetime; current-month app/account allocation is $0.10 and each run at most $0.04. No cap reset, credit purchase, infrastructure upgrade, optional model or model-identity override is included. Physical Android and applicable formal/real-data acceptance follow synthetic normal-path proof. [Preparation/evidence](evidence/owner-pilot-step4.md).
 
 ## 2026-11-01: Complete the approved synthetic deployment checkpoint
 

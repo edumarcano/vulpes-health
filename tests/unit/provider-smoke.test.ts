@@ -34,7 +34,7 @@ describe('real provider-smoke CLI', () => {
     expect(report.inferenceSpendUSD).toBe('0');
     expect(report.rows).toHaveLength(4);
     expect(report.rows.map((row: { synthetic: string; liveSmoke: string }) => [row.synthetic, row.liveSmoke])).toEqual(Array.from({ length: 4 }, () => ['passed', 'not_run']));
-    expect(report.rows.map((row: { availability: { state: string } }) => row.availability.state)).toEqual(['unavailable', 'unavailable', 'unavailable', 'disabled']);
+    expect(report.rows.map((row: { availability: { state: string } }) => row.availability.state)).toEqual(['available', 'unavailable', 'unavailable', 'disabled']);
   });
   it.each([
     [[], 'live_opt_in_required'], [['--role=everyday'], 'live_opt_in_required'],

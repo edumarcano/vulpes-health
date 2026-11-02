@@ -1,0 +1,27 @@
+# Hosted Ask Vulpes activation
+
+Preparation started 2026-11-01 America/New_York, from Step 3 at `b2cc02d` on `feat/owner-pilot-hosted-luna`. The owner explicitly authorized activation/use and requested continuation until actual manual intervention. Existing PRs remain unmerged. Scope is the Luna-only normal hosted chat path and synthetic verification before physical Android/real-data gates, with no optional model or cosmetic feature work.
+
+## Prepared behavior and bounds
+
+The server installs the existing successful `vulpes-everyday-v7` tool-loop execution `91fda175-7102-4988-8a9c-ab5ba24337a1`, checked `2026-10-31T23:51:37.831Z`, and the independently reviewed 14-case safety batch `d741ba54-58a7-49ff-9213-4a33d17d70b8`. Model/adapter/template/price/policy bindings remain exact. The normal composition still requires the explicit live switch, matching provider consent, durable budgets, encryption and private credentials. The typed run ceiling is $0.04; the app/account pilot allocation is $0.10 within the existing $0.50 dedicated key lifetime cap.
+
+Default hosted builds still require inference false and no provider credential. The explicit `owner-pilot-luna` build mode requires approved Luna readiness, the true switch, exact project/origin/public authentication and a server-only OpenRouter key; Vertex configuration, smoke overrides and unexpected public variables remain forbidden. No model environment override, migration or new dependency is introduced.
+
+Public [model endpoint rates](https://openrouter.ai/api/v1/models/openai/gpt-6-luna/endpoints), [ZDR routing](https://openrouter.ai/docs/guides/features/zdr) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection) were rechecked on 2026-11-02 UTC. The catalog's conservative $0.20/$1.00 per-million input/output bounds remain sufficient for its 12,000/3,072 token ceilings; no price/model change was needed. Required ZDR routing remains available for the model. OpenRouter still announces screening of ZDR traffic and potential flagged-content retention; no absolute no-retention claim is made. Existing owner-confirmed logging/training/broadcast controls are retained.
+
+The key metadata check at `2026-11-02T04:41:02.340Z` found limit `$0.50`, no reset, usage `$0.00677838`, remaining `$0.49322162`; it made no generation request. The source preflight found only two original synthetic identities, zero measurements/conversations/runs/payloads/goals, no unfinished deletion and no existing budget rows. Its current schema already contains the service-only budget function. Protected credentials remain outside Git; no source/hosted configuration mutation or model call occurred during this preparation.
+
+## Local verification
+
+| Check | Actual result |
+|---|---|
+| Focused activation/build/catalog | 70 tests passed, including explicit build opt-in, wrong project/switch/key/public-secret/Vertex rejection, absent approval, unchanged disabled default and exact transport bytes |
+| Canonical production build/bundle | Passed strict typecheck and production build; 15 public files passed secret/server-catalog canaries |
+| Offline suite | Final full run: all 471 tests across 40 files passed. First run: 470 passed, one old synthetic-smoke availability expectation failed. Luna now correctly reports catalog availability under the true switch; the corrected expectation preserves zero provider requests/spend, four synthetic role successes and all separate live opt-in/attempt guards. The complete 18-case smoke file also passed independently. |
+| Fresh local integration | All 27 chat/hosted-closeout cases passed in a new guarded loopback `vulpes-health-step4-test` stack, API/database 35421/35422. Ordinary production composition used a synthetic provider through actual HTTP, ledger, encrypted byte capture and reload. Retained Luna/root/hosted data were not reset. |
+| Static checks | Final strict typecheck/lint and 528 specification/fixture checks passed. The current public API lists three applicable strict-ZDR Luna endpoints and the catalog's conservative rate bounds still cover all listed endpoint base rates. |
+
+Hosted activation, paid normal-path calls, physical devices and real-data use are not inferred from local proof. [Operator procedure](../operations/owner-pilot-luna.md) owns execution/rollback; actual subsequent execution will be appended here with candidate, deployment, request/cost outcomes and limitations.
+
+Preparation self-review examined the actual tracked/untracked diff against `b2cc02d`. **Axis 1:** approved for the authorized Luna-only activation packet; current catalog/evidence/consent/budget boundaries remain distinct, and default inference stays off. **Axis 2:** approved for explicit typed build mode, private-only credentials, unchanged adapter/ledger/goal authority, real synthetic HTTP proof and preserved zero-call/refusal assertions. There is no new migration/dependency or model override. Hosted execution and physical-device acceptance remain unverified; no merge is authorized.
