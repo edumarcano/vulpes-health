@@ -2,6 +2,8 @@
 
 The owner authorized activation/use on 2026-11-01, retaining the approved owner-pilot sequence. This packet enables only normal Ask Vulpes with Luna on the existing synthetic project. Flash, Argon and decision scoring stay unavailable. Real-data import follows applicable acceptance gates; no automated import, invitation, credit purchase or infrastructure upgrade is included.
 
+Current runtime candidate `e296c9e` is deployed and verified with inference enabled. [Dated evidence](../evidence/owner-pilot-step4.md#final-hosted-repair-checkpoint-2026-11-02) records the exact deployment, passing CI/hosted checks, spending and limitations. The next checkpoint requires the owner's actual Android device.
+
 ## Activation controls
 
 | Control | Bound |
