@@ -8,6 +8,9 @@
   },
   "packageManager": "npm@11.18.0",
   "scripts": {
+    "hosting:prepare": "tsx scripts/prepare-hosting.ts",
+    "hosting:probe": "tsx scripts/probe-hosting.ts",
+    "build:hosted": "tsx scripts/build-hosted.ts",
     "verify:luna": "tsx scripts/verify-luna.ts",
     "budget:provision": "tsx scripts/provision-pilot-budget.ts",
     "evidence:release": "tsx scripts/release-evidence.ts",

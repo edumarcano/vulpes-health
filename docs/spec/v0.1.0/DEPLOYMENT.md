@@ -16,7 +16,7 @@ Use the supplied Vercel domain initially. Do not buy a domain or upgrade a plan 
 
 ## 3. Prerequisites
 
-Owner-controlled private Git repository; Vercel Hobby project; Supabase project; OpenRouter key with the intended privacy/spending controls; Google Cloud billing/project and model access; a secure server trace-encryption key.
+Owner-controlled private Git repository; approved Vercel/Supabase plans and region; secure server trace-encryption keys and separate backup/journal custody. Initial synthetic hosting uses no provider credentials and keeps inference disabled. OpenRouter credentials/privacy/budgets are required only for separately approved Luna activation. Google Cloud billing/project/model access is optional and separately gated for Flash/Argon; it is not an owner-pilot prerequisite.
 
 Use Node 24 and the npm version pinned in `package.json`, with `npm ci` and the committed lockfile. The release-evidence report records installed dependency versions and the tested build identity.
 
@@ -37,6 +37,8 @@ Repository scripts:
 | `npm run test:e2e` | Browser workflows with synthetic users/data |
 | `npm run test:providers` | Synthetic normalized-protocol smoke; live mode needs separate authorization and all fail-closed gates |
 | `npm run evidence:release` | Assemble recorded local results, build hashes, acceptance status and reviewed synthetic screenshots; missing records remain `not_run` |
+| `npm run hosting:prepare -- --plan` | Describe synthetic-only hosting preparation without files, credentials, network or deployment |
+| `npm run hosting:probe -- --plan` | Describe the bounded public routing/header checks; hosted reads require explicit opt-in and approval |
 | `npm run maintenance:cleanup` | Delete expired staging/trace/export payloads |
 | `npm run backup:verify` | Documented backup/restore checks; not merely a file-exists check |
 | `npm run test:lifecycle-upgrade -- --allow-disposable-reset` | Populated forward migration proof on an empty disposable synthetic stack |
@@ -54,7 +56,7 @@ Export and test backups before real use. Keep schema, RLS, functions, Storage ob
 
 ## 6. Vercel setup
 
-Use Vite framework detection and the root `vercel.json` build/output and route configuration, including `/api/account` through the Settings entry point. `config/vercel.example.json` is a minimal SPA shape reference. Verify hosted deep links and API errors separately; unknown API paths must not return `index.html`.
+Follow the [controlled synthetic hosting procedure](../../operations/synthetic-hosting.md). The root `vercel.json` deliberately refuses an unbound hosted build. Local preparation generates a target-specific configuration with the exact Supabase CSP origin, selected function region and guarded build command. Git automatic deployment remains disabled. Verify hosted deep links and API errors separately; unknown API paths must not return `index.html`, and `/api/account` continues through the Settings entry point.
 
 Set server secrets only in server environments; the public client receives only Supabase's URL/publishable key and public app metadata. Disable live inference and use synthetic data in preview deployments. Do not give fork/PR previews production credentials or production database access.
 
@@ -66,7 +68,7 @@ No Vercel AI Gateway is required: Vulpes uses its own adapter boundary to the se
 
 ## 7. Provider activation order
 
-Configure auth/database/trace encryption first. Then enable Luna using synthetic prompts and a strict temporary spend cap. Verify the exact request and usage trace. Next test Flash and Argon via the actual Google Cloud project. Decision scoring remains optional until its own contract, privacy and routing tests pass.
+Configure auth/database/trace encryption first with inference off; pass hosted security/recovery checks. Then, after separate activation/spending approval, enable Luna using synthetic prompts and a strict temporary spend cap. Verify the exact request and usage trace. Flash/Argon and decision scoring remain optional, disabled and independently gated; they do not block the Luna owner pilot.
 
 Set the live-call flag only after complete rate configuration, output bounds and approved provider consent. A successful unauthenticated public model lookup is not a successful provider smoke test.
 

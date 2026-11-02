@@ -4,6 +4,24 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Bind synthetic deployment to an isolated working directory
+
+Under the approved Step 3C scope, Vercel CLI 62.5.0 first failed the target-bound build, then produced a ready deployment whose actual CSP lacked the approved Supabase origin despite the correct uploaded generated config. Executing the CLI from the isolated candidate directory, with generated configuration overlaid as its root `vercel.json` and the exact project build command bound, produced the expected routing/CSP and all 14 public probes passed. Record candidate/config hashes and the immutable deployment separately; a local source receipt is not signed remote Git attestation. The root generic configuration stays fail-closed. [Hosted evidence](evidence/owner-pilot-hosted-setup.md) retains all attempts. No inference, real data, paid upgrade or merge was authorized.
+
+## 2026-10-31: Single-project synthetic hosting
+
+The owner reports that the source Supabase project is Free/us-east-1 with account MFA enabled; an unrelated project occupies the second Free slot. A second hosted project is not a prerequisite for initial synthetic hosting. Allow an explicit null recovery reference while retaining source/recovery inequality whenever a reference is supplied. Manifests identify deferred/unverified recovery and never authorize real data. The original CLI rejected null before repair; actual local preparation now succeeds with 38 migrations, deferred recovery and zero network/deployment activity. No unrelated project access, quota workaround, paid upgrade, migration or deployment is authorized.
+
+Before real-data use, demonstrate complete hosted-source recovery into a separate environment. A disposable local Supabase destination is the preferred zero-cost candidate to investigate; the existing local-source rehearsal does not prove its compatibility. This changes initial resource sequencing, not the recovery acceptance gate.
+
+## 2026-10-31: Controlled synthetic hosting preparation
+
+Initial hosting has no provider credentials and inference remains false with null production evidence/zero ceiling. Generate an exact-origin CSP and target-bound build for one approved Vercel project, source Supabase reference and production hostname. Use the Vercel Production channel for the isolated synthetic site; preview builds refuse server-secret configuration. Disable Git automatic deployments, exclude private local material from CLI uploads and preserve explicit API JSON routing. No infrastructure, public API, model or data schema change is authorized by preparation.
+
+A static CSP reproduction showed hosted Supabase was blocked by `connect-src 'self'`; local preview already allowed its validated origin. Shared header construction now supplies the same exact origin to generated hosting configuration. The public probe has an explicit opt-in, 14 credential-free GET maximum, no redirect following and bounded safe response handling; it cannot attest Auth/RLS, candidate identity, inference state or recovery. Its first real local HTTP run exposed a missing request-ID field in the probe's expected envelope; the existing handler contract was retained and the probe corrected.
+
+The resource proposal uses Vercel Hobby and separate source/recovery Supabase Free projects with explicit North Virginia or Frankfurt placement and $0 paid allowance. Resource/region, deployment and recovery custody approvals remain absent. Local operational scripts keep their hosted-target refusals; a supported fenced restore and hosted maintenance procedure must be implemented/verified before real-data use. Flash/Argon stay optional without a Google billing prerequisite. [Procedure](operations/synthetic-hosting.md), [evidence](evidence/owner-pilot-step3.md).
+
 ## 2026-10-31: Current Luna verification and final-answer context
 
 Standing owner authorization covers necessary synthetic Luna batches under the existing $0.50 nonrecurring key cap, retaining confirmed privacy controls and the accepted screening exception. It does not grant production, deployment, real-data or optional-model activation. All 14 fixed v7 cases passed with separate host answer review; prior failed batches and uncertainty holds remain retained. [Current evidence](evidence/luna-owner-pilot-live.md).
