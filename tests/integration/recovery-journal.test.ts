@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {expect,it} from 'vitest';
+import {z} from 'zod';
 import {assertLocalStack,projectId,projectRoot,localEnvironment} from '../../scripts/local-database.js';
 import {captureRecoveryJournal,verifyRecoveryJournal,recoveryPathHash,recoveryJournalQuery} from '../../scripts/recovery-journal.js';
 import {targetHash} from '../../scripts/hosting.js';
@@ -24,6 +25,10 @@ it('captures real PostgreSQL journal rows and validates the encrypted file throu
    insert into auth.users values('${unfinished}','synthetic-journal@example.invalid');
    insert into public.account_deletion_receipts(user_id,phase,outcome,completed_at) values('${deleted}','completed','completed',clock_timestamp()),('${unfinished}','auth_removal_pending','auth_unavailable',null);`);
   const before=command(database,'select jsonb_agg(to_jsonb(d) order by user_id) from public.account_deletion_receipts d;');
+  // Management API top-level timestamps use PostgreSQL's text representation,
+  // unlike row_to_json's implicit ISO conversion. Check the wire value itself.
+  const capturedText=command(database,'begin read only;select captured_at::text from ('+recoveryJournalQuery.replace(/;\s*$/,'')+') s;rollback;');
+  expect(z.iso.datetime({offset:true}).safeParse(capturedText).success).toBe(true);
   const target={version:1,purpose:'synthetic-only',supabaseProjectRef:'abcdefghijklmnopqrst',recoveryProjectRef:null,databaseRegion:'us-east-1',vercelProjectId:'prj_SyntheticRecovery',appOrigin:'https://vulpes-synthetic.vercel.app'} as const;
   const output=join(root,'current.enc'),manifest=join(root,'manifest.json'),keys={keyId:'synthetic-only',journalKeyB64:randomBytes(32).toString('base64')},backupCreatedAt=new Date(Date.now()-60000).toISOString();
   let calls=0;

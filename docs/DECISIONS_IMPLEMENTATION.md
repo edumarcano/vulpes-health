@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Verify hosted journal timestamp text and final cleanup coverage
+
+The grouped approved hosted-source rehearsal exposed a Management API wire difference: top-level PostgreSQL timestamps are text in PostgreSQL format, whereas the earlier local `row_to_json` transport emitted ISO. A real PostgreSQL `captured_at::text` assertion reproduced the strict-validation failure. The read-only query now formats UTC ISO explicitly; the strict parser, freshness/clock windows and approval/encryption rules remain unchanged. Live capture and isolated recovery then passed.
+
+Four disposable accounts provide two deletion cases and two populated retained-user HTTP cases without changing original accounts. Cleanup happens after recovery proof, so a separate final encrypted journal must cover all four final source deletions; the earlier current journal is insufficient for any later access. Off-machine copy verification does not renew a five-minute journal current-check window. [Actual evidence](evidence/owner-pilot-step3-hosted-recovery.md).
+
 ## 2026-11-01: Consolidate Step 3 recovery and export preparation
 
 **Status:** Implementation under the approved owner-pilot plan; remaining Step 3 work stays in PR #32 at the owner's request. Hosted capture, deployment, custody and access retain explicit approval gates.

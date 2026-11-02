@@ -46,3 +46,16 @@ Sandbox process restrictions initially blocked Vite/Vitest/Node child-process st
 ## Remaining owner checkpoint
 
 Choose independent private ciphertext storage and a separate recoverable key store, then prepare the synthetic source's database connection/password/CA using the [step-by-step instructions](../operations/hosted-recovery.md#secure-connection-preparation-when-execution-is-ready). Report only non-secret parameters and custody choices. The agent then binds one exact $0 hosted-source/fenced-recovery rehearsal approval to those choices; no isolated short-lived capture or further small preparation PR is needed. Any deployment, inference activation, restored access, spending or real-data use retains its own explicit authorization.
+
+## Approved rehearsal preparation, 2026-11-01
+
+The owner approved the grouped $0 recovery rehearsal after confirming private Google Drive storage and Google/Proton account 2FA. Local ciphertext destination is `C:\Users\eduma\VulpesRecovery`; keys use Proton Pass Free. The source session-pooler parameters match the approved project/region. The ignored database password decrypts to a nonempty SecureString and the public certificate parses as a currently valid CA; actual connection/password/TLS compatibility is not yet tested.
+
+Four new fixture identities/passwords were preallocated into a create-only DPAPI plan, without creating remote accounts. A separate create-only DPAPI package holds fresh backup/journal keys, the current source trace key and one new retained synthetic trace-key version. Protected readback verified all four keys are 32 bytes. A private-terminal handoff helper passed its JSON roundtrip check and refused Copy/Transfer when input/output is redirected, before touching the clipboard. The first helper self-test exposed a PowerShell property-count array expression; the corrected scalar count reports four keys. No secret material was printed.
+
+Hosted requests/writes and paid spending remain zero for this preparation. Hosted capture waits for an owner-operated saved-note readback, bound to the batch and package fingerprint in a protected custody receipt. The helper clears the clipboard after verification. The owner must turn off clipboard history/sync before transfer; no Proton/Google UI was operated by the agent. This is an actual manual custody checkpoint, not another execution-approval request. Remaining implementation/execution evidence stays in PR #32; no new PR or merge.
+
+
+## Grouped rehearsal execution
+
+The owner-operated key readback subsequently passed. The approved source capture, four-fixture post-backup deletion/replay, isolated actual Auth/API/current-accounting recovery, final fixture cleanup and final independent journal passed. [Hosted evidence](owner-pilot-step3-hosted-recovery.md) records exact results, private-output hashes, the reproduced timestamp repair and remaining cloud-copy/rotation/access gates. No deployment, provider call, paid usage or real data occurred.

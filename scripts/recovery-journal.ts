@@ -26,7 +26,7 @@ const journalSchema=z.strictObject({version:z.literal(1),purpose:z.literal('synt
 const snapshotSchema=z.array(z.strictObject({captured_at:z.iso.datetime({offset:true}),accounting_sha256:hashSchema.optional(),nonsynthetic_users:z.number().int().nonnegative(),storage_objects:z.number().int().nonnegative(),receipt_count:z.number().int().min(0).max(maxRows),rows:z.array(z.unknown()).max(maxRows)})).length(1);
 
 // One read-only statement/snapshot, with no pagination gap or omitted unfinished requests.
-export const recoveryJournalQuery=`select statement_timestamp() as captured_at,
+export const recoveryJournalQuery=`select to_char(statement_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as captured_at,
  ${recoveryAccountingExpression} as accounting_sha256,
  (select count(*) from auth.users where email is null or lower(email) not like '%@example.invalid') as nonsynthetic_users,
  (select count(*) from storage.objects) as storage_objects,
