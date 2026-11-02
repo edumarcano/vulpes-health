@@ -45,7 +45,7 @@ Sandbox process restrictions initially blocked Vite/Vitest/Node child-process st
 
 ## Remaining owner checkpoint
 
-Choose independent private ciphertext storage and a separate recoverable key store, then prepare the synthetic source's database connection/password/CA using the [step-by-step instructions](../operations/hosted-recovery.md#secure-connection-preparation-when-execution-is-ready). Report only non-secret parameters and custody choices. The agent then binds one exact $0 hosted-source/fenced-recovery rehearsal approval to those choices; no isolated short-lived capture or further small preparation PR is needed. Any deployment, inference activation, restored access, spending or real-data use retains its own explicit authorization.
+Recovery rehearsal, Proton Pass key readback and the four-file private Google Drive readback are complete; [hosted recovery evidence](owner-pilot-step3-hosted-recovery.md) owns those results. The next required owner action is one approval for the final synthetic application deployment and its bounded two-account verification/cleanup. The current deployment still predates the export repair. No dashboard or credential work needs repeating. Inference activation, restored access, spending and real-data use remain separately gated.
 
 ## Approved rehearsal preparation, 2026-11-01
 
@@ -59,3 +59,24 @@ Hosted requests/writes and paid spending remain zero for this preparation. Hoste
 ## Grouped rehearsal execution
 
 The owner-operated key readback subsequently passed. The approved source capture, four-fixture post-backup deletion/replay, isolated actual Auth/API/current-accounting recovery, final fixture cleanup and final independent journal passed. [Hosted evidence](owner-pilot-step3-hosted-recovery.md) records exact results, private-output hashes, the reproduced timestamp repair and remaining cloud-copy/rotation/access gates. No deployment, provider call, paid usage or real data occurred.
+
+## Final application verification preparation, 2026-11-01
+
+This continuation adds verification tools, fixtures and tests, without changing application behavior, schema, provider configuration or dependencies. It stays in PR #32. The frozen application upload will include the existing unlinked-spool repair; deploying it remains unapproved.
+
+| Check | Observed local result |
+|---|---|
+| Real API proof | `npm run test:integration -- tests/integration/hosted-closeout.test.ts` passed. Two new disposable local accounts exercised 38 named checks over 58 actual HTTP requests: strict malformed/unknown write bodies, JSON 503 for disabled chat, nonempty own execution/step rows, foreign inspector/trace denial, protected direct reads, exact trace bytes, allocation/account export isolation and integrity, CSV content, cancelled response bodies and a successful subsequent export. Existing local operator data and allocations were preserved. |
+| Built application/browser | `npm run test:closeout` passed the same 38 API checks plus eight Chromium checks against the actual built client, production router and guarded local Supabase. Both owned Ask conversations/downloads, sign-out, a barrier-controlled delayed response across account switching, cache allowlist/old-cache removal and a data-free offline route passed. Page errors: zero. Physical devices and assistive technology were not exercised. |
+| Ordinary safeguards | All 469 units across 40 files, strict typecheck, lint, production build, 15-file public-bundle canary inspection and 526 specification/fixture checks passed. The hosted/browser modules refuse missing approval before network/browser startup. The private operator also refused unapproved preflight before loading credentials; its strict TypeScript check passed. |
+| Execution limits | Local proof reported zero hosted requests, provider requests and paid spending. The browser downloads were removed. The new test identities were deleted through existing account lifecycle services. No original identity/password, global/app budget, provider consent or production evidence was changed. |
+
+The first CSV proof failed because the new fixture omitted the explicit `user_reported` measurement method. The fixture was corrected to match its own query; application code and assertions were unchanged. Lint also caught cleanup control flow inside `finally`; moving that cleanup into a function preserved the same failure/cleanup behavior. Final API/browser proof passed after both corrections.
+
+The positive allocation sample requires the existing database's synthetic verification contract: newly preallocated `pr03-<UUID>@example.test` identities, display name `Synthetic verification` and a **$0.000001 account ledger ceiling each**. These are test ledger values, not provider charges. Hosted creation requires explicit approval; inference stays false, provider credentials/consent remain absent, and the shared app ceiling remains unchanged. The encrypted trace contains labelled synthetic bytes and the failed execution is explicitly **not dispatched**. This proves populated security/export behavior, not a real model response.
+
+The private create-only batch plan binds the approved source/target, two identities and verifier hashes. Execution additionally requires an unexpired approval and a verified READY deployment receipt for the exact new candidate with inference off/provider secrets absent. Fixture freshness/month checks run before source writes. Cleanup targets only creation-receipted, remotely tagged batch identities and checks the original account/shared-state hash throughout; a final encrypted journal must cover both new deletion receipts. Closed recovery/lifecycle plans are not reused.
+
+Hosted response cancellation will establish client cancellation and a successful follow-up request. It cannot prove that a remote function was killed mid-capture or inspect a provider's temporary filesystem. The earlier real process-exit/unlinked-file proof covers that local failure mechanism. Old deployment retirement requires separate inclusion in the grouped approval, an exact immutable ID, passing replacement checks and no active aliases; `--safe` must refuse an active deployment. Deleting that deployment removes its URL/rollback target and does not establish physical secure erasure by Vercel.
+
+Both split-axis self-review passes covered the new tracked tools/tests and existing PR #32 changes against #31: requirement scope, real HTTP/UI assertions, source/owner binding, cleanup, private stdin/output, request bounds and dormant provider gates. No demonstrated blocker remains in local preparation. Hosted checks, deployment retirement, physical devices, independent review/formal acceptance and production enablement remain unverified or separately gated.
