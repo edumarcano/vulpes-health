@@ -8,6 +8,7 @@
   },
   "packageManager": "npm@11.18.0",
   "scripts": {
+    "verify:luna": "tsx scripts/verify-luna.ts",
     "budget:provision": "tsx scripts/provision-pilot-budget.ts",
     "evidence:release": "tsx scripts/release-evidence.ts",
     "test:spec": "python docs/spec/v0.1.0/scripts/validate_spec_package.py",

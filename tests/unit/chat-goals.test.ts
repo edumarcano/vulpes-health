@@ -8,6 +8,14 @@ import { serializeEveryday } from '../../server/ai/providers/openrouter.js';
 import { goalDraft } from '../fixtures/contracts.js';
 
 describe('chat proposal authority and bounded catalogue',()=>{
+ it('describes comparable goal methods and rejects the observed mixed-method proposal',()=>{
+   const definition={...goalDraft,method:'device_reported',granularity:'instant',baselineMethod:'daily_median_mean_7d',currentMethod:'latest_value'};
+   const mixed=toolArguments.propose_goal.safeParse({definition});
+   expect(mixed.success).toBe(false);
+   if(!mixed.success)expect(mixed.error.issues).toContainEqual(expect.objectContaining({message:'Keep baseline and current methods comparable.'}));
+   expect(safetyInstructions).toContain('Calculated baselineMethod must equal currentMethod (latest_value for latest-value tracking)');
+   for(const method of ['latest_value','daily_median_mean_7d'])expect(toolArguments.propose_goal.safeParse({definition:{...definition,baselineMethod:method,currentMethod:method}}).success).toBe(true);
+ });
  it('exposes pending proposals only and rejects model-supplied authority',()=>{
    const definition=GoalDefinitionSchema.parse({...goalDraft,method:'device_reported',granularity:'instant',currentMethod:'daily_median_mean_7d'});
    expect(toolArguments.propose_goal.safeParse({definition}).success).toBe(true);

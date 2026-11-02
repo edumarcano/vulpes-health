@@ -72,14 +72,14 @@ export class VulpesAgent {
         for(let modelCall=0;modelCall<4;modelCall++) {
           signal.throwIfAborted();await this.ledger.heartbeat(lease);
           if(modelCall===3||toolCount===6)request={...request,tools:[]};
-          if(role==='everyday'&&dependencies.flash&&request.tools.some(t=>t.name==='request_escalation')&&routingEvidence.length&&Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000){
-            request={...request,tools:request.tools.filter(t=>t.name==='request_escalation')};
-            context.manifest.excluded.push({referenceId:'tools:domain',reason:'context_limit_handoff_or_final_answer'});
-          }
           while(Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000 && context.selected.length) {
             const excluded=context.selected.shift()!;const count=excluded.turns.length;
             request={...request,turns:[request.turns[0]!,...request.turns.slice(1+count)],continuation:continuationFor(blocksOf(request.continuation).filter(block=>block.at>=1+count).map(block=>({...block,at:block.at-count})),dependencies.adapter.family,request.continuation?.model)};
             groupStart-=count;context.manifest.included=context.manifest.included.filter(item=>item.reference.id!==excluded.id);context.manifest.excluded.push({referenceId:excluded.id,reason:'context_limit_after_tool'});
+          }
+          if(routingEvidence.length&&request.tools.length&&Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000){
+            request={...request,tools:role==='everyday'&&dependencies.flash?request.tools.filter(t=>t.name==='request_escalation'):[]};
+            context.manifest.excluded.push({referenceId:'tools:domain',reason:'context_limit_handoff_or_final_answer'});
           }
           if(Buffer.byteLength(JSON.stringify(request))>Math.min(models[role].maxInputTokens,dependencies.price.inputBoundTokens)-1000)throw new HttpFailure(413,'context_too_large','The complete tool result cannot fit within this request. Ask for a narrower selection.');
           GenerationRequestSchema.parse(request);

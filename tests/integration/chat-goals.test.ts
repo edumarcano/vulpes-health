@@ -21,6 +21,7 @@ import { prepareGoalTool,providerToolResult } from '../../server/ai/tools.js';
 import { readPayload } from '../../server/security/private-payloads.js';
 import { InspectionService } from '../../server/services/inspection.js';
 import { addMeasurement } from '../../server/services/measurements.js';
+import { safetyInstructions } from '../../server/ai/prompts/everyday.js';
 
 let db:LocalSupabase;let a:AuthContext;let b:AuthContext;let token:string;let app:string;let source:string;
 async function rows(table:string,filter=`user_id=eq.${a.userId}`){return await(await db.admin(`/rest/v1/${table}?${filter}`,'GET')).json() as Record<string,unknown>[];}
@@ -61,6 +62,23 @@ it('completes import → Ask → inspect → propose → approve → additional 
   const second=await api('/api/data',{action:'preview_csv',client_request_id:randomUUID(),csv,source:{kind:'existing',id:batch.source_id},mapping:{schema_version:1,format:'canonical',timezone:'UTC',profile:null,single_profile:true,review_requested:false,source_label:'Synthetic Scale A'}});expect(second.status).toBe(200);const next=(await second.json()).data;expect((await api('/api/data',{action:'commit_import',batch_id:next.batch_id,payload_hash:next.payload_hash,client_request_id:randomUUID()})).status).toBe(200);
   const detail=await api('/api/goals?view=detail&id='+goal);expect(detail.status).toBe(200);const data=(await detail.json()).data;expect(data.revision.payload.baseline.value).toBe('69.7');expect(data.progress).toMatchObject({kind:'progress',current:'68.8'});expect(transport.requests).toHaveLength(3);expect((await new GoalService(a).owned(goal)).state).toBe('active');
  });
+});
+it.each([1,20])('bounds context for a final goal answer with %i constraint entries',async count=>{
+ await addMeasurement(a,{action:'add_measurement',client_request_id:randomUUID(),source:{kind:'existing',id:source},observation:{metric:'weight',value:'69',unit:'kg',observed_at:new Date(Date.now()-3600000).toISOString(),timezone:'UTC',local_date:null,granularity:'instant',method:'device_reported',quality_flags:[]}});
+ const service=new GoalService(a);const proposal=await service.propose({action:'propose_create',client_request_id:randomUUID(),definition:GoalDefinitionSchema.parse({...definition(),baselineMethod:'user_reported',reportedBaseline:70,currentMethod:'latest_value',constraints:Array.from({length:count},()=> 'Synthetic constraint. '.repeat(28))})});
+ await service.decide(approval(proposal));const id=await conversation();const transport=new SyntheticGoalTransport('goal_progress');
+ const agent=new VulpesAgent(a,syntheticChatDependencies(transport));const input=send(id,'Show the approved goal progress.');const admitted=await agent.admit(input);if(!admitted.lease)throw new Error('Missing synthetic lease.');
+ const events=[];for await(const event of agent.run(input,admitted.lease,admitted.result.run,admitted.baseline,new AbortController().signal))events.push(event);
+ expect(transport.requests.every(bytes=>bytes.length<=12000)).toBe(true);
+ const inspector=new InspectionService(a);const overview=await inspector.overview(admitted.result.run.id);
+ for(const [index,step] of overview.steps.filter(s=>s.type==='generation').entries()){
+  const exact=await inspector.evidence({view:'payload',run:admitted.result.run.id,step:step.id,part:'input'});expect(exact.state).toBe('available');if(exact.state==='available')expect(exact.bytes.equals(transport.requests[index]!)).toBe(true);
+ }
+ if(count===20){expect(events.at(-1)).toMatchObject({type:'run.failed',payload:{code:'context_too_large',retryable:false}});expect(transport.requests).toHaveLength(1);return;}
+ expect(events.at(-1)?.type).toBe('run.completed');expect(transport.requests).toHaveLength(3);
+ const final=JSON.parse(transport.requests[2]!.toString());expect(final.tools).toEqual([]);expect(final.input[0].content).toBe(safetyInstructions);
+ const progress=final.input.filter((item:{type:string})=>item.type==='function_call_output').map((item:{output:string})=>JSON.parse(item.output).result).find((result:{kind:string})=>result.kind==='progress');expect(progress).toMatchObject({baseline:'70',current:'69'});
+ const context=await inspector.evidence({view:'payload',run:admitted.result.run.id,step:overview.steps.filter(s=>s.type==='generation')[2]!.id,part:'context'});expect(context.state).toBe('available');if(context.state==='available')expect(JSON.parse(context.bytes.toString()).excluded).toContainEqual({referenceId:'tools:domain',reason:'context_limit_handoff_or_final_answer'});
 });
 it('replays a concurrent checkpoint once and survives trace expiry without reconstructing evidence',async()=>{
  const t=await tool();const saved=await Promise.all([t.ledger.checkpointGoal(t.step,t.output,t.trace),t.ledger.checkpointGoal(t.step,t.output,t.trace)]);expect(saved[0]!.reference).toEqual(saved[1]!.reference);expect(await rows('action_proposals')).toHaveLength(1);expect(await rows('goals')).toHaveLength(0);

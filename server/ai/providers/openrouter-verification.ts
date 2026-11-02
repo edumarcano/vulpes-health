@@ -6,7 +6,7 @@ import { models } from '../../config/models.js';
 import { everydayCapabilityEvidence } from '../../config/everyday-verification.js';
 import { everydayAdapterVersion,everydayTemplateVersion } from '../../config/everyday-versions.js';
 import { assessEverydayPreflight } from '../live-preflight.js';
-import { verificationFixtureHash } from '../verification-fixture.js';
+import { verificationFixtures } from '../verification-fixture.js';
 import type { RequestTransport } from '../ledger/dispatcher.js';
 
 const issued=new WeakSet<object>();
@@ -34,7 +34,7 @@ export async function issueVerificationTransport(context:AuthContext,batchId:str
     db.auth.admin.getUserById(context.userId),
   ]);
   if(profile.error || bucket.error || user.error || !/^pr03-[0-9a-f-]{36}@example\.test$/.test(user.data.user?.email ?? '')
-    || profile.data.account_state!=='active' || profile.data.display_name!=='Synthetic verification' || profile.data.data_revision!==row.data_revision || row.fixture_hash!==fixtureHash || fixtureHash!==verificationFixtureHash
+    || profile.data.account_state!=='active' || profile.data.display_name!=='Synthetic verification' || profile.data.data_revision!==row.data_revision || row.fixture_hash!==fixtureHash || !Object.values(verificationFixtures).some(fixture=>fixture.hash===fixtureHash)
     || bucket.data.user_id!==context.userId || bucket.data.scope!=='account' || bucket.data.period_start!==row.period_start
     || row.period_start!==new Date().toISOString().slice(0,7)+'-01' || !new Decimal(row.ceiling_text).equals(ceiling))throw new Error('verification_allocation_mismatch');
   const consent=profile.data.consent_versions;

@@ -4,6 +4,24 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-10-31: Current Luna verification and final-answer context
+
+Standing owner authorization covers necessary synthetic Luna batches under the existing $0.50 nonrecurring key cap, retaining confirmed privacy controls and the accepted screening exception. It does not grant production, deployment, real-data or optional-model activation. All 14 fixed v7 cases passed with separate host answer review; prior failed batches and uncertainty holds remain retained. [Current evidence](evidence/luna-owner-pilot-live.md).
+
+Actual goal follow-up context exceeded the 11,000-byte internal allowance by 34 bytes after complete owned results. The orchestrator now removes removable history before omitting domain tool schemas for a final answer (or the existing eligible Flash escalation when supplied). Safety text and complete current results remain; evidence that still cannot fit fails before another request. Reproduction-first integration checks cover both outcomes. No context/token/call ceiling was raised.
+
+The final instructions explicitly state account isolation, absent family-sharing/connection features and bounded conversation memory after a live answer implied unavailable capabilities. The E05 fixture clarifies source/direction/latest-value baseline while retaining the immediate-activation challenge and exact user-approval requirement. Template v7 invalidates earlier partial evidence. No infrastructure, model identity, provider effort, schema or production approval changes.
+
+## 2026-10-31: Stopped Luna batch and comparable-method guidance
+
+The owner approved one synthetic-only $0.50 batch, the screening/flagged-retention exception and account privacy controls. A dedicated nonrecurring capped key replaced an unsuitable recurring-limit key before dispatch. The v4 batch stopped at E05 after 14 requests, $0.001251535 settled usage and zero held reservations; provider key metadata matched the ledger. Luna combined a seven-day-average baseline with latest-value current tracking. The server rejected it without saving a proposal/goal. No subsequent case or paid retry was sent.
+
+The shared model instruction now exposes the existing comparable-method rule for both proposals and revisions. Duplicating lengthy guidance in both tool descriptions overflowed the bounded goal follow-up during local testing; the compact shared instruction passes that unchanged workflow without raising limits. Server validation/approval authority, model, effort and token limits remain unchanged. Advance the template to v5 so incomplete v4 results cannot count as current acceptance. The repair is verified offline, not live. Preserve the failed allocation and private evidence; a new full v5 batch needs fresh approval, proposed at $0.47 additional maximum. Production evidence remains null, run ceiling zero and optional models disabled. [Observed evidence and review](evidence/luna-v4-live.md).
+
+## 2026-10-31: Current Luna verification preparation
+
+Refresh the public conservative rate snapshot without changing model identity, effort or token limits. Bind public capability evidence to v4. Add fixed empty, sparse heart-rate and source-injection fixtures behind the existing immutable verification allocations; original scale fixture identity remains valid. A fixed-case operator runner uses one aggregate app ceiling, deterministic attempt identities, create-only plan bindings and no automatic model retries. Structural checks leave semantic model assessment pending. Owner consent, key/privacy checks and separate capped spending approval remain required; production approval is not installed. [Procedure](operations/luna-verification.md).
+
 ## 2026-10-31: Disabled owner-pilot Luna composition
 
 Normal chat now has a separately issued Luna production transport through the existing dispatcher and execution ledger. Status, conversation availability and Settings share configuration readiness without reading provider credentials. Current smoke and explicit owner approval bind the privacy notice/version, price and adapter/template; no production evidence or positive run ceiling is installed. The transport rechecks enablement before its single fixed-endpoint request.

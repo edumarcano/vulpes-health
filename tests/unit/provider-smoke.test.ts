@@ -49,7 +49,7 @@ describe('real provider-smoke CLI', () => {
     expect(JSON.parse(output.stderr)).toEqual({ mode: 'blocked', code: expected, actualProviderRequests: 0, inferenceSpendUSD: '0' });
   });
   it.each([
-    ['false', 'live_ai_disabled'], ['true', 'capability_evidence_mismatch'], ['TRUE', 'invalid_live_switch'],
+    ['false', 'live_ai_disabled'], ['true', 'verification_attempt_required'], ['TRUE', 'invalid_live_switch'],
   ])('denies fully supplied live flags with switch %s', async (liveSwitch, expected) => {
     const output = await cli(['--mode=live', '--role=everyday', '--allow-spend', '--max-cost-usd=0.01'], liveSwitch);
     expect(output.code).toBe(1);

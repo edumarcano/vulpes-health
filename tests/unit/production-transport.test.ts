@@ -19,9 +19,9 @@ describe('production Luna wiring',()=>{
   it('requires approved current policy and smoke bindings before reporting available',async()=>{
     const price=models.everyday.price;
     const smoke={version:1,provider:'openrouter',model:models.everyday.modelId,effort:'low',adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,
-      priceId:price.id,priceHash:priceFingerprint(price),runId:'11111111-1111-4111-8111-111111111111',checkedAt:'2026-10-31T12:00:00Z',result:'passed',policyVersion:providerPolicies.openrouter.version,policyHash:openRouterPolicyHash(),safetyEvaluationId:'22222222-2222-4222-8222-222222222222',ownerApprovedAt:'2026-10-31T13:00:00Z'};
+      priceId:price.id,priceHash:priceFingerprint(price),runId:'11111111-1111-4111-8111-111111111111',checkedAt:price.checkedAt,result:'passed',policyVersion:providerPolicies.openrouter.version,policyHash:openRouterPolicyHash(),safetyEvaluationId:'22222222-2222-4222-8222-222222222222',ownerApprovedAt:price.checkedAt};
     const capability={version:1,provider:'openrouter',model:smoke.model,effort:'low',adapterVersion:everydayAdapterVersion,templateVersion:everydayTemplateVersion,
-      priceId:price.id,priceHash:smoke.priceHash,inputBoundTokens:12000,outputBoundTokens:3072,streaming:true,tools:true,zdr:true,checkedAt:'2026-10-31T11:00:00Z',sourceURL:'https://example.test/synthetic'};
+      priceId:price.id,priceHash:smoke.priceHash,inputBoundTokens:12000,outputBoundTokens:3072,streaming:true,tools:true,zdr:true,checkedAt:price.checkedAt,sourceURL:'https://example.test/synthetic'};
     // Retain the actual schema; only operator records are synthetic.
     vi.doMock('../../server/config/everyday-production.js',async(importOriginal)=>({...await importOriginal<object>(),everydayProductionEvidence:smoke,everydayMaxRunCostUSD:'0.25'}));
     vi.doMock('../../server/config/everyday-verification.js',()=>({everydayCapabilityEvidence:capability}));

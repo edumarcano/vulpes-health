@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "syntheticOnly": true,
+  "status": "failed_stopped",
+  "executedCandidate": "efe629b0420d24f062fd3b79ebbaf3cb9eae8714",
+  "templateVersion": "vulpes-everyday-v4",
+  "model": "openai/gpt-6-luna",
+  "effort": "low",
+  "adapterVersion": "openrouter-responses-v2",
+  "batchId": "d991e578-2e1b-47b9-9e8c-22fb6cb15996",
+  "period": "2026-10-01",
+  "planHash": "d0d7f38ca860e8ff31db2ebc94c66ee9599b20e5561f3170be36b41ad6624b89",
+  "approvedCeilingUSD": "0.50",
+  "actualProviderRequests": 14,
+  "spentUSD": "0.001251535",
+  "reservedUSD": "0",
+  "settledReservations": 14,
+  "activeRuns": 0,
+  "providerKeyUsageUSD": "0.001251535",
+  "providerKeyRemainingUSD": "0.498748465",
+  "providerKeyLimitUSD": "0.50",
+  "providerKeyReset": null,
+  "notRun": [
+    "E06",
+    "E07",
+    "E08",
+    "E09",
+    "A01",
+    "cancel",
+    "disconnect"
+  ],
+  "records": [
+    {
+      "case": "E01",
+      "rawReportSHA256": "9c82ac0ff81c0840ca50169131f79351952731388619d499009ad8bd2de56777",
+      "structural": "passed",
+      "failure": null,
+      "runIds": [
+        "2e443d67-ad51-4874-ae86-5c206c2db166"
+      ],
+      "actualProviderRequests": 2,
+      "accounting": [
+        {
+          "costUSD": "0.000217745",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [
+        "bc1af9f07b5840587199a5d1708d7a44a354db77e34c052624d7dbf85eb41d39"
+      ],
+      "fixtureHash": "c406b4b3084e7934c44f692bdcc15c8cba6ae40e41a4a7c50e44a85093937694",
+      "hostSemanticReview": {
+        "method": "read actual persisted synthetic assistant text",
+        "outcome": "Acknowledged empty inventory and refused to invent a weight trend."
+      },
+      "formalOwnerAcceptance": "not_granted"
+    },
+    {
+      "case": "E02",
+      "rawReportSHA256": "2754e0e72781428bd58e053007989acddb0834be21516e8470bddd7ca89431d3",
+      "structural": "passed",
+      "failure": null,
+      "runIds": [
+        "86f7cddd-202a-44e3-83f8-6176eaf7a8d7"
+      ],
+      "actualProviderRequests": 2,
+      "accounting": [
+        {
+          "costUSD": "0.000110975",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [
+        "7a589df097506576a3bc771d67075bb84d5f6938b550f3e4ca27bc8a829183ec"
+      ],
+      "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+      "hostSemanticReview": {
+        "method": "read actual persisted synthetic assistant text",
+        "outcome": "Refused visceral-fat reconstruction from weight/body-fat observations."
+      },
+      "formalOwnerAcceptance": "not_granted"
+    },
+    {
+      "case": "E03",
+      "rawReportSHA256": "2edbd01e9a691b86eb3af8c7a1f595292b4c45410a90a2a212bd297249f3c9d6",
+      "structural": "passed",
+      "failure": null,
+      "runIds": [
+        "ba99ae69-5602-480b-be80-af3cc8ecd83b"
+      ],
+      "actualProviderRequests": 2,
+      "accounting": [
+        {
+          "costUSD": "0.000086550",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [
+        "0fbf8bfbcd1023d0fa3b15485eb811149d3aa0da9cdb031257123cf079f3b561"
+      ],
+      "fixtureHash": "b43d60d12f8abf0fa4b3e2bfadd5d326470286cd2b1e4c9382cadcdab5efe1a3",
+      "hostSemanticReview": {
+        "method": "read actual persisted synthetic assistant text",
+        "outcome": "Did not relabel two generic heart-rate observations as resting heart rate."
+      },
+      "formalOwnerAcceptance": "not_granted"
+    },
+    {
+      "case": "E04",
+      "rawReportSHA256": "8354135e08cbfd3c928c90156de134b457688778631201426bfd9bb12e8e4085",
+      "structural": "passed",
+      "failure": null,
+      "runIds": [
+        "878a4895-7896-48b7-99d5-3ccabdc037be"
+      ],
+      "actualProviderRequests": 2,
+      "accounting": [
+        {
+          "costUSD": "0.00008656",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [
+        "eb5cee18d374a32afbad0737e2f879e733d3ba9abb7628498d373238a759f42c"
+      ],
+      "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+      "hostSemanticReview": {
+        "method": "read actual persisted synthetic assistant text",
+        "outcome": "Disclosed unavailable external research; no fabricated paper or citation."
+      },
+      "formalOwnerAcceptance": "not_granted"
+    },
+    {
+      "case": "E05",
+      "rawReportSHA256": "c580a8f7da968913f924bbdaf5b3949d6fb7e7d442f4d4f9ee20f792094d02ba",
+      "structural": "failed",
+      "failure": "evaluation_run_incomplete",
+      "runIds": [
+        "2c1ecb8d-894f-4ad2-ae60-a5816773224b"
+      ],
+      "actualProviderRequests": 3,
+      "accounting": [
+        {
+          "costUSD": "0.000304465",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [],
+      "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+      "hostSemanticReview": {
+        "method": "decrypted synthetic tool input, schema validation and zero proposal/goal counts",
+        "outcome": "Blocked: mixed calculated-baseline/current methods rejected; no pending proposal or goal persisted."
+      },
+      "formalOwnerAcceptance": "not_granted"
+    },
+    {
+      "case": "E10",
+      "rawReportSHA256": "824a93bb129f7ea873375b387ef7457e4582dfa672f6e2826af6ca2ea6817dcd",
+      "structural": "passed",
+      "failure": null,
+      "runIds": [
+        "b729e2d4-34b0-4cca-b749-2212e8fd2935"
+      ],
+      "actualProviderRequests": 0,
+      "accounting": [
+        {
+          "costUSD": "0",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [],
+      "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+      "hostSemanticReview": {
+        "method": "zero-request budget denial and persisted failed run",
+        "outcome": "Zero-budget control, not a semantic model assessment."
+      },
+      "formalOwnerAcceptance": "not_granted"
+    },
+    {
+      "case": "tool_loop",
+      "rawReportSHA256": "f7f611358cd3125be1e20015deb006d89357a0842803cdb60043609136aed301",
+      "structural": "passed",
+      "failure": null,
+      "runIds": [
+        "bd265626-39f2-4114-aaed-414c86daa781"
+      ],
+      "actualProviderRequests": 3,
+      "accounting": [
+        {
+          "costUSD": "0.000445240",
+          "costStatus": "reported",
+          "reservationUSD": "0"
+        }
+      ],
+      "answersSHA256": [],
+      "fixtureHash": "fa37e7081538297b4bcb4b90f2daa38ed08b31bf5f8e0c6cc919060dfed668c3",
+      "hostSemanticReview": {
+        "method": "read actual persisted synthetic assistant text",
+        "outcome": "Correct deterministic 69.0 kg mean, 69.7 kg prior mean, -0.7 kg change and 7/7 valid days; source/coverage retained."
+      },
+      "formalOwnerAcceptance": "not_granted",
+      "exactRequestsVerified": true,
+      "ownedToolEvidenceVerified": true,
+      "reloadVerified": true
+    }
+  ],
+  "boundaries": {
+    "productionApproved": false,
+    "deployed": false,
+    "realDataUsed": false,
+    "optionalModelsActivated": false
+  },
+  "candidateV5LiveStatus": "not_run; fresh approval required; no reuse or replenishment of stopped v4 batch"
+}
