@@ -24,7 +24,7 @@ function SummaryPart({data}:{data:unknown}) {
   const parsed=ChatPartSchema.safeParse(data);
   if(!parsed.success || parsed.data.type!=='metric_summary')return <p>Evidence is unavailable.</p>;
   const {result}=parsed.data;const a=result.analysis;
-  return <Card className="chat-evidence"><h3>Calculated measurement summary</h3><p>{a.coverageStatus==='sufficient' ? `${a.value} ${a.unit}; change ${a.absoluteChange} ${a.unit}` : 'Insufficient observed days for a trend.'}</p><p>{a.validDays} valid days · {a.observationCount} observations · {a.algorithmVersion}</p><p>{result.selection.method} · {result.selection.granularity} · {result.selection.timezone}</p><p>{result.selection.from} to {result.selection.to} (end excluded)</p><Button asChild variant="outline"><Link to="/data">Open Data</Link></Button></Card>;
+  return <Card className="chat-evidence"><h3>Calculated measurement summary</h3><p>{a.coverageStatus==='sufficient' ? `${a.value} ${a.unit}; ${a.absoluteChange===null ? 'previous-window change unavailable' : `change ${a.absoluteChange} ${a.unit}`}` : 'Insufficient observed days for a trend.'}</p><p>{a.validDays} valid days · {a.observationCount} observations · {a.algorithmVersion}</p><p>{result.selection.method} · {result.selection.granularity} · {result.selection.timezone}</p><p>{result.selection.from} to {result.selection.to} (end excluded)</p><Button asChild variant="outline"><Link to="/data">Open Data</Link></Button></Card>;
 }
 const plainText=({text}:{text:string})=><p className="chat-text">{text}</p>;
 

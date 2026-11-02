@@ -51,6 +51,18 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   }
   await page.setViewportSize({width:390,height:844});await page.addStyleTag({content:'html{font-size:200%}'});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.getByLabel('Message Ask Vulpes').focus();await expect(page.getByLabel('Message Ask Vulpes')).toBeFocused();
+  // A valid current window can lack a previous comparison window.
+  await page.route('**/api/conversations?*',async route=>{
+    const url=new URL(route.request().url());if(url.searchParams.get('view')!=='messages')return route.continue();
+    const response=await route.fetch();const body=await response.json();
+    for(const message of body.data.items)for(const part of message.parts)if(part.type==='metric_summary'){
+      part.result.analysis.previousValue=null;part.result.analysis.absoluteChange=null;part.result.analysis.relativeChangePercent=null;
+      part.result.analysis.previousWindow.validDays=0;part.result.analysis.previousWindow.coverageStatus='insufficient_data';
+    }
+    await route.fulfill({response,json:body});
+  });
+  await page.reload();await expect(page.getByText('69 kg; previous-window change unavailable',{exact:true})).toBeVisible();
+  await expect(page.getByText(/change null kg/)).toHaveCount(0);expect(sends).toBe(1);
 });
 test('Ask reads retained message state when replayed execution metadata has expired',async({page})=>{
   await start(page);
