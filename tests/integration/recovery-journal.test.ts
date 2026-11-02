@@ -9,6 +9,7 @@ import {z} from 'zod';
 import {assertLocalStack,projectId,projectRoot,localEnvironment} from '../../scripts/local-database.js';
 import {captureRecoveryJournal,verifyRecoveryJournal,recoveryPathHash,recoveryJournalQuery} from '../../scripts/recovery-journal.js';
 import {targetHash} from '../../scripts/hosting.js';
+import {recoveryTargetHash} from '../../scripts/recovery-target.js';
 
 it('captures real PostgreSQL journal rows and validates the encrypted file through the actual offline CLI',async()=>{
  assertLocalStack();
@@ -21,8 +22,8 @@ it('captures real PostgreSQL journal rows and validates the encrypted file throu
   // contain only the columns the read-only guard queries; journal DDL is exact.
   const ddl=readFileSync(join(projectRoot,'supabase/migrations/20261030000100_account_lifecycle.sql'),'utf8').match(/create table public\.account_deletion_receipts \([\s\S]+?\n\);/)?.[0];expect(ddl).toBeTruthy();
   const deleted=randomUUID(),unfinished=randomUUID();
-  command(database,`create schema auth; create table auth.users(id uuid primary key,email text);create schema storage;create table storage.objects(id uuid primary key);${ddl}
-   insert into auth.users values('${unfinished}','synthetic-journal@example.invalid');
+  command(database,`create schema auth; create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb not null default '{}'::jsonb);create schema storage;create table storage.objects(id uuid primary key);${ddl}
+   insert into auth.users(id,email) values('${unfinished}','synthetic-journal@example.invalid');
    insert into public.account_deletion_receipts(user_id,phase,outcome,completed_at) values('${deleted}','completed','completed',clock_timestamp()),('${unfinished}','auth_removal_pending','auth_unavailable',null);`);
   for(const table of ['usage_buckets','usage_reservations','live_verification_allocations','ai_runs','ai_steps','ai_route_cost_blocks','vertex_policy_approval'])command(database,`create table public.${table}(user_id uuid);`);
   const before=command(database,'select jsonb_agg(to_jsonb(d) order by user_id) from public.account_deletion_receipts d;');
@@ -44,5 +45,14 @@ it('captures real PostgreSQL journal rows and validates the encrypted file throu
   await writeFile(output,result.archive,{flag:'wx'});await writeFile(manifest,JSON.stringify({target,targetSHA256:targetHash(target)}),{flag:'wx'});
   const cli=spawnSync(process.execPath,['node_modules/tsx/dist/cli.mjs','scripts/recovery-journal.ts','--verify','--manifest='+manifest,'--archive='+output],{cwd:projectRoot,env:localEnvironment(),input:JSON.stringify({...keys,backupCreatedAt}),encoding:'utf8',timeout:15000});
   expect(cli.status).toBe(0);expect(JSON.parse(cli.stdout)).toMatchObject({mode:'verify',receipts:2,unfinishedRequests:1,networkRequests:0,restoreAccessAuthorized:false});expect(cli.stdout+cli.stderr).not.toContain(deleted);expect(cli.stdout+cli.stderr).not.toContain(keys.journalKeyB64);
+  const ownerTarget={...target,purpose:'owner-pilot' as const,ownerUserId:unfinished,syntheticPeerUserIds:[]};
+  command(database,`update auth.users set raw_app_meta_data='{"vulpes_data_scope":"owner-pilot"}'::jsonb where id='${unfinished}';`);
+  const ownerInput={...keys,accessToken:'sbp_synthetic_only',authorization:{purpose:'owner-pilot-recovery-journal-capture',targetSHA256:recoveryTargetHash(ownerTarget),outputPathSHA256:recoveryPathHash(output),expiresAt:new Date(Date.now()+3600000).toISOString(),approved:true,independentJournalCustody:true,separateKeyCustody:true}};
+  const ownerNetwork:typeof fetch=async()=>new Response('['+command(database,'begin read only;select row_to_json(s) from ('+recoveryJournalQuery.replace(/;\s*$/,'')+') s;rollback;')+']',{headers:{'Content-Type':'application/json'}});
+  const ownerJournal=await captureRecoveryJournal(ownerTarget,output,ownerInput,ownerNetwork);expect(ownerJournal.report).toMatchObject({scope:'independent_owner_pilot_deletion_journal',receipts:2,unfinishedRequests:1,sourceWrites:0});
+  expect(verifyRecoveryJournal(ownerJournal.archive,ownerTarget,{...keys,backupCreatedAt}).report.restoreAccessAuthorized).toBe(false);
+  command(database,`delete from auth.users where id='${unfinished}';`);await expect(captureRecoveryJournal(ownerTarget,output,ownerInput,ownerNetwork)).rejects.toThrow('identity mismatch');
+  command(database,`update public.account_deletion_receipts set phase='completed',outcome='completed',updated_at=clock_timestamp(),completed_at=clock_timestamp() where user_id='${unfinished}';`);
+  expect((await captureRecoveryJournal(ownerTarget,output,ownerInput,ownerNetwork)).report).toMatchObject({unfinishedRequests:0,restoreAccessAuthorized:false});
  }finally{command('postgres',`drop database ${database};`);await rm(root,{recursive:true,force:true});}
 },30000);

@@ -7,21 +7,23 @@ import type {Database} from '../server/db/database.types.js';
 import {publicAuthConfig} from '../shared/auth.js';
 import {DeletionPhaseSchema} from '../shared/account.js';
 import {maintainAccounts,MaintenanceLimitsSchema} from '../server/services/maintenance.js';
-import {HostingTargetSchema,targetHash,supabaseOrigin} from './hosting.js';
+import {RecoveryTargetSchema,recoveryTargetHash,checkRecoveryMode,recoveryPurpose} from './recovery-target.js';
 
-export const HostedMaintenanceInputSchema=z.strictObject({publishableKey:z.string().max(4096),adminKey:z.string().max(4096),authorization:z.strictObject({purpose:z.literal('synthetic-maintenance'),mode:z.enum(['inspect','execute']),targetSHA256:z.string().regex(/^[a-f0-9]{64}$/),owners:z.array(z.uuid()).min(1).max(10).refine(ids=>new Set(ids.map(id=>id.toLowerCase())).size===ids.length),expiresAt:z.iso.datetime(),approved:z.literal(true)}),limits:MaintenanceLimitsSchema});
+export const HostedMaintenanceInputSchema=z.strictObject({publishableKey:z.string().max(4096),adminKey:z.string().max(4096),authorization:z.strictObject({purpose:z.enum(['synthetic-maintenance','owner-pilot-maintenance']),mode:z.enum(['inspect','execute']),targetSHA256:z.string().regex(/^[a-f0-9]{64}$/),owners:z.array(z.uuid()).min(1).max(10).refine(ids=>new Set(ids.map(id=>id.toLowerCase())).size===ids.length),expiresAt:z.iso.datetime(),approved:z.literal(true)}),limits:MaintenanceLimitsSchema});
 export const hostedMaintenancePlan={scope:'owned_database_maintenance',networkRequests:0,requiresApproval:true,defaultMode:'inspect',migration:'20261101000100_owned_maintenance.sql',maximumOwners:10,maximumPassesPerOwner:5,maximumRowsPerCategoryPerPass:100,maximumDeletionSteps:20,
  effects:'Execute removes only eligible data of explicitly approved owners, reconciles stale runs conservatively, and resumes only existing deletion requests. Database time owns retention.',
  excludes:['provider calls','new deletion requests','password resets','budget changes','deployment','scheduler','remote export temp files','backups/journal rotation']};
 
 export async function hostedMaintenanceCommand(args:string[],readCredentials:()=>Promise<unknown>,network:typeof fetch=fetch,now=Date.now()){
- const v=parseArgs({args,strict:true,allowPositionals:false,options:{plan:{type:'boolean'},inspect:{type:'boolean'},execute:{type:'boolean'},manifest:{type:'string'},'allow-hosted':{type:'boolean'}}}).values;
- if(v.plan&&Object.keys(v).length===1)return hostedMaintenancePlan;
+ const v=parseArgs({args,strict:true,allowPositionals:false,options:{plan:{type:'boolean'},inspect:{type:'boolean'},execute:{type:'boolean'},manifest:{type:'string'},'allow-hosted':{type:'boolean'},'owner-pilot':{type:'boolean'}}}).values;
+ if(v.plan&&Object.keys(v).every(k=>['plan','owner-pilot'].includes(k)))return v['owner-pilot']?{...hostedMaintenancePlan,scope:'named_owner_pilot_database_maintenance',maximumOwners:1}:hostedMaintenancePlan;
  if(!v['allow-hosted']||v.plan||v.inspect&&v.execute||!v.manifest)throw new Error('Explicit hosted mode/manifest required.');
  const mode=v.execute?'execute':'inspect';
- const manifest=z.object({target:HostingTargetSchema,targetSHA256:z.string()}).parse(JSON.parse(await readFile(v.manifest,'utf8')));
- if(manifest.targetSHA256!==targetHash(manifest.target))throw new Error('Invalid manifest binding.');
- const input=HostedMaintenanceInputSchema.parse(await readCredentials()),authorization=input.authorization,source=supabaseOrigin(manifest.target);
+ const manifest=z.object({target:RecoveryTargetSchema,targetSHA256:z.string()}).parse(JSON.parse(await readFile(v.manifest,'utf8')));
+ checkRecoveryMode(manifest.target,v['owner-pilot']??false);
+ if(manifest.targetSHA256!==recoveryTargetHash(manifest.target))throw new Error('Invalid manifest binding.');
+ const input=HostedMaintenanceInputSchema.parse(await readCredentials()),authorization=input.authorization,source=`https://${manifest.target.supabaseProjectRef}.supabase.co`;
+ if(authorization.purpose!==recoveryPurpose(manifest.target,'synthetic-maintenance','owner-pilot-maintenance')||manifest.target.purpose==='owner-pilot'&&(authorization.owners.length!==1||authorization.owners[0]!==manifest.target.ownerUserId))throw new Error('Explicit owner maintenance scope required.');
  const expiry=Date.parse(authorization.expiresAt);
  if(authorization.targetSHA256!==manifest.targetSHA256||authorization.mode!==mode||expiry<=now||expiry>now+24*3600_000)throw new Error('Approval binding/expiry mismatch.');
  if(!publicAuthConfig(source,input.publishableKey)||input.adminKey===input.publishableKey)throw new Error('Invalid credentials.');
@@ -40,7 +42,7 @@ export async function hostedMaintenanceCommand(args:string[],readCredentials:()=
   if(identity.error?.code==='user_not_found'&&!identity.data.user){
    const journal=await admin.from('account_deletion_receipts').select('user_id,phase').eq('user_id',owner).single();
    if(journal.error||journal.data?.user_id!==owner||!DeletionPhaseSchema.safeParse(journal.data.phase).success)throw new Error('Missing synthetic identity/deletion receipt.');
-  }else if(identity.error||identity.data.user?.id!==owner||!identity.data.user.email?.endsWith('@example.invalid'))throw new Error('Synthetic owner required.');
+  }else if(identity.error||identity.data.user?.id!==owner||manifest.target.purpose==='synthetic-only'&&(!identity.data.user.email?.endsWith('@example.invalid')||identity.data.user.app_metadata?.vulpes_data_scope==='owner-pilot'))throw new Error('Approved identity required.');
  }
  const report=await maintainAccounts(admin,{owners:authorization.owners,execute:mode==='execute',limits:input.limits});
  return {...report,targetSHA256:manifest.targetSHA256,requests,maximumRequests:400};

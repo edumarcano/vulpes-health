@@ -14,6 +14,7 @@ import {ExecutionService,requestHash} from '../../server/ai/ledger/execution.js'
 import {syntheticPrice} from '../fixtures/executions.js';
 import {hostedMaintenanceCommand} from '../../scripts/hosted-maintenance.js';
 import {targetHash} from '../../scripts/hosting.js';
+import {recoveryTargetHash,OwnerRecoveryTargetSchema} from '../../scripts/recovery-target.js';
 import {mkdtemp,writeFile,unlink,rmdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -97,4 +98,20 @@ it('finishes an authorized deletion when Auth is already absent but its completi
   const report=await hostedMaintenanceCommand(['--manifest='+path,'--execute','--allow-hosted'],async()=>({publishableKey:c.anonKey,adminKey:c.adminKey,authorization:{purpose:'synthetic-maintenance',mode:'execute',targetSHA256:targetHash(target),owners:[owner.id],expiresAt:new Date(Date.now()+3600_000).toISOString(),approved:true},limits:{}}),(url,init)=>{const parsed=new URL(String(url));return fetch(c.apiUrl+parsed.pathname+parsed.search,init);});
   expect(report).toMatchObject({mode:'execute',unfinished:false,authRemovalsConfirmed:1});expect((await rows('account_deletion_receipts',owner.id))[0]).toMatchObject({phase:'completed',outcome:'completed'});
  }finally{await unlink(path);await rmdir(directory);}
+});
+
+it('inspects and executes bounded maintenance for the explicitly named marked owner without changing a peer',async()=>{
+ const c=localStatus(),owner=await db.createUser();await db.admin('/rest/v1/profiles','POST',{user_id:owner.id});
+ expect((await administrativeClient().auth.admin.updateUserById(owner.id,{app_metadata:{vulpes_data_scope:'owner-pilot'}})).error).toBeNull();
+ const foreign=await rows('private_payloads',b.id);
+ await db.admin('/rest/v1/private_payloads','POST',Array.from({length:2},()=>({...encryptBytes({id:randomUUID(),user_id:owner.id,purpose:'ai_request',expires_at:new Date(Date.now()-60000).toISOString()},Buffer.from('Synthetic owner-mode expiry'),readEncryptionKeys()),created_at:new Date(Date.now()-120000).toISOString()})));
+ const target=OwnerRecoveryTargetSchema.parse({version:1,purpose:'owner-pilot',ownerUserId:owner.id,syntheticPeerUserIds:[],supabaseProjectRef:'abcdefghijklmnopqrst',recoveryProjectRef:null,databaseRegion:'us-east-1',vercelProjectId:'prj_SyntheticOnly',appOrigin:'https://vulpes-synthetic.vercel.app'});
+ const root=await mkdtemp(join(tmpdir(),'vulpes-owner-maintenance-')),path=join(root,'manifest.json');
+ const send:typeof fetch=(url,init)=>{const parsed=new URL(String(url));return fetch(c.apiUrl+parsed.pathname+parsed.search,init);};
+ try{
+  await writeFile(path,JSON.stringify({target,targetSHA256:recoveryTargetHash(target)}),{flag:'wx'});
+  const run=(mode:'inspect'|'execute')=>hostedMaintenanceCommand(['--owner-pilot','--allow-hosted','--'+mode,'--manifest='+path],async()=>({publishableKey:c.anonKey,adminKey:c.adminKey,authorization:{purpose:'owner-pilot-maintenance',mode,targetSHA256:recoveryTargetHash(target),owners:[owner.id],expiresAt:new Date(Date.now()+3600000).toISOString(),approved:true},limits:{batchSize:1,maxPasses:1}}),send);
+  expect(await run('inspect')).toMatchObject({mode:'inspect',owners:1,passes:0,changes:{payloadsRemoved:0},unfinished:true});expect(await rows('private_payloads',owner.id)).toHaveLength(2);
+  expect(await run('execute')).toMatchObject({mode:'execute',owners:1,passes:1,changes:{payloadsRemoved:1},unfinished:true});expect(await rows('private_payloads',owner.id)).toHaveLength(1);expect(await rows('private_payloads',b.id)).toEqual(foreign);
+ }finally{await unlink(path);await rmdir(root);}
 });
