@@ -24,6 +24,7 @@ it('captures real PostgreSQL journal rows and validates the encrypted file throu
   command(database,`create schema auth; create table auth.users(id uuid primary key,email text);create schema storage;create table storage.objects(id uuid primary key);${ddl}
    insert into auth.users values('${unfinished}','synthetic-journal@example.invalid');
    insert into public.account_deletion_receipts(user_id,phase,outcome,completed_at) values('${deleted}','completed','completed',clock_timestamp()),('${unfinished}','auth_removal_pending','auth_unavailable',null);`);
+  for(const table of ['usage_buckets','usage_reservations','live_verification_allocations','ai_runs','ai_steps','ai_route_cost_blocks','vertex_policy_approval'])command(database,`create table public.${table}(user_id uuid);`);
   const before=command(database,'select jsonb_agg(to_jsonb(d) order by user_id) from public.account_deletion_receipts d;');
   // Management API top-level timestamps use PostgreSQL's text representation,
   // unlike row_to_json's implicit ISO conversion. Check the wire value itself.

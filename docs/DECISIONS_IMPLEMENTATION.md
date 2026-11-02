@@ -4,6 +4,10 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-02: Recovery accounting reconciliation correction
+
+Independent review identified an XML-root mismatch in the current-accounting query. Recovery now requires all seven ledger/dispatch/policy tables and valid row fingerprints; missing evidence fails closed. PostgreSQL regressions cover shared spending/reservation changes, durable route blocks, incomplete inventory and rejection of a stale restored ledger with unchanged deletion records. This corrects reconciliation evidence without changing deletion authorization, provider budgets or restored-access gates. Historical accounting-match claims require corrected reconciliation before operational reliance; see [the recovery runbook](operations/hosted-recovery.md#accounting-fingerprint-correction).
+
 ## 2026-11-01: Complete the approved synthetic deployment checkpoint
 
 The owner approved the frozen `cf263e0` deployment, two disposable test accounts with $0.000001 ledger ceilings each, final hosted verification/cleanup/journal and removal of both older READY deployments. Existing Free/Hobby North Virginia resources and $0 paid allowance remain unchanged; no provider call, production budget/consent/evidence, real data or automatic merge was authorized. Replacement checks and source cleanup passed before irreversible old-deployment removal. The old URLs/rollback deployments are gone; Git source and encrypted recovery artifacts remain. [Actual evidence and failure/containment record](evidence/owner-pilot-step3-closeout.md#approved-final-hosted-checkpoint-2026-11-01).

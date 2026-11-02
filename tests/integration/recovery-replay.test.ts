@@ -4,7 +4,9 @@ import {join} from 'node:path';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
 import {withRecoverySource} from '../helpers/recovery-source.js';
-import {captureDatabase} from '../../scripts/recovery-database.js';
+import {fencedRecoveryDestination} from '../../scripts/recovery-postgres.js';
+import {sealArchive} from '../../scripts/backup-archive.js';
+import {captureDatabase,restoreDatabase} from '../../scripts/recovery-database.js';
 import {databaseRecoveryCommand,databaseRecoveryBinding} from '../../scripts/hosted-database-recovery.js';
 import {captureRecoveryJournal,recoveryPathHash,recoveryJournalQuery,verifyRecoveryJournal} from '../../scripts/recovery-journal.js';
 import {targetHash} from '../../scripts/hosting.js';
@@ -54,3 +56,21 @@ it('fingerprints actual shared spending, reservations and route blocks and rejec
   expect(fingerprint('alter table public.vertex_policy_approval rename to synthetic_missing_policy;')).toBe('');
  });
 },60000);
+
+it('refuses an older restored ledger after source spending changes with unchanged deletion records',async()=>{
+ await withRecoverySource(async f=>{
+  f.sql("insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values('app',date_trunc('month',clock_timestamp())::date,1);");
+  const captured=await captureDatabase(f.target,f.source,f.keys),key=randomBytes(32);
+  const journal=()=>{
+   const snapshot=JSON.parse(f.sql('begin read only;select row_to_json(s) from ('+recoveryJournalQuery.replace(/;\s*$/,'')+') s;rollback;')) as {captured_at:string;accounting_sha256:string;rows:unknown[]};
+   return sealArchive(Buffer.from(JSON.stringify({version:1,purpose:'synthetic-recovery-journal',targetSHA256:targetHash(f.target),accountingSHA256:snapshot.accounting_sha256,journal:{schemaVersion:1,capturedAt:snapshot.captured_at,rows:snapshot.rows}})),key,'synthetic-drift','deletion_journal');
+  };
+  const initial=journal(),destination=fencedRecoveryDestination(f.image,()=>{});
+  f.sql("update public.usage_buckets set spent_usd=0.01 where user_id is null;");
+  try{
+   await expect(restoreDatabase(f.target,captured.archive,f.keys,destination,Date.now(),{journal:initial,keyId:'synthetic-drift',journalKeyB64:key.toString('base64'),current:async()=>journal()})).rejects.toThrow('Current source accounting differs');
+   expect(f.run(['inspect','--format','{{.State.Running}}',destination.name]).toString().trim()).toBe('false');
+   expect(Number(f.sql("select spent_usd::text from public.usage_buckets where user_id is null;"))).toBe(0.01);
+  }finally{f.run(['rm','-v',destination.name]);}
+ });
+},180000);
