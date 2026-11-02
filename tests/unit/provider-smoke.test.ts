@@ -25,8 +25,8 @@ describe('real provider-smoke CLI', () => {
     for(const text of ['69.0 kg; change −0.7 kg','69 kg; change -0.70 kg','69 kg, decreased by 0.7 kg'])expect(matchesSyntheticAnswer(text)).toBe(true);
     for(const text of ['69.7 kg; change −0.7 kg','69 kg; change −0.8 kg','69 kg, increased by 0.7 kg'])expect(matchesSyntheticAnswer(text)).toBe(false);
   });
-  it('runs all four synthetic roles with zero provider requests even when the live switch is true', async () => {
-    const output = await cli([], 'true');
+  it.each(['false','true'])('runs all four synthetic roles with zero provider requests when the live switch is %s', async liveSwitch => {
+    const output = await cli([], liveSwitch);
     expect(output.code).toBe(0);
     const report = JSON.parse(output.stdout.slice(output.stdout.indexOf('{')));
     expect(report.mode).toBe('synthetic');
@@ -34,7 +34,7 @@ describe('real provider-smoke CLI', () => {
     expect(report.inferenceSpendUSD).toBe('0');
     expect(report.rows).toHaveLength(4);
     expect(report.rows.map((row: { synthetic: string; liveSmoke: string }) => [row.synthetic, row.liveSmoke])).toEqual(Array.from({ length: 4 }, () => ['passed', 'not_run']));
-    expect(report.rows.map((row: { availability: { state: string } }) => row.availability.state)).toEqual(['available', 'unavailable', 'unavailable', 'disabled']);
+    expect(report.rows.map((row: { availability: { state: string } }) => row.availability.state)).toEqual([liveSwitch==='true'?'available':'unavailable', 'unavailable', 'unavailable', 'disabled']);
   });
   it.each([
     [[], 'live_opt_in_required'], [['--role=everyday'], 'live_opt_in_required'],

@@ -95,7 +95,7 @@ export async function runSmoke(args: string[], env: NodeJS.ProcessEnv): Promise<
       assert.equal(requests, 2);
       assert.deepEqual(transport.requests[1]!.continuation, { family: config.apiFamily, data: { signature: 'synthetic-opaque-do-not-rewrite', callId: 'synthetic-call-1' } });
     }
-    rows.push({ role: config.role, model: config.modelId, family: config.apiFamily, synthetic: 'passed', syntheticTransportRequests: requests, liveSmoke: 'not_run', availability: getRoleAvailability(config.role) });
+    rows.push({ role: config.role, model: config.modelId, family: config.apiFamily, synthetic: 'passed', syntheticTransportRequests: requests, liveSmoke: 'not_run', availability: getRoleAvailability(config.role,readServerEnvironment(env).liveAiRequested) });
   }
   return { report: { mode: 'synthetic', checkedAt: new Date().toISOString(), rows, actualProviderRequests: 0, inferenceSpendUSD: '0' }, writeReport: values['write-report'] ?? false };
 }
@@ -112,7 +112,7 @@ export function renderSmokeReport(report: SmokeReport): string {
     '## Live verification status', '',
     '- Everyday has a conservative verified price snapshot and matching public capability/privacy evidence. Other role prices remain unverified.',
     '- The M3 verification evidence does not activate production: its approved production smoke binding remains absent. Accepted Google location/retention remains unverified.',
-    '- Production inference remains unavailable; an authorized verification uses a local synthetic account and a persistent capped allocation through the execution ledger.',
+    '- Production inference requires its approved catalog evidence, explicit live switch, private credentials, consent and durable budgets; this synthetic invocation does not activate it.',
     '- Decision scoring remains disabled; vendor score-range mapping and comparative evaluations belong to PR 14.', '',
     '## Guard verification', '',
     '`npm run test:providers -- --mode=live --role=everyday` must exit 1 with `live_opt_in_required` before credential discovery.', '',
