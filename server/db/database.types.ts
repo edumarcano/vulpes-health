@@ -659,6 +659,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"maintain_account_v1":
+{ Args: { "p_batch_size"?: number,"p_execute"?: boolean,"p_owner": string }; Returns: Json
+                           },
 "mutate_conversation_v1":
 { Args: { "p_owner": string,"p_request": Json }; Returns: Json
                            },

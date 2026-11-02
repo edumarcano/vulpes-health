@@ -39,7 +39,9 @@ Repository scripts:
 | `npm run evidence:release` | Assemble recorded local results, build hashes, acceptance status and reviewed synthetic screenshots; missing records remain `not_run` |
 | `npm run hosting:prepare -- --plan` | Describe synthetic-only hosting preparation without files, credentials, network or deployment |
 | `npm run hosting:probe -- --plan` | Describe the bounded public routing/header checks; hosted reads require explicit opt-in and approval |
+| `npm run hosting:security -- --plan` | Describe the bounded two-account synthetic security preflight; hosted reads/test-session sign-in/out require opt-in and private stdin credentials, with full isolation/recovery still separate |
 | `npm run maintenance:cleanup` | Delete expired staging/trace/export payloads |
+| `npm run maintenance:hosted -- --plan` | Describe separately approved owner-scoped hosted database inspection/cleanup; requires the additive maintenance migration and private target/account-bound input for hosted use |
 | `npm run backup:verify` | Documented backup/restore checks; not merely a file-exists check |
 | `npm run test:lifecycle-upgrade -- --allow-disposable-reset` | Populated forward migration proof on an empty disposable synthetic stack |
 | `npm run account:recover` | Local operator-assisted reset through protected interactive input and session revocation |

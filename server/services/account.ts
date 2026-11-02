@@ -3,6 +3,8 @@ import { AccountStatusSchema,DeletionPhaseSchema } from '../../shared/account.js
 import type { AuthContext } from '../auth/session.js';
 import { administrativeClient } from '../db/administrative.js';
 import { HttpFailure } from '../http/failure.js';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import type {Database} from '../db/database.types.js';
 
 export async function accountStatus(context:Pick<AuthContext,'userId'>) {
   const {data,error}=await administrativeClient().rpc('account_status_v1',{p_owner:context.userId});
@@ -16,8 +18,7 @@ export async function beginDeletion(context:AuthContext & {passwordAt:string|nul
   if(error)throw new HttpFailure(error.message==='recent_password_required'?403:503,'deletion_unavailable','Deletion could not be started. Sign in with your password again and retry.');
   return AccountStatusSchema.parse(data);
 }
-export async function continueDeletion(context:Pick<AuthContext,'userId'>) {
-  const admin=administrativeClient();
+export async function continueDeletion(context:Pick<AuthContext,'userId'>,admin:SupabaseClient<Database>=administrativeClient()) {
   const {data,error}=await admin.rpc('continue_account_deletion_v1',{p_owner:context.userId,p_batch_size:100});
   if(error)throw new HttpFailure(503,'deletion_unavailable','Deletion is unfinished. Retry or contact the operator.');
   const status=AccountStatusSchema.parse(data);

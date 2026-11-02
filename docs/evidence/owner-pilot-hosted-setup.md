@@ -1,6 +1,6 @@
 # Owner-pilot Step 3C: synthetic hosted verification
 
-Current checkpoint: the approved synthetic deployment passed bounded technical verification on 2026-11-01. Owner sign-in handoff and Step 3D security/recovery remain pending. Ask inference is off; this is not real-data authorization.
+Current checkpoint: the approved synthetic deployment passed bounded technical verification on 2026-11-01. The owner subsequently confirmed the sign-in/navigation/logout handoff worked. [Step 3D](owner-pilot-step3d.md) is in progress; broad security/recovery remains pending. Ask inference is off; this is not real-data authorization.
 
 ## 2026-10-31 setup record
 
