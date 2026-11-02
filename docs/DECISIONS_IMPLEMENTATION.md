@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Complete the approved synthetic deployment checkpoint
+
+The owner approved the frozen `cf263e0` deployment, two disposable test accounts with $0.000001 ledger ceilings each, final hosted verification/cleanup/journal and removal of both older READY deployments. Existing Free/Hobby North Virginia resources and $0 paid allowance remain unchanged; no provider call, production budget/consent/evidence, real data or automatic merge was authorized. Replacement checks and source cleanup passed before irreversible old-deployment removal. The old URLs/rollback deployments are gone; Git source and encrypted recovery artifacts remain. [Actual evidence and failure/containment record](evidence/owner-pilot-step3-closeout.md#approved-final-hosted-checkpoint-2026-11-01).
+
+The browser verifier now synchronizes on completed logout rather than the login heading alone, with an explicit barrier checking the disabled intermediate state and boolean-only session absence. The deployed application did not change for this correction. The final nine-receipt journal supplements earlier recovery files; its cloud copy is pending and cannot extend freshness. Independent review, physical devices, formal acceptance and production/real-data activation remain separate gates.
+
 ## 2026-11-01: Verify hosted journal timestamp text and final cleanup coverage
 
 The grouped approved hosted-source rehearsal exposed a Management API wire difference: top-level PostgreSQL timestamps are text in PostgreSQL format, whereas the earlier local `row_to_json` transport emitted ISO. A real PostgreSQL `captured_at::text` assertion reproduced the strict-validation failure. The read-only query now formats UTC ISO explicitly; the strict parser, freshness/clock windows and approval/encryption rules remain unchanged. Live capture and isolated recovery then passed.
