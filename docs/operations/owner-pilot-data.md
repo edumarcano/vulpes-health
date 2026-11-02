@@ -42,3 +42,9 @@ Run operational regressions only against the guarded disposable local stack usin
 5. Identify exact synthetic fixture cleanup separately from real readings; preserve execution accounting and deletion evidence. Then prepare the explicit source/profile/units/timezone mapping and owned import preview/commit. Importing/inspecting data must make no model call. A first real Ask request, if used later, remains separately visible and budgeted.
 
 Future retention runs and backup rotation must use the owner manifest/current operator code. Closed Step 3 rehearsal plans and old synthetic-only command revisions are not owner-data procedures. Family identities, invitations, native connectors, new metrics and automatic restore access remain outside this packet.
+
+## Current checkpoint
+
+The [2026-11-02 hosted checkpoint](../evidence/owner-pilot-step5.md#hosted-recovery-checkpoint-2026-11-02) passed explicit owner classification, stable encrypted database capture, complete deletion replay, restored-session revocation, SQL isolation and current accounting. The destination remains stopped and access is blocked. Existing independently verified keys were reused without a new credential request; no measurement was uploaded or imported.
+
+The next action is the owner's upload of the locally verified ciphertext-only ZIP to the existing restricted Google Drive folder, followed by downloading that exact uploaded file. The agent must compare downloaded bytes/hash and all three encrypted members with the private capture inventory. Keep raw exports, keys, passwords and private operator manifests out of Drive. The download verifies independent copy custody, not ongoing journal freshness or formal acceptance.
