@@ -81,3 +81,13 @@ Each row is **pending**, unless the generated local report explicitly supplies i
 | Adult family pilot | Owner pilot plus every applicable F criterion, nonoperator recovery, export/interrupted deletion/restore/isolation/provider consent/budget evidence and clear operator-access/wellness limitations. | Separate adult invitation and real-data authorization |
 
 No local PASS, merged implementation or successful provider smoke authorizes deployment, real data, invitation or automatic merge. Native Android Health Connect, research, autonomous goals and background inference remain outside this release.
+
+## Owner-pilot production path
+
+The normal chat handler composes Luna through the existing ledger. `everydayProductionEvidence` remains null and `everydayMaxRunCostUSD` remains zero in `server/config/everyday-production.ts`; the live switch alone cannot authorize dispatch. Current smoke, safety-evaluation identity, explicit owner approval, exact policy hash/version and catalog/template/price bindings are required. Flash/Argon and decision scoring remain unavailable/disabled.
+
+OpenRouter consent version `openrouter_zdr_v2` describes the announced screening/flagged-content retention exception. Stored v1 consent is preserved but does not authorize new normal chat requests. Verify effective terms and obtain owner acceptance before installing production evidence. This preparation does not accept terms or authorize spending.
+
+`npm run budget:provision` requires a private interactive terminal, the synthetic owner's UUID, approved app/account USD ceilings and the exact confirmation shown. It targets only the guarded local stack. It creates missing current UTC-month buckets atomically, accepts matching existing ceilings and refuses changed ceilings without resetting balances. Production ceilings and hosted operator targeting remain separately approved deployment work. Missing next-month buckets deny admission; provisioning is an explicit operator task.
+
+Credentials are not needed for ordinary verification. Later, supply provider and administrative keys only through an ignored local environment file or approved server-side deployment secret settings. Never paste keys into chat, command arguments, screenshots or `VITE_` variables. The exact dashboard procedure and spending ceiling must accompany the separate live-verification approval request.

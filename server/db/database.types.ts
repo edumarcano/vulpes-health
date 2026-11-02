@@ -677,6 +677,9 @@ isOneToOne: false
 "private_payload_expiry_v1":
 { Args: { "p_purpose": string }; Returns: string
                            },
+"provision_pilot_budget_v1":
+{ Args: { "p_account_ceiling": number,"p_app_ceiling": number,"p_owner": string }; Returns: undefined
+                           },
 "read_account_export_v1":
 { Args: { "p_after"?: string,"p_owner": string,"p_section": string }; Returns: Json
                            },

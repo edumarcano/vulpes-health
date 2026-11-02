@@ -14,7 +14,7 @@ export const ChatPartSchema = z.discriminatedUnion('type',[
 ]);
 export const ChatMessageSchema = z.strictObject({id:UUIDSchema,role:z.enum(['user','assistant']),parts:z.array(ChatPartSchema),runId:UUIDSchema.nullable(),status:z.enum(['streaming','completed','interrupted','failed']),contextState:z.enum(['eligible','source_removed']),createdAt:ISOInstantSchema});
 export const ConversationSchema = z.strictObject({id:UUIDSchema,title:z.string().min(1).max(200),archived:z.boolean(),createdAt:ISOInstantSchema,updatedAt:ISOInstantSchema});
-export const ConversationsPageSchema = z.strictObject({items:z.array(ConversationSchema).max(200),nextCursor:z.string().nullable(),availability:z.enum(['unavailable','synthetic'])});
+export const ConversationsPageSchema = z.strictObject({items:z.array(ConversationSchema).max(200),nextCursor:z.string().nullable(),availability:z.enum(['unavailable','synthetic','available'])});
 export const MessagesPageSchema = z.strictObject({conversation:ConversationSchema,items:z.array(ChatMessageSchema).max(200),nextCursor:z.string().nullable(),run:RunSummarySchema.nullable()});
 const mutation = {client_request_id:UUIDSchema};
 export const ConversationMutationSchema = z.discriminatedUnion('action',[

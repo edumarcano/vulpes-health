@@ -1,3 +1,5 @@
+import { getRoleAvailability } from '../config/models.js';
+import { readServerEnvironment } from '../config/environment.js';
 import { SettingsSchema, type Provider, type SettingsPatch } from '../../shared/auth.js';
 import type { AuthContext } from '../auth/session.js';
 import { HttpFailure } from '../http/failure.js';
@@ -16,6 +18,7 @@ async function settingsDTO(context:AuthContext,profile: Database['public']['Tabl
     providerConsents: (['openrouter', 'vertex_ai'] as const).map((provider) => consentState(stored[provider], provider,provider==='vertex_ai'?google:undefined)),
     retention: { traceDays: 7, importStagingHours: 24 },
     budget,
+    inferenceAvailability:getRoleAvailability('everyday',readServerEnvironment(process.env).liveAiRequested),
   });
 }
 export async function getSettings(context: AuthContext) {

@@ -133,3 +133,20 @@ test('mobile inspector remains open across the final persisted-message refresh',
   await expect(page.getByText(/Run completed · reported/)).toBeVisible();await expect(inspector).toBeVisible();
  }finally{release();}
 });
+
+
+test('available production state enables explicit Ask sends and reload does not regenerate',async({page})=>{
+  // The provider remains the existing synthetic test server; exercise the public availability contract.
+  await page.route('**/api/conversations?**',async route=>{
+    const response=await route.fetch();const body=await response.json();
+    if(body.data?.availability)body.data.availability='available';
+    await route.fulfill({response,json:body});
+  });
+  let sends=0;page.on('request',request=>{if(request.url().endsWith('/api/chat')&&request.postDataJSON()?.action==='send')sends++;});
+  await start(page);
+  await expect(page.getByText('Local synthetic verification. No live provider calls.',{exact:true})).toHaveCount(0);
+  await page.getByLabel('Message Ask Vulpes',{exact:true}).fill('What measurements are available?');
+  await page.getByRole('button',{name:'Send',exact:true}).click();
+  await expect(page.getByText('Response saved.',{exact:true})).toBeVisible();expect(sends).toBe(1);
+  await page.reload();await expect(page.getByRole('button',{name:'Inspect execution'})).toBeVisible();expect(sends).toBe(1);
+});

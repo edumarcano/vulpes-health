@@ -28,7 +28,7 @@ function SummaryPart({data}:{data:unknown}) {
 }
 const plainText=({text}:{text:string})=><p className="chat-text">{text}</p>;
 
-function AskThread({id,availability,locked}:{id:string|null;availability:'synthetic'|'unavailable';locked:boolean}) {
+function AskThread({id,availability,locked}:{id:string|null;availability:'synthetic'|'unavailable'|'available';locked:boolean}) {
   const {state:auth,scope}=useAuth();const session=auth.kind==='signed_in'?auth.session:null;const epoch=scope.epoch;
   const client=useQueryClient();const root=['conversations',session?.user.id,epoch];const key=[...root,'messages',id];
   const [state,dispatch]=useReducer(askReducer,initialAskState);const lock=useRef(false);const abort=useRef<AbortController|null>(null);
@@ -113,7 +113,7 @@ function AskThread({id,availability,locked}:{id:string|null;availability:'synthe
     {!messages.length&&!query.isError&&<Welcome/>}
     <ThreadPrimitive.Messages>{({message})=>{const runId=messages.find(item=>item.id===message.id)?.runId;return <MessagePrimitive.Root className={`chat-message chat-${message.role}`}><p className="chat-speaker">{message.role==='user'?'You':'Vulpes'}</p><MessagePrimitive.Parts components={{Text:plainText,data:{by_name:{metric_summary:SummaryPart,goal_proposal:ProposalPart,goal_progress:ProgressPart}}}}/>{message.role==='assistant'&&message.status.type==='incomplete'&&<p className="incomplete-badge">Incomplete response</p>}{message.role==='assistant'&&runId&&<Button variant="outline" onClick={event=>{inspectionTrigger.current=event.currentTarget;setInspection(runId);}}>Inspect execution</Button>}</MessagePrimitive.Root>;}}</ThreadPrimitive.Messages>
     </ThreadPrimitive.Viewport><div className="composer-area"><p role="status" aria-live="polite" className="chat-status">{notice}</p>
-    {availability==='unavailable'&&<p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true"/>Inference is unavailable until provider verification and activation gates pass.</p>}
+    {availability==='unavailable'&&<p id="chat-unavailable" className="availability-note"><LockKeyhole size={14} aria-hidden="true"/>Ask is unavailable until provider verification and activation pass. Review consent and spending in Settings.</p>}
     {availability==='synthetic'&&<p className="availability-note">Local synthetic verification. No live provider calls.</p>}
     <ComposerPrimitive.Root className="composer"><ComposerPrimitive.Input aria-label="Message Ask Vulpes" placeholder="Ask about your measurements…" rows={1}/>{busy?<Button onClick={()=>void stop.mutateAsync()} disabled={stop.isPending||!state.runId&&!activeRun}>Stop</Button>:<ComposerPrimitive.Send asChild><Button>Send</Button></ComposerPrimitive.Send>}</ComposerPrimitive.Root>
     {state.phase==='recovering'&&<Button variant="outline" onClick={()=>void recover('Reading saved status.')}>Refresh saved status</Button>}

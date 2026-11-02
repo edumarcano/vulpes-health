@@ -1,3 +1,4 @@
+import { composeEverydayProduction } from '../ai/providers/openrouter-production.js';
 import type { IncomingMessage,ServerResponse } from 'node:http';
 import { once } from 'node:events';
 import { ChatSendRequestSchema } from '../../shared/api.js';
@@ -37,4 +38,4 @@ export function createChatHandler(composition:ChatComposition=()=>null) {
     } catch(error) {if(response.headersSent||response.destroyed)response.destroy();else respondFailure(response,error);}
   };
 }
-export const handleChat=createChatHandler();
+export const handleChat=createChatHandler(composeEverydayProduction);

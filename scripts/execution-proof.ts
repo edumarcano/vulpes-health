@@ -22,12 +22,12 @@ try{
   const actors=[];
   for(let n=0;n<2;n++){
     const user=await db.createUser();const conversation=randomUUID();
-    await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+    await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
     await db.admin('/rest/v1/conversations','POST',{user_id:user.id,id:conversation,title:'Synthetic execution proof'});
     await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
     const context=await verifySession({headers:{authorization:`Bearer ${user.token}`}});const ledger=new ExecutionService(context,{maxRunCostUSD:'0.25'});
     const request={conversationId:conversation,clientRequestId:randomUUID(),requestHash:requestHash({synthetic:true}),depth:'everyday' as const,
-      route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1'};
+      route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v2'};
     const admitted=await ledger.admit(request);assert(admitted.lease);assert.equal((await ledger.admit(request)).result.kind,'existing');
     actors.push({context,ledger,lease:admitted.lease});
   }

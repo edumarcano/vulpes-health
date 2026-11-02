@@ -19,7 +19,7 @@ let db:LocalSupabase;let app:string;let a:AuthContext;let b:AuthContext;
 let conversationA:string;let conversationB:string;let tokenA:string;
 const period=()=>new Date().toISOString().slice(0,7)+'-01';
 const input=(conversationId:string)=>({conversationId,clientRequestId:randomUUID(),requestHash:requestHash({text:'Synthetic only'}),depth:'everyday' as const,
-  route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1'});
+  route:{role:'everyday' as const,provider:'openrouter' as const,model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v2'});
 const service=(context=a)=>new ExecutionService(context,{maxRunCostUSD:'0.25'});
 const stepInput=(body=Buffer.from('{"synthetic":"🦊\\n"}')):StepInput=>({type:'generation',body,provider:'openrouter',model:'openai/gpt-6-luna',price:syntheticPrice,
   adapterVersion:'synthetic-v1',requestedEffort:'low',metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{'Content-Type':'application/json'},redactedHeaders:['authorization']},
@@ -39,7 +39,7 @@ beforeEach(async()=>{
   const contexts:AuthContext[]=[];const conversations:string[]=[];
   for(let n=0;n<2;n++){
     const user=await db.createUser();if(n===0)tokenA=user.token;
-    await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+    await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
     const id=randomUUID();await db.admin('/rest/v1/conversations','POST',{id,user_id:user.id,title:'Synthetic execution'});conversations.push(id);
     await db.admin('/rest/v1/usage_buckets','POST',{user_id:user.id,scope:'account',period_start:period(),allocated_ceiling_usd:'1'});
     contexts.push(await verifySession({headers:{authorization:`Bearer ${user.token}`}}));

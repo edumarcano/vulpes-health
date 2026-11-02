@@ -27,7 +27,7 @@ beforeEach(async()=>{
  const s=localStatus();vi.stubEnv('VITE_SUPABASE_URL',s.apiUrl);vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY',s.anonKey);vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY',s.adminKey);
  vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID','synthetic-review');vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_B64',randomBytes(32).toString('base64'));
  db=new LocalSupabase();const u=await db.createUser();token=u.token;app=randomUUID();const now=new Date().toISOString();const period=now.slice(0,7)+'-01';
- await db.admin('/rest/v1/profiles','POST',{user_id:u.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:now},vertex_ai:{accepted_version:policy,accepted_at:now}}});
+ await db.admin('/rest/v1/profiles','POST',{user_id:u.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:now},vertex_ai:{accepted_version:policy,accepted_at:now}}});
  await db.admin('/rest/v1/usage_buckets','POST',{id:app,scope:'app',period_start:period,allocated_ceiling_usd:'10'});
  await db.admin('/rest/v1/usage_buckets','POST',{user_id:u.id,scope:'account',period_start:period,allocated_ceiling_usd:'1'});
  await db.admin('/rest/v1/vertex_policy_approval','POST',{id:true,policy_version:policy,project:'synthetic-project',location:'us',privacy_fingerprint:'a'.repeat(64),notice:'Synthetic review only'});
@@ -36,7 +36,7 @@ beforeEach(async()=>{
 
 it('stores exact ledger and staging payloads under one second of application clock lead',async()=>{
  const ledger=new ExecutionService(context,{maxRunCostUSD:'0.25'});
- const admitted=await ledger.admit({conversationId:await conversation(),clientRequestId:randomUUID(),requestHash:requestHash('synthetic clock skew'),depth:'auto',route:{role:'everyday',provider:'openrouter',model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v1'});
+ const admitted=await ledger.admit({conversationId:await conversation(),clientRequestId:randomUUID(),requestHash:requestHash('synthetic clock skew'),depth:'auto',route:{role:'everyday',provider:'openrouter',model:'openai/gpt-6-luna',effort:'low'},consentVersion:'openrouter_zdr_v2'});
  if(!admitted.lease)throw new Error('missing lease');
  const nativeNow=Date.now.bind(Date),nativeFetch=globalThis.fetch;const errors:string[]=[];
  vi.spyOn(Date,'now').mockImplementation(()=>nativeNow()+1000);

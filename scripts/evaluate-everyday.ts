@@ -33,7 +33,7 @@ const results:Array<{id:string;control:string;outcome:'passed';modelAssessment:'
 async function check(id:string,control:string,run:()=>void|Promise<void>) { await run();results.push({id,control,outcome:'passed',modelAssessment:'not_run'}); }
 try {
   const owner=await db.createUser();const other=await db.createUser();
-  for(const user of [owner,other])await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v1',accepted_at:new Date().toISOString()}}});
+  for(const user of [owner,other])await db.admin('/rest/v1/profiles','POST',{user_id:user.id,consent_versions:{openrouter:{accepted_version:'openrouter_zdr_v2',accepted_at:new Date().toISOString()}}});
   const context=await verifySession({headers:{authorization:`Bearer ${owner.token}`}});
   const otherContext=await verifySession({headers:{authorization:`Bearer ${other.token}`}});let noDataRun='';
   const period=new Date().toISOString().slice(0,7)+'-01';
@@ -75,7 +75,7 @@ try {
     await db.admin(`/rest/v1/profiles?user_id=eq.${owner.id}`,'PATCH',{monthly_preference_usd:'0'});
     const conversation=randomUUID();await db.admin('/rest/v1/conversations','POST',{id:conversation,user_id:owner.id,title:'Synthetic eval'});
     const ledger=new ExecutionService(context,{maxRunCostUSD:'0.25'});
-    const admitted=await ledger.admit({conversationId:conversation,clientRequestId:randomUUID(),requestHash:requestHash('synthetic eval'),depth:'everyday',route:{role:'everyday',provider:'openrouter',model:models.everyday.modelId,effort:'low'},consentVersion:'openrouter_zdr_v1'});
+    const admitted=await ledger.admit({conversationId:conversation,clientRequestId:randomUUID(),requestHash:requestHash('synthetic eval'),depth:'everyday',route:{role:'everyday',provider:'openrouter',model:models.everyday.modelId,effort:'low'},consentVersion:'openrouter_zdr_v2'});
     assert(admitted.lease);
     await assert.rejects(ledger.prepare(admitted.lease,{type:'generation',body:Buffer.from('{}'),provider:'openrouter',model:models.everyday.modelId,price:syntheticPrice,adapterVersion:'synthetic-eval',metadata:{endpoint:'https://openrouter.ai/api/v1/responses',headers:{},redactedHeaders:['authorization']}}),{status:429});
     await ledger.finish(admitted.lease,'failed');

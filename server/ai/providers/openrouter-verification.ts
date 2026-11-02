@@ -40,7 +40,7 @@ export async function issueVerificationTransport(context:AuthContext,batchId:str
   const consent=profile.data.consent_versions;
   if(!consent || typeof consent!=='object' || Array.isArray(consent) || !('openrouter' in consent)
     || !consent.openrouter || typeof consent.openrouter!=='object' || Array.isArray(consent.openrouter)
-    || consent.openrouter.accepted_version!=='openrouter_zdr_v1' || typeof consent.openrouter.accepted_at!=='string')throw new Error('verification_consent_missing');
+    || consent.openrouter.accepted_version!=='openrouter_zdr_v2' || typeof consent.openrouter.accepted_at!=='string')throw new Error('verification_consent_missing');
   // Credential access is intentionally last and never becomes part of metadata.
   const key=env.OPENROUTER_API_KEY;
   if(!key || /[\r\n]/.test(key))throw new Error('provider_credential_unavailable');
