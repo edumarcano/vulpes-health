@@ -42,6 +42,16 @@ describe('synthetic hosting preparation',()=>{
    await expect(probeHostingCommand(['--manifest=missing'],send)).rejects.toThrow('hosted_read_approval_required');
    await expect(probeHosting(target,false,send)).rejects.toThrow('hosted_read_approval_required');expect(send).not.toHaveBeenCalled();
  });
+ it('requires explicit Luna pilot build mode as well as live approval, a private key and exact target',()=>{
+   const targetInput={projectRef:target.supabaseProjectRef,projectId:target.vercelProjectId,appOrigin:target.appOrigin};
+   const active={...env(),VULPES_LIVE_AI_ENABLED:'true',OPENROUTER_API_KEY:'sk-or-v1-synthetic_private_canary'};
+   expect(()=>checkHostedEnvironment(targetInput,active)).toThrow('inference_must_remain_disabled');
+   expect(checkHostedEnvironment(targetInput,active,'owner-pilot-luna')).toMatchObject({inferenceEnabled:true,configuration:'valid'});
+   expect(hostedBuild([...hostingBuildArguments(target),'--mode=owner-pilot-luna','--check-only'],active)).toMatchObject({inferenceEnabled:true,buildRan:false});
+   expect(renderHostingConfig(JSON.parse(readFileSync('vercel.json','utf8')),target,'owner-pilot-luna').buildCommand).toContain('--mode=owner-pilot-luna');
+   for(const patch of [{VULPES_LIVE_AI_ENABLED:'false'},{OPENROUTER_API_KEY:''},{VERCEL_PROJECT_ID:'prj_Other'},{GOOGLE_CLOUD_PROJECT:'unapproved'},{VITE_OPENROUTER_API_KEY:'synthetic-canary'}])expect(()=>checkHostedEnvironment(targetInput,{...active,...patch},'owner-pilot-luna')).toThrow();
+   expect(()=>hostedBuild([...hostingBuildArguments(target),'--mode=anything','--check-only'],active)).toThrow();
+ });
  it('probes only public GETs, never sends credentials or follows redirects, and keeps untested gates explicit',async()=>{
    const security=securityHeadersForSupabase(env().VITE_SUPABASE_URL);
    const send=vi.fn(async(url:RequestInfo|URL,init?:RequestInit)=>{

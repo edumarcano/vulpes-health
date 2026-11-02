@@ -11,10 +11,15 @@ import { getRoleAvailability,models } from '../../server/config/models.js';
 
 afterEach(()=>{vi.doUnmock('../../server/config/models.js');vi.doUnmock('../../server/config/everyday-production.js');vi.doUnmock('../../server/config/everyday-verification.js');vi.resetModules();vi.unstubAllEnvs();});
 describe('production Luna wiring',()=>{
-  it('keeps ordinary composition denied with the live switch true and no approved evidence',()=>{
+  it('keeps ordinary composition denied with the live switch true and no approved evidence',async()=>{
+    vi.resetModules();vi.doMock('../../server/config/everyday-production.js',async(importOriginal)=>({...await importOriginal<object>(),everydayProductionEvidence:null,everydayMaxRunCostUSD:'0'}));
     vi.stubEnv('VULPES_LIVE_AI_ENABLED','true');
-    expect(getRoleAvailability('everyday',true).state).toBe('unavailable');
-    expect(composeEverydayProduction()).toBeNull();
+    const catalog=await import('../../server/config/models.js'),production=await import('../../server/ai/providers/openrouter-production.js');
+    expect(catalog.getRoleAvailability('everyday',true).state).toBe('unavailable');
+    expect(production.composeEverydayProduction()).toBeNull();
+  });
+  it('keeps approved composition off without the explicit live switch',()=>{
+    vi.stubEnv('VULPES_LIVE_AI_ENABLED','false');expect(getRoleAvailability('everyday',false).state).toBe('unavailable');expect(composeEverydayProduction()).toBeNull();
   });
   it('requires approved current policy and smoke bindings before reporting available',async()=>{
     const price=models.everyday.price;

@@ -1,6 +1,6 @@
 # Current Luna synthetic verification
 
-Status: the bounded `vulpes-everyday-v7` synthetic checkpoint passed. [Current evidence](../evidence/luna-owner-pilot-live.md) preserves all five batches, prior failures, separate host answer review and pending interruption accounting. The selected model remains `openai/gpt-6-luna`, low effort, Responses v2. Production approval stays null and its run ceiling zero; hosting, real data and optional-model activation remain unauthorized.
+Status: the bounded `vulpes-everyday-v7` synthetic checkpoint passed. [Provider evidence](../evidence/luna-owner-pilot-live.md) preserves all five batches, prior failures, separate host answer review and pending interruption accounting. The selected model remains `openai/gpt-6-luna`, low effort, Responses v2. The subsequently authorized [hosted owner pilot](owner-pilot-luna.md) installs that exact approval with a $0.04 run ceiling and separate $0.10 current-month app/account budgets. [Hosted evidence](../evidence/owner-pilot-step4.md) owns normal-path results; this provider-verification procedure does not enable hosting or optional models. Device, formal acceptance and concrete real-data selection remain gates.
 
 ## Authorization and fixed bounds
 

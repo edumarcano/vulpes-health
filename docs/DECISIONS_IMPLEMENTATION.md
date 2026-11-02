@@ -7,6 +7,17 @@ Record implementation trade-offs, actual provider capabilities and identifier ve
 ## 2026-11-02: Recovery accounting reconciliation correction
 
 Independent review identified an XML-root mismatch in the current-accounting query. Recovery now requires all seven ledger/dispatch/policy tables and valid row fingerprints; missing evidence fails closed. PostgreSQL regressions cover shared spending/reservation changes, durable route blocks, incomplete inventory and rejection of a stale restored ledger with unchanged deletion records. This corrects reconciliation evidence without changing deletion authorization, provider budgets or restored-access gates. Historical accounting-match claims require corrected reconciliation before operational reliance; see [the recovery runbook](operations/hosted-recovery.md#accounting-fingerprint-correction).
+## 2026-11-02: Accept bounded owner device evidence and defer UI work
+
+The owner reported successful conversations, Chrome installation and airplane-mode behavior on Galaxy S23 / Android 17 / Chrome 156.0.8078.73. TalkBack was enabled but not tested; the owner explicitly excludes it from this personal pilot. Preserve UI-03 as unverified for full-release acceptance rather than claiming a pass or waiving P0 criteria. Literal Markdown markers and awkward presentation are deferred to a separate UI-polish branch with owner design guidance. Next preparation uses a selected private Renpho/Samsung export through existing manual/CSV boundaries, not a new native connector. [Device evidence and limits](evidence/owner-pilot-step4.md#owner-device-report-2026-11-02).
+
+## 2026-11-02: Verify normal hosted Luna and qualify missing comparisons
+
+The approved normal hosted path completed synthetic tool/answer, pending-only proposal, cancellation-accounting and owned browser/inspector/reload checks within the existing caps. A lost client connection completed once with reported usage; it did not demonstrate immediate upstream abort. Preserve that result and the cancelled run's uncertain hold instead of forcing a cancellation pass or releasing cost from aggregate key usage. A sufficient seven-day window without a prior comparison exposed `change null kg`; render an unavailable comparison without changing analytics or the v7 prompt/model. The repaired runtime `e296c9e` passed both CI jobs and hosted readback with no new paid request. [Actual results and retained failures](evidence/owner-pilot-step4.md). Physical Android, outstanding formal acceptance and fresh recovery/accounting precede real-file/profile selection; no PR is merged automatically.
+
+## 2026-11-01: Authorize bounded hosted Luna use
+
+The owner authorized activation/use after the Step 3 ciphertext handoff. Install the existing exact v7 tool-loop/safety evidence and current-policy approval in the server catalog, retaining the disabled default switch and independent consent/encryption/budget gates. Add an explicit Luna pilot hosted-build mode instead of weakening the ordinary inference-off build. The dedicated key remains capped at $0.50 for its lifetime; current-month app/account allocation is $0.10 and each run at most $0.04. No cap reset, credit purchase, infrastructure upgrade, optional model or model-identity override is included. Physical Android and applicable formal/real-data acceptance follow synthetic normal-path proof. [Preparation/evidence](evidence/owner-pilot-step4.md).
 
 ## 2026-11-01: Complete the approved synthetic deployment checkpoint
 
