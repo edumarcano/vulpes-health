@@ -29,7 +29,7 @@ The first two live independent-journal attempts failed strict validation of `cap
 
 A new real PostgreSQL assertion reads `captured_at::text` directly from the production query and validates that exact wire value. It failed before the repair (`false`, expected `true`). The query now uses explicit UTC `to_char` formatting with an ISO date/time separator, fractional seconds and `Z`. The unchanged strict decoder, source clock window, authenticated archive, approval and freshness checks remain enforced. The regression then passed locally and the real hosted journal/recovery sequence passed. No source schema/configuration change or relaxed timestamp parser was used.
 
-## Private outputs and remaining handoff
+## Private outputs and verified handoff
 
 | Encrypted file | Bytes | SHA-256 |
 |---|---:|---|
@@ -38,7 +38,7 @@ A new real PostgreSQL assertion reads `captured_at::text` directly from the prod
 | `step3-journal-current.vpb` | 1893 | `7c9b0c1551343ce86a81b14df09060511f6c4e55c41fc3a0e0d4f117f74d48fb` |
 | `step3-journal-final.vpb` | 2492 | `92ab9517e7e3644fb663f9cd64c4f104c510064c8b540cd986733dc617b895ed` |
 
-Files reside only in the approved private local recovery folder pending owner upload/download verification of the restricted Google Drive copy. Keys remain separately protected and owner-retained in Proton Pass. The database archive expires **2026-12-02 00:20:52 UTC** (2026-12-01 19:20:52 New York); the accepted manual rotation procedure must remove expired copies from both locations. Retained trace keys must remain available while still needed by any live payload or retained archive.
+The owner uploaded all four encrypted files to the restricted Google Drive folder and downloaded a ZIP for readback. At 2026-11-02 00:38:17 UTC, all four ZIP members matched both the original files and the recorded SHA-256 hashes. The bounded check required exactly the four expected regular entries and their exact sizes; it performed no extraction, decryption or network request. The downloaded ZIP SHA-256 is `570eb8e9bd1edcb5ea44c83416be60ce8d3218c83a17c1ad68844fee16500b95`. Cloud origin, folder sharing and MFA remain owner-attested; the downloaded bytes are independently verified. Keys remain separately protected and owner-retained in Proton Pass. The database archive expires **2026-12-02 00:20:52 UTC** (2026-12-01 19:20:52 New York); the accepted manual rotation procedure must remove expired copies from the local folder, Google Drive and any downloaded ZIP/readback copies. Retained trace keys must remain available while still needed by any live payload or retained archive.
 
 Journal archives were verified within their five-minute current-check windows. Keep their historical deletion records; passing a later byte-for-byte cloud-copy check does not renew freshness or prove later source completeness. The final journal covers fixture cleanup, which happened after the HTTP rehearsal's earlier current copy. Any later restore must use independently current applicable records and accounting; this stopped older destination must not be exposed using the earlier two-deletion journal.
 
@@ -48,6 +48,9 @@ Journal archives were verified within their five-minute current-check windows. K
 
 ## Boundaries and review
 
-**Axis 1, specification:** Actual managed-source TLS/privileges/schema/data/key compatibility, post-backup replay, session revocation, actual isolated Auth/API and current accounting now have bounded hosted-source evidence. Cloud-copy readback, operational rotation handoff, source-loss/cutover completeness and separately approved access remain gates. This rehearsal does not establish a continuously current off-machine journal, atomic cutover, general managed-to-managed restoration, application deployment, hosted positive execution/allocation isolation or full Step 3/pilot acceptance.
+**Axis 1, specification:** Actual managed-source TLS/privileges/schema/data/key compatibility, post-backup replay, session revocation, actual isolated Auth/API and current accounting now have bounded hosted-source evidence. Proton Pass saved-note readback and encrypted Drive copy readback passed. Ongoing manual rotation/retention, source-loss/cutover completeness and separately approved access remain obligations/gates. This rehearsal does not establish a continuously current off-machine journal, atomic cutover, general managed-to-managed restoration, application deployment, hosted positive execution/allocation isolation or full Step 3/pilot acceptance.
 
 **Axis 2, engineering/security:** Reviewed the one-line query repair, native text regression, current decoder/callers and private operator actions. Scope is fixed to four tagged/preallocated fixtures with receipts; originals/shared hashes passed before/after. Outputs are authenticated, create-only ciphertext; credentials stay in protected storage/private stdin, and no secret material is in Git or public reports. The restored database/probe service fence and stopped state were actually inspected. No demonstrated blocker remains in this verified scope. Separate independent review and required CI remain merge prerequisites; PR #32 stays open and unmerged.
+
+
+The readback-only continuation was reviewed on both axes: it verifies ciphertext identity/expected ZIP inventory without extracting database bytes, changing journal freshness, contacting the source or exposing keys. Specification/link checks cover the affected status updates. No cloud-copy failure or further manual upload step remains; deployment, continuous deletion completeness and real-data authorization are still separate.
