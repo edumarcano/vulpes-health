@@ -10,6 +10,7 @@ import type {Database} from '../server/db/database.types.js';
 import {localStatus,localEnvironment,projectRoot,projectId,assertLocalStack} from './local-database.js';
 import {LocalSupabase} from '../tests/helpers/local-supabase.js';
 import {sealArchive,openArchive} from './backup-archive.js';
+import {recoverySchemaSql as schemaSql,recoveryInventorySql} from './recovery-inventory.js';
 import {DeletionJournalSchema,beginDeletion,continueDeletion} from '../server/services/account.js';
 import {verifyIdentity,verifySession,serverClientOptions} from '../server/auth/session.js';
 import {encryptBytes,decryptBytes,type EncryptionKeys} from '../server/security/encryption.js';
@@ -46,32 +47,7 @@ function sql(container:string,statement:string,role:'postgres'|'supabase_admin'=
 // Reparse CHECK definitions on empty temporary tables. PostgreSQL flattens legacy
 // tuple-IN boolean trees during dump/restore; physical attribute holes and ACL order
 // likewise do not change schema semantics. All constraints and grants remain compared.
-const schemaSql=`create temporary table normalized_constraints(schema_name text,table_name text,name text,definition text,validated boolean);
- do $$ declare c record; definition text; begin for c in select n.nspname,t.relname,p.oid,p.conname,p.contype,p.convalidated from pg_constraint p join pg_class t on t.oid=p.conrelid join pg_namespace n on n.oid=t.relnamespace where n.nspname in ('public','auth','storage') loop
- definition:=pg_get_constraintdef(c.oid);
- if c.contype='c' then
-  execute format('create temporary table check_probe (like %I.%I)',c.nspname,c.relname);
-  execute 'alter table pg_temp.check_probe add constraint canonical_check '||definition;
-  select pg_get_constraintdef(oid) into definition from pg_constraint where conrelid='pg_temp.check_probe'::regclass and conname='canonical_check';
-  drop table pg_temp.check_probe;
- end if;
- insert into normalized_constraints values(c.nspname,c.relname,c.conname,definition,c.convalidated);end loop;end $$;
- select jsonb_build_object(
- 'columns',(select jsonb_agg(to_jsonb(c)-array['ordinal_position','dtd_identifier'] order by table_schema,table_name,column_name) from information_schema.columns c where table_schema in ('public','auth','storage')),
- 'functions',(select jsonb_agg(jsonb_build_array(n.nspname,p.proname,pg_get_function_identity_arguments(p.oid),pg_get_functiondef(p.oid),p.prosecdef,p.proconfig,pg_get_userbyid(p.proowner),case when p.proacl is null then null else array(select a::text from unnest(p.proacl) a order by a::text) end) order by n.nspname,p.proname,pg_get_function_identity_arguments(p.oid)) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','auth','storage') and p.prokind='f'),
- 'constraints',(select jsonb_agg(to_jsonb(c) order by schema_name,table_name,name) from normalized_constraints c),
- 'triggers',(select jsonb_agg(pg_get_triggerdef(t.oid) order by n.nspname,c.relname,t.tgname) from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where not t.tgisinternal and n.nspname in ('public','auth','storage')),
- 'policies',(select jsonb_agg(to_jsonb(p) order by schemaname,tablename,policyname) from pg_policies p where schemaname in ('public','auth','storage')),
- 'grants',(select jsonb_agg(to_jsonb(g) order by table_schema,table_name,grantee,privilege_type,grantor,is_grantable) from information_schema.role_table_grants g where table_schema in ('public','auth','storage')),
- 'rls',(select jsonb_agg(jsonb_build_array(n.nspname,c.relname,c.relrowsecurity,c.relforcerowsecurity,pg_get_userbyid(c.relowner)) order by n.nspname,c.relname) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','auth','storage') and c.relkind='r'));`;
-function inventory(container:string){
- const statement=`create temporary table restore_inventory(name text,amount bigint,hash text);
- do $$ declare t record; n bigint; h text; begin for t in select schemaname,tablename from pg_tables where schemaname in ('public','auth','storage','supabase_migrations') order by schemaname,tablename loop
- execute format('select count(*),encode(sha256(convert_to(coalesce(string_agg(encode(sha256(convert_to(to_jsonb(r)::text,''UTF8'')),''hex''),'''' order by to_jsonb(r)::text),''''),''UTF8'')),''hex'') from %I.%I r',t.schemaname,t.tablename) into n,h;
- insert into restore_inventory values(t.schemaname||'.'||t.tablename,n,h);end loop;end $$;
- select jsonb_object_agg(name,jsonb_build_object('count',amount,'hash',hash)) from restore_inventory;`;
- return JSON.parse(sql(container,statement)) as Record<string,{count:number;hash:string}>;
-}
+function inventory(container:string){return JSON.parse(sql(container,recoveryInventorySql)) as Record<string,{count:number;hash:string}>;}
 let started=false;let ownsRoute=false;let phase='source safety checks';let report:Record<string,unknown>|undefined;
 const previousEnv={...process.env};
 try{

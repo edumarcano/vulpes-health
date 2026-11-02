@@ -104,7 +104,7 @@ After backup capture, a source account is deleted. A fresh independently stored,
 
 Before real use, approve the backup destination/key-management procedure and rehearse it separately. Encrypted backups expire within **30 days**. Keep recoverable trace key versions and backup/journal keys separately from ciphertext. Maintain an independent deletion journal whose completeness can be established after source loss; a backup's embedded journal cannot prove later deletions.
 
-The [hosted recovery runbook](hosted-recovery.md) owns the prepared `recovery:journal` capture/validation command and its custody gates. It is a source-bound encrypted journal prerequisite, not a database backup or permission to reopen a restore. The original `backup:verify` remains guarded/local-only.
+The [hosted recovery runbook](hosted-recovery.md) owns prepared `recovery:journal` and `recovery:database`, custody and execution gates. Local proof covers the source-bound encrypted journal, schema-scoped database archive and network-isolated stopped restore. Current independent replay/completeness, session revocation, actual hosted compatibility and access approval remain pending. The original `backup:verify` remains guarded/local-only.
 
 1. Stop restored access and inference. Verify a separate disposable destination; never overwrite the source/populated deployment.
 2. Authenticate archive age and keys; restore schema/data/ownership/grants/RLS. Include object bytes if Storage is ever enabled; current verification refuses that unsupported state.
