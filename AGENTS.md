@@ -35,6 +35,7 @@ You are working in `vulpes-health`, which contains the authoritative v0.1.0 spec
 - **Security & privacy:** Never commit personal health records, prompts/traces, credentials, or private cloud tokens. The server authorizes user, ownership, and scope; enforce strict isolation for invited family accounts. Don't leak secrets into the client bundle. Use only synthetic data in code, fixtures, tests, and screenshots. Don't claim medical diagnosis.
 - **Autonomy and spend:** Do not deploy, modify live cloud resources, create billable usage, import real data, activate goals, or persist consequential choices without owner approval. Apply provider-specific privacy, budget, trace, and safety gates before requests.
 - **Brand/UI:** Use included Vulpes assets and custom design tokens; shadcn/ui for app components and assistant-ui for chat rendering. No new generative UI framework.
+- **Formatting:** Prettier owns TypeScript, TSX, and JavaScript layout (`npm run format`, `npm run format:check`). ESLint remains the behavior and boundary checker. Do not hand-format generated `server/db/database.types.ts`; regenerate it with `npm run db:types`.
 
 ## Work process
 

@@ -112,6 +112,7 @@ Stop any local stack before tests that exercise the fixed API port. Install Chro
 
 ```sh
 npx playwright install chromium
+npm run format:check
 npm run lint
 npm run typecheck
 npm test

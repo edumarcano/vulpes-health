@@ -14,8 +14,18 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode><QueryClientProvider client={queryClient}><AuthProvider><BrowserRouter><App /></BrowserRouter></AuthProvider></QueryClientProvider></StrictMode>,
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  </StrictMode>,
 );

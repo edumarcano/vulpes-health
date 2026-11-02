@@ -3,7 +3,7 @@
 // allocations and all other owners' ledger/dispatch authority must match exactly.
 // query_to_xml permits a read-only fingerprint without creating source functions.
 // A missing table or XML fingerprint yields SQL NULL, which capture/replay reject.
-export const recoveryAccountingExpression=`(select case when count(*)=7 and count(fingerprint)=7
+export const recoveryAccountingExpression = `(select case when count(*)=7 and count(fingerprint)=7
  and bool_and(fingerprint ~ '^[a-f0-9]{64}$')
  then encode(sha256(convert_to(jsonb_object_agg(tablename,fingerprint order by tablename)::text,'UTF8')),'hex') end
  from(select t.tablename,

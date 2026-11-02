@@ -14,8 +14,12 @@ it('stops the full stack on an occupied API port instead of selecting another po
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
-  child.stdout.on('data', (data: Buffer) => { output += data.toString(); });
-  child.stderr.on('data', (data: Buffer) => { output += data.toString(); });
+  child.stdout.on('data', (data: Buffer) => {
+    output += data.toString();
+  });
+  child.stderr.on('data', (data: Buffer) => {
+    output += data.toString();
+  });
   try {
     const [code] = await once(child, 'exit');
     expect(code).toBe(1);
