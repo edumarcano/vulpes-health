@@ -1,11 +1,5 @@
 import { z } from 'zod';
-import {createCipheriv,createDecipheriv,randomBytes} from 'node:crypto';
-import {createReadStream,createWriteStream} from 'node:fs';
-import {mkdtemp,unlink,rmdir} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {Readable} from 'node:stream';
-import {pipeline} from 'node:stream/promises';
+import {stageExport} from '../security/export-spool.js';
 import type { DataQuery } from '../../shared/data.js';
 import type { AuthContext } from '../auth/session.js';
 import { selectionWindows } from '../analytics/summary.js';
@@ -54,15 +48,6 @@ export async function exportMeasurements(context:AuthContext,query:Extract<DataQ
     if(end.error || end.data===null)throw new HttpFailure(503,'data_unavailable','The export could not be verified.');
     if(z.object({revision:z.number()}).parse(end.data).revision!==revision)throw new HttpFailure(409,'data_changed','Your data changed during export. Refresh and export again.');
   }
-  // No plaintext export is persisted. The random key lives only for this request;
-  // a process crash leaves unreadable ciphertext, never a recoverable CSV.
-  const directory=await mkdtemp(join(tmpdir(),'vulpes-export-'));
-  const file=join(directory,'data.enc');const key=randomBytes(32),nonce=randomBytes(12);const aad=Buffer.from(JSON.stringify([1,context.userId]));
-  async function cleanup(){key.fill(0);await unlink(file).catch((e:NodeJS.ErrnoException)=>{if(e.code!=='ENOENT')throw e;});await rmdir(directory);}
-  try{
-    const cipher=createCipheriv('aes-256-gcm',key,nonce);cipher.setAAD(aad);
-    await pipeline(Readable.from(records()),cipher,createWriteStream(file,{flags:'wx',mode:0o600}),{signal});
-    const tag=cipher.getAuthTag();
-    return {revision:revision!,cleanup,open(){const decipher=createDecipheriv('aes-256-gcm',key,nonce);decipher.setAAD(aad);decipher.setAuthTag(tag);return {ciphertext:createReadStream(file),decipher};}};
-  }catch(error){await cleanup();throw error;}
+  const spool=await stageExport(context.userId,records(),signal);
+  return {revision:revision!,...spool};
 }

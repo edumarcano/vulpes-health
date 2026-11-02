@@ -40,6 +40,7 @@
     "test:providers": "tsx scripts/provider-smoke.ts",
     "test:evaluations": "tsx scripts/evaluate-everyday.ts",
     "test:executions": "tsx scripts/execution-proof.ts",
+    "test:closeout": "tsx scripts/verify-closeout-local.ts",
     "test:goal-upgrade": "tsx scripts/verify-goal-upgrade.ts",
     "test:execution-upgrade": "tsx scripts/verify-execution-upgrade.ts",
     "db:start": "tsx scripts/database.ts start",

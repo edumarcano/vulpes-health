@@ -5,6 +5,8 @@ import {localEnvironment,isLocalDockerHost,assertLocalStack,projectId} from './l
 import {recoveryReadCatalogSql,recoveryReadInventorySql,normalizeRecoveryConstraintsSql} from './recovery-inventory.js';
 import {maximumDumpBytes,type RecoverySource,type RecoveryDestination} from './recovery-database.js';
 import type {HostingTarget} from './hosting.js';
+import {recoveryReplayActions} from './recovery-replay.js';
+import {recoveryHttpServices} from './recovery-http-services.js';
 
 const maxMetadata=32*1024*1024;
 const client='supabase_db_vulpes-health-pr03-test';
@@ -16,7 +18,7 @@ export function connectionIdentity(target:HostingTarget,input:unknown){
 }
 function docker(args:string[],input?:Buffer,extra:NodeJS.ProcessEnv={},limit=maxMetadata,onFailure?:(stderr:Buffer)=>void){
  const r=spawnSync('docker',args,{input,env:{...localEnvironment(),...extra},encoding:undefined,maxBuffer:limit,timeout:180_000});
- if(r.error||r.status!==0){onFailure?.(Buffer.from(r.stderr??''));throw new Error('Recovery PostgreSQL command failed; private diagnostics omitted.');}return Buffer.from(r.stdout);
+ if(r.error||r.status!==0){onFailure?.(Buffer.from(r.stderr??''));throw new Error('Recovery PostgreSQL command failed; private diagnostics omitted.');}return args[0]==='logs'?Buffer.concat([Buffer.from(r.stdout),Buffer.from(r.stderr)]):Buffer.from(r.stdout);
 }
 export function assertLocalRecoveryDocker(){
  const host=JSON.parse(docker(['context','inspect','--format','{{json .Endpoints.docker.Host}}']).toString()) as unknown;
@@ -78,6 +80,8 @@ export function fencedRecoveryDestination(image:string,authorize:()=>void,onFail
   restore:async dump=>{authorize();await assertFenced();sql('drop schema if exists public,auth,storage,supabase_migrations cascade;','supabase_admin');docker(['exec','-i',ownedId!,'pg_restore','-U','supabase_admin','-d','postgres','--exit-on-error','--single-transaction'],dump,{},maximumDumpBytes,onFailure);},
   snapshot:()=>snapshot(async statement=>sql('begin read only;'+statement+'rollback;')),
   normalize:async value=>({...value,catalog:{...value.catalog,constraints:JSON.parse(sql('begin;'+normalizeRecoveryConstraintsSql(value.catalog.constraints??[])+'rollback;')) as unknown[]}}),
+  recovery:recoveryReplayActions(sql,assertFenced,authorize),
+  verifyHttp:async(input,owners)=>{authorize();await assertFenced();return recoveryHttpServices(input,owners,sql,docker,ownedId!,async()=>{authorize();await assertFenced();},onFailure);},
   stop:async()=>{if(ownedId)docker(['stop',ownedId]);},
  };
 }

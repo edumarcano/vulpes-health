@@ -3,9 +3,8 @@ import {once} from 'node:events';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {readdir,readFile,access} from 'node:fs/promises';
+import {readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
 import {Writable} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
 import {parse} from 'csv-parse/sync';
@@ -176,14 +175,12 @@ describe('real M2 correction/deletion/export transactions',()=>{
     for(const rpc of ['mutate_measurement_v1','read_export_v1','cleanup_data_v1'])expect([401,403]).toContain((await db.request('/rest/v1/rpc/'+rpc,'anon',{method:'POST',body:JSON.stringify(rpc==='mutate_measurement_v1' ? {p_request:deletion(foreign)} : rpc==='read_export_v1' ? {p_query:{}} : {})})).status);
     expect(await revision()).toBe(rev);expect((await rows('measurements',`id=eq.${foreign.id}`))[0]!.version).toBe(1);
   });
-  it('uses only encrypted temporary export bytes and removes the artifact on completion and abort',async()=>{
+  it('streams the encrypted spool without a named artifact on completion and abort',async()=>{
     const r=await add({source:{kind:'new',label:'Synthetic private export canary',origin_app:null,device_label:null}});
     const context=await verifySession({headers:{authorization:`Bearer ${a.token}`}});const query={view:'export' as const,source_id:r.sourceId,metric:'weight' as const,from:'2026-09-01T00:00:00Z',to:'2026-09-15T00:00:00Z',timezone:'UTC',method:'device_reported' as const,granularity:'instant' as const};
     const before=new Set(await readdir(tmpdir()));const result=await exportMeasurements(context,query);
-    const created=(await readdir(tmpdir())).filter(name=>name.startsWith('vulpes-export-') && !before.has(name));expect(created).toHaveLength(1);
-    const directory=join(tmpdir(),created[0]!);const bytes=await readFile(join(directory,'data.enc'));expect(bytes.includes(Buffer.from('Synthetic private export canary'))).toBe(false);expect(bytes.includes(Buffer.from('observed_at'))).toBe(false);
+    const created=(await readdir(tmpdir())).filter(name=>name.startsWith('vulpes-export-') && !before.has(name));expect(created).toHaveLength(0);
     const chunks:Buffer[]=[];try{const streams=result.open();await pipeline(streams.ciphertext,streams.decipher,new Writable({write(chunk:Buffer,_encoding,callback){chunks.push(chunk);callback();}}));expect(Buffer.concat(chunks).toString()).toContain('Synthetic private export canary');}finally{await result.cleanup();}
-    await expect(access(directory)).rejects.toMatchObject({code:'ENOENT'});
     const controller=new AbortController();const original=globalThis.fetch;let aborted=false;const spy=vi.spyOn(globalThis,'fetch').mockImplementation(async(input,init)=>{const response=await original(input,init);if(!aborted && String(input).endsWith('/rpc/read_export_v1')){aborted=true;controller.abort();}return response;});
     try{await expect(exportMeasurements(context,query,controller.signal)).rejects.toBeDefined();}finally{spy.mockRestore();}
     expect(aborted).toBe(true);expect((await readdir(tmpdir())).filter(name=>name.startsWith('vulpes-export-') && !before.has(name))).toEqual([]);

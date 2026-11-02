@@ -1,10 +1,5 @@
-import { createHash,createCipheriv,createDecipheriv,randomBytes } from 'node:crypto';
-import {createReadStream,createWriteStream} from 'node:fs';
-import {mkdtemp,unlink,rmdir} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {Readable} from 'node:stream';
-import {pipeline} from 'node:stream/promises';
+import {createHash} from 'node:crypto';
+import {stageExport} from '../security/export-spool.js';
 import {z} from 'zod';
 import type {AccountRequest} from '../../shared/account.js';
 import type {AuthContext} from '../auth/session.js';
@@ -58,12 +53,6 @@ export async function exportAccount(context:AuthContext,request:Extract<AccountR
   if(JSON.stringify(final)!==JSON.stringify(before) || expiries.some(expiry=>expiry<=Date.now()))throw new HttpFailure(409,'data_changed','Your account changed or selected content expired during export. Retry the export.');
   yield '},"captureCompletedAt":'+JSON.stringify(new Date().toISOString())+',"inventory":'+JSON.stringify(before.sections)+',"integrity":'+JSON.stringify(integrity)+',"limitations":["Capture interval verified by section fingerprints; not a transactional backup.","Credentials, executor authority, opaque continuation state and shared operator configuration are excluded."]}';
  }
- const directory=await mkdtemp(join(tmpdir(),'vulpes-account-export-'));const file=join(directory,'data.enc');const key=randomBytes(32),nonce=randomBytes(12);const aad=Buffer.from(JSON.stringify([1,context.userId]));
- async function cleanup(){key.fill(0);await unlink(file).catch((e:NodeJS.ErrnoException)=>{if(e.code!=='ENOENT')throw e;});await rmdir(directory);}
- try{
-  const cipher=createCipheriv('aes-256-gcm',key,nonce);cipher.setAAD(aad);
-  await pipeline(Readable.from(records()),cipher,createWriteStream(file,{flags:'wx',mode:0o600}),{signal});
-  const tag=cipher.getAuthTag();
-  return {cleanup,async validate(){const current=await manifest();if(JSON.stringify(current)!==JSON.stringify(before) || expiries.some(expiry=>expiry<=Date.now()))throw new HttpFailure(409,'data_changed','Your account changed during export. Retry the export.');},open(){const decipher=createDecipheriv('aes-256-gcm',key,nonce);decipher.setAAD(aad);decipher.setAuthTag(tag);return {ciphertext:createReadStream(file),decipher};}};
- }catch(error){await cleanup();throw error;}
+ const spool=await stageExport(context.userId,records(),signal);
+ return {...spool,async validate(){const current=await manifest();if(JSON.stringify(current)!==JSON.stringify(before) || expiries.some(expiry=>expiry<=Date.now()))throw new HttpFailure(409,'data_changed','Your account changed during export. Retry the export.');}};
 }

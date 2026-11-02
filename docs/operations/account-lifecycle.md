@@ -20,7 +20,7 @@ Settings downloads `vulpes-account-v1.json` through authenticated `POST /api/acc
 
 Pages contain at most 200 rows. Section fingerprints and data revision are checked before/after capture and before transmission. Changes or selected-content expiry return JSON 409 without an attachment. Wait for active work to finish and retry. The capture interval, counts and SHA-256 section manifest describe the output; it is not a transactional backup or restore format.
 
-Responses are `no-store`. Account changes abort/discard browser downloads and revoke their object URLs. The request signal reaches Auth verification, owned page/staging reads and inspector/ledger reads. Server capture uses an encrypted temporary file and a request-only random key. Completion/error/cancellation removes the file and zeros the key. Crashes leave unreadable ciphertext; maintenance removes known stale artifacts after 24 hours. Downloaded plaintext needs private storage controls.
+Responses are `no-store`. Account changes abort/discard browser downloads and revoke their object URLs. The request signal reaches Auth verification, owned page/staging reads and inspector/ledger reads. Server capture uses an encrypted spool and a request-only random key. The file name and empty temporary directory are removed before consuming private export records; only an open descriptor remains. Completion/error/cancellation closes it and zeros the key; process exit releases the unlinked file. Platforms unable to unlink an open file fail before capturing private bytes. The legacy 24-hour artifact cleaner remains for older named files; existing deployed instances require separate retirement/verification. Downloaded plaintext needs private storage controls.
 
 ## Deletion and interruption
 
@@ -65,7 +65,7 @@ The operator supplies a hashed target manifest and private stdin credentials/aut
 
 Database time determines expiry. Existing run/hold settlement rules remain unchanged. `pendingHolds` and `retryAfter` expose deferred accounting even when no work is currently due; `unfinished: false` does not mean all uncertainty has settled. Busy rows, future holds and pass/deletion limits preserve pending work rather than forcing cleanup. Only already-requested deletion can resume. The default deletion service still uses its server client; the operator passes an explicit administrative client through the same implementation.
 
-This command covers owned database retention and Auth deletion resumption. It cannot access another Vercel instance's export temporary files or rotate encrypted backup/current-journal copies. Normal export completion/error paths remove their own temporary artifacts; stale crash ciphertext, backup rotation, custody and any scheduler remain separate verification/approval gates. Do not claim full hosted physical cleanup from a database-only pass.
+This command covers owned database retention and Auth deletion resumption. It cannot access another Vercel instance's export temporary files or rotate encrypted backup/current-journal copies. New export capture leaves no named private artifact even after a crash. The [final synthetic checkpoint](../evidence/owner-pilot-step3-closeout.md#approved-final-hosted-checkpoint-2026-11-01) deployed that repair, verified real exports and client cancellation, and retired both older READY deployments. The final five-file cloud copy/readback passed. Remote process termination/filesystem inspection and physical secure erasure were not demonstrated. Manual backup rotation and future freshness/access checks remain separate obligations; no scheduler is configured.
 
 | Store | Retention/cleanup |
 |---|---|
@@ -77,7 +77,7 @@ This command covers owned database retention and Auth deletion resumption. It ca
 | Verification allocations | Never reset/replenished by maintenance; owned allocation removed only after deletion settlement |
 | Shared app charges and route-cost blocks | Survive account/execution deletion; clearing blocks requires separate review |
 | Deletion journal | Unfinished entries persist; completed entries retained at least 31 days |
-| Server export temporary files | Request lifetime; stale ciphertext cleanup after 24 hours |
+| Server export temporary files | Unlinked before private capture; descriptor closed on completion/error/process exit. Legacy named artifacts: 24-hour cleaner |
 | Browser state | Private queries/mutations/streams cleared on account switch/deletion; PWA caches public assets only |
 | Supabase Storage | Disabled. Restore verification refuses nonempty object storage without supported object-byte recovery. |
 | Backups and independent journal copies | Encrypted/access-controlled, separately managed with keys; never public or source-controlled |
@@ -104,7 +104,7 @@ After backup capture, a source account is deleted. A fresh independently stored,
 
 Before real use, approve the backup destination/key-management procedure and rehearse it separately. Encrypted backups expire within **30 days**. Keep recoverable trace key versions and backup/journal keys separately from ciphertext. Maintain an independent deletion journal whose completeness can be established after source loss; a backup's embedded journal cannot prove later deletions.
 
-The [hosted recovery runbook](hosted-recovery.md) owns prepared `recovery:journal` and `recovery:database`, custody and execution gates. Local proof covers the source-bound encrypted journal, schema-scoped database archive and network-isolated stopped restore. Current independent replay/completeness, session revocation, actual hosted compatibility and access approval remain pending. The original `backup:verify` remains guarded/local-only.
+The [hosted recovery runbook](hosted-recovery.md) owns prepared `recovery:journal` and `recovery:database`, custody and execution gates. Local proof covers the encrypted journal/archive, network-isolated restore, completed/unfinished replay, exact shared-charge preservation, restored-session revocation, old-session denial, two-owner SQL RLS, actual isolated Auth/API checks, current accounting comparison and a post-validation journal reread. The [approved hosted-source rehearsal](../evidence/owner-pilot-step3-hosted-recovery.md) also verified actual capture/TLS/permissions, compatible isolated Auth/API recovery and current accounting. Proton Pass key readback and all five encrypted Drive file readbacks passed, including the final nine-receipt journal. Manual rotation remains ongoing; source-loss/cutover completeness and access approval remain pending. The original `backup:verify` remains guarded/local-only.
 
 1. Stop restored access and inference. Verify a separate disposable destination; never overwrite the source/populated deployment.
 2. Authenticate archive age and keys; restore schema/data/ownership/grants/RLS. Include object bytes if Storage is ever enabled; current verification refuses that unsupported state.

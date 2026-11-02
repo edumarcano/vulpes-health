@@ -4,6 +4,36 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-02: Recovery accounting reconciliation correction
+
+Independent review identified an XML-root mismatch in the current-accounting query. Recovery now requires all seven ledger/dispatch/policy tables and valid row fingerprints; missing evidence fails closed. PostgreSQL regressions cover shared spending/reservation changes, durable route blocks, incomplete inventory and rejection of a stale restored ledger with unchanged deletion records. This corrects reconciliation evidence without changing deletion authorization, provider budgets or restored-access gates. Historical accounting-match claims require corrected reconciliation before operational reliance; see [the recovery runbook](operations/hosted-recovery.md#accounting-fingerprint-correction).
+
+## 2026-11-01: Complete the approved synthetic deployment checkpoint
+
+The owner approved the frozen `cf263e0` deployment, two disposable test accounts with $0.000001 ledger ceilings each, final hosted verification/cleanup/journal and removal of both older READY deployments. Existing Free/Hobby North Virginia resources and $0 paid allowance remain unchanged; no provider call, production budget/consent/evidence, real data or automatic merge was authorized. Replacement checks and source cleanup passed before irreversible old-deployment removal. The old URLs/rollback deployments are gone; Git source and encrypted recovery artifacts remain. [Actual evidence and failure/containment record](evidence/owner-pilot-step3-closeout.md#approved-final-hosted-checkpoint-2026-11-01).
+
+The browser verifier now synchronizes on completed logout rather than the login heading alone, with an explicit barrier checking the disabled intermediate state and boolean-only session absence. The deployed application did not change for this correction. The final nine-receipt journal supplements earlier recovery files; the complete five-file cloud readback passed without extending freshness. Independent review, physical devices, formal acceptance and production/real-data activation remain separate gates.
+
+## 2026-11-01: Verify hosted journal timestamp text and final cleanup coverage
+
+The grouped approved hosted-source rehearsal exposed a Management API wire difference: top-level PostgreSQL timestamps are text in PostgreSQL format, whereas the earlier local `row_to_json` transport emitted ISO. A real PostgreSQL `captured_at::text` assertion reproduced the strict-validation failure. The read-only query now formats UTC ISO explicitly; the strict parser, freshness/clock windows and approval/encryption rules remain unchanged. Live capture and isolated recovery then passed.
+
+Four disposable accounts provide two deletion cases and two populated retained-user HTTP cases without changing original accounts. Cleanup happens after recovery proof, so a separate final encrypted journal must cover all four final source deletions; the earlier current journal is insufficient for any later access. Off-machine copy verification does not renew a five-minute journal current-check window. [Actual evidence](evidence/owner-pilot-step3-hosted-recovery.md).
+
+## 2026-11-01: Consolidate Step 3 recovery and export preparation
+
+**Status:** Implementation under the approved owner-pilot plan; remaining Step 3 work stays in PR #32 at the owner's request. Hosted capture, deployment, custody and access retain explicit approval gates.
+
+**Decision:** Verify actual cached GoTrue/PostgREST services inside the fresh restored database's network-none namespace, with no ports, mounts or outbound access. Require current source accounting fingerprints rather than restoring stale ceilings or resetting balances. SQL-only diagnostics retain an explicit missing HTTP gate; owner-pilot rehearsal requires HTTP mode. Source loss without independently current deletion/accounting completeness keeps restored access blocked.
+
+**Export repair:** Unlink the encrypted spool before consuming private records and retain its sole descriptor until cleanup/process exit. This removes named crash ciphertext without adding a hosted cleanup service, memory ceiling or scheduler. Unsupported unlink semantics fail before capture. Descriptor ownership remains in one helper so pipeline errors preserve original conflict/abort results. Deployment/legacy-instance retirement still needs separate evidence.
+
+**Reason:** Complete necessary privacy/recovery behavior and reduce fragmented preparation PRs while preserving the existing feature set and owner approval boundaries. [Runbook](operations/hosted-recovery.md#combined-step-3-execution-checkpoint).
+
+## 2026-11-01: Replay authorized deletions before restored access
+
+Step 3D.4C adds an explicit recover mode to the existing fenced restore. It reuses product deletion/hold semantics, preserves independent receipt identity and unaffected data, compares shared costs as exact decimal strings, revokes all restored sessions and tests SQL isolation using rolled-back probes. A separately authorized current journal is captured only after replay/validation and must match the initial records. This demonstrates a fresh reread, not atomic source-loss/cutover completeness or current billing reconciliation; access stays unauthorized. Old session IDs must be captured before replay so deleted identities remain part of denial proof. [Evidence](evidence/owner-pilot-step3d4-replay.md), [procedure](operations/hosted-recovery.md#fenced-journal-replay-and-recovery-validation).
+
 ## 2026-11-01: Schema-scoped database archive and network-isolated restore
 
 Step 3D.4B prepares a bounded custom PostgreSQL archive for public/Auth/Storage/migration schemas because the installed CLI's default schema dump excludes Auth. It preserves owner/grant metadata and requires full catalog/row/key equality in a fresh pinned-image local container with no network, ports or host binds. Source reads are SELECT-only; equivalent CHECK trees normalize only at the destination. Database-catalog names are excluded from logical comparison after the generated local source name caused a demonstrated mismatch; schema/table/column identities and permissions remain compared. This is local preparation, not managed-source compatibility or restored-access approval. Current-journal replay, session revocation and Auth/API validation remain next. [Evidence](evidence/owner-pilot-step3d4-database.md), [procedure](operations/hosted-recovery.md).
