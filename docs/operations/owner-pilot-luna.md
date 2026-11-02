@@ -2,7 +2,7 @@
 
 The owner authorized activation/use on 2026-11-01, retaining the approved owner-pilot sequence. This packet enables only normal Ask Vulpes with Luna on the existing synthetic project. Flash, Argon and decision scoring stay unavailable. Real-data import follows applicable acceptance gates; no automated import, invitation, credit purchase or infrastructure upgrade is included.
 
-Current runtime candidate `e296c9e` is deployed and verified with inference enabled. [Dated evidence](../evidence/owner-pilot-step4.md#final-hosted-repair-checkpoint-2026-11-02) records the exact deployment, passing CI/hosted checks, spending and limitations. The next checkpoint requires the owner's actual Android device.
+Current runtime candidate `e296c9e` is deployed and verified with inference enabled. [Dated evidence](../evidence/owner-pilot-step4.md#final-hosted-repair-checkpoint-2026-11-02) records the exact deployment, passing CI/hosted checks, spending and limitations. The [owner's Galaxy S23 report](../evidence/owner-pilot-step4.md#owner-device-report-2026-11-02) accepts conversation use, installation and offline behavior for that phone. TalkBack is unverified and explicitly deferred for this personal pilot; Markdown/UI polish is deferred to a separately guided branch. Next is selecting the first private export for local format inspection.
 
 ## Activation controls
 
@@ -24,7 +24,7 @@ Use a frozen reviewed Git upload with the explicit pilot configuration overlay. 
 
 Exercise the ordinary `/api/chat` path through the real ledger and dispatcher using labelled synthetic observations. Verify deterministic tool results, completed answer/usage/exact owned inspector evidence and reload; foreign-account denials; pending-only goal proposals; genuine browser sending; cancellation/disconnect without retry and with conservative holds. Bind each paid attempt to a create-only request identity and inspect a failure before another attempt. Preserve uncertain accounting and every failed report.
 
-Leave no autonomous goal activation or real health data. Keep synthetic source labels visible and identify their cleanup before any real import. Physical Android checks must use the real phone/browser: keyboard and long answers, rotation/zoom, installation/offline behavior, focus/TalkBack and consent/logout. Chromium emulation is supporting evidence only. [Release readiness](release-readiness.md) retains independent/formal acceptance and real-data gates.
+Leave no autonomous goal activation or real health data in this synthetic packet. Keep synthetic source labels visible and identify their cleanup before any real import. Device evidence must identify the real phone/browser and tested scope; Chromium emulation is supporting evidence only. The owner has reported the Galaxy S23 workflow, installation and offline results, with an explicit personal-pilot TalkBack exception. Broader UI/assistive-technology and [release-readiness](release-readiness.md) requirements remain distinct.
 
 Use the app's **Stop** control to request cancellation. A lost browser connection does not guarantee an upstream abort on the current host: a dispatched request can finish and be charged. Reopening loads its saved state without automatically sending again. Unknown cost retains its reservation; reported completion settles its actual usage. The hosted disconnect attempt demonstrated a single completed run, not immediate transport cancellation.
 
@@ -33,6 +33,8 @@ The current summary tool calculates complete-day seven-day means and their compa
 If a blocking safety/security failure occurs, revoke the test account's OpenRouter consent, stop further requests, preserve accounting/evidence, and roll back to the verified inference-off deployment. A project environment edit alone does not change already-deployed functions. Infrastructure stays Free/Hobby; a quota/credit failure is not permission to buy capacity or raise the key cap.
 
 ## Physical Android checkpoint
+
+The owner completed the reported conversation/installation/offline scope on Galaxy S23 / Android 17 / Chrome 156.0.8078.73. No repeat device test or TalkBack action is requested for the current personal pilot. The protocol below remains available for additional devices and full-release verification; its TalkBack step remains unverified.
 
 Use the original synthetic owner sign-in at [Ask Vulpes](https://vulpes-synthetic.vercel.app/ask). Credentials stay in the password manager and sign-in form; no provider key or dashboard configuration is needed. Do not enter real measurements or approve the synthetic goal. This checkpoint may send one synthetic question under the existing caps; stopping or losing the connection can still incur cost.
 
@@ -44,4 +46,17 @@ Use the original synthetic owner sign-in at [Ask Vulpes](https://vulpes-syntheti
 6. Turn on airplane mode and turn Wi-Fi off. Close/reopen or reload the installed app: only a public offline screen should remain, with no saved answer, readings, goals or signed-in Settings. Reconnect and confirm sign-in works. Do not send another question.
 7. Report the phone model, Android version, Chrome version, whether each check passed, and any exact error/obscured control. Android version is under **Settings → About phone**; Chrome version is under **Chrome → Settings → About Chrome**. Never include passwords, provider keys or real health information in screenshots.
 
-After this checkpoint, reconcile required acceptance and obtain a fresh recovery/accounting snapshot before selecting and importing a real file/profile. The existing encrypted archive proves the earlier synthetic rehearsal, not current data completeness.
+Before hosted real-data persistence, reconcile required acceptance and obtain a fresh recovery/accounting snapshot for the selected file/profile. The existing encrypted archive proves the earlier synthetic rehearsal, not current data completeness.
+
+## First real-data preparation
+
+Vulpes currently accepts manual entry or UTF-8 CSV with canonical columns or an explicit wide-column mapping. It does not connect to Renpho Health, Samsung Health or Health Connect. Files are limited to 1 MiB/5,000 normalized observations per import; a vendor download is not proof of compatibility. No real file has been selected or read yet.
+
+Start with one profile and a bounded Renpho weight/body-fat export, preferably about 30 days. [Renpho's export procedure](https://renpho.com/pages/faq-for-renpho-health-app) uses the scale's History/Trends screen, Export data and a date interval. Preserve the original export; if it is a workbook or has unsupported timestamps/units, prepare a reviewed local conversion after inspecting its format. Samsung Health can later supply daily steps, sleep duration or qualified heart-rate readings through an explicitly mapped export; its [Download personal data procedure](https://www.samsung.com/us/support/answer/ANS10001379/) does not imply native Vulpes support. Avoid importing the same Renpho readings again through Samsung Health as a second apparent source.
+
+| Checkpoint | Required action |
+|---|---|
+| Owner input | Export only the intended profile/interval, transfer privately to the computer outside Git/cloud sync, and provide only the file path. No data values, passwords or keys in chat. |
+| Local inspection | Read only the selected file; identify format, profile isolation, units, timezone/date semantics and supported metrics. Preserve raw values and source lineage; no provider call or hosted preview. |
+| Before hosted persistence | Reconcile applicable P0/formal acceptance, prepare the exact synthetic-cleanup scope without resetting charges/holds, and establish current encrypted recovery/accounting. Existing recovery commands are explicitly synthetic-only; do not relabel real data as synthetic or assume the old archive covers future imports. Any necessary owner-data recovery adaptation belongs in the next focused packet. |
+| First import | Show the concrete source/profile/mapping/counts and exclusion results before committing. Compare selected source readings against deterministic results; generation is separate from import. No automatic goal approval or family invitation. |
