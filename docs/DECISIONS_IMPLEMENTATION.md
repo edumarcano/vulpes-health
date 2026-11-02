@@ -4,6 +4,10 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-01: Independent journal before hosted-source recovery
+
+Step 3D.4 begins with a read-only, single-statement deletion journal snapshot, including unfinished requests, before adding hosted database capture/restoration. The encrypted record binds the source and validates against an authenticated backup timestamp; the standalone verifier never authorizes access. Capture requires exact target/output/expiry and independent journal/separate key custody approval. This reuses existing archive/deletion contracts and adds no dependency, schema or public endpoint. A five-minute freshness window is a current-check gate, not independent proof of completeness after source loss or a deletion/rotation schedule. [Procedure](operations/hosted-recovery.md), [local evidence](evidence/owner-pilot-step3d4.md). Full database compatibility/fencing/replay and actual hosted capture remain unverified and separately gated.
+
 ## 2026-11-01: Owner-scoped hosted database maintenance
 
 The existing payload cleanup and run reconciliation accept an owner filter, but proposal/receipt retention is project-wide. Preparation adds service-only `maintain_account_v1` with mandatory owner and default read-only inspection, preserving the existing global/local functions. Execute uses the established database clock, lock ordering, bounded cleanup/reconciliation and 31-day receipt floor. A separate hosted operator command binds fresh authorization to the exact manifest and account allowlist; the deletion service accepts an explicit trusted client so the same Auth-removal implementation runs without ambient hosted secrets. Existing HTTP behavior and local-only CLI guards remain unchanged.
