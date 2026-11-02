@@ -11,6 +11,7 @@ import {fencedRecoveryDestination} from '../../scripts/recovery-postgres.js';
 import {databaseRestoreBinding} from '../../scripts/hosted-database-recovery.js';
 import {targetHash} from '../../scripts/hosting.js';
 import {withRecoverySource} from '../helpers/recovery-source.js';
+import {recoveryTargetHash} from '../../scripts/recovery-target.js';
 
 it('encrypts a real complete database archive and restores it only into an isolated stopped container through the CLI',async()=>{
  await withRecoverySource(async ({root,image,keys,target,run,source})=>{
@@ -31,3 +32,27 @@ it('encrypts a real complete database archive and restores it only into an isola
  }
  });
 },90000);
+
+it('captures a named owner with synthetic data, refuses synthetic downgrade, and restores through explicit owner CLI mode',async()=>{
+ await withRecoverySource(async f=>{
+  const owner=f.users[0]!.id,peer=f.users[1]!.id;
+  const target={...f.target,purpose:'owner-pilot' as const,ownerUserId:owner,syntheticPeerUserIds:[peer]};
+  f.sql(`update auth.users set raw_app_meta_data=raw_app_meta_data || '{"vulpes_data_scope":"owner-pilot"}'::jsonb where id='${owner}';`);
+  let dumps=0;const source={snapshot:f.source.snapshot,dump:async()=>{dumps++;return f.source.dump();}};
+  await expect(captureDatabase(f.target,source,f.keys)).rejects.toThrow('Synthetic source');expect(dumps).toBe(0);
+  const before=await source.snapshot(),captured=await captureDatabase(target,source,f.keys);expect(dumps).toBe(1);expect(await source.snapshot()).toEqual(before);
+  expect(captured.report).toMatchObject({scope:'owner_pilot_database_capture',sourceWrites:0,traceKeyVersions:2});
+  const archive=join(f.root,'owner.vpb'),manifest=join(f.root,'owner.json');await writeFile(archive,captured.archive,{flag:'wx'});await writeFile(manifest,JSON.stringify({target,targetSHA256:recoveryTargetHash(target)}),{flag:'wx'});
+  const input={backupKeyB64:f.keys.backup.toString('base64'),keyId:f.keys.keyId,traces:{activeId:f.keys.traces.activeId,keys:Object.fromEntries([...f.keys.traces.keys].map(([id,key])=>[id,key.toString('base64')]))},authorization:{purpose:'owner-pilot-fenced-database-restore',targetSHA256:recoveryTargetHash(target),bindingSHA256:databaseRestoreBinding(captured.archive,f.image),expiresAt:new Date(Date.now()+3600000).toISOString(),approved:true}};
+  let destination:string|undefined;
+  try{
+   const cli=spawnSync(process.execPath,['node_modules/tsx/dist/cli.mjs','scripts/hosted-database-recovery.ts','--restore','--owner-pilot','--allow-fenced-restore','--manifest='+manifest,'--archive='+archive,'--image='+f.image],{cwd:projectRoot,env:localEnvironment(),input:JSON.stringify(input),encoding:'utf8',timeout:60000});
+   expect(cli.status).toBe(0);const report=JSON.parse(cli.stdout);destination=report.destination;
+   expect(report).toMatchObject({scope:'fenced_owner_pilot_database_restore',catalogAndRowsMatched:true,traceKeyVersions:2,network:'none',publishedPorts:0,restoreAccessAuthorized:false});
+   expect(cli.stdout+cli.stderr).not.toContain(input.backupKeyB64);expect(cli.stdout+cli.stderr).not.toContain(owner);
+   const fence=JSON.parse(f.run(['inspect','--format','{{json .HostConfig}}',destination!]).toString());expect(fence.NetworkMode).toBe('none');expect(Object.keys(fence.PortBindings??{})).toHaveLength(0);
+   expect(f.run(['inspect','--format','{{.State.Running}}',destination!]).toString().trim()).toBe('false');
+   expect(await source.snapshot()).toEqual(before);
+  }finally{if(destination){expect(destination).toMatch(/^vulpes-recovery-[a-f0-9]{32}$/);f.run(['rm','-v',destination]);}}
+ });
+},120000);

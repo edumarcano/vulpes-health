@@ -4,14 +4,14 @@ import {z} from 'zod';
 import {localEnvironment,isLocalDockerHost,assertLocalStack,projectId} from './local-database.js';
 import {recoveryReadCatalogSql,recoveryReadInventorySql,normalizeRecoveryConstraintsSql} from './recovery-inventory.js';
 import {maximumDumpBytes,type RecoverySource,type RecoveryDestination} from './recovery-database.js';
-import type {HostingTarget} from './hosting.js';
+import {syntheticRecoveryIdentitySql,type RecoveryConnectionTarget} from './recovery-target.js';
 import {recoveryReplayActions} from './recovery-replay.js';
 import {recoveryHttpServices} from './recovery-http-services.js';
 
 const maxMetadata=32*1024*1024;
 const client='supabase_db_vulpes-health-pr03-test';
 export const RecoveryConnectionSchema=z.strictObject({host:z.string().max(200),port:z.literal(5432),user:z.string().max(100),password:z.string().min(1).max(1024),caCertificatePem:z.string().min(100).max(65536).regex(/^-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----\s*$/)});
-export function connectionIdentity(target:HostingTarget,input:unknown){
+export function connectionIdentity(target:RecoveryConnectionTarget,input:unknown){
  const c=RecoveryConnectionSchema.parse(input),direct=c.host===`db.${target.supabaseProjectRef}.supabase.co`&&c.user==='postgres',pooler=new RegExp(`^aws-[0-9]+-${target.databaseRegion}\\.pooler\\.supabase\\.com$`).test(c.host)&&c.user===`postgres.${target.supabaseProjectRef}`;
  if(!direct&&!pooler)throw new Error('PostgreSQL source binding mismatch.');
  return {host:c.host,port:c.port,user:c.user,database:'postgres',sslmode:'verify-full',caCertificateSHA256:createHash('sha256').update(c.caCertificatePem).digest('hex')};
@@ -25,7 +25,9 @@ export function assertLocalRecoveryDocker(){
  if(typeof host!=='string'||!isLocalDockerHost(host))throw new Error('Local Docker required.');
 }
 const metadataSql=`select jsonb_build_object('serverMajor',current_setting('server_version_num')::integer/10000,
- 'nonsyntheticUsers',(select count(*) from auth.users where email is null or lower(email) not like '%@example.invalid'),
+ 'nonsyntheticUsers',(select count(*) from auth.users where not (${syntheticRecoveryIdentitySql})),
+ 'userScope',(select coalesce(jsonb_agg(jsonb_build_object('id',id,'synthetic',(${syntheticRecoveryIdentitySql})) order by id),'[]') from auth.users),
+ 'completedDeletionOwners',(select coalesce(jsonb_agg(user_id order by user_id),'[]') from public.account_deletion_receipts where phase='completed'),
  'extensions',(select coalesce(jsonb_agg(jsonb_build_array(n.nspname,e.extname,e.extversion) order by n.nspname,e.extname),'[]') from pg_extension e join pg_namespace n on n.oid=e.extnamespace),
  'traceKeyIds',(select coalesce(jsonb_agg(key_id order by key_id),'[]') from(select distinct key_id from public.private_payloads) k),
  'traceSamples',(select coalesce(jsonb_agg(to_jsonb(p) order by key_id),'[]') from(select distinct on(key_id) * from public.private_payloads order by key_id,id) p));`;
@@ -34,7 +36,7 @@ async function snapshot(sql:(statement:string)=>Promise<string>){
  return {...metadata,catalog,inventory,storageObjects:inventory['storage.objects']?.count??0};
 }
 const dumpArguments=['pg_dump','--no-password','--format=custom','--schema=public','--schema=auth','--schema=storage','--schema=supabase_migrations'];
-export function hostedRecoverySource(target:HostingTarget,connection:unknown,authorize:()=>void):RecoverySource{
+export function hostedRecoverySource(target:RecoveryConnectionTarget,connection:unknown,authorize:()=>void):RecoverySource{
  const c=RecoveryConnectionSchema.parse(connection);connectionIdentity(target,c);assertLocalRecoveryDocker();
  // No secret appears in argv or persistent container configuration. The public CA
  // is supplied on stdin and removed on every shell exit. libpq verifies host + CA.
