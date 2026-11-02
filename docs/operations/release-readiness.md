@@ -1,5 +1,7 @@
 # Release evidence and deployment handoff
 
+Accounting evidence correction: the historical `currentAccountingMatched` result did not establish freshness because the original XPath ignored row fingerprints. The corrected code and synthetic regressions address this defect; operational reliance still requires corrected reconciliation with a fresh independent journal. See [the correction and procedure](hosted-recovery.md#accounting-fingerprint-correction).
+
 The bounded personal-owner import/use/recovery handoff is complete; Vulpes is **not fully release ready**. [Step 4](../evidence/owner-pilot-step4.md) records normal hosted Luna and the Galaxy S23 conversation/installation/offline results. [Step 5](../evidence/owner-pilot-step5.md#owner-handoff-completed-2026-11-02) records all 52 P0 technical criteria with later evidence, explicit cleanup approval, exact private import/readback, isolation, encrypted recovery/Drive copy and owner-confirmed real Data/Ask use. Manual backup rotation and fresh recovery journals remain required. TalkBack is explicitly deferred for this personal pilot; broader full-release UI/formal acceptance and family handoff remain separate. The [generated report](../evidence/release/m6-local.json), [PR 17 evidence](../evidence/pr17-integrated-acceptance.md) and [M5/M6 remediation](../evidence/m56-review-remediation.md) preserve their historical candidates, limits and failures.
 
 ## Reproduce local evidence
