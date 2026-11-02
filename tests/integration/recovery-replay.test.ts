@@ -8,6 +8,7 @@ import {captureDatabase} from '../../scripts/recovery-database.js';
 import {databaseRecoveryCommand,databaseRecoveryBinding} from '../../scripts/hosted-database-recovery.js';
 import {captureRecoveryJournal,recoveryPathHash,recoveryJournalQuery,verifyRecoveryJournal} from '../../scripts/recovery-journal.js';
 import {targetHash} from '../../scripts/hosting.js';
+import {recoveryAccountingExpression} from '../../scripts/recovery-accounting.js';
 
 it('replays completed and unfinished post-backup deletions, revokes sessions and rechecks the source while access stays fenced',async()=>{
  await withRecoverySource(async f=>{
@@ -37,3 +38,19 @@ it('replays completed and unfinished post-backup deletions, revokes sessions and
   }finally{if(name){expect(name).toMatch(/^vulpes-recovery-[a-f0-9]{32}$/);f.run(['rm','-v',name]);}}
  },4);
 },180000);
+
+// Execute the production SQL: mocked hash differences cannot detect XML mapping bugs.
+it('fingerprints actual shared spending, reservations and route blocks and rejects incomplete inventory',async()=>{
+ await withRecoverySource(async f=>{
+  f.sql("insert into public.usage_buckets(scope,period_start,allocated_ceiling_usd) values('app',date_trunc('month',clock_timestamp())::date,1);");
+  const fingerprint=(change='')=>f.sql('begin;'+change+'select '+recoveryAccountingExpression+';rollback;');
+  const baseline=fingerprint();expect(baseline).toMatch(/^[a-f0-9]{64}$/);
+  for(const change of [
+   "update public.usage_buckets set spent_usd=0.01 where user_id is null;",
+   "update public.usage_buckets set reserved_usd=0.02 where user_id is null;",
+   "insert into public.ai_route_cost_blocks(provider,model_id) values('openrouter','synthetic-recovery-drift');",
+  ])expect(fingerprint(change)).not.toBe(baseline);
+  expect(fingerprint()).toBe(baseline);
+  expect(fingerprint('alter table public.vertex_policy_approval rename to synthetic_missing_policy;')).toBe('');
+ });
+},60000);
