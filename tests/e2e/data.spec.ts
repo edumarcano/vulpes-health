@@ -81,6 +81,11 @@ test('manual entry persists, calculates exact summary, reloads, and never calls 
   await entry(page, '69', '09', source);
   await entry(page, '68', '10', source);
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
+  const summary = page.getByRole('region', { name: 'Deterministic summary' });
+  await expect(summary).toContainText('Seven-day Mean');
+  await expect(summary).toContainText('Latest in selection: 68 kg');
+  await expect(summary).toContainText('Comparison unavailable');
+  await expect(summary).not.toContainText('Stable');
   await expect(page.getByRole('table')).toContainText('70 kg');
   await entry(page, '69', '09', source);
   await expect(
@@ -206,6 +211,7 @@ test('account switch clears measurements and draft fields', async ({
   await entry(page, '70', '08');
   await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page.getByLabel('Value', { exact: true }).fill('12345');
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
     .getByRole('navigation')
     .getByRole('link', { name: 'Settings', exact: true })

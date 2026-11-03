@@ -221,6 +221,7 @@ test('Ask goal proposal journey imports, reviews, approves, calculates progress 
 }, info) => {
   await signIn(page, 3);
   await page.goto('/data');
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic-m4.csv',
     mimeType: 'text/csv',

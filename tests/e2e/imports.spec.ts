@@ -29,10 +29,10 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(clear);
 async function choose(page: Page, buffer = canonical) {
-  const fileInput = page.getByLabel('CSV file', { exact: true });
-  if (!(await fileInput.isVisible())) {
+  const dialog = page.getByRole('dialog', { name: 'Import CSV', exact: true });
+  if (!(await dialog.isVisible()))
     await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
-  }
+  const fileInput = page.getByLabel('CSV file', { exact: true });
   await fileInput.setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -81,6 +81,9 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
     if (/\/api\/(chat|goals|approvals|executions)/.test(r.url()))
       calls.push(r.url());
   });
+  await expect(
+    page.getByRole('heading', { name: 'No measurements loaded', exact: true }),
+  ).toBeVisible();
   await choose(page);
   await page
     .getByLabel('CSV source label to include', { exact: true })
@@ -92,10 +95,17 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
   await expect(
     page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
   ).toContainText('28 new; 0 duplicates; 0 conflicts');
-  await expect(
-    page.getByRole('heading', { name: 'No measurements loaded', exact: true }),
-  ).toBeVisible();
+  const dbBeforeConfirm = new LocalSupabase();
+  expect(
+    await (
+      await dbBeforeConfirm.admin(
+        `/rest/v1/measurements?user_id=eq.${accounts[0]!.id}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toEqual([]);
   const source = await confirm(page);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
     .getByLabel('Method', { exact: true })
     .selectOption('device_reported');
@@ -202,6 +212,7 @@ test('second-60 CSV rows are excluded visibly and the valid boundary row commits
     fullPage: true,
   });
   const source = await confirm(page);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
     .getByLabel('Method', { exact: true })
     .selectOption('device_reported');
@@ -324,6 +335,7 @@ test('account switch discards the file and pending preview', async ({
     .getByLabel('CSV source label to include', { exact: true })
     .fill('Synthetic Scale A');
   await preview(page);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
     .getByRole('navigation')
     .getByRole('link', { name: 'Settings', exact: true })
@@ -387,6 +399,7 @@ test('canonical CSV imports preserve source warning text as inert data', async (
     .fill('Synthetic Scale A');
   await preview(page);
   await confirm(page);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
     .getByLabel('Method', { exact: true })
     .selectOption('device_reported');
@@ -444,6 +457,7 @@ for (const action of ['preview_csv', 'commit_import'])
         })
         .click();
       await started;
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
       await page
         .getByRole('navigation')
         .getByRole('link', { name: 'Settings', exact: true })

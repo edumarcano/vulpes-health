@@ -6,8 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { Plus, Upload, X } from 'lucide-react';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -66,6 +65,8 @@ export function DataPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const tableHeading = useRef<HTMLHeadingElement>(null);
+  const manualTrigger = useRef<HTMLButtonElement>(null);
+  const importTrigger = useRef<HTMLButtonElement>(null);
   function applyQuickRange(range: '7D' | '14D' | '30D' | '90D' | 'All') {
     const today = Temporal.Now.plainDateISO(timezone);
     let fromDate: Temporal.PlainDate;
@@ -256,8 +257,10 @@ export function DataPage() {
         </div>
         <div className="header-actions flex flex-wrap items-center gap-2">
           <Button
+            ref={importTrigger}
             variant="outline"
             onClick={() => {
+              importTrigger.current?.focus();
               setImportOpen(true);
               setManualOpen(false);
             }}
@@ -266,7 +269,9 @@ export function DataPage() {
             Import CSV
           </Button>
           <Button
+            ref={manualTrigger}
             onClick={() => {
+              manualTrigger.current?.focus();
               setManualOpen(true);
               setImportOpen(false);
             }}
@@ -340,7 +345,13 @@ export function DataPage() {
               >
                 <Card className="summary-card">
                   <span className="text-xs text-muted-foreground uppercase font-semibold">
-                    Latest Reading
+                    {data.analysis.statistic === 'daily_median_mean_7d'
+                      ? 'Seven-day Mean'
+                      : data.analysis.statistic === 'observed_samples'
+                        ? 'Observed Median'
+                        : data.analysis.statistic === 'daily_totals'
+                          ? 'Daily Totals'
+                          : 'Session Observations'}
                   </span>
                   {data.analysis.coverageStatus === 'insufficient_data' ? (
                     <span className="text-sm font-medium">
@@ -387,8 +398,12 @@ export function DataPage() {
                           <> ({number(data.analysis.relativeChangePercent)}%)</>
                         )}
                       </>
+                    ) : data.analysis.statistic !== 'daily_median_mean_7d' ? (
+                      'Not calculated for this measurement type'
+                    ) : data.analysis.previousWindow.validDays < 3 ? (
+                      'Comparison unavailable: insufficient prior data'
                     ) : (
-                      'Stable'
+                      'Comparison unavailable'
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -433,7 +448,7 @@ export function DataPage() {
                   </span>
                 </Card>
 
-                <div className="col-span-2 md:col-span-4 text-xs text-muted-foreground space-y-1">
+                <div className="col-span-full sm:col-span-2 md:col-span-4 text-xs text-muted-foreground space-y-1">
                   <h3>
                     {data.analysis.statistic === 'daily_median_mean_7d'
                       ? 'Seven-day mean of daily medians'
@@ -774,10 +789,14 @@ export function DataPage() {
       </div>
 
       {/* Modal Sheets for Manual Entry and CSV Import */}
-      <Sheet open={manualOpen} onOpenChange={setManualOpen} modal={false}>
+      <Sheet open={manualOpen} onOpenChange={setManualOpen}>
         <SheetContent
           side="right"
           className="w-full sm:max-w-lg overflow-y-auto"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            manualTrigger.current?.focus();
+          }}
         >
           <SheetHeader>
             <SheetTitle>Manual measurement</SheetTitle>
@@ -798,45 +817,31 @@ export function DataPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={importOpen} onOpenChange={setImportOpen} modal={false}>
-        <DialogPrimitive.Portal forceMount>
-          <DialogPrimitive.Content
-            forceMount
-            data-slot="sheet-content"
-            className={cn(
-              'fixed z-50 gap-4 bg-card p-6 shadow-xl transition ease-in-out data-[state=closed]:duration-200 data-[state=open]:duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out',
-              'inset-y-0 right-0 h-full w-full sm:max-w-md md:max-w-2xl border-l border-border overflow-y-auto data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
-              !importOpen && 'pointer-events-none opacity-0',
-            )}
-          >
-            <div
-              onChange={() => setImportOpen(true)}
-              onInput={() => setImportOpen(true)}
-            >
-              <SheetHeader>
-                <SheetTitle>Import CSV</SheetTitle>
-                <SheetDescription>
-                  Preview, map columns, and confirm batch records
-                </SheetDescription>
-              </SheetHeader>
-              <ImportForm
-                sources={allSources}
-                timezone={timezone}
-                dataRevision={sources.data?.pages[0]?.dataRevision ?? 0}
-                onSaved={(result) => {
-                  setSource(result.source_id);
-                  void client.invalidateQueries({ queryKey: root });
-                }}
-              />
-            </div>
-            {importOpen && (
-              <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1.5 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary disabled:pointer-events-none">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </DialogPrimitive.Close>
-            )}
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
+      <Sheet open={importOpen} onOpenChange={setImportOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md md:max-w-2xl overflow-y-auto"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            importTrigger.current?.focus();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>Import CSV</SheetTitle>
+            <SheetDescription>
+              Preview, map columns, and confirm batch records
+            </SheetDescription>
+          </SheetHeader>
+          <ImportForm
+            sources={allSources}
+            timezone={timezone}
+            dataRevision={sources.data?.pages[0]?.dataRevision ?? 0}
+            onSaved={(result) => {
+              setSource(result.source_id);
+              void client.invalidateQueries({ queryKey: root });
+            }}
+          />
+        </SheetContent>
       </Sheet>
     </>
   );

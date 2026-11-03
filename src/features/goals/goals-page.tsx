@@ -852,16 +852,17 @@ export function Progress({ value }: { value: unknown }) {
       {r?.kind === 'directional' ? (
         <>
           <p>
-            {r.rawPercent?.toLocaleString(undefined, {
-              maximumFractionDigits: 2,
-            })}
-            % progress
+            {r.rawPercent === undefined
+              ? 'Directional progress unavailable.'
+              : `${r.rawPercent.toLocaleString(undefined, { maximumFractionDigits: 2 })}% progress`}
           </p>
-          <progress
-            max={100}
-            value={r.displayPercent}
-            aria-label="Goal progress"
-          />
+          {r.displayPercent !== undefined && (
+            <progress
+              max={100}
+              value={r.displayPercent}
+              aria-label="Goal progress"
+            />
+          )}
           <p>
             The bar is limited to 0–100%; the calculation above preserves
             regression and overshoot.
@@ -916,7 +917,9 @@ function GoalListItem({
         ).data,
   });
   const policy = goal.source_policy as Record<string, unknown> | null;
-  const progressPercent = progress.data?.result?.displayPercent ?? 0;
+  const result = progress.data?.result;
+  const progressPercent =
+    result?.kind === 'directional' ? result.displayPercent : undefined;
   return (
     <Card className="goal-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -939,19 +942,35 @@ function GoalListItem({
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>Progress</span>
           <span className="font-semibold">
-            {progress.data?.result?.rawPercent !== undefined
-              ? `${progress.data.result.rawPercent.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
-              : progress.data?.kind === 'insufficient_data'
-                ? 'Insufficient data'
-                : 'Pending'}
+            {progress.isPending
+              ? 'Loading'
+              : progress.error
+                ? 'Unavailable'
+                : progress.data?.kind === 'insufficient_data'
+                  ? 'Insufficient data'
+                  : result?.kind === 'directional'
+                    ? result.rawPercent !== undefined
+                      ? `${result.rawPercent.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
+                      : 'Unavailable'
+                    : result?.kind === 'undefined'
+                      ? 'Undefined'
+                      : result?.kind === 'within_range'
+                        ? 'Within range'
+                        : result?.kind === 'below_range'
+                          ? 'Below range'
+                          : result?.kind === 'above_range'
+                            ? 'Above range'
+                            : 'Unavailable'}
           </span>
         </div>
-        <progress
-          className="goal-progress-bar"
-          max={100}
-          value={progressPercent}
-          aria-label={`${String(goal.title)} progress`}
-        />
+        {progressPercent !== undefined && (
+          <progress
+            className="goal-progress-bar"
+            max={100}
+            value={progressPercent}
+            aria-label={`${String(goal.title)} progress`}
+          />
+        )}
       </div>
       <span style={{ display: 'block' }}>
         {progress.isPending
@@ -959,7 +978,17 @@ function GoalListItem({
           : progress.error
             ? 'Current value unavailable.'
             : progress.data?.kind === 'progress'
-              ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Enough data for this method.`
+              ? result?.kind === 'directional'
+                ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Enough data for this method.`
+                : result?.kind === 'undefined'
+                  ? 'Progress is undefined because the target equals the baseline.'
+                  : result?.kind === 'within_range'
+                    ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Within the target range.`
+                    : result?.kind === 'below_range'
+                      ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Below the target range.`
+                      : result?.kind === 'above_range'
+                        ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Above the target range.`
+                        : 'Progress unavailable.'
               : progress.data?.kind === 'insufficient_data'
                 ? 'Insufficient data for progress.'
                 : 'Baseline review required.'}

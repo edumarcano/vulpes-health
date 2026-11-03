@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { ownedJson } from '@/lib/api';
+import { ApiError, ownedJson } from '@/lib/api';
 import { useAuth } from '@/lib/auth/auth-context';
 import { successEnvelopeSchema } from '../../../shared/api';
 import { measurementRegistry, type Source } from '../../../shared/data';
@@ -22,6 +22,7 @@ type Stage =
   | { kind: 'editing' }
   | { kind: 'previewing' }
   | { kind: 'review'; preview: ImportPreview; requestId: string }
+  | { kind: 'stale'; preview: ImportPreview; requestId: string }
   | { kind: 'committing'; preview: ImportPreview; requestId: string }
   | { kind: 'done'; result: ImportResult };
 type ColumnMapping = {
@@ -271,12 +272,18 @@ export function ImportForm({
       });
     } catch (e) {
       scope.commit(epoch, () => {
-        setStage(pending);
-        setError(
-          e instanceof Error
-            ? e.message
-            : 'Import failed. Retry to check its recorded outcome.',
-        );
+        const invalidated = e instanceof ApiError && e.status === 409;
+        if (invalidated) {
+          setStage({ ...pending, kind: 'stale' });
+          setError(e.message);
+        } else {
+          setStage(pending);
+          setError(
+            e instanceof Error
+              ? e.message
+              : 'Import failed. Retry to check its recorded outcome.',
+          );
+        }
       });
     }
   }
@@ -300,7 +307,9 @@ export function ImportForm({
   }
   const locked = stage.kind !== 'editing';
   const p =
-    stage.kind === 'review' || stage.kind === 'committing'
+    stage.kind === 'review' ||
+    stage.kind === 'committing' ||
+    stage.kind === 'stale'
       ? stage.preview
       : null;
   return (
@@ -612,16 +621,23 @@ export function ImportForm({
             rows remain excluded. A change to your data requires a fresh
             preview.
           </p>
-          {p.dataRevision !== dataRevision && (
+          {stage.kind === 'stale' ? (
+            <p role="alert">
+              {error ||
+                'This preview is no longer current. Discard it and create a fresh preview.'}
+            </p>
+          ) : p.dataRevision !== dataRevision ? (
             <p role="alert">
               Your data changed. Discard this preview and create a fresh one
               before importing.
             </p>
-          )}
+          ) : null}
           <Button
             ref={confirm}
             disabled={
-              stage.kind === 'committing' || p.dataRevision !== dataRevision
+              stage.kind === 'committing' ||
+              stage.kind === 'stale' ||
+              p.dataRevision !== dataRevision
             }
             onClick={() => void commit()}
           >
@@ -632,6 +648,7 @@ export function ImportForm({
             disabled={stage.kind === 'committing'}
             onClick={() => {
               setStage({ kind: 'editing' });
+              setError('');
               setFileName('');
             }}
           >
@@ -653,6 +670,7 @@ export function ImportForm({
           <Button
             onClick={() => {
               setStage({ kind: 'editing' });
+              setError('');
               setFileName('');
             }}
           >
@@ -660,7 +678,7 @@ export function ImportForm({
           </Button>
         </section>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && stage.kind !== 'stale' && <p role="alert">{error}</p>}
     </section>
   );
 }
