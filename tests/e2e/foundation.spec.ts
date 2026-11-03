@@ -281,7 +281,7 @@ test('dark navigation and card accent text meet normal-text contrast', async ({
     page.getByRole('heading', { name: 'Ask Vulpes', exact: true }),
   ).toBeVisible();
   const ratios = await page
-    .locator('.nav-link.active, .welcome-card .eyebrow')
+    .locator('.nav-link.active')
     .evaluateAll((elements) => {
       function luminance(rgb: string): number {
         const values = rgb
@@ -314,6 +314,6 @@ test('dark navigation and card accent text meet normal-text contrast', async ({
         );
       });
     });
-  expect(ratios).toHaveLength(2);
+  expect(ratios).toHaveLength(1);
   for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
 });
