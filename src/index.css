@@ -161,12 +161,6 @@ p {
   font-size: 0.75rem;
   font-weight: 550;
 }
-.nav-link span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
 .nav-link:hover {
   background: var(--muted);
 }
@@ -752,6 +746,13 @@ summary {
 }
 
 @media (max-width: 767px) {
+  .nav-link span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
   .main-content.main-ask {
     flex: 1;
     min-height: 0;
