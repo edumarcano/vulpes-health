@@ -18,6 +18,7 @@ export interface ConversationItem {
 export interface HistoryDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus: (event: Event) => void;
   items: ConversationItem[];
   currentId: string | null;
   onSelect: (id: string) => void;
@@ -36,6 +37,7 @@ export interface HistoryDrawerProps {
 export function HistoryDrawer({
   open,
   onOpenChange,
+  onCloseAutoFocus,
   items,
   currentId,
   onSelect,
@@ -56,6 +58,7 @@ export function HistoryDrawer({
         side="left"
         aria-label="Conversation history"
         className="w-full sm:max-w-md flex flex-col p-6 overflow-hidden bg-card border-r border-border"
+        onCloseAutoFocus={onCloseAutoFocus}
       >
         <SheetHeader className="mb-2">
           <SheetTitle>Conversation history</SheetTitle>

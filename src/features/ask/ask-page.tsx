@@ -492,6 +492,8 @@ function AskThread({
               const runId = messages.find(
                 (item) => item.id === message.id,
               )?.runId;
+              const runAccounting =
+                runId && latest?.run?.id === runId ? latest.run : null;
               return (
                 <MessagePrimitive.Root
                   className={`chat-message chat-${message.role}`}
@@ -517,13 +519,14 @@ function AskThread({
                     )}
                   {message.role === 'assistant' && runId && (
                     <div className="message-run-meta">
-                      {latest?.run && (
+                      {runAccounting && (
                         <p role="status" className="availability-note">
-                          Run {latest.run.state} · {latest.run.costStatus} ·{' '}
-                          {latest.run.costUSD === null
+                          Run {runAccounting.state} · {runAccounting.costStatus}{' '}
+                          ·{' '}
+                          {runAccounting.costUSD === null
                             ? 'Total cost unknown'
-                            : `$${latest.run.costUSD}`}{' '}
-                          · held ${latest.run.reservationUSD}
+                            : `$${runAccounting.costUSD}`}{' '}
+                          · held ${runAccounting.reservationUSD}
                         </p>
                       )}
                       <Button
@@ -653,6 +656,7 @@ export function AskPage() {
   const [params, setParams] = useSearchParams();
   const [archived, setArchived] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const historyTrigger = useRef<HTMLButtonElement | null>(null);
   const [notice, setNotice] = useState('');
   const root = ['conversations', session?.user.id, epoch];
   const list = useInfiniteQuery({
@@ -733,6 +737,7 @@ export function AskPage() {
         <Button
           variant="ghost"
           size="sm"
+          ref={historyTrigger}
           aria-label="Conversation history"
           onClick={() => setHistoryOpen(true)}
         >
@@ -765,6 +770,10 @@ export function AskPage() {
       <HistoryDrawer
         open={historyOpen}
         onOpenChange={setHistoryOpen}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          historyTrigger.current?.focus();
+        }}
         items={items}
         currentId={id}
         onSelect={(selectedId) => {

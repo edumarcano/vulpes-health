@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { summarizeModelUsage } from './summary';
 import { Card } from '@/components/ui/card';
 import {
   Sheet,
@@ -364,17 +365,7 @@ export default function Inspector({
   });
 
   const overview = query.data;
-  const totalInputTokens =
-    overview?.steps.reduce((acc, s) => acc + (s.usage.inputTokens ?? 0), 0) ??
-    0;
-  const totalOutputTokens =
-    overview?.steps.reduce((acc, s) => acc + (s.usage.outputTokens ?? 0), 0) ??
-    0;
-  const totalReasoningTokens =
-    overview?.steps.reduce(
-      (acc, s) => acc + (s.usage.reasoningTokens ?? 0),
-      0,
-    ) ?? 0;
+  const tokenUsage = summarizeModelUsage(overview?.steps ?? []);
   const toolSteps = overview?.steps.filter((s) => s.type === 'tool') ?? [];
   const toolNames = Array.from(
     new Set(toolSteps.map((s) => s.toolName).filter(Boolean)),
@@ -445,11 +436,11 @@ export default function Inspector({
                     Latency & Tokens
                   </span>
                   <div className="text-sm font-semibold truncate mt-1">
-                    {totalInputTokens + totalOutputTokens} tokens
+                    {tokenUsage.total} tokens
                   </div>
                   <div className="text-xs text-muted-foreground truncate mt-0.5">
-                    {totalInputTokens} in · {totalOutputTokens} out ·{' '}
-                    {totalReasoningTokens} reasoning
+                    {tokenUsage.input} in · {tokenUsage.output} out ·{' '}
+                    {tokenUsage.reasoning} reasoning
                   </div>
                 </Card>
 

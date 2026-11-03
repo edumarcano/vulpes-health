@@ -950,8 +950,59 @@ summary {
   max-width: 100%;
 }
 
+@media (max-width: 480px) {
+  .chat-canvas-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.25rem;
+    padding: 0.5rem;
+  }
+
+  .chat-canvas-header h1 {
+    min-width: 0;
+    font-size: 1rem;
+    line-height: 1.25;
+    letter-spacing: normal;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .chat-canvas-header [data-slot='button'] {
+    gap: 0.25rem;
+    padding-inline: 0.5rem;
+  }
+
+  .chat-canvas-header button[aria-label='New conversation'] span {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) and (max-height: 600px) {
+  .main-content.main-ask {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+
+  .ask-page .composer-area {
+    padding-block: 0.25rem;
+  }
+
+  .composer {
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .composer textarea {
+    min-height: max(44px, 2rem);
+    max-height: 18dvh;
+  }
+
+  .chat-status {
+    min-height: 0;
+    margin-bottom: 0;
+  }
+}
+
 /* ==========================================================================
    Phase 3: Data & Goals Content-First Dashboard Styles
    PR 3 appends metric selector pills, time range bars, chart layout, and goal cards below.
    ========================================================================== */
-
