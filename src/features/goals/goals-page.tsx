@@ -3,10 +3,18 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 import { useSearchParams } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
 import { ownedJson } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   GoalDefinitionSchema,
   GoalRevisionPayloadSchema,
@@ -56,6 +64,7 @@ function GoalsWorkspace({ token }: { token: string }) {
     return id.success ? id.data : null;
   });
   const [editing, setEditing] = useState<GoalDefinition | null>(null);
+  const [goalFormOpen, setGoalFormOpen] = useState(false);
   const load = (path: string) => ownedJson(path, token, scope, epoch);
   const list = useQuery({
     queryKey: [...root, 'list', goalCursor],
@@ -119,6 +128,7 @@ function GoalsWorkspace({ token }: { token: string }) {
         setHistoryCursor(null);
         void client.invalidateQueries({ queryKey: root });
       });
+      setGoalFormOpen(false);
     } catch (e) {
       scope.commit(epoch, () =>
         setNotice(
@@ -142,8 +152,22 @@ function GoalsWorkspace({ token }: { token: string }) {
     .safeParse(detail.data?.chart);
   return (
     <>
-      <header className="page-heading">
-        <h1 tabIndex={-1}>Goals</h1>
+      <header className="page-heading flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 tabIndex={-1}>Goals</h1>
+          <p className="text-sm text-muted-foreground">
+            Personal health targets and audited deterministic progress
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setGoalFormOpen(true);
+          }}
+        >
+          <Plus className="h-4 w-4 mr-1.5" />
+          + New Goal
+        </Button>
       </header>
       {notice && <p role="status">{notice}</p>}
       {[list.error, proposals.error, sources.error, detail.error]
@@ -153,31 +177,8 @@ function GoalsWorkspace({ token }: { token: string }) {
             {e?.message}
           </p>
         ))}
-      <GoalForm
-        key={editing ? JSON.stringify(editing) : 'new'}
-        initial={editing}
-        sources={sources.data?.items ?? []}
-        busy={busy}
-        submit={(definition) =>
-          mutate(
-            '/api/goals',
-            editing && g
-              ? {
-                  action: 'propose_revision',
-                  goal_id: g.id,
-                  expected_version: g.version,
-                  definition,
-                  baseline_resolution: 'replace',
-                  client_request_id: crypto.randomUUID(),
-                }
-              : {
-                  action: 'propose_create',
-                  definition,
-                  client_request_id: crypto.randomUUID(),
-                },
-          )
-        }
-      />
+
+      {/* Active Goals Section First */}
       <Card>
         <h2>Your goals</h2>
         {list.isPending ? (
@@ -189,13 +190,15 @@ function GoalsWorkspace({ token }: { token: string }) {
         ) : !list.data?.items.length ? (
           <p>No approved goals yet.</p>
         ) : (
-          list.data.items.map((goal) => (
-            <GoalListItem
-              key={String(goal.id)}
-              goal={goal}
-              open={() => setSelected(String(goal.id))}
-            />
-          ))
+          <div className="active-goals-grid">
+            {list.data.items.map((goal) => (
+              <GoalListItem
+                key={String(goal.id)}
+                goal={goal}
+                open={() => setSelected(String(goal.id))}
+              />
+            ))}
+          </div>
         )}
         {list.data?.nextCursor && (
           <Button
@@ -211,8 +214,10 @@ function GoalsWorkspace({ token }: { token: string }) {
           </Button>
         )}
       </Card>
+
+      {/* Focused Detail View */}
       {g && payload.success && (
-        <Card>
+        <Card className="goal-detail-card">
           <h2 ref={detailHeading} tabIndex={-1}>
             {String(g.title)}
           </h2>
@@ -222,51 +227,56 @@ function GoalsWorkspace({ token }: { token: string }) {
           </p>
           <Definition value={payload.data} />
           <Progress value={detail.data?.progress} />
-          <Button
-            disabled={busy || g.state === 'archived'}
-            onClick={() => setEditing(payload.data.definition)}
-          >
-            Edit goal
-          </Button>
-          {['active', 'paused', 'completed', 'archived'].map((next) => (
+          <div className="flex flex-wrap gap-2 my-2">
             <Button
-              key={next}
-              variant="outline"
-              disabled={
-                busy ||
-                !goalTransitions[String(g.state)]?.includes(next) ||
-                (next === 'active' && g.review_status !== 'clear')
-              }
-              onClick={() =>
-                void mutate('/api/goals', {
-                  action: 'propose_state',
-                  goal_id: g.id,
-                  expected_version: g.version,
-                  state: next,
-                  client_request_id: crypto.randomUUID(),
-                })
-              }
+              disabled={busy || g.state === 'archived'}
+              onClick={() => {
+                setEditing(payload.data.definition);
+                setGoalFormOpen(true);
+              }}
             >
-              Review {next}
+              Edit goal
             </Button>
-          ))}
-          {g.review_status === 'needs_review' && (
-            <Button
-              disabled={busy}
-              onClick={() =>
-                void mutate('/api/goals', {
-                  action: 'propose_revision',
-                  goal_id: g.id,
-                  expected_version: g.version,
-                  definition: payload.data.definition,
-                  baseline_resolution: 'retain',
-                  client_request_id: crypto.randomUUID(),
-                })
-              }
-            >
-              Review retaining historical baseline
-            </Button>
-          )}
+            {['active', 'paused', 'completed', 'archived'].map((next) => (
+              <Button
+                key={next}
+                variant="outline"
+                disabled={
+                  busy ||
+                  !goalTransitions[String(g.state)]?.includes(next) ||
+                  (next === 'active' && g.review_status !== 'clear')
+                }
+                onClick={() =>
+                  void mutate('/api/goals', {
+                    action: 'propose_state',
+                    goal_id: g.id,
+                    expected_version: g.version,
+                    state: next,
+                    client_request_id: crypto.randomUUID(),
+                  })
+                }
+              >
+                Review {next}
+              </Button>
+            ))}
+            {g.review_status === 'needs_review' && (
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  void mutate('/api/goals', {
+                    action: 'propose_revision',
+                    goal_id: g.id,
+                    expected_version: g.version,
+                    definition: payload.data.definition,
+                    baseline_resolution: 'retain',
+                    client_request_id: crypto.randomUUID(),
+                  })
+                }
+              >
+                Review retaining historical baseline
+              </Button>
+            )}
+          </div>
           {chart.success && (
             <>
               <DataChartView data={chart.data.summary} />
@@ -320,6 +330,8 @@ function GoalsWorkspace({ token }: { token: string }) {
           )}
         </Card>
       )}
+
+      {/* Proposals Section */}
       <Card>
         <h2>Proposals</h2>
         {proposals.isPending && <p role="status">Loading proposals…</p>}
@@ -362,6 +374,43 @@ function GoalsWorkspace({ token }: { token: string }) {
           </Button>
         )}
       </Card>
+
+      {/* Modal Sheet for Goal Form */}
+      <Sheet open={goalFormOpen} onOpenChange={setGoalFormOpen} modal={false}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit goal' : 'Create new goal'}</SheetTitle>
+            <SheetDescription>
+              Configure a personal target, baseline window, and strategy
+            </SheetDescription>
+          </SheetHeader>
+          <GoalForm
+            key={editing ? JSON.stringify(editing) : 'new'}
+            initial={editing}
+            sources={sources.data?.items ?? []}
+            busy={busy}
+            submit={(definition) =>
+              mutate(
+                '/api/goals',
+                editing && g
+                  ? {
+                      action: 'propose_revision',
+                      goal_id: g.id,
+                      expected_version: g.version,
+                      definition,
+                      baseline_resolution: 'replace',
+                      client_request_id: crypto.randomUUID(),
+                    }
+                  : {
+                      action: 'propose_create',
+                      definition,
+                      client_request_id: crypto.randomUUID(),
+                    },
+              )
+            }
+          />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
@@ -836,7 +885,18 @@ function GoalListItem({
     queryFn: async () =>
       z
         .object({
-          data: z.object({ kind: z.string(), current: z.string().optional() }),
+          data: z.object({
+            kind: z.string(),
+            current: z.string().optional(),
+            baseline: z.string().optional(),
+            result: z
+              .object({
+                kind: z.string(),
+                rawPercent: z.number().optional(),
+                displayPercent: z.number().optional(),
+              })
+              .optional(),
+          }),
         })
         .parse(
           await ownedJson(
@@ -848,11 +908,17 @@ function GoalListItem({
         ).data,
   });
   const policy = goal.source_policy as Record<string, unknown> | null;
+  const progressPercent = progress.data?.result?.displayPercent ?? 0;
   return (
-    <p>
-      <Button variant="outline" onClick={open}>
-        {String(goal.title)} · {String(goal.state)}
-      </Button>
+    <Card className="goal-card">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="outline" onClick={open}>
+          {String(goal.title)} · {String(goal.state)}
+        </Button>
+        <span className="text-xs uppercase font-semibold text-muted-foreground">
+          {String(goal.state)}
+        </span>
+      </div>
       <span style={{ display: 'block' }}>
         Target:{' '}
         {goal.direction === 'maintain_range'
@@ -861,6 +927,24 @@ function GoalListItem({
         {String(goal.canonical_unit)} · Current method:{' '}
         {String(policy?.currentMethod ?? 'historical').replaceAll('_', ' ')}
       </span>
+      <div className="space-y-1 my-2">
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Progress</span>
+          <span className="font-semibold">
+            {progress.data?.result?.rawPercent !== undefined
+              ? `${progress.data.result.rawPercent.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
+              : progress.data?.kind === 'insufficient_data'
+                ? 'Insufficient data'
+                : 'Pending'}
+          </span>
+        </div>
+        <progress
+          className="goal-progress-bar"
+          max={100}
+          value={progressPercent}
+          aria-label={`${String(goal.title)} progress`}
+        />
+      </div>
       <span style={{ display: 'block' }}>
         {progress.isPending
           ? 'Loading current value…'
@@ -872,6 +956,6 @@ function GoalListItem({
                 ? 'Insufficient data for progress.'
                 : 'Baseline review required.'}
       </span>
-    </p>
+    </Card>
   );
 }

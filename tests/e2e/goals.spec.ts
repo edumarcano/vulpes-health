@@ -108,7 +108,7 @@ test('direct Goals latest daily progress includes today without inference', asyn
       ),
     ).toBe(true);
     await expect(
-      page.getByRole('progressbar', { name: 'Goal progress', exact: true }),
+      progress.getByRole('progressbar', { name: 'Goal progress', exact: true }),
     ).toHaveAttribute('value', /66[.]6/);
     await expect(
       page.getByRole('img', { name: /Selected daily totals/ }),
@@ -149,6 +149,9 @@ test('direct Goals review and approval persist without inference', async ({
       if (r.url().includes('/api/chat')) calls.push(r.url());
     });
     await page.goto('/goals');
+    await page
+      .getByRole('button', { name: '+ New Goal', exact: true })
+      .click();
     await page
       .getByLabel('Metric', { exact: true })
       .selectOption('body_fat_percent');
