@@ -191,9 +191,198 @@ summary { min-height: 44px; padding-block: 0.75rem; cursor: pointer; }
    PR 2 appends full-height canvas, docked composer, history drawer, and inspector styles below.
    ========================================================================== */
 
+/* Full-Height Chat Canvas */
+.app-shell:has(.main-ask),
+.app-shell-ask {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 767px) {
+  .main-content.main-ask {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+    overflow: hidden;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell:has(.main-ask) {
+    padding-left: 200px;
+    height: 100dvh;
+  }
+  .main-content.main-ask {
+    height: 100dvh;
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+
+.ask-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: 824px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.ask-page .conversation {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: auto;
+}
+
+.ask-page .conversation-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.25rem;
+}
+
+/* Chat Canvas Header */
+.chat-canvas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+/* Pinned Bottom Composer */
+.composer-area {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--background);
+  border-top: 1px solid var(--border);
+}
+
+.composer textarea {
+  field-sizing: content;
+  min-height: 2.75rem;
+  max-height: 10rem;
+  color: var(--foreground);
+}
+
+/* Thread-Context Run Ledger */
+.message-run-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* History Drawer */
+.history-drawer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding-block: 0.5rem;
+}
+
+/* Execution Inspector Drawer & Timeline */
+.inspection-dialog,
+[data-slot="sheet-content"] {
+  overflow-x: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.inspector-overview {
+  margin-bottom: 1.5rem;
+}
+
+.inspector-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.metric-card {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.inspection-step {
+  position: relative;
+  padding-left: 1.5rem;
+  border-left: 2px solid var(--border);
+  margin-bottom: 1.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.step-milestone {
+  position: absolute;
+  left: -0.5625rem;
+  top: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  border: 2px solid var(--primary);
+  background: var(--background);
+}
+
+.step-payload-container {
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  background: var(--muted);
+  opacity: 0.95;
+  margin-top: 0.5rem;
+}
+
+.step-payload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.inspection-raw {
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
 
 /* ==========================================================================
    Phase 3: Data & Goals Content-First Dashboard Styles
    PR 3 appends metric selector pills, time range bars, chart layout, and goal cards below.
    ========================================================================== */
+
+
 

@@ -524,6 +524,9 @@ test('Ask has no depth selector; history archive and confirmed deletion use the 
     0,
   );
   await page
+    .getByRole('button', { name: 'Conversation history', exact: true })
+    .click();
+  await page
     .getByRole('button', { name: 'Archive conversation', exact: true })
     .click();
   await page.getByLabel('Archived', { exact: true }).check();

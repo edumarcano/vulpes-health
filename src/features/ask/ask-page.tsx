@@ -14,10 +14,11 @@ import {
   type AppendMessage,
 } from '@assistant-ui/react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, LockKeyhole, Sparkles } from 'lucide-react';
+import { ArrowRight, History, LockKeyhole, Plus, Sparkles } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { HistoryDrawer } from '../executions/history-drawer';
 import { useAuth } from '@/lib/auth/auth-context';
 import { ownedJson } from '@/lib/api';
 import {
@@ -515,20 +516,35 @@ function AskThread({
                       <p className="incomplete-badge">Incomplete response</p>
                     )}
                   {message.role === 'assistant' && runId && (
-                    <Button
-                      variant="outline"
-                      onClick={(event) => {
-                        inspectionTrigger.current = event.currentTarget;
-                        setInspection(runId);
-                      }}
-                    >
-                      Inspect execution
-                    </Button>
+                    <div className="message-run-meta">
+                      {latest?.run && (
+                        <p role="status" className="availability-note">
+                          Run {latest.run.state} · {latest.run.costStatus} ·{' '}
+                          {latest.run.costUSD === null
+                            ? 'Total cost unknown'
+                            : `$${latest.run.costUSD}`}{' '}
+                          · held ${latest.run.reservationUSD}
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        onClick={(event) => {
+                          inspectionTrigger.current = event.currentTarget;
+                          setInspection(runId);
+                        }}
+                      >
+                        Inspect execution
+                      </Button>
+                    </div>
                   )}
                 </MessagePrimitive.Root>
               );
             }}
           </ThreadPrimitive.Messages>
+          <p className="wellness-note text-center text-xs text-muted-foreground my-2">
+            Personal wellness information. Not medical diagnosis or emergency
+            monitoring.
+          </p>
         </ThreadPrimitive.Viewport>
         <div className="composer-area">
           <p role="status" aria-live="polite" className="chat-status">
@@ -605,19 +621,6 @@ function AskThread({
               Reload conversation
             </Button>
           )}
-          {latest?.run && (
-            <p role="status" className="availability-note">
-              Run {latest.run.state} · {latest.run.costStatus} ·{' '}
-              {latest.run.costUSD === null
-                ? 'Total cost unknown'
-                : `$${latest.run.costUSD}`}{' '}
-              · held ${latest.run.reservationUSD}
-            </p>
-          )}
-          <p className="wellness-note">
-            Personal wellness information. Not medical diagnosis or emergency
-            monitoring.
-          </p>
         </div>
       </ThreadPrimitive.Root>
       {inspection && (
@@ -649,6 +652,7 @@ export function AskPage() {
   const client = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [archived, setArchived] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const root = ['conversations', session?.user.id, epoch];
   const list = useInfiniteQuery({
@@ -725,90 +729,63 @@ export function AskPage() {
   });
   return (
     <div className="ask-page">
-      <header className="page-heading">
-        <h1 tabIndex={-1}>Ask Vulpes</h1>
-      </header>
-      <section
-        className="conversation-controls"
-        aria-label="Conversation history"
-      >
+      <header className="chat-canvas-header">
         <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Conversation history"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="h-4 w-4" />
+          <span className="hidden sm:inline">History</span>
+        </Button>
+        <h1 tabIndex={-1} className="text-base font-semibold">
+          Ask Vulpes
+        </h1>
+        <Button
+          size="sm"
+          aria-label="New conversation"
           onClick={() => mutation.mutate('create')}
           disabled={mutation.isPending}
         >
-          New conversation
+          <Plus className="h-4 w-4" />
+          <span>New conversation</span>
         </Button>
-        <label>
-          Conversation
-          <select
-            aria-label="Conversation"
-            value={id ?? ''}
-            onChange={(e) => setParams({ conversation: e.target.value })}
-          >
-            <option value="" disabled>
-              Choose a conversation
-            </option>
-            {items.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={archived}
-            onChange={(e) => {
-              setArchived(e.target.checked);
-              setParams({});
-            }}
-          />
-          Archived
-        </label>
-        {list.hasNextPage && (
-          <Button
-            variant="outline"
-            onClick={() => void list.fetchNextPage()}
-            disabled={list.isFetchingNextPage}
-          >
-            Load more conversations
-          </Button>
-        )}
-        {id && (
-          <>
-            <Button
-              variant="outline"
-              onClick={() => mutation.mutate('archive')}
-              disabled={mutation.isPending || archived}
-            >
-              Archive conversation
-            </Button>
-            <details>
-              <summary>Delete conversation</summary>
-              <p>
-                Delete this conversation, its messages, and private traces?
-                Accounting records may remain.
-              </p>
-              <Button
-                onClick={() => mutation.mutate('delete')}
-                disabled={mutation.isPending}
-              >
-                Confirm delete conversation
-              </Button>
-            </details>
-          </>
-        )}
-        {list.isError && (
-          <>
-            <p role="alert">Conversations could not be loaded.</p>
-            <Button variant="outline" onClick={() => void list.refetch()}>
-              Reload history
-            </Button>
-          </>
-        )}
-        <p role="status">{notice}</p>
-      </section>
+      </header>
+
+      {notice && (
+        <p
+          role="status"
+          className="chat-status text-xs text-muted-foreground px-4 py-1.5 border-b border-border bg-muted/30"
+        >
+          {notice}
+        </p>
+      )}
+
+      <HistoryDrawer
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        items={items}
+        currentId={id}
+        onSelect={(selectedId) => {
+          setParams({ conversation: selectedId });
+          setHistoryOpen(false);
+        }}
+        archived={archived}
+        onArchivedChange={(val) => {
+          setArchived(val);
+          setParams({});
+        }}
+        onArchive={() => mutation.mutate('archive')}
+        onDelete={() => mutation.mutate('delete')}
+        isPending={mutation.isPending}
+        hasNextPage={list.hasNextPage}
+        onFetchNextPage={() => void list.fetchNextPage()}
+        isFetchingNextPage={list.isFetchingNextPage}
+        isError={list.isError}
+        onRefetch={() => void list.refetch()}
+      />
+
       <AskThread
         key={`${id ?? 'empty'}:${epoch}`}
         id={id}
