@@ -755,7 +755,7 @@ summary {
     margin: 0;
     max-width: 100%;
     overflow: hidden;
-    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -946,4 +946,3 @@ summary {
    Phase 3: Data & Goals Content-First Dashboard Styles
    PR 3 appends metric selector pills, time range bars, chart layout, and goal cards below.
    ========================================================================== */
-

@@ -80,7 +80,7 @@ export function App() {
   }, [pathname]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${pathname === '/ask' ? ' app-shell-ask' : ''}`}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
