@@ -271,8 +271,7 @@ export function DataPage() {
               setImportOpen(false);
             }}
           >
-            <Plus className="h-4 w-4 mr-1.5" />
-            + Log Reading
+            <Plus className="h-4 w-4 mr-1.5" />+ Log Reading
           </Button>
         </div>
       </header>
@@ -283,7 +282,10 @@ export function DataPage() {
           <button
             key={key}
             type="button"
-            className={cn('metric-pill', metric === key && 'metric-pill-active')}
+            className={cn(
+              'metric-pill',
+              metric === key && 'metric-pill-active',
+            )}
             onClick={() => {
               const next = key as MetricKey;
               setMetric(next);
@@ -411,8 +413,8 @@ export function DataPage() {
                   </span>
                   {data.analysis.statistics && (
                     <span className="text-xs text-muted-foreground">
-                      Observed median {number(data.analysis.statistics.median)} bpm
-                      (range {number(data.analysis.statistics.min)}–
+                      Observed median {number(data.analysis.statistics.median)}{' '}
+                      bpm (range {number(data.analysis.statistics.min)}–
                       {number(data.analysis.statistics.max)} bpm).
                     </span>
                   )}
@@ -445,10 +447,7 @@ export function DataPage() {
                   )}
                   <p>
                     Source:{' '}
-                    {
-                      allSources.find((item) => item.id === chosenSource)
-                        ?.label
-                    }{' '}
+                    {allSources.find((item) => item.id === chosenSource)?.label}{' '}
                     · {method} · {granularity}
                   </p>
                   <p>
@@ -775,7 +774,10 @@ export function DataPage() {
 
       {/* Modal Sheets for Manual Entry and CSV Import */}
       <Sheet open={manualOpen} onOpenChange={setManualOpen} modal={false}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg overflow-y-auto"
+        >
           <SheetHeader>
             <SheetTitle>Manual measurement</SheetTitle>
             <SheetDescription>

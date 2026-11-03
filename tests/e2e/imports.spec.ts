@@ -31,12 +31,13 @@ test.afterEach(clear);
 async function choose(page: Page, buffer = canonical) {
   const fileInput = page.getByLabel('CSV file', { exact: true });
   if (!(await fileInput.isVisible())) {
-    await page
-      .getByRole('button', { name: 'Import CSV', exact: true })
-      .click();
+    await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   }
-  await fileInput
-    .setInputFiles({ name: 'synthetic.csv', mimeType: 'text/csv', buffer });
+  await fileInput.setInputFiles({
+    name: 'synthetic.csv',
+    mimeType: 'text/csv',
+    buffer,
+  });
   await expect(
     page.getByText('Selected: synthetic.csv', { exact: true }),
   ).toBeVisible();
@@ -108,9 +109,7 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
   await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
   await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
-  await page
-    .getByRole('button', { name: 'Import CSV', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -332,9 +331,7 @@ test('account switch discards the file and pending preview', async ({
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await signIn(page, 1);
   await page.goto('/data');
-  await page
-    .getByRole('button', { name: 'Import CSV', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
   ).toHaveCount(0);

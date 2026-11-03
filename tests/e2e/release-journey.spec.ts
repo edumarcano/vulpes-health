@@ -25,9 +25,7 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await page.goto('/data');
-  await page
-    .getByRole('button', { name: 'Import CSV', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic-release.csv',
     mimeType: 'text/csv',

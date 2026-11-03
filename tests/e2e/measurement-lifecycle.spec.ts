@@ -79,9 +79,7 @@ async function seed(
 async function importFixture(page: Page) {
   const fileInput = page.getByLabel('CSV file', { exact: true });
   if (!(await fileInput.isVisible())) {
-    await page
-      .getByRole('button', { name: 'Import CSV', exact: true })
-      .click();
+    await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   }
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',
@@ -240,9 +238,7 @@ test('correction invalidates an open CSV preview in the rendered screen', async 
   await seed(page);
   const fileInput = page.getByLabel('CSV file', { exact: true });
   if (!(await fileInput.isVisible())) {
-    await page
-      .getByRole('button', { name: 'Import CSV', exact: true })
-      .click();
+    await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   }
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',

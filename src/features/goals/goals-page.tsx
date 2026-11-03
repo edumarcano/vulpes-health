@@ -165,8 +165,7 @@ function GoalsWorkspace({ token }: { token: string }) {
             setGoalFormOpen(true);
           }}
         >
-          <Plus className="h-4 w-4 mr-1.5" />
-          + New Goal
+          <Plus className="h-4 w-4 mr-1.5" />+ New Goal
         </Button>
       </header>
       {notice && <p role="status">{notice}</p>}
@@ -377,7 +376,10 @@ function GoalsWorkspace({ token }: { token: string }) {
 
       {/* Modal Sheet for Goal Form */}
       <Sheet open={goalFormOpen} onOpenChange={setGoalFormOpen} modal={false}>
-        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-xl overflow-y-auto"
+        >
           <SheetHeader>
             <SheetTitle>{editing ? 'Edit goal' : 'Create new goal'}</SheetTitle>
             <SheetDescription>
