@@ -393,7 +393,7 @@ export default function Inspector({
       <SheetContent
         side="right"
         aria-label="Execution inspector"
-        className="w-full sm:max-w-2xl md:max-w-3xl overflow-y-auto overflow-x-hidden p-6"
+        className="w-full sm:max-w-2xl md:max-w-3xl overflow-y-auto overflow-x-hidden p-4 sm:p-6"
         onCloseAutoFocus={(e) => {
           e.preventDefault();
           onClose();

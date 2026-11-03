@@ -756,7 +756,7 @@ export function AskPage() {
       {notice && (
         <p
           role="status"
-          className="chat-status text-xs text-muted-foreground px-4 py-1.5 border-b border-border bg-muted/30"
+          className="chat-status absolute top-12 left-0 right-0 z-10 text-xs text-muted-foreground px-4 py-1.5 border-b border-border bg-card/95 backdrop-blur-xs text-center"
         >
           {notice}
         </p>
