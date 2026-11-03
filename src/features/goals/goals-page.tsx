@@ -165,7 +165,8 @@ function GoalsWorkspace({ token }: { token: string }) {
             setGoalFormOpen(true);
           }}
         >
-          <Plus className="h-4 w-4 mr-1.5" />+ New Goal
+          <Plus className="h-4 w-4 mr-1.5" />
+          New Goal
         </Button>
       </header>
       {notice && <p role="status">{notice}</p>}
@@ -177,202 +178,207 @@ function GoalsWorkspace({ token }: { token: string }) {
           </p>
         ))}
 
-      {/* Active Goals Section First */}
-      <Card>
-        <h2>Your goals</h2>
-        {list.isPending ? (
-          <p role="status">Loading goals…</p>
-        ) : list.isError ? (
-          <Button variant="outline" onClick={() => void list.refetch()}>
-            Retry goals
-          </Button>
-        ) : !list.data?.items.length ? (
-          <p>No approved goals yet.</p>
-        ) : (
-          <div className="active-goals-grid">
-            {list.data.items.map((goal) => (
-              <GoalListItem
-                key={String(goal.id)}
-                goal={goal}
-                open={() => setSelected(String(goal.id))}
-              />
-            ))}
-          </div>
-        )}
-        {list.data?.nextCursor && (
-          <Button
-            variant="outline"
-            onClick={() => setGoalCursor(list.data!.nextCursor)}
-          >
-            Next goals
-          </Button>
-        )}
-        {goalCursor && (
-          <Button variant="outline" onClick={() => setGoalCursor(null)}>
-            First goals page
-          </Button>
-        )}
-      </Card>
-
-      {/* Focused Detail View */}
-      {g && payload.success && (
-        <Card className="goal-detail-card">
-          <h2 ref={detailHeading} tabIndex={-1}>
-            {String(g.title)}
-          </h2>
-          <p>
-            State: {String(g.state)} · Review: {String(g.review_status)} ·
-            Version: {String(g.version)}
-          </p>
-          <Definition value={payload.data} />
-          <Progress value={detail.data?.progress} />
-          <div className="flex flex-wrap gap-2 my-2">
-            <Button
-              disabled={busy || g.state === 'archived'}
-              onClick={() => {
-                setEditing(payload.data.definition);
-                setGoalFormOpen(true);
-              }}
-            >
-              Edit goal
+      <div className="goals-stack">
+        {/* Active Goals Section First */}
+        <Card>
+          <h2>Your goals</h2>
+          {list.isPending ? (
+            <p role="status">Loading goals…</p>
+          ) : list.isError ? (
+            <Button variant="outline" onClick={() => void list.refetch()}>
+              Retry goals
             </Button>
-            {['active', 'paused', 'completed', 'archived'].map((next) => (
-              <Button
-                key={next}
-                variant="outline"
-                disabled={
-                  busy ||
-                  !goalTransitions[String(g.state)]?.includes(next) ||
-                  (next === 'active' && g.review_status !== 'clear')
-                }
-                onClick={() =>
-                  void mutate('/api/goals', {
-                    action: 'propose_state',
-                    goal_id: g.id,
-                    expected_version: g.version,
-                    state: next,
-                    client_request_id: crypto.randomUUID(),
-                  })
-                }
-              >
-                Review {next}
-              </Button>
-            ))}
-            {g.review_status === 'needs_review' && (
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  void mutate('/api/goals', {
-                    action: 'propose_revision',
-                    goal_id: g.id,
-                    expected_version: g.version,
-                    definition: payload.data.definition,
-                    baseline_resolution: 'retain',
-                    client_request_id: crypto.randomUUID(),
-                  })
-                }
-              >
-                Review retaining historical baseline
-              </Button>
-            )}
-          </div>
-          {chart.success && (
-            <>
-              <DataChartView data={chart.data.summary} />
-              <div
-                className="data-table-scroll"
-                role="region"
-                aria-label="Goal observations"
-                tabIndex={0}
-              >
-                <table>
-                  <caption>Observations in the last 30 local days</caption>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chart.data.observations.items.map((x) => (
-                      <tr key={x.id}>
-                        <td>{x.observedAt}</td>
-                        <td>
-                          {x.value} {x.unit}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {chart.data.observations.nextCursor && (
-                <p>
-                  Showing the first 200 observations. Open Data for the complete
-                  series.
-                </p>
-              )}
-            </>
+          ) : !list.data?.items.length ? (
+            <p>No approved goals yet.</p>
+          ) : (
+            <div className="active-goals-grid">
+              {list.data.items.map((goal) => (
+                <GoalListItem
+                  key={String(goal.id)}
+                  goal={goal}
+                  open={() => setSelected(String(goal.id))}
+                />
+              ))}
+            </div>
           )}
-          <h3>Revision history</h3>
-          {history.data?.items.map((r) => (
-            <p key={String(r.id)}>
-              Revision {String(r.revision_number)} · {String(r.approved_at)}
-            </p>
-          ))}
-          {history.data?.nextCursor && (
+          {list.data?.nextCursor && (
             <Button
               variant="outline"
-              onClick={() => setHistoryCursor(history.data!.nextCursor)}
+              onClick={() => setGoalCursor(list.data!.nextCursor)}
             >
-              Next revisions
+              Next goals
+            </Button>
+          )}
+          {goalCursor && (
+            <Button variant="outline" onClick={() => setGoalCursor(null)}>
+              First goals page
             </Button>
           )}
         </Card>
-      )}
 
-      {/* Proposals Section */}
-      <Card>
-        <h2>Proposals</h2>
-        {proposals.isPending && <p role="status">Loading proposals…</p>}
-        {proposals.isError && (
-          <div role="alert">
-            <p>Proposals could not be loaded.</p>
-            <Button variant="outline" onClick={() => void proposals.refetch()}>
-              Retry proposals
+        {/* Focused Detail View */}
+        {g && payload.success && (
+          <Card className="goal-detail-card">
+            <h2 ref={detailHeading} tabIndex={-1}>
+              {String(g.title)}
+            </h2>
+            <p>
+              State: {String(g.state)} · Review: {String(g.review_status)} ·
+              Version: {String(g.version)}
+            </p>
+            <Definition value={payload.data} />
+            <Progress value={detail.data?.progress} />
+            <div className="flex flex-wrap gap-2 my-2">
+              <Button
+                disabled={busy || g.state === 'archived'}
+                onClick={() => {
+                  setEditing(payload.data.definition);
+                  setGoalFormOpen(true);
+                }}
+              >
+                Edit goal
+              </Button>
+              {['active', 'paused', 'completed', 'archived'].map((next) => (
+                <Button
+                  key={next}
+                  variant="outline"
+                  disabled={
+                    busy ||
+                    !goalTransitions[String(g.state)]?.includes(next) ||
+                    (next === 'active' && g.review_status !== 'clear')
+                  }
+                  onClick={() =>
+                    void mutate('/api/goals', {
+                      action: 'propose_state',
+                      goal_id: g.id,
+                      expected_version: g.version,
+                      state: next,
+                      client_request_id: crypto.randomUUID(),
+                    })
+                  }
+                >
+                  Review {next}
+                </Button>
+              ))}
+              {g.review_status === 'needs_review' && (
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    void mutate('/api/goals', {
+                      action: 'propose_revision',
+                      goal_id: g.id,
+                      expected_version: g.version,
+                      definition: payload.data.definition,
+                      baseline_resolution: 'retain',
+                      client_request_id: crypto.randomUUID(),
+                    })
+                  }
+                >
+                  Review retaining historical baseline
+                </Button>
+              )}
+            </div>
+            {chart.success && (
+              <>
+                <DataChartView data={chart.data.summary} />
+                <div
+                  className="data-table-scroll"
+                  role="region"
+                  aria-label="Goal observations"
+                  tabIndex={0}
+                >
+                  <table>
+                    <caption>Observations in the last 30 local days</caption>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chart.data.observations.items.map((x) => (
+                        <tr key={x.id}>
+                          <td>{x.observedAt}</td>
+                          <td>
+                            {x.value} {x.unit}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {chart.data.observations.nextCursor && (
+                  <p>
+                    Showing the first 200 observations. Open Data for the
+                    complete series.
+                  </p>
+                )}
+              </>
+            )}
+            <h3>Revision history</h3>
+            {history.data?.items.map((r) => (
+              <p key={String(r.id)}>
+                Revision {String(r.revision_number)} · {String(r.approved_at)}
+              </p>
+            ))}
+            {history.data?.nextCursor && (
+              <Button
+                variant="outline"
+                onClick={() => setHistoryCursor(history.data!.nextCursor)}
+              >
+                Next revisions
+              </Button>
+            )}
+          </Card>
+        )}
+
+        {/* Proposals Section */}
+        <Card>
+          <h2>Proposals</h2>
+          {proposals.isPending && <p role="status">Loading proposals…</p>}
+          {proposals.isError && (
+            <div role="alert">
+              <p>Proposals could not be loaded.</p>
+              <Button
+                variant="outline"
+                onClick={() => void proposals.refetch()}
+              >
+                Retry proposals
+              </Button>
+            </div>
+          )}
+          {proposals.data?.items.length === 0 && <p>No proposals to review.</p>}
+          {proposals.data?.items.map((p) => (
+            <GoalProposalReview
+              key={String(p.id)}
+              proposal={p}
+              busy={busy}
+              decide={(action) =>
+                mutate('/api/approvals', {
+                  action,
+                  proposal_id: p.id,
+                  payload_hash: p.payload_hash,
+                  expected_version: p.target_version,
+                  client_request_id: crypto.randomUUID(),
+                })
+              }
+            />
+          ))}
+          {proposals.data?.nextCursor && (
+            <Button
+              variant="outline"
+              onClick={() => setProposalCursor(proposals.data!.nextCursor)}
+            >
+              Next proposals
             </Button>
-          </div>
-        )}
-        {proposals.data?.items.length === 0 && <p>No proposals to review.</p>}
-        {proposals.data?.items.map((p) => (
-          <GoalProposalReview
-            key={String(p.id)}
-            proposal={p}
-            busy={busy}
-            decide={(action) =>
-              mutate('/api/approvals', {
-                action,
-                proposal_id: p.id,
-                payload_hash: p.payload_hash,
-                expected_version: p.target_version,
-                client_request_id: crypto.randomUUID(),
-              })
-            }
-          />
-        ))}
-        {proposals.data?.nextCursor && (
-          <Button
-            variant="outline"
-            onClick={() => setProposalCursor(proposals.data!.nextCursor)}
-          >
-            Next proposals
-          </Button>
-        )}
-        {proposalCursor && (
-          <Button variant="outline" onClick={() => setProposalCursor(null)}>
-            First proposals page
-          </Button>
-        )}
-      </Card>
+          )}
+          {proposalCursor && (
+            <Button variant="outline" onClick={() => setProposalCursor(null)}>
+              First proposals page
+            </Button>
+          )}
+        </Card>
+      </div>
 
       {/* Modal Sheet for Goal Form */}
       <Sheet open={goalFormOpen} onOpenChange={setGoalFormOpen} modal={false}>

@@ -271,7 +271,8 @@ export function DataPage() {
               setImportOpen(false);
             }}
           >
-            <Plus className="h-4 w-4 mr-1.5" />+ Log Reading
+            <Plus className="h-4 w-4 mr-1.5" />
+            Log Reading
           </Button>
         </div>
       </header>

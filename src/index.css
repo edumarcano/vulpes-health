@@ -735,7 +735,6 @@ summary {
    PR 2 appends full-height canvas, docked composer, history drawer, and inspector styles below.
    ========================================================================== */
 
-
 /* ==========================================================================
    Phase 3: Data & Goals Content-First Dashboard Styles
    PR 3 appends metric selector pills, time range bars, chart layout, and goal cards below.
@@ -899,8 +898,18 @@ summary {
   background-color: var(--primary);
   border-radius: 9999px;
 }
+.goals-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  min-width: 0;
+}
+.goals-stack > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .goal-detail-card {
-  margin-block: 1.5rem;
+  margin-block: 0;
   padding: 1.25rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border);
