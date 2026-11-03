@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.build/
+.scratch/
+.cache/
+tmp/
+coverage/
+playwright-report/
+test-results/
+server/db/database.types.ts

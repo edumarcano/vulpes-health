@@ -30,6 +30,7 @@ Repository scripts:
 |---|---|
 | `npm run dev:full` | Frontend + API development with the documented local services |
 | `npm run build` | Production client/function typecheck and build |
+| `npm run format:check` | Prettier layout compliance for TypeScript and JavaScript |
 | `npm run lint` | Code and boundary checks |
 | `npm run typecheck` | Strict TypeScript checks |
 | `npm test` | Deterministic unit tests without paid calls |

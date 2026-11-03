@@ -8,7 +8,8 @@ const canaries = {
   OPENROUTER_API_KEY: 'synthetic-provider-secret-canary-01',
   SUPABASE_SERVICE_ROLE_KEY: 'synthetic-admin-secret-canary-01',
   VULPES_TRACE_ENCRYPTION_KEY_B64: 'synthetic-encryption-secret-canary-01',
-  VULPES_TRACE_PREVIOUS_KEYS_JSON: '{"synthetic-old":"synthetic-previous-encryption-secret-canary-01"}',
+  VULPES_TRACE_PREVIOUS_KEYS_JSON:
+    '{"synthetic-old":"synthetic-previous-encryption-secret-canary-01"}',
   GOOGLE_APPLICATION_CREDENTIALS: 'synthetic-private-credential-path-canary-01',
 };
 const npm = process.env.npm_execpath;
@@ -25,11 +26,26 @@ for (const file of files) {
   const name = path.join(file.parentPath, file.name);
   assert(!name.endsWith('.map'), 'Public source maps must be disabled.');
   const body = await readFile(name, 'utf8');
-  for (const canary of Object.values(canaries)) assert(!body.includes(canary), `Secret canary leaked into ${name}`);
-  for (const marker of [...Object.values(models).map((model) => model.modelId), 'synthetic-opaque-do-not-rewrite', 'synthetic-opaque-continuation', 'SyntheticChatTransport', 'synthetic-credential-canary-not-a-real-key']) {
-    assert(!body.includes(marker), `Server catalog or synthetic harness leaked into ${name}`);
+  for (const canary of Object.values(canaries))
+    assert(!body.includes(canary), `Secret canary leaked into ${name}`);
+  for (const marker of [
+    ...Object.values(models).map((model) => model.modelId),
+    'synthetic-opaque-do-not-rewrite',
+    'synthetic-opaque-continuation',
+    'SyntheticChatTransport',
+    'synthetic-credential-canary-not-a-real-key',
+  ]) {
+    assert(
+      !body.includes(marker),
+      `Server catalog or synthetic harness leaked into ${name}`,
+    );
   }
-  assert(!/(?:source-extractions|proofs|\.build|server\/config)/.test(name), `Unexpected public artifact: ${name}`);
+  assert(
+    !/(?:source-extractions|proofs|\.build|server\/config)/.test(name),
+    `Unexpected public artifact: ${name}`,
+  );
   checked += 1;
 }
-console.info(`PASS: inspected ${checked} public files; no secret canaries, source maps, server catalog, synthetic harness, or private server output.`);
+console.info(
+  `PASS: inspected ${checked} public files; no secret canaries, source maps, server catalog, synthetic harness, or private server output.`,
+);

@@ -8,18 +8,38 @@ export function pwaShell(): Plugin {
     name: 'vulpes-static-shell',
     apply: 'build',
     generateBundle(_options, bundle) {
-      const publicAssets = ['/offline.html', '/offline.css', '/manifest.webmanifest', '/icons/favicon-32.png', '/icons/vulpes-192.png', '/icons/vulpes-512.png',
-        '/brand/vulpes-horizontal.png'];
-      const assets = [...Object.keys(bundle).filter(name => /^assets\/[\w.-]+\.(?:js|css)$/.test(name)).map(name => '/' + name), ...publicAssets];
+      const publicAssets = [
+        '/offline.html',
+        '/offline.css',
+        '/manifest.webmanifest',
+        '/icons/favicon-32.png',
+        '/icons/vulpes-192.png',
+        '/icons/vulpes-512.png',
+        '/brand/vulpes-horizontal.png',
+      ];
+      const assets = [
+        ...Object.keys(bundle)
+          .filter((name) => /^assets\/[\w.-]+\.(?:js|css)$/.test(name))
+          .map((name) => '/' + name),
+        ...publicAssets,
+      ];
       const hash = createHash('sha256').update(JSON.stringify(assets));
-      for (const asset of publicAssets) hash.update(readFileSync('public' + asset));
+      for (const asset of publicAssets)
+        hash.update(readFileSync('public' + asset));
       const version = hash.digest('hex').slice(0, 16);
-      this.emitFile({ type: 'asset', fileName: 'sw.js', source: staticWorker(assets, version) });
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sw.js',
+        source: staticWorker(assets, version),
+      });
     },
   };
 }
 
-export function staticWorker(assets: readonly string[], version: string): string {
+export function staticWorker(
+  assets: readonly string[],
+  version: string,
+): string {
   return `const CACHE = ${JSON.stringify('vulpes-static-' + version)};
 const ASSETS = ${JSON.stringify(assets)};
 self.addEventListener('install', event => {

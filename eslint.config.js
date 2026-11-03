@@ -6,10 +6,29 @@ import globals from 'globals';
 import { boundaries } from './scripts/eslint-boundaries.js';
 
 export default tseslint.config(
-  { ignores: ['node_modules/**', 'dist/**', '.build/**', '.scratch/**', '.cache/**', 'tmp/**', '.remora/**', '.agents/**', 'docs/spec/**', 'playwright-report/**', 'test-results/**', 'coverage/**'] },
+  {
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      '.build/**',
+      '.scratch/**',
+      '.cache/**',
+      'tmp/**',
+      '.remora/**',
+      '.agents/**',
+      'docs/spec/**',
+      'playwright-report/**',
+      'test-results/**',
+      'coverage/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  { languageOptions: { parserOptions: { tsconfigRootDir: import.meta.dirname } } },
+  {
+    languageOptions: {
+      parserOptions: { tsconfigRootDir: import.meta.dirname },
+    },
+  },
   {
     files: ['**/*.{ts,tsx,js}'],
     ignores: ['src/**', 'shared/**'],
@@ -21,7 +40,10 @@ export default tseslint.config(
     plugins: { 'react-hooks': hooks, 'react-refresh': refresh },
     rules: {
       ...hooks.configs.recommended.rules,
-      'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
+      'react-refresh/only-export-components': [
+        'error',
+        { allowConstantExport: true },
+      ],
     },
   },
   {

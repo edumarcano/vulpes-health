@@ -4,8 +4,15 @@ import { GoalProposalReferenceSchema } from './goals.js';
 import { GoalProgressResultSchema } from './goal-progress.js';
 import { UUIDSchema } from './primitives.js';
 
-export const VulpesCardSchema=z.union([
+export const VulpesCardSchema = z.union([
   LegacyCardSchema,
-  z.strictObject({type:z.literal('goal_proposal'),reference:GoalProposalReferenceSchema}),
-  z.strictObject({type:z.literal('goal_progress'),goalId:UUIDSchema,result:GoalProgressResultSchema}),
+  z.strictObject({
+    type: z.literal('goal_proposal'),
+    reference: GoalProposalReferenceSchema,
+  }),
+  z.strictObject({
+    type: z.literal('goal_progress'),
+    goalId: UUIDSchema,
+    result: GoalProgressResultSchema,
+  }),
 ]);

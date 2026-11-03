@@ -14,7 +14,9 @@ try {
     console.error('Local API failed to listen on 127.0.0.1:3001.');
     process.exitCode = 1;
   });
-  server.listen(3001, '127.0.0.1', () => console.info('Local API: http://127.0.0.1:3001'));
+  server.listen(3001, '127.0.0.1', () =>
+    console.info('Local API: http://127.0.0.1:3001'),
+  );
   const shutdown = () => {
     server.closeAllConnections();
     server.close();
@@ -22,6 +24,8 @@ try {
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
 } catch {
-  console.error('Local API configuration is invalid. Check VULPES_LIVE_AI_ENABLED.');
+  console.error(
+    'Local API configuration is invalid. Check VULPES_LIVE_AI_ENABLED.',
+  );
   process.exitCode = 1;
 }

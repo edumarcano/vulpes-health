@@ -4,29 +4,90 @@ import { UsageSummarySchema } from './domain.js';
 import { VulpesCardSchema } from './cards.js';
 import { ModelRoleSchema, UUIDSchema, VersionSchema } from './primitives.js';
 
-function eventSchema<T extends string, P extends z.ZodType>(type: T, payload: P) {
-  return z.strictObject({ v: z.literal(1), type: z.literal(type), run_id: UUIDSchema, seq: VersionSchema, payload });
+function eventSchema<T extends string, P extends z.ZodType>(
+  type: T,
+  payload: P,
+) {
+  return z.strictObject({
+    v: z.literal(1),
+    type: z.literal(type),
+    run_id: UUIDSchema,
+    seq: VersionSchema,
+    payload,
+  });
 }
 export const StreamEventSchema = z.discriminatedUnion('type', [
-  eventSchema('run.started', z.strictObject({ assistant_message_id: UUIDSchema })),
-  eventSchema('route.selected', z.strictObject({ role: ModelRoleSchema, model: z.string().min(1), provider: z.string().min(1), effort: z.string().nullable(), reason: z.string() })),
-  eventSchema('step.started', z.strictObject({ step_id: UUIDSchema, step_type: z.enum(['generation', 'decision', 'tool']), label: z.string() })),
-  eventSchema('tool.result', z.strictObject({ step_id: UUIDSchema, tool_name: z.string().min(1), result_reference: z.string().min(1), summary: z.string() })),
-  eventSchema('card.ready', z.strictObject({ message_id: UUIDSchema, card: VulpesCardSchema })),
-  eventSchema('text.delta', z.strictObject({ message_id: UUIDSchema, text: z.string() })),
+  eventSchema(
+    'run.started',
+    z.strictObject({ assistant_message_id: UUIDSchema }),
+  ),
+  eventSchema(
+    'route.selected',
+    z.strictObject({
+      role: ModelRoleSchema,
+      model: z.string().min(1),
+      provider: z.string().min(1),
+      effort: z.string().nullable(),
+      reason: z.string(),
+    }),
+  ),
+  eventSchema(
+    'step.started',
+    z.strictObject({
+      step_id: UUIDSchema,
+      step_type: z.enum(['generation', 'decision', 'tool']),
+      label: z.string(),
+    }),
+  ),
+  eventSchema(
+    'tool.result',
+    z.strictObject({
+      step_id: UUIDSchema,
+      tool_name: z.string().min(1),
+      result_reference: z.string().min(1),
+      summary: z.string(),
+    }),
+  ),
+  eventSchema(
+    'card.ready',
+    z.strictObject({ message_id: UUIDSchema, card: VulpesCardSchema }),
+  ),
+  eventSchema(
+    'text.delta',
+    z.strictObject({ message_id: UUIDSchema, text: z.string() }),
+  ),
   eventSchema('run.usage', UsageSummarySchema),
   eventSchema('run.completed', z.strictObject({ message_id: UUIDSchema })),
-  eventSchema('run.failed', z.strictObject({ code: z.string().min(1), message: z.string(), partial_output: z.boolean(), retryable: z.boolean() })),
-  eventSchema('run.cancelled', z.strictObject({ partial_output: z.boolean(), cost_status: UsageSummarySchema.shape.costStatus })),
+  eventSchema(
+    'run.failed',
+    z.strictObject({
+      code: z.string().min(1),
+      message: z.string(),
+      partial_output: z.boolean(),
+      retryable: z.boolean(),
+    }),
+  ),
+  eventSchema(
+    'run.cancelled',
+    z.strictObject({
+      partial_output: z.boolean(),
+      cost_status: UsageSummarySchema.shape.costStatus,
+    }),
+  ),
 ]);
 export type StreamEvent = z.infer<typeof StreamEventSchema>;
 export function isTerminalEvent(event: StreamEvent): boolean {
-  return event.type === 'run.completed' || event.type === 'run.failed' || event.type === 'run.cancelled';
+  return (
+    event.type === 'run.completed' ||
+    event.type === 'run.failed' ||
+    event.type === 'run.cancelled'
+  );
 }
 export function encodeStreamEvent(input: StreamEvent): string {
   const { type, ...data } = StreamEventSchema.parse(input);
   const frame = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-  if (new TextEncoder().encode(frame).byteLength > API_JSON_LIMIT_BYTES) throw new Error('SSE event exceeds limit.');
+  if (new TextEncoder().encode(frame).byteLength > API_JSON_LIMIT_BYTES)
+    throw new Error('SSE event exceeds limit.');
   return frame;
 }
 
@@ -45,10 +106,16 @@ export class StreamDecoder {
     // Bound bytes before decoding, including an unfinished UTF-8 character.
     for (const byte of chunk) {
       this.frameBytes += 1;
-      if (this.frameBytes > API_JSON_LIMIT_BYTES) throw new Error('SSE event exceeds limit.');
-      const text = this.decoder.decode(new Uint8Array([byte]), { stream: true });
+      if (this.frameBytes > API_JSON_LIMIT_BYTES)
+        throw new Error('SSE event exceeds limit.');
+      const text = this.decoder.decode(new Uint8Array([byte]), {
+        stream: true,
+      });
       for (const character of text) {
-        if (this.afterCR && character === '\n') { this.afterCR = false; continue; }
+        if (this.afterCR && character === '\n') {
+          this.afterCR = false;
+          continue;
+        }
         this.afterCR = character === '\r';
         if (character === '\r' || character === '\n') {
           const event = this.consumeLine();
@@ -63,7 +130,8 @@ export class StreamDecoder {
     if (this.ended) throw new Error('SSE decoder has ended.');
     this.ended = true;
     this.decoder.decode();
-    if (this.line || this.event || this.data.length) throw new Error('Incomplete SSE event.');
+    if (this.line || this.event || this.data.length)
+      throw new Error('Incomplete SSE event.');
   }
 
   private consumeLine(): StreamEvent | undefined {
@@ -77,8 +145,10 @@ export class StreamDecoder {
       this.event = '';
       this.data = [];
       const parsed: unknown = JSON.parse(data);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid SSE data.');
-      if ('type' in parsed && parsed.type !== name) throw new Error('SSE event type mismatch.');
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        throw new Error('Invalid SSE data.');
+      if ('type' in parsed && parsed.type !== name)
+        throw new Error('SSE event type mismatch.');
       return StreamEventSchema.parse({ ...parsed, type: name });
     }
     if (line.startsWith(':')) return;
