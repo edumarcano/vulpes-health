@@ -4,6 +4,148 @@ import { Temporal } from '@js-temporal/polyfill';
 import { LocalSupabase } from '../helpers/local-supabase';
 import { accounts, signIn, restrictNetwork } from './auth-helpers';
 
+test('goal cards render unavailable, range, and directional progress distinctly', async ({
+  page,
+}) => {
+  await restrictNetwork(page);
+  await signIn(page);
+  const id = (n: number) =>
+    `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const cases = [
+    [
+      'within range',
+      {
+        kind: 'progress',
+        baseline: '70',
+        current: '69',
+        result: { kind: 'within_range' },
+      },
+    ],
+    [
+      'below range',
+      {
+        kind: 'progress',
+        baseline: '70',
+        current: '64',
+        result: { kind: 'below_range' },
+      },
+    ],
+    [
+      'above range',
+      {
+        kind: 'progress',
+        baseline: '70',
+        current: '76',
+        result: { kind: 'above_range' },
+      },
+    ],
+    [
+      'undefined',
+      {
+        kind: 'progress',
+        baseline: '70',
+        current: '69',
+        result: { kind: 'undefined', reason: 'zero_denominator' },
+      },
+    ],
+    ['insufficient data', { kind: 'insufficient_data' }],
+    ['unavailable', { kind: 'unavailable', reason: 'needs_review' }],
+    [
+      'directional',
+      {
+        kind: 'progress',
+        baseline: '70',
+        current: '68',
+        result: {
+          kind: 'directional',
+          rawPercent: 66.67,
+          displayPercent: 66.67,
+        },
+      },
+    ],
+  ] as const;
+  const goals = cases.map(([label], index) => ({
+    id: id(index + 1),
+    title: `Synthetic ${label} goal`,
+    state: 'active',
+    direction: index < 3 ? 'maintain_range' : 'decrease_to',
+    target_lower: 65,
+    target_upper: 75,
+    target_value: 67,
+    canonical_unit: 'kg',
+    source_policy: { currentMethod: 'latest_value' },
+  }));
+  await page.route('**/api/data?*', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          items: [],
+          nextCursor: null,
+          dataRevision: 1,
+          timezone: 'UTC',
+        },
+        request_id: id(99),
+      },
+    }),
+  );
+  await page.route('**/api/goals**', (route) => {
+    const url = new URL(route.request().url());
+    const selected = url.searchParams.get('id');
+    const index = goals.findIndex((goal) => goal.id === selected);
+    const data =
+      url.searchParams.get('view') === 'progress'
+        ? cases[index]?.[1]
+        : {
+            items: url.searchParams.get('view') === 'proposals' ? [] : goals,
+            nextCursor: null,
+          };
+    return route.fulfill({ json: { data, request_id: id(99) } });
+  });
+  await page.goto('/goals');
+  for (const [label] of cases) {
+    const card = page
+      .locator('.goal-card')
+      .filter({ hasText: `Synthetic ${label} goal` });
+    await expect(card).toBeVisible();
+    if (label === 'directional') {
+      await expect(card.locator('progress')).toHaveCount(1);
+      await expect(card).toContainText('66.7%');
+    } else {
+      await expect(card.locator('progress')).toHaveCount(0);
+      await expect(card).not.toContainText('Pending');
+      await expect(card).not.toContainText('0%');
+    }
+  }
+  await expect(
+    page
+      .locator('.goal-card')
+      .filter({ hasText: 'Synthetic within range goal' }),
+  ).toContainText('Within range');
+  await expect(
+    page
+      .locator('.goal-card')
+      .filter({ hasText: 'Synthetic insufficient data goal' }),
+  ).toContainText('Insufficient data');
+  await expect(
+    page.locator('.goal-card').filter({ hasText: 'Synthetic undefined goal' }),
+  ).toContainText('Undefined');
+  await expect(
+    page
+      .locator('.goal-card')
+      .filter({ hasText: 'Synthetic below range goal' }),
+  ).toContainText('Below range');
+  await expect(
+    page
+      .locator('.goal-card')
+      .filter({ hasText: 'Synthetic above range goal' }),
+  ).toContainText('Above range');
+  await expect(
+    page
+      .locator('.goal-card')
+      .filter({ hasText: 'Synthetic unavailable goal' }),
+  ).toContainText('Baseline review required.');
+});
+
 test('direct Goals latest daily progress includes today without inference', async ({
   page,
 }, info) => {
@@ -108,7 +250,7 @@ test('direct Goals latest daily progress includes today without inference', asyn
       ),
     ).toBe(true);
     await expect(
-      page.getByRole('progressbar', { name: 'Goal progress', exact: true }),
+      progress.getByRole('progressbar', { name: 'Goal progress', exact: true }),
     ).toHaveAttribute('value', /66[.]6/);
     await expect(
       page.getByRole('img', { name: /Selected daily totals/ }),
@@ -149,6 +291,7 @@ test('direct Goals review and approval persist without inference', async ({
       if (r.url().includes('/api/chat')) calls.push(r.url());
     });
     await page.goto('/goals');
+    await page.getByRole('button', { name: 'New Goal', exact: true }).click();
     await page
       .getByLabel('Metric', { exact: true })
       .selectOption('body_fat_percent');

@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
   await page.goto('/data');
   await expect(
-    page.getByRole('heading', { name: 'Manual measurement', exact: true }),
+    page.getByRole('heading', { name: 'Data', level: 1, exact: true }),
   ).toBeVisible();
 });
 test.afterEach(async () => {
@@ -31,6 +31,7 @@ async function range(page: Page) {
   await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
 }
 async function entry(page: Page, value: string, day: string, source?: string) {
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page
     .getByLabel('Entry source', { exact: true })
     .selectOption(source ?? 'new');
@@ -80,6 +81,11 @@ test('manual entry persists, calculates exact summary, reloads, and never calls 
   await entry(page, '69', '09', source);
   await entry(page, '68', '10', source);
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
+  const summary = page.getByRole('region', { name: 'Deterministic summary' });
+  await expect(summary).toContainText('Seven-day Mean');
+  await expect(summary).toContainText('Latest in selection: 68 kg');
+  await expect(summary).toContainText('Comparison unavailable');
+  await expect(summary).not.toContainText('Stable');
   await expect(page.getByRole('table')).toContainText('70 kg');
   await entry(page, '69', '09', source);
   await expect(
@@ -105,6 +111,7 @@ test('second-60 manual entry and correction show validation errors without movin
 }, info) => {
   await range(page);
   const source = await entry(page, '70', '08');
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page.getByLabel('Entry source', { exact: true }).selectOption(source);
   await page.getByLabel('Value', { exact: true }).fill('69');
   await page
@@ -121,10 +128,11 @@ test('second-60 manual entry and correction show validation errors without movin
     .click();
   expect((await rejectedEntry).status()).toBe(400);
   await expect(page.getByRole('alert')).toContainText('Check the value');
-  await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
   await page
     .getByRole('button', { name: 'Back to editing', exact: true })
     .click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
   await page.getByRole('button', { name: 'Correct', exact: true }).click();
   await page
     .getByLabel('Corrected observation time', { exact: true })
@@ -155,6 +163,12 @@ test('confirmation is required, unusual readings stay unchanged, source text is 
   page,
 }) => {
   await range(page);
+  const mutationActions: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/data') && request.method() === 'POST')
+      mutationActions.push(request.postDataJSON()?.action);
+  });
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page
     .getByLabel('Source label', { exact: true })
     .fill('<script>synthetic-only</script>');
@@ -166,9 +180,16 @@ test('confirmation is required, unusual readings stay unchanged, source text is 
   await page
     .getByRole('button', { name: 'Review measurement', exact: true })
     .click();
-  await expect(
-    page.getByRole('heading', { name: 'No measurements loaded', exact: true }),
-  ).toBeVisible();
+  expect(mutationActions).toEqual([]);
+  const db = new LocalSupabase();
+  expect(
+    await (
+      await db.admin(
+        `/rest/v1/measurements?user_id=eq.${accounts[0]!.id}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toEqual([]);
   await page
     .getByRole('button', { name: 'Confirm and save', exact: true })
     .click();
@@ -177,6 +198,7 @@ test('confirmation is required, unusual readings stay unchanged, source text is 
   expect(
     await page.locator('script').filter({ hasText: 'synthetic-only' }).count(),
   ).toBe(0);
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page.getByLabel('Entry source', { exact: true }).selectOption('new');
   await page.getByLabel('Source label', { exact: true }).fill('DST test');
   await page.getByLabel('Value', { exact: true }).fill('70');
@@ -199,7 +221,9 @@ test('account switch clears measurements and draft fields', async ({
 }) => {
   await range(page);
   await entry(page, '70', '08');
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page.getByLabel('Value', { exact: true }).fill('12345');
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
     .getByRole('navigation')
     .getByRole('link', { name: 'Settings', exact: true })
@@ -213,6 +237,7 @@ test('account switch clears measurements and draft fields', async ({
   await expect(
     page.getByRole('heading', { name: 'No measurements loaded', exact: true }),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await expect(page.getByLabel('Value', { exact: true })).toHaveValue('');
   await expect(
     page.getByText('Synthetic Scale A', { exact: true }),
@@ -236,6 +261,7 @@ test('loading and connection failure do not show fabricated readings', async ({
 test('keyboard confirmation moves focus to the action and back to the entry', async ({
   page,
 }) => {
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page
     .getByLabel('Source label', { exact: true })
     .fill('Synthetic keyboard source');
@@ -272,7 +298,7 @@ test.describe('chart transport unavailable', () => {
       page.getByText('The chart could not be loaded.', { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Manual measurement', exact: true }),
+      page.getByRole('button', { name: 'Log Reading', exact: true }),
     ).toBeVisible();
     await expect(page.getByRole('table')).toContainText('70 kg');
   });

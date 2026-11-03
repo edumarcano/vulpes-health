@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
   await page.goto('/data');
   await expect(
-    page.getByRole('heading', { name: 'Manual measurement', exact: true }),
+    page.getByRole('heading', { name: 'Data', level: 1, exact: true }),
   ).toBeVisible();
 });
 test.afterEach(clear);
@@ -77,6 +77,7 @@ async function seed(
   return data;
 }
 async function importFixture(page: Page) {
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -104,6 +105,7 @@ async function importFixture(page: Page) {
   await expect(
     page.getByRole('heading', { name: 'Import recorded', exact: true }),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await range(page);
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
 }
@@ -231,7 +233,8 @@ test('a stale correction shows refresh/review instead of overwriting a concurren
 test('correction invalidates an open CSV preview in the rendered screen', async ({
   page,
 }) => {
-  await seed(page);
+  const measurement = await seed(page);
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -253,19 +256,48 @@ test('correction invalidates an open CSV preview in the rendered screen', async 
   await expect(
     page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Correct', exact: true }).click();
-  await page.getByLabel('Corrected value', { exact: true }).fill('69');
+
+  const correctionPage = await page.context().newPage();
+  try {
+    await restrictNetwork(correctionPage);
+    await correctionPage.goto('/data');
+    await expect(
+      correctionPage.getByRole('heading', { name: 'Data', exact: true }),
+    ).toBeVisible();
+    await range(correctionPage);
+    await correctionPage
+      .getByLabel('Source', { exact: true })
+      .selectOption(measurement.sourceId);
+    const row = correctionPage
+      .getByRole('row')
+      .filter({ hasText: '2026-09-08T08:00:00' });
+    await row.getByRole('button', { name: 'Correct', exact: true }).click();
+    await correctionPage
+      .getByLabel('Corrected value', { exact: true })
+      .fill('69');
+    await correctionPage
+      .getByRole('button', { name: 'Review correction', exact: true })
+      .click();
+    await correctionPage
+      .getByRole('button', { name: 'Confirm correction', exact: true })
+      .click();
+    await expect(correctionPage.getByRole('table')).toContainText('69 kg');
+  } finally {
+    await correctionPage.close();
+  }
   await page
-    .getByRole('button', { name: 'Review correction', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Confirm correction', exact: true })
+    .getByRole('button', { name: 'Confirm import', exact: true })
     .click();
   await expect(
     page
       .getByRole('region', { name: 'Confirm CSV import', exact: true })
       .getByRole('alert'),
-  ).toContainText('Your data changed');
+  ).toContainText('changed');
+  await expect(
+    page
+      .getByRole('region', { name: 'Confirm CSV import', exact: true })
+      .getByRole('alert'),
+  ).toContainText('fresh preview');
   await expect(
     page.getByRole('button', { name: 'Confirm import', exact: true }),
   ).toBeDisabled();

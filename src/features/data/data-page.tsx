@@ -6,8 +6,17 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import { ownedJson, ownedDownload } from '@/lib/api';
 import { useAuth } from '@/lib/auth/auth-context';
 import { successEnvelopeSchema } from '../../../shared/api';
@@ -53,7 +62,22 @@ export function DataPage() {
   const [download, setDownload] = useState<
     { kind: 'idle' | 'loading' | 'done' } | { kind: 'error'; message: string }
   >({ kind: 'idle' });
+  const [manualOpen, setManualOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const tableHeading = useRef<HTMLHeadingElement>(null);
+  const manualTrigger = useRef<HTMLButtonElement>(null);
+  const importTrigger = useRef<HTMLButtonElement>(null);
+  function applyQuickRange(range: '7D' | '14D' | '30D' | '90D' | 'All') {
+    const today = Temporal.Now.plainDateISO(timezone);
+    let fromDate: Temporal.PlainDate;
+    if (range === '7D') fromDate = today.subtract({ days: 6 });
+    else if (range === '14D') fromDate = today.subtract({ days: 13 });
+    else if (range === '30D') fromDate = today.subtract({ days: 29 });
+    else if (range === '90D') fromDate = today.subtract({ days: 89 });
+    else fromDate = today.subtract({ days: 364 }); // strictly < 366 days
+    setFrom(fromDate.toString());
+    setTo(today.toString());
+  }
   const sources = useInfiniteQuery({
     queryKey: [...root, 'sources'],
     enabled: !!session,
@@ -224,9 +248,85 @@ export function DataPage() {
   }
   return (
     <>
-      <header className="page-heading">
-        <h1 tabIndex={-1}>Data</h1>
+      <header className="page-heading flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 tabIndex={-1}>Data</h1>
+          <p className="text-sm text-muted-foreground">
+            Deterministic health analytics and audited observations
+          </p>
+        </div>
+        <div className="header-actions flex flex-wrap items-center gap-2">
+          <Button
+            ref={importTrigger}
+            variant="outline"
+            onClick={() => {
+              importTrigger.current?.focus();
+              setImportOpen(true);
+              setManualOpen(false);
+            }}
+          >
+            <Upload className="h-4 w-4 mr-1.5" />
+            Import CSV
+          </Button>
+          <Button
+            ref={manualTrigger}
+            onClick={() => {
+              manualTrigger.current?.focus();
+              setManualOpen(true);
+              setImportOpen(false);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            Log Reading
+          </Button>
+        </div>
       </header>
+
+      {/* Metric Selector Horizontal Pills */}
+      <nav className="metric-pills-bar" aria-label="Select metric">
+        {Object.entries(measurementRegistry).map(([key, item]) => (
+          <button
+            key={key}
+            type="button"
+            className={cn(
+              'metric-pill',
+              metric === key && 'metric-pill-active',
+            )}
+            onClick={() => {
+              const next = key as MetricKey;
+              setMetric(next);
+              setGranularity(
+                next === 'steps_daily'
+                  ? 'daily_total'
+                  : next === 'sleep_duration'
+                    ? 'session_total'
+                    : 'instant',
+              );
+            }}
+          >
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Quick Time Ranges & Interval Bar */}
+      <div className="time-range-bar">
+        <div className="range-pills">
+          {(['7D', '14D', '30D', '90D', 'All'] as const).map((r) => (
+            <Button
+              key={r}
+              variant="ghost"
+              size="sm"
+              onClick={() => applyQuickRange(r)}
+            >
+              {r}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {notice && <p role="status">{notice}</p>}
+
       <div className="data-stack">
         {sources.isPending ? (
           <p role="status">Loading your sources…</p>
@@ -237,38 +337,301 @@ export function DataPage() {
           </Card>
         ) : (
           <>
-            <Card>
-              <ManualForm
-                sources={allSources}
-                timezone={sources.data.pages[0]!.timezone}
-                busy={mutation.isPending}
-                save={async (request) => {
-                  await mutation.mutateAsync(request);
-                }}
-              />
-              <p role="status">{notice}</p>
-            </Card>
-            <Card>
-              <ImportForm
-                sources={allSources}
-                timezone={timezone}
-                dataRevision={sources.data.pages[0]!.dataRevision}
-                onSaved={(result) => {
-                  setSource(result.source_id);
-                  void client.invalidateQueries({ queryKey: root });
-                }}
-              />
-            </Card>
-            {sources.hasNextPage && (
-              <Button
-                variant="outline"
-                disabled={sources.isFetchingNextPage}
-                onClick={() => void sources.fetchNextPage()}
+            {/* Deterministic Summary Grid */}
+            {data && (
+              <section
+                aria-label="Deterministic summary"
+                className="summary-grid"
               >
-                Load more sources
-              </Button>
+                <Card className="summary-card">
+                  <span className="text-xs text-muted-foreground uppercase font-semibold">
+                    {data.analysis.statistic === 'daily_median_mean_7d'
+                      ? 'Seven-day Mean'
+                      : data.analysis.statistic === 'observed_samples'
+                        ? 'Observed Median'
+                        : data.analysis.statistic === 'daily_totals'
+                          ? 'Daily Totals'
+                          : 'Session Observations'}
+                  </span>
+                  {data.analysis.coverageStatus === 'insufficient_data' ? (
+                    <span className="text-sm font-medium">
+                      {data.analysis.statistic === 'daily_median_mean_7d'
+                        ? 'Insufficient data. A seven-day mean requires at least three valid days.'
+                        : 'Insufficient data. No observations are available for this selection.'}
+                    </span>
+                  ) : data.analysis.value === null ? (
+                    <span className="text-sm font-medium">
+                      Totals and sessions are not combined into a headline mean.
+                    </span>
+                  ) : (
+                    <strong
+                      data-testid="headline-value"
+                      className="text-2xl font-bold"
+                    >
+                      {number(data.analysis.value)} {data.analysis.unit}
+                    </strong>
+                  )}
+                  {data.latest ? (
+                    <span className="text-xs text-muted-foreground">
+                      Latest in selection: {number(data.latest.value)}{' '}
+                      {data.latest.unit} at {data.latest.observedAt}.
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No readings in this selection.
+                    </span>
+                  )}
+                </Card>
+
+                <Card className="summary-card">
+                  <span className="text-xs text-muted-foreground uppercase font-semibold">
+                    Period Trend
+                  </span>
+                  <span className="text-lg font-semibold">
+                    {data.analysis.absoluteChange !== null ? (
+                      <>
+                        {number(data.analysis.absoluteChange)}{' '}
+                        {metric === 'body_fat_percent'
+                          ? 'percentage points'
+                          : data.analysis.unit}
+                        {data.analysis.relativeChangePercent !== null && (
+                          <> ({number(data.analysis.relativeChangePercent)}%)</>
+                        )}
+                      </>
+                    ) : data.analysis.statistic !== 'daily_median_mean_7d' ? (
+                      'Not calculated for this measurement type'
+                    ) : data.analysis.previousWindow.validDays < 3 ? (
+                      'Comparison unavailable: insufficient prior data'
+                    ) : (
+                      'Comparison unavailable'
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Across {data.analysis.validDays} valid days
+                  </span>
+                  {data.analysis.previousValue !== null && (
+                    <span className="text-xs text-muted-foreground">
+                      Previous seven days: {number(data.analysis.previousValue)}{' '}
+                      {data.analysis.unit}.
+                    </span>
+                  )}
+                </Card>
+
+                <Card className="summary-card">
+                  <span className="text-xs text-muted-foreground uppercase font-semibold">
+                    Observations
+                  </span>
+                  <span className="text-lg font-semibold">
+                    {data.analysis.observationCount} observations
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {data.analysis.validDays} valid days
+                  </span>
+                  {data.analysis.statistics && (
+                    <span className="text-xs text-muted-foreground">
+                      Observed median {number(data.analysis.statistics.median)}{' '}
+                      bpm (range {number(data.analysis.statistics.min)}–
+                      {number(data.analysis.statistics.max)} bpm).
+                    </span>
+                  )}
+                </Card>
+
+                <Card className="summary-card">
+                  <span className="text-xs text-muted-foreground uppercase font-semibold">
+                    Data Revision
+                  </span>
+                  <span className="text-lg font-semibold font-mono text-sm">
+                    revision {data.dataRevision}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Algorithm {data.analysis.algorithmVersion}
+                  </span>
+                </Card>
+
+                <div className="col-span-full sm:col-span-2 md:col-span-4 text-xs text-muted-foreground space-y-1">
+                  <h3>
+                    {data.analysis.statistic === 'daily_median_mean_7d'
+                      ? 'Seven-day mean of daily medians'
+                      : data.analysis.statistic === 'observed_samples'
+                        ? 'Observed sample distribution'
+                        : 'Uncombined observations'}
+                  </h3>
+                  {summary.isFetching && (
+                    <p role="status">
+                      Refreshing data. The displayed result may be stale.
+                    </p>
+                  )}
+                  <p>
+                    Source:{' '}
+                    {allSources.find((item) => item.id === chosenSource)?.label}{' '}
+                    · {method} · {granularity}
+                  </p>
+                  <p>
+                    Analysis interval: {data.analysis.from} to{' '}
+                    {data.analysis.to} (end excluded), {timezone}.
+                  </p>
+                  <p>
+                    {data.analysis.observationCount} observations;{' '}
+                    {data.analysis.validDays} valid days. Algorithm{' '}
+                    {data.analysis.algorithmVersion}; data revision{' '}
+                    {data.dataRevision}.
+                  </p>
+                  {data.analysis.exclusions.length > 0 && (
+                    <p role="status">
+                      {data.analysis.exclusions.length} conflicting daily
+                      observations excluded from the chart. Review the table.
+                    </p>
+                  )}
+                </div>
+              </section>
             )}
-            <Card>
+
+            {/* Interactive Trend Chart */}
+            {data && (
+              <section className="chart-card-container">
+                <DataChartView data={data} />
+              </section>
+            )}
+
+            {/* Observation Ledger Table */}
+            {chosenSource && selection && (
+              <Card className="table-card-container">
+                <h2 ref={tableHeading} tabIndex={-1}>
+                  Measurement table
+                </h2>
+                {readings.isError ? (
+                  <p role="alert">
+                    The readings changed or could not be loaded. Refresh the
+                    selection.
+                  </p>
+                ) : readings.isPending ? (
+                  <p role="status">Loading readings…</p>
+                ) : items.length === 0 ? (
+                  <p>No readings in this selection.</p>
+                ) : (
+                  <>
+                    <div
+                      className="data-table-scroll"
+                      tabIndex={0}
+                      role="region"
+                      aria-label="Scrollable measurement table"
+                    >
+                      <table>
+                        <caption>
+                          Individual observations with original units and source
+                          context
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Timestamp</th>
+                            <th scope="col">Value</th>
+                            <th scope="col">Original</th>
+                            <th scope="col">Source / method</th>
+                            <th scope="col">Quality</th>
+                            <th scope="col">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                {item.observedAt}
+                                <br />
+                                {item.timezone}
+                                {item.localDate && (
+                                  <>
+                                    <br />
+                                    {item.localDate}
+                                  </>
+                                )}
+                              </td>
+                              <td>
+                                {number(item.value)} {item.unit}
+                              </td>
+                              <td>
+                                {item.originalValue} {item.originalUnit}
+                              </td>
+                              <td>
+                                {
+                                  allSources.find(
+                                    (entry) => entry.id === item.sourceId,
+                                  )?.label
+                                }
+                                <br />
+                                {item.method}
+                                <br />
+                                {item.granularity}
+                              </td>
+                              <td>
+                                {item.qualityFlags.join(', ') || 'No flags'}
+                              </td>
+                              <td>
+                                <div className="data-actions">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                      setEditing({
+                                        reading: item,
+                                        mode: 'correct',
+                                      })
+                                    }
+                                  >
+                                    Correct
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                      setEditing({
+                                        reading: item,
+                                        mode: 'delete',
+                                      })
+                                    }
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {readings.hasNextPage && (
+                      <Button
+                        variant="outline"
+                        disabled={readings.isFetchingNextPage}
+                        onClick={() => void readings.fetchNextPage()}
+                      >
+                        Load more readings
+                      </Button>
+                    )}
+                  </>
+                )}
+                {editing && (
+                  <MeasurementEditor
+                    key={`${editing.reading.id}:${editing.reading.version}:${editing.mode}`}
+                    {...editing}
+                    source={
+                      allSources.find((s) => s.id === editing.reading.sourceId)
+                        ?.label ?? 'Selected source'
+                    }
+                    onCancel={closeEditor}
+                    onRefresh={() => {
+                      closeEditor();
+                      refresh();
+                    }}
+                    onSaved={(message) => {
+                      setNotice(message);
+                      closeEditor();
+                      refresh();
+                    }}
+                  />
+                )}
+              </Card>
+            )}
+
+            {/* Preserved Filter Controls */}
+            <Card className="data-filter-card">
               <h2>Explore measurements</h2>
               <div className="settings-form data-filters">
                 <label htmlFor="data-source">Source</label>
@@ -404,253 +767,17 @@ export function DataPage() {
                   The summary could not be loaded. Refresh to retry; no previous
                   result is presented as current.
                 </p>
-              ) : (
-                data && (
-                  <>
-                    <section
-                      aria-label="Deterministic summary"
-                      className="data-summary"
-                    >
-                      <h3>
-                        {data.analysis.statistic === 'daily_median_mean_7d'
-                          ? 'Seven-day mean of daily medians'
-                          : data.analysis.statistic === 'observed_samples'
-                            ? 'Observed sample distribution'
-                            : 'Uncombined observations'}
-                      </h3>
-                      {summary.isFetching && (
-                        <p role="status">
-                          Refreshing data. The displayed result may be stale.
-                        </p>
-                      )}
-                      <p>
-                        Source:{' '}
-                        {
-                          allSources.find((item) => item.id === chosenSource)
-                            ?.label
-                        }{' '}
-                        · {method} · {granularity}
-                      </p>
-                      <p>
-                        Analysis interval: {data.analysis.from} to{' '}
-                        {data.analysis.to} (end excluded), {timezone}.
-                      </p>
-                      <p>
-                        {data.analysis.coverageStatus ===
-                        'insufficient_data' ? (
-                          data.analysis.statistic === 'daily_median_mean_7d' ? (
-                            'Insufficient data. A seven-day mean requires at least three valid days.'
-                          ) : (
-                            'Insufficient data. No observations are available for this selection.'
-                          )
-                        ) : data.analysis.value === null ? (
-                          'Totals and sessions are not combined into a headline mean.'
-                        ) : (
-                          <>
-                            Current:{' '}
-                            <strong data-testid="headline-value">
-                              {number(data.analysis.value)} {data.analysis.unit}
-                            </strong>
-                          </>
-                        )}
-                      </p>
-                      {data.analysis.previousValue !== null && (
-                        <p>
-                          Previous seven days:{' '}
-                          {number(data.analysis.previousValue)}{' '}
-                          {data.analysis.unit}.
-                        </p>
-                      )}
-                      {data.analysis.absoluteChange !== null && (
-                        <p>
-                          Absolute change:{' '}
-                          {number(data.analysis.absoluteChange)}{' '}
-                          {metric === 'body_fat_percent'
-                            ? 'percentage points'
-                            : data.analysis.unit}
-                          .
-                          {data.analysis.relativeChangePercent !== null && (
-                            <>
-                              {' '}
-                              Relative change:{' '}
-                              {number(data.analysis.relativeChangePercent)}%.
-                            </>
-                          )}
-                        </p>
-                      )}
-                      {data.analysis.statistics && (
-                        <p>
-                          Observed median{' '}
-                          {number(data.analysis.statistics.median)} bpm; range{' '}
-                          {number(data.analysis.statistics.min)}–
-                          {number(data.analysis.statistics.max)} bpm. These
-                          samples do not establish resting rate or continuous
-                          coverage.
-                        </p>
-                      )}
-                      <p>
-                        {data.analysis.observationCount} observations;{' '}
-                        {data.analysis.validDays} valid days. Algorithm{' '}
-                        {data.analysis.algorithmVersion}; data revision{' '}
-                        {data.dataRevision}.
-                      </p>
-                      <p>
-                        {data.latest ? (
-                          <>
-                            Latest in selection: {number(data.latest.value)}{' '}
-                            {data.latest.unit} at {data.latest.observedAt}.
-                          </>
-                        ) : (
-                          'No readings in this selection.'
-                        )}
-                      </p>
-                      {data.analysis.exclusions.length > 0 && (
-                        <p role="status">
-                          {data.analysis.exclusions.length} conflicting daily
-                          observations excluded from the chart. Review the
-                          table.
-                        </p>
-                      )}
-                    </section>
-                    <DataChartView data={data} />
-                  </>
-                )
-              )}
+              ) : null}
             </Card>
-            {chosenSource && selection && (
-              <Card>
-                <h2 ref={tableHeading} tabIndex={-1}>
-                  Measurement table
-                </h2>
-                {readings.isError ? (
-                  <p role="alert">
-                    The readings changed or could not be loaded. Refresh the
-                    selection.
-                  </p>
-                ) : readings.isPending ? (
-                  <p role="status">Loading readings…</p>
-                ) : items.length === 0 ? (
-                  <p>No readings in this selection.</p>
-                ) : (
-                  <>
-                    <div
-                      className="data-table-scroll"
-                      tabIndex={0}
-                      role="region"
-                      aria-label="Scrollable measurement table"
-                    >
-                      <table>
-                        <caption>
-                          Individual observations with original units and source
-                          context
-                        </caption>
-                        <thead>
-                          <tr>
-                            <th scope="col">Timestamp</th>
-                            <th scope="col">Value</th>
-                            <th scope="col">Original</th>
-                            <th scope="col">Source / method</th>
-                            <th scope="col">Quality</th>
-                            <th scope="col">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((item) => (
-                            <tr key={item.id}>
-                              <td>
-                                {item.observedAt}
-                                <br />
-                                {item.timezone}
-                                {item.localDate && (
-                                  <>
-                                    <br />
-                                    {item.localDate}
-                                  </>
-                                )}
-                              </td>
-                              <td>
-                                {number(item.value)} {item.unit}
-                              </td>
-                              <td>
-                                {item.originalValue} {item.originalUnit}
-                              </td>
-                              <td>
-                                {
-                                  allSources.find(
-                                    (entry) => entry.id === item.sourceId,
-                                  )?.label
-                                }
-                                <br />
-                                {item.method}
-                                <br />
-                                {item.granularity}
-                              </td>
-                              <td>
-                                {item.qualityFlags.join(', ') || 'No flags'}
-                              </td>
-                              <td>
-                                <div className="data-actions">
-                                  <Button
-                                    variant="outline"
-                                    onClick={() =>
-                                      setEditing({
-                                        reading: item,
-                                        mode: 'correct',
-                                      })
-                                    }
-                                  >
-                                    Correct
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    onClick={() =>
-                                      setEditing({
-                                        reading: item,
-                                        mode: 'delete',
-                                      })
-                                    }
-                                  >
-                                    Delete
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    {readings.hasNextPage && (
-                      <Button
-                        variant="outline"
-                        disabled={readings.isFetchingNextPage}
-                        onClick={() => void readings.fetchNextPage()}
-                      >
-                        Load more readings
-                      </Button>
-                    )}
-                  </>
-                )}
-                {editing && (
-                  <MeasurementEditor
-                    key={`${editing.reading.id}:${editing.reading.version}:${editing.mode}`}
-                    {...editing}
-                    source={
-                      allSources.find((s) => s.id === editing.reading.sourceId)
-                        ?.label ?? 'Selected source'
-                    }
-                    onCancel={closeEditor}
-                    onRefresh={() => {
-                      closeEditor();
-                      refresh();
-                    }}
-                    onSaved={(message) => {
-                      setNotice(message);
-                      closeEditor();
-                      refresh();
-                    }}
-                  />
-                )}
-              </Card>
+
+            {sources.hasNextPage && (
+              <Button
+                variant="outline"
+                disabled={sources.isFetchingNextPage}
+                onClick={() => void sources.fetchNextPage()}
+              >
+                Load more sources
+              </Button>
             )}
           </>
         )}
@@ -660,6 +787,62 @@ export function DataPage() {
           for a later release. Calculations are not medical diagnoses.
         </p>
       </div>
+
+      {/* Modal Sheets for Manual Entry and CSV Import */}
+      <Sheet open={manualOpen} onOpenChange={setManualOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg overflow-y-auto"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            manualTrigger.current?.focus();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>Manual measurement</SheetTitle>
+            <SheetDescription>
+              Log a verified health reading into your account
+            </SheetDescription>
+          </SheetHeader>
+          <ManualForm
+            sources={allSources}
+            timezone={sources.data?.pages[0]?.timezone ?? 'UTC'}
+            busy={mutation.isPending}
+            save={async (request) => {
+              await mutation.mutateAsync(request);
+              setManualOpen(false);
+            }}
+          />
+          {notice && <p role="status">{notice}</p>}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={importOpen} onOpenChange={setImportOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md md:max-w-2xl overflow-y-auto"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            importTrigger.current?.focus();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>Import CSV</SheetTitle>
+            <SheetDescription>
+              Preview, map columns, and confirm batch records
+            </SheetDescription>
+          </SheetHeader>
+          <ImportForm
+            sources={allSources}
+            timezone={timezone}
+            dataRevision={sources.data?.pages[0]?.dataRevision ?? 0}
+            onSaved={(result) => {
+              setSource(result.source_id);
+              void client.invalidateQueries({ queryKey: root });
+            }}
+          />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
