@@ -132,14 +132,12 @@ test('keyboard, skip link, reduced motion, and 200% text sizing', async ({
   await expect(page.getByRole('main')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(
-    page.getByRole('button', { name: 'New conversation', exact: true }),
+    page.getByRole('button', { name: 'Conversation history', exact: true }),
   ).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(
-    page.getByRole('combobox', { name: 'Conversation', exact: true }),
+    page.getByRole('button', { name: 'New conversation', exact: true }),
   ).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(page.getByLabel('Archived', { exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Explore Data' })).toBeFocused();
   expect(

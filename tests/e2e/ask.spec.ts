@@ -96,6 +96,34 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   await expect(
     page.getByText(/seven-day mean 69 kg; change -0.7 kg/),
   ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 500 });
+  const draft =
+    'Draft line one\nDraft line two\nDraft line three\nDraft line four\nDraft line five';
+  for (const fontSize of [16, 32]) {
+    const zoom = await page.addStyleTag({
+      content: `html{font-size:${fontSize}px}`,
+    });
+    const composerInput = page.getByLabel('Message Ask Vulpes');
+    await composerInput.fill(draft);
+    await expect(composerInput).toBeInViewport();
+    const composer = await page.locator('.composer-area').boundingBox();
+    const nav = await page.locator('.primary-nav').boundingBox();
+    expect(composer).not.toBeNull();
+    expect(nav).not.toBeNull();
+    expect(composer!.y + composer!.height).toBeLessThanOrEqual(nav!.y);
+    const savedStatus = page.getByText('Response saved.', { exact: true });
+    await expect(savedStatus).toBeVisible();
+    await savedStatus.scrollIntoViewIfNeeded();
+    await expect(savedStatus).toBeInViewport();
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeInViewport();
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeEnabled();
+    await zoom.evaluate((element) => element.parentNode?.removeChild(element));
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await expect(
     page.getByRole('heading', { name: 'Calculated measurement summary' }),
   ).toBeVisible();
@@ -206,7 +234,35 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
       .evaluate((element) => element.getBoundingClientRect().bottom <= 0),
   ).toBe(true);
   expect(sends).toBe(1);
+  await page.route('**/api/conversations?*', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('view') !== 'messages') return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    const assistant = body.data.items.find(
+      (message: { role: string }) => message.role === 'assistant',
+    );
+    if (assistant) {
+      body.data.items.unshift({
+        ...assistant,
+        id: randomUUID(),
+        runId: randomUUID(),
+        parts: [
+          { type: 'text', text: 'Older synthetic answer from another run.' },
+        ],
+      });
+    }
+    await route.fulfill({ response, json: body });
+  });
   await page.reload();
+  const olderAnswer = page
+    .locator('.chat-message')
+    .filter({ hasText: 'Older synthetic answer from another run.' });
+  await expect(olderAnswer).toBeVisible();
+  await expect(olderAnswer.getByRole('status')).toHaveCount(0);
+  await expect(
+    page.getByText(/Run completed · reported · \$0\.003/),
+  ).toHaveCount(1);
   await expect(
     page.getByText(/seven-day mean 69 kg; change -0.7 kg/),
   ).toBeVisible();
@@ -217,11 +273,14 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     [430, 932],
     [768, 1024],
     [1440, 900],
-  ])
+  ] as const)
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.setViewportSize({ width: width!, height: height! });
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
       await expect(page.getByLabel('Message Ask Vulpes')).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Send', exact: true }),
+      ).toBeInViewport();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -234,6 +293,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
       expect(composer!.y).toBeGreaterThanOrEqual(
         viewport!.y + viewport!.height - 1,
       );
+      expect(composer!.y + composer!.height).toBeLessThanOrEqual(height);
       await page.getByLabel('Message Ask Vulpes').scrollIntoViewIfNeeded();
       await expect(page.getByLabel('Message Ask Vulpes')).toBeInViewport();
       await page.screenshot({
@@ -241,13 +301,43 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
         fullPage: true,
       });
     }
+  for (const [width, height] of [
+    [360, 800],
+    [390, 844],
+    [430, 932],
+    [768, 1024],
+    [1440, 900],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    const zoom = await page.addStyleTag({ content: 'html{font-size:200%}' });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    const composerInput = page.getByLabel('Message Ask Vulpes');
+    await expect(composerInput).toBeVisible();
+    await expect(composerInput).toBeInViewport();
+    await expect(composerInput).toBeEnabled();
+    const composer = await page.locator('.composer-area').boundingBox();
+    expect(composer).not.toBeNull();
+    expect(composer!.y).toBeGreaterThanOrEqual(0);
+    expect(composer!.y + composer!.height).toBeLessThanOrEqual(height);
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeInViewport();
+    await zoom.evaluate((element) => element.parentNode?.removeChild(element));
+  }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addStyleTag({ content: 'html{font-size:200%}' });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+  const historyTrigger = page.getByRole('button', {
+    name: 'Conversation history',
+  });
+  await historyTrigger.click();
+  const history = page.getByRole('dialog', { name: 'Conversation history' });
+  await expect(history).toBeVisible();
+  await history.getByRole('button', { name: 'Close' }).click();
+  await expect(history).toHaveCount(0);
+  await expect(historyTrigger).toBeFocused();
   await page.getByLabel('Message Ask Vulpes').focus();
   await expect(page.getByLabel('Message Ask Vulpes')).toBeFocused();
   // A valid current window can lack a previous comparison window.
@@ -523,6 +613,9 @@ test('Ask has no depth selector; history archive and confirmed deletion use the 
   await expect(page.getByLabel('Analysis depth', { exact: true })).toHaveCount(
     0,
   );
+  await page
+    .getByRole('button', { name: 'Conversation history', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Archive conversation', exact: true })
     .click();
