@@ -204,6 +204,9 @@ summary { min-height: 44px; padding-block: 0.75rem; cursor: pointer; }
   padding-block: 0.5rem;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  width: 100%;
+  min-width: 0;
 }
 .metric-pills-bar::-webkit-scrollbar {
   display: none;
@@ -243,17 +246,34 @@ summary { min-height: 44px; padding-block: 0.75rem; cursor: pointer; }
   justify-content: space-between;
   gap: 0.5rem;
   margin-block: 0.5rem;
+  max-width: 100%;
+  min-width: 0;
 }
 .range-pills {
   display: flex;
   gap: 0.25rem;
   flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
+}
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
 }
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
   margin-block: 1rem;
+  max-width: 100%;
+}
+@media (min-width: 480px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (min-width: 768px) {
   .summary-grid {
@@ -269,12 +289,22 @@ summary { min-height: 44px; padding-block: 0.75rem; cursor: pointer; }
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--card-foreground);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .chart-card-container {
   margin-block: 1rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 .table-card-container {
   margin-block: 1rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 .active-goals-grid {
   display: grid;

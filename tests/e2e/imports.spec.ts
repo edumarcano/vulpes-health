@@ -24,20 +24,18 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
   await page.goto('/data');
   await expect(
-    page.getByRole('heading', { name: 'Measurements', exact: true }),
+    page.getByRole('heading', { name: 'Data', level: 1, exact: true }),
   ).toBeVisible();
 });
 test.afterEach(clear);
 async function choose(page: Page, buffer = canonical) {
-  const importBtn = page.getByRole('button', {
-    name: 'Import CSV',
-    exact: true,
-  });
-  if (await importBtn.isVisible()) {
-    await importBtn.click();
+  const fileInput = page.getByLabel('CSV file', { exact: true });
+  if (!(await fileInput.isVisible())) {
+    await page
+      .getByRole('button', { name: 'Import CSV', exact: true })
+      .click();
   }
-  await page
-    .getByLabel('CSV file', { exact: true })
+  await fileInput
     .setInputFiles({ name: 'synthetic.csv', mimeType: 'text/csv', buffer });
   await expect(
     page.getByText('Selected: synthetic.csv', { exact: true }),

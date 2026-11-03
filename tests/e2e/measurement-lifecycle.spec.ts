@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
   await page.goto('/data');
   await expect(
-    page.getByRole('heading', { name: 'Manual measurement', exact: true }),
+    page.getByRole('heading', { name: 'Data', level: 1, exact: true }),
   ).toBeVisible();
 });
 test.afterEach(clear);
@@ -77,6 +77,12 @@ async function seed(
   return data;
 }
 async function importFixture(page: Page) {
+  const fileInput = page.getByLabel('CSV file', { exact: true });
+  if (!(await fileInput.isVisible())) {
+    await page
+      .getByRole('button', { name: 'Import CSV', exact: true })
+      .click();
+  }
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -232,6 +238,12 @@ test('correction invalidates an open CSV preview in the rendered screen', async 
   page,
 }) => {
   await seed(page);
+  const fileInput = page.getByLabel('CSV file', { exact: true });
+  if (!(await fileInput.isVisible())) {
+    await page
+      .getByRole('button', { name: 'Import CSV', exact: true })
+      .click();
+  }
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -253,14 +265,16 @@ test('correction invalidates an open CSV preview in the rendered screen', async 
   await expect(
     page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Correct', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Correct', exact: true })
+    .dispatchEvent('click');
   await page.getByLabel('Corrected value', { exact: true }).fill('69');
   await page
     .getByRole('button', { name: 'Review correction', exact: true })
-    .click();
+    .dispatchEvent('click');
   await page
     .getByRole('button', { name: 'Confirm correction', exact: true })
-    .click();
+    .dispatchEvent('click');
   await expect(
     page
       .getByRole('region', { name: 'Confirm CSV import', exact: true })

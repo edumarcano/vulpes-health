@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
   await page.goto('/data');
   await expect(
-    page.getByRole('heading', { name: 'Measurements', exact: true }),
+    page.getByRole('heading', { name: 'Data', level: 1, exact: true }),
   ).toBeVisible();
 });
 test.afterEach(async () => {
