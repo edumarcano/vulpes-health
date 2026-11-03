@@ -149,6 +149,13 @@ Executable import contracts are in [`shared/imports.ts`](../../../shared/imports
 |---|---|
 | `canonical` | Exact `source_label` to include; other source labels are counted as excluded. Required and optional columns follow DATA_MODEL. Canonical timestamps require offsets. |
 | `wide` | `timestamp_column`, nullable `local_date_column` and `external_id_column`, `granularity`, and 1–8 `metrics` with column, metric, unit and method. Unmapped columns are reported as ignored. |
+| `renpho` | English RENPHO Health 31-column export in lb, matched by named headers plus exactly one empty terminal header. Requires `profile: null`, `single_profile: true` and `timezone_confirmed: true`. Imports only `Weight(lb)` as device-reported weight and `Body Fat Percentage(%)` as device-estimated body fat, at instant granularity. |
+
+RENPHO `Date` (`YYYY.MM.DD`) and `Time` (`HH:mm:ss`) are local wall time in the explicitly confirmed IANA timezone; DST overlaps/gaps and invalid dates are excluded as invalid observations. Header order is independent for named columns.
+
+Every terminal-column cell must be empty or the whole file is rejected; the empty terminal column has no observation or ignored-column label. Other named columns are reported as ignored and their values are not staged. `No.` is ignored, never an external record ID.
+
+Original file hashing and row/column provenance use the uploaded CSV directly, without conversion. To deduplicate earlier canonical conversions, choose their existing CSV source and matching timezone/method metadata. Matching instants with changed normalized values or metadata remain conflicts under the existing CSV rules; a new source creates a separate identity namespace.
 
 CSV text is limited to 1 MiB UTF-8, with 100 unique headers, 10,000 data rows, 64 KiB per record and 5,000 nonblank candidate observations. Normalized encrypted staging has a separate 4 MiB limit; excess input fails explicitly without truncation. Responses show at most 20 observations and 50 row errors, with a count of omitted errors. Preview counts distinguish new, duplicate, conflicting, invalid, blank, profile-excluded and source-excluded input.
 

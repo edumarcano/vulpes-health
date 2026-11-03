@@ -4,6 +4,12 @@ The canonical product and architecture decisions are recorded in [`spec/v0.1.0/D
 
 Record implementation trade-offs, actual provider capabilities and identifier verification, pinned dependency choices, schema changes, deviations, and relevant tests here. Each entry should identify its date, impact, alternatives and required approvals.
 
+## 2026-11-03: Add a bounded RENPHO CSV mapping
+
+Accept the documented English 31-column RENPHO Health export directly through the existing CSV preview, encrypted staging and transactional commit. Match named headers independent of order and permit only an empty terminal header with empty cells. Import weight in lb and body fat percentage with device-reported/device-estimate methods; ignore all other named fields, including the row number.
+
+Require a single-profile declaration and explicit IANA timezone confirmation; reuse exact decimal normalization and reject ambiguous/nonexistent DST instants. Retain CSV provenance, original file hashing and the selected source namespace so earlier canonical conversions deduplicate. [Synthetic verification and split-axis review](evidence/renpho-import.md) cover this bounded layout; no private export, hosted account, schema, provider or deployment change is included.
+
 ## 2026-11-02: Recovery accounting reconciliation correction
 
 Independent review identified an XML-root mismatch in the current-accounting query. Recovery now requires all seven ledger/dispatch/policy tables and valid row fingerprints; missing evidence fails closed. PostgreSQL regressions cover shared spending/reservation changes, durable route blocks, incomplete inventory and rejection of a stale restored ledger with unchanged deletion records. This corrects reconciliation evidence without changing deletion authorization, provider budgets or restored-access gates. Historical accounting-match claims require corrected reconciliation before operational reliance; see [the recovery runbook](operations/hosted-recovery.md#accounting-fingerprint-correction).

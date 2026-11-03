@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   CSV_LIMIT_BYTES,
   IMPORT_LIMIT,
+  isRenphoHeader,
   ImportMappingSchema,
   type ImportMapping,
 } from '../../shared/imports.js';
@@ -46,10 +47,22 @@ export function parseCsv(csv: string, input: ImportMapping) {
     );
   }
   const headers = records.shift();
+  const renpho = mapping.format === 'renpho';
+  if (renpho && (!headers || !isRenphoHeader(headers)))
+    throw new Error(
+      'RENPHO requires the English 31-column Health export with one empty terminal header.',
+    );
+  if (renpho && records.some((values) => values.at(-1) !== ''))
+    throw new Error(
+      'RENPHO terminal-column cells must all be empty. Nothing was staged.',
+    );
   if (
     !headers ||
     headers.length > 100 ||
-    headers.some((h) => !h || h.length > 200) ||
+    headers.some(
+      (h, index) =>
+        (!h && !(renpho && index === headers.length - 1)) || h.length > 200,
+    ) ||
     new Set(headers).size !== headers.length
   )
     throw new Error(
@@ -59,12 +72,14 @@ export function parseCsv(csv: string, input: ImportMapping) {
   const used =
     mapping.format === 'canonical'
       ? [...canonicalColumns]
-      : [
-          mapping.timestamp_column,
-          mapping.local_date_column,
-          mapping.external_id_column,
-          ...mapping.metrics.map((m) => m.column),
-        ];
+      : mapping.format === 'renpho'
+        ? ['Date', 'Time', 'Weight(lb)', 'Body Fat Percentage(%)']
+        : [
+            mapping.timestamp_column,
+            mapping.local_date_column,
+            mapping.external_id_column,
+            ...mapping.metrics.map((m) => m.column),
+          ];
   const needed =
     mapping.format === 'canonical'
       ? [...required]
@@ -139,7 +154,22 @@ export function parseCsv(csv: string, input: ImportMapping) {
               method: get('method') || 'unknown',
             },
           ]
-        : mapping.metrics;
+        : mapping.format === 'renpho'
+          ? [
+              {
+                column: 'Weight(lb)',
+                metric: 'weight',
+                unit: 'lb',
+                method: 'device_reported',
+              },
+              {
+                column: 'Body Fat Percentage(%)',
+                metric: 'body_fat_percent',
+                unit: '%',
+                method: 'device_estimate',
+              },
+            ]
+          : mapping.metrics;
     for (const cell of cells) {
       const value = get(cell.column).trim();
       if (!value) {
@@ -151,11 +181,20 @@ export function parseCsv(csv: string, input: ImportMapping) {
           'CSV exceeds 5,000 normalized observations. Split the file; nothing was staged.',
         );
       try {
-        const observed_at = get(
-          mapping.format === 'canonical'
-            ? 'observed_at'
-            : mapping.timestamp_column,
-        ).trim();
+        if (
+          mapping.format === 'renpho' &&
+          (!/^\d{4}\.\d{2}\.\d{2}$/.test(get('Date').trim()) ||
+            !/^\d{2}:\d{2}:[0-5]\d$/.test(get('Time').trim()))
+        )
+          throw new Error();
+        const observed_at =
+          mapping.format === 'renpho'
+            ? `${get('Date').trim().replaceAll('.', '-')}T${get('Time').trim()}`
+            : get(
+                mapping.format === 'canonical'
+                  ? 'observed_at'
+                  : mapping.timestamp_column,
+              ).trim();
         if (
           mapping.format === 'canonical' &&
           !/(?:Z|[+-]\d{2}:\d{2})$/.test(observed_at)
@@ -178,12 +217,16 @@ export function parseCsv(csv: string, input: ImportMapping) {
             get(
               mapping.format === 'canonical'
                 ? 'local_date'
-                : (mapping.local_date_column ?? ''),
+                : mapping.format === 'wide'
+                  ? (mapping.local_date_column ?? '')
+                  : '',
             ).trim() || null,
           granularity:
             mapping.format === 'canonical'
               ? get('granularity')
-              : mapping.granularity,
+              : mapping.format === 'renpho'
+                ? 'instant'
+                : mapping.granularity,
           method: cell.method,
           quality_flags: [
             ...new Set([
@@ -196,7 +239,9 @@ export function parseCsv(csv: string, input: ImportMapping) {
           get(
             mapping.format === 'canonical'
               ? 'external_record_id'
-              : (mapping.external_id_column ?? ''),
+              : mapping.format === 'wide'
+                ? (mapping.external_id_column ?? '')
+                : '',
           ).trim() || null;
         if (external && external.length > 500) throw new Error();
         observations.push({
@@ -214,7 +259,9 @@ export function parseCsv(csv: string, input: ImportMapping) {
         invalid(
           row,
           cell.column,
-          'Invalid value, unit, method, granularity, flags or time. Check DST offsets and daily dates.',
+          mapping.format === 'renpho'
+            ? 'Invalid weight, body fat or local Date/Time. Confirm the timezone; DST gaps and ambiguous times cannot be imported.'
+            : 'Invalid value, unit, method, granularity, flags or time. Check DST offsets and daily dates.',
         );
       }
     }
@@ -224,6 +271,6 @@ export function parseCsv(csv: string, input: ImportMapping) {
     counts,
     errors,
     errors_omitted: errorsOmitted,
-    ignored_columns: headers.filter((h) => !used.includes(h)),
+    ignored_columns: headers.filter((h) => h !== '' && !used.includes(h)),
   };
 }

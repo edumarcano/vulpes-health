@@ -1,0 +1,4 @@
+No.,Date,Time,Weight(lb),BMI,Body Fat Percentage(%),Body Fat Mass(lb),Muscle Percentage(%),Muscle Mass(lb),Skeletal Muscle Percentage(%),Skeletal Muscle Mass(lb),Bone Percentage(%),Bone Mass(lb),Protein Percentage(%),Protein Mass(lb),Body Water Percentage(%),Body Water Mass(lb),Fat-Free Mass(lb),Subcutaneous Fat(%),Visceral Fat,BMR(kcal),Metabolic Age,WHR (Waist-to-Hip Ratio),Optimal Weight(lb),Weight Level,Body Type,Target to optimal weight(lb),Target to optimal muscle mass(lb),Target to optimal fat mass(lb),Remarks,
+1,2026.09.01,08:00:00,150.0,999,20.0,,,,,,,,,,,,,,,,,,,,,,,,"Synthetic, ignored note",
+2,2026.09.02,08:00:00,149.5,999,,,,,,,,,,,,,,,,,,,,,,,,,"Synthetic, ignored note",
+3,2026.09.03,08:00:00,,999,19.5,,,,,,,,,,,,,,,,,,,,,,,,"Synthetic, ignored note",

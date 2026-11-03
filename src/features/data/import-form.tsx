@@ -6,6 +6,7 @@ import { successEnvelopeSchema } from '../../../shared/api';
 import { measurementRegistry, type Source } from '../../../shared/data';
 import {
   CSV_LIMIT_BYTES,
+  isRenphoHeader,
   ImportPreviewSchema,
   ImportResultSchema,
   PreviewCsvSchema,
@@ -47,7 +48,10 @@ export function ImportForm({
   const [csv, setCsv] = useState('');
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState('');
-  const [format, setFormat] = useState<'canonical' | 'wide'>('canonical');
+  const [format, setFormat] = useState<'canonical' | 'wide' | 'renpho'>(
+    'canonical',
+  );
+  const [zoneConfirmed, setZoneConfirmed] = useState(false);
   const [source, setSource] = useState('new');
   const [label, setLabel] = useState('');
   const [app, setApp] = useState('');
@@ -95,7 +99,10 @@ export function ImportForm({
         throw new Error('Choose a UTF-8 CSV file of at most 1 MiB.');
       const bytes = await file.arrayBuffer();
       if (!owner.current()) return;
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      const text = new TextDecoder('utf-8', {
+        fatal: true,
+        ignoreBOM: true,
+      }).decode(bytes);
       const { parse } = await import('csv-parse/browser/esm/sync');
       const first: unknown = parse(text, {
         bom: true,
@@ -106,27 +113,32 @@ export function ImportForm({
         !Array.isArray(first) ||
         !Array.isArray(first[0]) ||
         first[0].length > 100 ||
-        first[0].some((h) => typeof h !== 'string' || !h || h.length > 200) ||
+        first[0].some((h) => typeof h !== 'string' || h.length > 200) ||
+        (!isRenphoHeader(first[0] as string[]) && first[0].some((h) => !h)) ||
         new Set(first[0]).size !== first[0].length
       )
         throw new Error('Use unique, nonblank CSV column names (maximum 100).');
       const found = first[0] as string[];
       if (sequence === fileSequence.current)
         scope.commit(epoch, () => {
-          setCsv(text);
-          setHeaders(found);
+          // Keep RENPHO file bytes for hashing without changing generic CSV identities.
+          setCsv(isRenphoHeader(found) ? text : text.replace(/^\uFEFF/, ''));
+          setHeaders(found.filter(Boolean));
+          setZoneConfirmed(false);
           setFileName(file.name);
           setFormat(
-            [
-              'observed_at',
-              'metric',
-              'value',
-              'unit',
-              'source',
-              'granularity',
-            ].every((h) => found.includes(h))
-              ? 'canonical'
-              : 'wide',
+            isRenphoHeader(found)
+              ? 'renpho'
+              : [
+                    'observed_at',
+                    'metric',
+                    'value',
+                    'unit',
+                    'source',
+                    'granularity',
+                  ].every((h) => found.includes(h))
+                ? 'canonical'
+                : 'wide',
           );
           setTimestamp(found[0] ?? '');
           setColumns({});
@@ -160,18 +172,25 @@ export function ImportForm({
     const mapping: unknown =
       format === 'canonical'
         ? { ...common, format, source_label: sourceLabel }
-        : {
-            ...common,
-            format,
-            timestamp_column: timestamp,
-            local_date_column: localDate || null,
-            external_id_column: externalId || null,
-            granularity,
-            metrics: Object.entries(columns).map(([column, v]) => ({
-              column,
-              ...v,
-            })),
-          };
+        : format === 'renpho'
+          ? {
+              ...common,
+              format,
+              profile: null,
+              timezone_confirmed: zoneConfirmed,
+            }
+          : {
+              ...common,
+              format,
+              timestamp_column: timestamp,
+              local_date_column: localDate || null,
+              external_id_column: externalId || null,
+              granularity,
+              metrics: Object.entries(columns).map(([column, v]) => ({
+                column,
+                ...v,
+              })),
+            };
     const request = PreviewCsvSchema.safeParse({
       action: 'preview_csv',
       client_request_id: crypto.randomUUID(),
@@ -189,7 +208,9 @@ export function ImportForm({
     });
     if (!request.success) {
       setError(
-        'Choose a source, timezone, mapping and a single-profile declaration or exact profile filter.',
+        format === 'renpho'
+          ? 'Choose a source and valid IANA timezone. Confirm the timezone for RENPHO and a single-profile file.'
+          : 'Choose a source, timezone, mapping and a single-profile declaration or exact profile filter.',
       );
       return;
     }
@@ -316,8 +337,8 @@ export function ImportForm({
     <section className="data-panel" aria-label="CSV import">
       <h2>Import CSV</h2>
       <p>
-        Canonical CSV or an explicit wide-column mapping. Unknown vendor formats
-        are not inferred. No model calls.
+        Canonical CSV, English RENPHO Health exports, or an explicit wide-column
+        mapping. No model calls.
       </p>
       <form className="settings-form data-form" onSubmit={preview}>
         <fieldset className="settings-form" disabled={locked}>
@@ -383,11 +404,18 @@ export function ImportForm({
             >
               <option value="canonical">Canonical long form</option>
               <option value="wide">Mapped wide columns</option>
+              <option value="renpho">RENPHO Health (English, lb)</option>
             </select>
           </label>
           <label>
             Import timezone
-            <input value={zone} onChange={(e) => setZone(e.target.value)} />
+            <input
+              value={zone}
+              onChange={(e) => {
+                setZone(e.target.value);
+                setZoneConfirmed(false);
+              }}
+            />
           </label>
           {format === 'canonical' ? (
             <label>
@@ -403,7 +431,7 @@ export function ImportForm({
                 Exact value in the source column; other sources are excluded.
               </span>
             </label>
-          ) : (
+          ) : format === 'wide' ? (
             <>
               {columnSelect('Timestamp column', timestamp, setTimestamp, false)}
               {columnSelect('Local date column', localDate, setLocalDate)}
@@ -507,9 +535,30 @@ export function ImportForm({
                 </fieldset>
               ))}
             </>
+          ) : null}
+          {format === 'renpho' && (
+            <>
+              <p>
+                Imports only weight (device reported) and body fat percentage
+                (device estimate). Other named columns are ignored. Date and
+                Time use the selected import timezone; ambiguous or missing DST
+                times are invalid. No. is not a record ID. Select the same
+                import source used for earlier converted files to detect
+                duplicates.
+              </p>
+              <label className="data-checkbox">
+                <input
+                  type="checkbox"
+                  checked={zoneConfirmed}
+                  onChange={(e) => setZoneConfirmed(e.target.checked)}
+                />
+                I confirm the import timezone matches this RENPHO file
+              </label>
+            </>
           )}
-          {columnSelect('Profile column', profileColumn, setProfileColumn)}
-          {profileColumn ? (
+          {format !== 'renpho' &&
+            columnSelect('Profile column', profileColumn, setProfileColumn)}
+          {format !== 'renpho' && profileColumn ? (
             <label>
               Profile value to include
               <input

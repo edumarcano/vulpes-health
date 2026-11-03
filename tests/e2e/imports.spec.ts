@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { accounts, restrictNetwork, signIn } from './auth-helpers';
 import { LocalSupabase } from '../helpers/local-supabase';
@@ -152,6 +153,136 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
     ).json(),
   ).toHaveLength(28);
 });
+test('RENPHO CSV requires profile and timezone confirmation before preview, then commits only reviewed readings', async ({
+  page,
+}, info) => {
+  const renpho = Buffer.concat([
+    Buffer.from('\uFEFF'),
+    readFileSync('docs/spec/v0.1.0/fixtures/renpho-synthetic.csv'),
+  ]);
+  await choose(page, renpho);
+  await expect(
+    page.getByRole('combobox', { name: 'CSV format', exact: true }),
+  ).toHaveValue('renpho');
+  await expect(
+    page.getByLabel('Timestamp column', { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText('Imports only weight', { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByLabel('Import timezone', { exact: true })
+    .fill('America/New_York');
+  await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Confirm the timezone for RENPHO',
+  );
+  await page
+    .getByLabel('I confirm the import timezone matches this RENPHO file', {
+      exact: true,
+    })
+    .check();
+  await page
+    .getByLabel('I confirm this file contains one profile', { exact: true })
+    .uncheck();
+  await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('single-profile');
+  await page
+    .getByLabel('I confirm this file contains one profile', { exact: true })
+    .check();
+  await preview(page);
+  const review = page.getByRole('region', {
+    name: 'Confirm CSV import',
+    exact: true,
+  });
+  await expect(review).toContainText(
+    '4 new; 0 duplicates; 0 conflicts excluded; 0 invalid; 2 blank',
+  );
+  await expect(review).toContainText('Ignored columns: No., BMI');
+  await expect(review).toContainText('68.0388555 kg');
+  await expect(review).toContainText('2026-09-01T12:00:00Z');
+  await page.screenshot({
+    path: info.outputPath('renpho-preview.png'),
+    fullPage: true,
+  });
+  const db = new LocalSupabase();
+  expect(
+    await (
+      await db.admin(
+        `/rest/v1/measurements?user_id=eq.${accounts[0]!.id}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toEqual([]);
+  const hashes = await (
+    await db.admin(
+      `/rest/v1/import_batches?user_id=eq.${accounts[0]!.id}&select=file_hash`,
+      'GET',
+    )
+  ).json();
+  expect(hashes).toEqual([
+    { file_hash: createHash('sha256').update(renpho).digest('hex') },
+  ]);
+  const source = await confirm(page);
+  expect(
+    await (
+      await db.admin(
+        `/rest/v1/measurements?source_id=eq.${source}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toHaveLength(4);
+});
+
+test('RENPHO CSV refuses nonempty trailing cells instead of discarding them', async ({
+  page,
+}) => {
+  const csv = readFileSync(
+    'docs/spec/v0.1.0/fixtures/renpho-synthetic.csv',
+    'utf8',
+  ).replace('ignored note",', 'ignored note",nonempty');
+  await choose(page, Buffer.from(csv));
+  await page.getByLabel('Import timezone', { exact: true }).fill('UTC');
+  await page
+    .getByLabel('I confirm the import timezone matches this RENPHO file', {
+      exact: true,
+    })
+    .check();
+  await page
+    .getByLabel('Import timezone', { exact: true })
+    .fill('America/New_York');
+  await expect(
+    page.getByLabel('I confirm the import timezone matches this RENPHO file', {
+      exact: true,
+    }),
+  ).not.toBeChecked();
+  await page
+    .getByLabel('I confirm the import timezone matches this RENPHO file', {
+      exact: true,
+    })
+    .check();
+  const response = page.waitForResponse(
+    (r) => r.url().endsWith('/api/data') && r.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
+  expect((await response).status()).toBe(400);
+  await expect(page.getByRole('alert')).toContainText(
+    'terminal-column cells must all be empty',
+  );
+  await expect(
+    page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
+  ).toHaveCount(0);
+  const db = new LocalSupabase();
+  expect(
+    await (
+      await db.admin(
+        `/rest/v1/measurements?user_id=eq.${accounts[0]!.id}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toEqual([]);
+});
+
 test('wide mapping exposes five exact observations, ignored columns and a missing value', async ({
   page,
 }) => {

@@ -13,6 +13,47 @@ import {
   UUIDSchema,
 } from './primitives.js';
 
+export const RENPHO_COLUMNS = [
+  'No.',
+  'Date',
+  'Time',
+  'Weight(lb)',
+  'BMI',
+  'Body Fat Percentage(%)',
+  'Body Fat Mass(lb)',
+  'Muscle Percentage(%)',
+  'Muscle Mass(lb)',
+  'Skeletal Muscle Percentage(%)',
+  'Skeletal Muscle Mass(lb)',
+  'Bone Percentage(%)',
+  'Bone Mass(lb)',
+  'Protein Percentage(%)',
+  'Protein Mass(lb)',
+  'Body Water Percentage(%)',
+  'Body Water Mass(lb)',
+  'Fat-Free Mass(lb)',
+  'Subcutaneous Fat(%)',
+  'Visceral Fat',
+  'BMR(kcal)',
+  'Metabolic Age',
+  'WHR (Waist-to-Hip Ratio)',
+  'Optimal Weight(lb)',
+  'Weight Level',
+  'Body Type',
+  'Target to optimal weight(lb)',
+  'Target to optimal muscle mass(lb)',
+  'Target to optimal fat mass(lb)',
+  'Remarks',
+] as const;
+export function isRenphoHeader(headers: readonly string[]): boolean {
+  return (
+    headers.length === RENPHO_COLUMNS.length + 1 &&
+    headers.at(-1) === '' &&
+    new Set(headers).size === headers.length &&
+    RENPHO_COLUMNS.every((column) => headers.includes(column))
+  );
+}
+
 export const CSV_LIMIT_BYTES = 1024 * 1024;
 export const IMPORT_LIMIT = 5000;
 const ColumnSchema = z.string().min(1).max(200);
@@ -27,6 +68,13 @@ const commonMapping = {
 };
 export const ImportMappingSchema = z
   .discriminatedUnion('format', [
+    z.strictObject({
+      ...commonMapping,
+      format: z.literal('renpho'),
+      profile: z.null(),
+      single_profile: z.literal(true),
+      timezone_confirmed: z.literal(true),
+    }),
     z.strictObject({
       ...commonMapping,
       format: z.literal('canonical'),
