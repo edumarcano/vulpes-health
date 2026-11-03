@@ -42,7 +42,16 @@ function Protected({ children }: { children: ReactNode }) {
         replace
       />
     );
-  return <div key={`${state.session.user.id}:${scope.epoch}`}>{children}</div>;
+  return (
+    <div
+      key={`${state.session.user.id}:${scope.epoch}`}
+      className={
+        pathname === '/ask' ? 'h-full flex flex-col flex-1 min-h-0' : undefined
+      }
+    >
+      {children}
+    </div>
+  );
 }
 
 function NotFoundPage() {
