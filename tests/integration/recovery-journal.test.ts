@@ -78,7 +78,9 @@ it('captures real PostgreSQL journal rows and validates the encrypted file throu
       database,
       `create schema auth; create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb not null default '{}'::jsonb);create schema storage;create table storage.objects(id uuid primary key);${ddl}
    insert into auth.users(id,email) values('${unfinished}','synthetic-journal@example.invalid');
-   insert into public.account_deletion_receipts(user_id,phase,outcome,completed_at) values('${deleted}','completed','completed',clock_timestamp()),('${unfinished}','auth_removal_pending','auth_unavailable',null);`,
+   insert into public.account_deletion_receipts(user_id,phase,outcome,requested_at,updated_at,completed_at)
+   values('${deleted}','completed','completed',statement_timestamp(),statement_timestamp(),statement_timestamp()),
+   ('${unfinished}','auth_removal_pending','auth_unavailable',statement_timestamp(),statement_timestamp(),null);`,
     );
     for (const table of [
       'usage_buckets',
