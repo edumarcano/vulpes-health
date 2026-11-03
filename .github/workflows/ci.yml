@@ -48,10 +48,10 @@ jobs:
       - name: Specification validation
         run: python3 docs/spec/v0.1.0/scripts/validate_spec_package.py
 
-  integration:
-    name: Integration checks
+  backend_integration:
+    name: Backend integration checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -64,8 +64,6 @@ jobs:
         run: |
           npm install --global "$(node -p 'require("./package.json").packageManager')"
           npm ci
-      - name: Install Chromium and system dependencies
-        run: npx --no-install playwright install --with-deps chromium
       # The wrappers enforce the disposable loopback stack and hide startup keys.
       - name: Start disposable Supabase
         run: npm run db:start
@@ -90,6 +88,34 @@ jobs:
         run: npm run maintenance:cleanup
       - name: Encrypted separate-environment restore and recovery
         run: npm run backup:verify
+      - name: Stop disposable Supabase
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: npm run db:stop
+
+  browser_integration:
+    name: Browser integration checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: package.json
+          cache: npm
+      - name: Install pinned npm and locked dependencies
+        run: |
+          npm install --global "$(node -p 'require("./package.json").packageManager')"
+          npm ci
+      - name: Install Chromium and system dependencies
+        run: npx --no-install playwright install --with-deps chromium
+      # The wrappers enforce the disposable loopback stack and hide startup keys.
+      - name: Start disposable Supabase
+        run: npm run db:start
+      - name: Apply migrations from a clean database
+        run: npm run db:reset:test
       # This runner rebuilds, provisions synthetic sessions in memory and redacts output.
       # Never upload browser reports, traces, screenshots, or local service logs.
       - name: Playwright Chromium tests
