@@ -143,12 +143,7 @@ function GoalsWorkspace({ token }: { token: string }) {
   return (
     <>
       <header className="page-heading">
-        <p className="eyebrow">Progress on your terms</p>
         <h1 tabIndex={-1}>Goals</h1>
-        <p>
-          Create and review personal targets without AI. Targets are your
-          requests, without medical validation.
-        </p>
       </header>
       {notice && <p role="status">{notice}</p>}
       {[list.error, proposals.error, sources.error, detail.error]

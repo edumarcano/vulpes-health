@@ -16,6 +16,7 @@ export function pwaShell(): Plugin {
         '/icons/vulpes-192.png',
         '/icons/vulpes-512.png',
         '/brand/vulpes-horizontal.png',
+        '/brand/vulpes-reversed.png',
       ];
       const assets = [
         ...Object.keys(bundle)

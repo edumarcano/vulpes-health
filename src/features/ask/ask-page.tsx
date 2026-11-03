@@ -46,7 +46,6 @@ function Welcome() {
         <div className="feature-symbol">
           <Sparkles size={24} aria-hidden="true" />
         </div>
-        <p className="eyebrow">Start with what you know</p>
         <h2>Your data comes first.</h2>
         <p>
           Explore your measurements and work toward goals you choose. Start a
@@ -727,9 +726,7 @@ export function AskPage() {
   return (
     <div className="ask-page">
       <header className="page-heading">
-        <p className="eyebrow">A clearer picture, one question at a time</p>
         <h1 tabIndex={-1}>Ask Vulpes</h1>
-        <p>Understand your measurements. Find a way forward.</p>
       </header>
       <section
         className="conversation-controls"

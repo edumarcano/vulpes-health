@@ -225,12 +225,7 @@ export function DataPage() {
   return (
     <>
       <header className="page-heading">
-        <p className="eyebrow">Your measurements, with their context</p>
         <h1 tabIndex={-1}>Data</h1>
-        <p>
-          Deterministic calculations. No model calls. Preview and confirm CSV
-          imports.
-        </p>
       </header>
       <div className="data-stack">
         {sources.isPending ? (

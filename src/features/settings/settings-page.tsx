@@ -178,9 +178,7 @@ export function SettingsPage() {
   return (
     <>
       <header className="page-heading">
-        <p className="eyebrow">Clear choices. Personal control.</p>
         <h1 tabIndex={-1}>Settings</h1>
-        <p>Your profile and consent belong to this account.</p>
       </header>
       <div className="settings-stack">
         <Card className="settings-card">

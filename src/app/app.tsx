@@ -86,14 +86,19 @@ export function App() {
       </a>
       <header className="brand-header">
         <NavLink to="/ask" aria-label="Vulpes home" className="brand-link">
-          <img
-            src="/brand/vulpes-horizontal.png"
-            alt="Vulpes"
-            width={3200}
-            height={800}
-          />
+          <picture>
+            <source
+              media="(prefers-color-scheme: dark)"
+              srcSet="/brand/vulpes-reversed.png"
+            />
+            <img
+              src="/brand/vulpes-horizontal.png"
+              alt="Vulpes"
+              width={3200}
+              height={800}
+            />
+          </picture>
         </NavLink>
-        <span className="preview-label">Private wellness prototype</span>
       </header>
       {state.kind === 'signed_in' && (
         <nav className="primary-nav" aria-label="Primary">

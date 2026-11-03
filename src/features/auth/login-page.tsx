@@ -43,7 +43,6 @@ export function LoginPage() {
   return (
     <>
       <header className="page-heading">
-        <p className="eyebrow">Personal Health Intelligence</p>
         <h1 tabIndex={-1}>Sign in to Vulpes</h1>
         <p>
           Your account keeps your measurements, goals and preferences separate.
