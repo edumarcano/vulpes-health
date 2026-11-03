@@ -544,12 +544,6 @@ function AskThread({
               );
             }}
           </ThreadPrimitive.Messages>
-          <p className="wellness-note text-center text-xs text-muted-foreground my-2">
-            Personal wellness information. Not medical diagnosis or emergency
-            monitoring.
-          </p>
-        </ThreadPrimitive.Viewport>
-        <div className="composer-area">
           <p role="status" aria-live="polite" className="chat-status">
             {notice}
           </p>
@@ -565,25 +559,6 @@ function AskThread({
               Local synthetic verification. No live provider calls.
             </p>
           )}
-          <ComposerPrimitive.Root className="composer">
-            <ComposerPrimitive.Input
-              aria-label="Message Ask Vulpes"
-              placeholder="Ask about your measurements…"
-              rows={1}
-            />
-            {busy ? (
-              <Button
-                onClick={() => void stop.mutateAsync()}
-                disabled={stop.isPending || (!state.runId && !activeRun)}
-              >
-                Stop
-              </Button>
-            ) : (
-              <ComposerPrimitive.Send asChild>
-                <Button>Send</Button>
-              </ComposerPrimitive.Send>
-            )}
-          </ComposerPrimitive.Root>
           {state.phase === 'recovering' && (
             <Button
               variant="outline"
@@ -624,6 +599,31 @@ function AskThread({
               Reload conversation
             </Button>
           )}
+          <p className="wellness-note text-center text-xs text-muted-foreground my-2">
+            Personal wellness information. Not medical diagnosis or emergency
+            monitoring.
+          </p>
+        </ThreadPrimitive.Viewport>
+        <div className="composer-area">
+          <ComposerPrimitive.Root className="composer">
+            <ComposerPrimitive.Input
+              aria-label="Message Ask Vulpes"
+              placeholder="Ask about your measurements…"
+              rows={1}
+            />
+            {busy ? (
+              <Button
+                onClick={() => void stop.mutateAsync()}
+                disabled={stop.isPending || (!state.runId && !activeRun)}
+              >
+                Stop
+              </Button>
+            ) : (
+              <ComposerPrimitive.Send asChild>
+                <Button>Send</Button>
+              </ComposerPrimitive.Send>
+            )}
+          </ComposerPrimitive.Root>
         </div>
       </ThreadPrimitive.Root>
       {inspection && (

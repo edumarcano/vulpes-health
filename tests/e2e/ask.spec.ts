@@ -113,6 +113,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     expect(composer!.y + composer!.height).toBeLessThanOrEqual(nav!.y);
     const savedStatus = page.getByText('Response saved.', { exact: true });
     await expect(savedStatus).toBeVisible();
+    await savedStatus.scrollIntoViewIfNeeded();
     await expect(savedStatus).toBeInViewport();
     await expect(
       page.getByRole('button', { name: 'Send', exact: true }),
