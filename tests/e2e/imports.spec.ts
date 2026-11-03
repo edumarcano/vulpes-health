@@ -467,6 +467,15 @@ for (const action of ['preview_csv', 'commit_import'])
       await page.goto('/data');
       release();
       await expect(
+        page.getByRole('heading', {
+          name: 'No measurements loaded',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page
+        .getByRole('button', { name: 'Import CSV', exact: true })
+        .click();
+      await expect(
         page.getByLabel('Import source label', { exact: true }),
       ).toHaveValue('');
       await expect(
@@ -475,12 +484,6 @@ for (const action of ['preview_csv', 'commit_import'])
       await expect(
         page.getByRole('heading', { name: 'Import recorded', exact: true }),
       ).toHaveCount(0);
-      await expect(
-        page.getByRole('heading', {
-          name: 'No measurements loaded',
-          exact: true,
-        }),
-      ).toBeVisible();
     } finally {
       release();
     }

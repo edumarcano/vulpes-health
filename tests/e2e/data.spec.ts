@@ -128,11 +128,11 @@ test('second-60 manual entry and correction show validation errors without movin
     .click();
   expect((await rejectedEntry).status()).toBe(400);
   await expect(page.getByRole('alert')).toContainText('Check the value');
-  await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
   await page
     .getByRole('button', { name: 'Back to editing', exact: true })
     .click();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
   await page.getByRole('button', { name: 'Correct', exact: true }).click();
   await page
     .getByLabel('Corrected observation time', { exact: true })
@@ -163,6 +163,11 @@ test('confirmation is required, unusual readings stay unchanged, source text is 
   page,
 }) => {
   await range(page);
+  const mutationActions: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/data') && request.method() === 'POST')
+      mutationActions.push(request.postDataJSON()?.action);
+  });
   await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
   await page
     .getByLabel('Source label', { exact: true })
@@ -175,9 +180,16 @@ test('confirmation is required, unusual readings stay unchanged, source text is 
   await page
     .getByRole('button', { name: 'Review measurement', exact: true })
     .click();
-  await expect(
-    page.getByRole('heading', { name: 'No measurements loaded', exact: true }),
-  ).toBeVisible();
+  expect(mutationActions).toEqual([]);
+  const db = new LocalSupabase();
+  expect(
+    await (
+      await db.admin(
+        `/rest/v1/measurements?user_id=eq.${accounts[0]!.id}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toEqual([]);
   await page
     .getByRole('button', { name: 'Confirm and save', exact: true })
     .click();
