@@ -188,20 +188,13 @@ describe('English RENPHO Health CSV', () => {
       }),
     ).toThrow('nonblank');
   });
-  it('enforces original byte, record, row and observation limits without truncation', () => {
+  it('enforces original byte, record and row limits without truncation', () => {
     expect(() => parseCsv('x'.repeat(1024 * 1024 + 1), mapping)).toThrow(
       '1 MiB',
     );
     expect(() =>
       parseCsv(csv({ Remarks: 'x'.repeat(65536) }), mapping),
     ).toThrow('malformed');
-    expect(
-      parseCsv(headers.join(',') + '\n' + (row() + '\n').repeat(2500), mapping)
-        .observations,
-    ).toHaveLength(5000);
-    expect(() =>
-      parseCsv(headers.join(',') + '\n' + (row() + '\n').repeat(2501), mapping),
-    ).toThrow('5,000');
     const empty = ','.repeat(30);
     expect(() =>
       parseCsv(
@@ -209,5 +202,16 @@ describe('English RENPHO Health CSV', () => {
         mapping,
       ),
     ).toThrow('10,000');
+  });
+  it('accepts exactly 5,000 observations without truncation', () => {
+    expect(
+      parseCsv(headers.join(',') + '\n' + (row() + '\n').repeat(2500), mapping)
+        .observations,
+    ).toHaveLength(5000);
+  });
+  it('rejects input exceeding 5,000 observations', () => {
+    expect(() =>
+      parseCsv(headers.join(',') + '\n' + (row() + '\n').repeat(2501), mapping),
+    ).toThrow('5,000');
   });
 });
