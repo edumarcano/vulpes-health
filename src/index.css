@@ -978,6 +978,10 @@ summary {
 }
 
 @media (max-width: 767px) and (max-height: 600px) {
+  .ask-page .conversation-viewport {
+    padding-block: 0;
+  }
+
   .main-content.main-ask {
     padding-bottom: calc(100px + env(safe-area-inset-bottom));
   }

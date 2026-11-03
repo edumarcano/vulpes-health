@@ -96,6 +96,33 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   await expect(
     page.getByText(/seven-day mean 69 kg; change -0.7 kg/),
   ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 500 });
+  const draft =
+    'Draft line one\nDraft line two\nDraft line three\nDraft line four\nDraft line five';
+  for (const fontSize of [16, 32]) {
+    const zoom = await page.addStyleTag({
+      content: `html{font-size:${fontSize}px}`,
+    });
+    const composerInput = page.getByLabel('Message Ask Vulpes');
+    await composerInput.fill(draft);
+    await expect(composerInput).toBeInViewport();
+    const composer = await page.locator('.composer-area').boundingBox();
+    const nav = await page.locator('.primary-nav').boundingBox();
+    expect(composer).not.toBeNull();
+    expect(nav).not.toBeNull();
+    expect(composer!.y + composer!.height).toBeLessThanOrEqual(nav!.y);
+    const savedStatus = page.getByText('Response saved.', { exact: true });
+    await expect(savedStatus).toBeVisible();
+    await expect(savedStatus).toBeInViewport();
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeInViewport();
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeEnabled();
+    await zoom.evaluate((element) => element.parentNode?.removeChild(element));
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await expect(
     page.getByRole('heading', { name: 'Calculated measurement summary' }),
   ).toBeVisible();
@@ -298,29 +325,6 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     await expect(
       page.getByRole('button', { name: 'Send', exact: true }),
     ).toBeInViewport();
-    await zoom.evaluate((element) => element.parentNode?.removeChild(element));
-  }
-  await page.setViewportSize({ width: 390, height: 500 });
-  for (const fontSize of [16, 32]) {
-    const zoom = await page.addStyleTag({
-      content: `html{font-size:${fontSize}px}`,
-    });
-    const composerInput = page.getByLabel('Message Ask Vulpes');
-    await composerInput.fill(
-      'Draft line one\nDraft line two\nDraft line three\nDraft line four\nDraft line five',
-    );
-    await expect(composerInput).toBeInViewport();
-    const composer = await page.locator('.composer-area').boundingBox();
-    const nav = await page.locator('.primary-nav').boundingBox();
-    expect(composer).not.toBeNull();
-    expect(nav).not.toBeNull();
-    expect(composer!.y + composer!.height).toBeLessThanOrEqual(nav!.y);
-    await expect(
-      page.getByRole('button', { name: 'Send', exact: true }),
-    ).toBeInViewport();
-    await expect(
-      page.getByRole('button', { name: 'Send', exact: true }),
-    ).toBeEnabled();
     await zoom.evaluate((element) => element.parentNode?.removeChild(element));
   }
   await page.setViewportSize({ width: 390, height: 844 });
