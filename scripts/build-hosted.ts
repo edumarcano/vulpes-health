@@ -28,6 +28,8 @@ export function hostedBuild(
     projectId: v['project-id'],
     appOrigin: v['app-origin'],
   });
+  if (env.VERCEL_GIT_PROVIDER && env.VERCEL_GIT_COMMIT_REF !== 'main')
+    throw new Error('production_branch_required');
   const buildEnv = { ...env };
   // Vite does not use Vercel's automatically public repository/deployment metadata.
   for (const name of Object.keys(buildEnv))
@@ -56,7 +58,7 @@ if (
     console.info(JSON.stringify(hostedBuild(process.argv.slice(2))));
   } catch {
     console.error(
-      'Synthetic hosted build refused or failed. Check target identity, approved inference mode and server-only configuration.',
+      'Hosted build refused or failed. Check target identity, approved inference mode and server-only configuration.',
     );
     process.exitCode = 1;
   }

@@ -8,7 +8,7 @@ import {
   LivenessResponseSchema,
 } from '../../shared/api.js';
 import { readServerEnvironment } from '../../server/config/environment.js';
-import { securityHeaders } from '../../server/http/security.js';
+import { securityHeadersForSupabase } from '../../server/http/security.js';
 
 describe('fail-closed configuration', () => {
   it.each([undefined, 'false', 'true'])(
@@ -107,7 +107,7 @@ describe('real Node HTTP entry point', () => {
   });
 });
 
-it('keeps hosting security headers aligned with the tested preview', () => {
+it('keeps production hosting security headers bound to its authentication origin', () => {
   const config = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
     headers: Array<{
       source: string;
@@ -118,5 +118,7 @@ it('keeps hosting security headers aligned with the tested preview', () => {
     config.headers.find((entry) => entry.source === '/:path*')?.headers ?? [];
   expect(
     Object.fromEntries(headers.map(({ key, value }) => [key, value])),
-  ).toEqual(securityHeaders);
+  ).toEqual(
+    securityHeadersForSupabase('https://vatwmqzjymbhaodwatyn.supabase.co'),
+  );
 });

@@ -1,9 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "npm run build:hosted",
+  "buildCommand": "npm run build:hosted -- --project-ref=vatwmqzjymbhaodwatyn --project-id=prj_k4kQU4k9DVnjskslngj7QbYA7zvW --app-origin=https://vulpes-health.vercel.app --mode=owner-pilot-luna",
   "installCommand": "npm install --global npm@11.18.0 && npm ci",
-  "git": { "deploymentEnabled": false },
+  "git": { "deploymentEnabled": { "**": false, "main": true } },
+  "regions": ["iad1"],
   "outputDirectory": "dist",
   "functions": { "api/*.ts": { "maxDuration": 240 } },
   "rewrites": [
@@ -29,7 +30,7 @@
     {
       "source": "/:path*",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://vatwmqzjymbhaodwatyn.supabase.co; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "no-referrer" },
         { "key": "X-Frame-Options", "value": "DENY" }

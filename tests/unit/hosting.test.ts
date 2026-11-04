@@ -44,6 +44,59 @@ const errorBody = {
   request_id,
 };
 describe('synthetic hosting preparation', () => {
+  it('binds native Git builds to the existing production target and rejects preview or other-branch execution', () => {
+    const config = JSON.parse(readFileSync('vercel.json', 'utf8'));
+    // ** also matches branch names containing slashes; Vercel enables a branch
+    // when any matching rule is true.
+    expect(config.git.deploymentEnabled).toEqual({ '**': false, main: true });
+    expect(config.regions).toEqual(['iad1']);
+    expect(
+      config.headers.find(
+        (entry: { source: string }) => entry.source === '/:path*',
+      ).headers,
+    ).toContainEqual({
+      key: 'Content-Security-Policy',
+      value: securityHeadersForSupabase(
+        'https://vatwmqzjymbhaodwatyn.supabase.co',
+      )['Content-Security-Policy'],
+    });
+    const args = config.buildCommand.split(' -- ')[1].split(' ');
+    const production = {
+      ...env(),
+      VERCEL_PROJECT_ID: 'prj_k4kQU4k9DVnjskslngj7QbYA7zvW',
+      VERCEL_PROJECT_PRODUCTION_URL: 'vulpes-health.vercel.app',
+      VERCEL_GIT_PROVIDER: 'github',
+      VERCEL_GIT_COMMIT_REF: 'main',
+      VULPES_APP_ORIGIN: 'https://vulpes-health.vercel.app',
+      VITE_SUPABASE_URL: 'https://vatwmqzjymbhaodwatyn.supabase.co',
+      VULPES_LIVE_AI_ENABLED: 'true',
+      OPENROUTER_API_KEY: 'sk-or-v1-synthetic_private_canary',
+    };
+    expect(hostedBuild([...args, '--check-only'], production)).toMatchObject({
+      purpose: 'owner-pilot',
+      inferenceEnabled: true,
+      buildRan: false,
+    });
+    expect(
+      hostedBuild([...args, '--check-only'], {
+        ...production,
+        VERCEL_PROJECT_PRODUCTION_URL: 'vulpes-synthetic.vercel.app',
+      }),
+    ).toMatchObject({ configuration: 'valid', buildRan: false });
+    for (const branch of ['feature/markdown', 'fix/test', 'main-copy', ''])
+      expect(() =>
+        hostedBuild([...args, '--check-only'], {
+          ...production,
+          VERCEL_GIT_COMMIT_REF: branch,
+        }),
+      ).toThrow('production_branch_required');
+    expect(() =>
+      hostedBuild([...args, '--check-only'], {
+        ...production,
+        VERCEL_ENV: 'preview',
+      }),
+    ).toThrow('hosted_project_mismatch');
+  });
   it('allows explicit deferred recovery for synthetic hosting without changing inference or source-isolation gates', () => {
     const single = HostingTargetSchema.parse({
       ...target,
@@ -136,7 +189,6 @@ describe('synthetic hosting preparation', () => {
     for (const patch of [
       { VERCEL_ENV: 'preview' },
       { VERCEL_PROJECT_ID: 'prj_Other' },
-      { VERCEL_PROJECT_PRODUCTION_URL: 'other.vercel.app' },
       { VULPES_LIVE_AI_ENABLED: 'true' },
       { OPENROUTER_API_KEY: 'synthetic-provider-canary' },
       { GOOGLE_CLOUD_PROJECT: 'synthetic-google' },

@@ -95,7 +95,12 @@ const HostedConfigSchema = z.strictObject({
       headers: z.array(z.strictObject({ key: z.string(), value: z.string() })),
     }),
   ),
-  git: z.strictObject({ deploymentEnabled: z.literal(false) }),
+  git: z.strictObject({
+    deploymentEnabled: z.union([
+      z.literal(false),
+      z.strictObject({ '**': z.literal(false), main: z.literal(true) }),
+    ]),
+  }),
   regions: z.array(z.string()).optional(),
 });
 export function hostingBuildArguments(target: HostingTarget) {
@@ -124,6 +129,7 @@ export function renderHostingConfig(
     throw new Error('Missing security header template.');
   return {
     ...config,
+    git: { deploymentEnabled: false as const },
     regions: [hostingRegions[t.databaseRegion]],
     buildCommand:
       'npm run build:hosted -- ' +
@@ -162,8 +168,7 @@ export function checkHostedEnvironment(
   if (
     env.VERCEL !== '1' ||
     env.VERCEL_ENV !== 'production' ||
-    env.VERCEL_PROJECT_ID !== target.projectId ||
-    env.VERCEL_PROJECT_PRODUCTION_URL !== new URL(target.appOrigin).hostname
+    env.VERCEL_PROJECT_ID !== target.projectId
   )
     fail('hosted_project_mismatch');
   if (mode === 'disabled') {
@@ -235,7 +240,7 @@ export function checkHostedEnvironment(
     fail('trace_keys_invalid');
   }
   return {
-    purpose: 'synthetic-only',
+    purpose: mode === 'owner-pilot-luna' ? 'owner-pilot' : 'synthetic-only',
     inferenceEnabled: mode === 'owner-pilot-luna',
     configuration: 'valid',
   } as const;
