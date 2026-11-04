@@ -6,7 +6,9 @@ import { ChatPartSchema } from '../../../shared/chat';
 import { useAuth } from '@/lib/auth/auth-context';
 import { ownedJson } from '@/lib/api';
 import { Card } from '@/components/ui/card';
-import { GoalProposalReview, Progress } from '../goals/goals-page';
+import { GoalProposalReview } from '../goals/goal-review';
+import { Progress } from '../goals/goal-progress';
+import { GoalProposalRowSchema } from '../../../shared/goal-views';
 
 export function ProposalPart({ data }: { data: unknown }) {
   const parsed = ChatPartSchema.safeParse(data);
@@ -44,7 +46,7 @@ function OwnedProposal({
     retry: false,
     queryFn: async () =>
       z
-        .object({ data: z.record(z.string(), z.json()) })
+        .object({ data: GoalProposalRowSchema })
         .parse(
           await ownedJson(
             '/api/goals?view=proposal&id=' + reference.proposalId,

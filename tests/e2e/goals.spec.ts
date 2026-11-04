@@ -63,11 +63,22 @@ test('goal cards render unavailable, range, and directional progress distinctly'
         },
       },
     ],
+    [
+      'malformed',
+      {
+        kind: 'progress',
+        baseline: '70',
+        current: '68',
+        result: { kind: 'directional', rawPercent: 150, displayPercent: 150 },
+      },
+    ],
   ] as const;
   const goals = cases.map(([label], index) => ({
     id: id(index + 1),
     title: `Synthetic ${label} goal`,
     state: 'active',
+    review_status: 'clear',
+    version: 1,
     direction: index < 3 ? 'maintain_range' : 'decrease_to',
     target_lower: 65,
     target_upper: 75,
@@ -144,6 +155,9 @@ test('goal cards render unavailable, range, and directional progress distinctly'
       .locator('.goal-card')
       .filter({ hasText: 'Synthetic unavailable goal' }),
   ).toContainText('Baseline review required.');
+  await expect(
+    page.locator('.goal-card').filter({ hasText: 'Synthetic malformed goal' }),
+  ).toContainText('Current value unavailable.');
 });
 
 test('direct Goals latest daily progress includes today without inference', async ({
