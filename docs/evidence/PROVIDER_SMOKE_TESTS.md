@@ -30,4 +30,4 @@ Generation fixtures exercise a read-tool continuation with opaque state; decisio
 
 With the current static Everyday evidence, explicit spend flags and a true live switch still require a valid immutable local synthetic batch, encryption, consent, account/application budgets and credentials. The flags alone do not authorize inference.
 
-The report contains no prompts, raw provider payloads, credentials, or health records. See [PR 02 evidence](pr02-contracts.md) for public documentation review, local checks, and acceptance boundaries.
+The report contains no prompts, raw provider payloads, credentials, or health records. See [PR 02 evidence](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/evidence/pr02-contracts.md) for public documentation review, local checks, and acceptance boundaries.

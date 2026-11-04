@@ -1,6 +1,6 @@
 # Private account setup
 
-Email/password authentication supports operator-provisioned accounts. Manual/CSV Data, Goals, owned JSON export and resumable account deletion are implemented. Public signup, email invitations/recovery and production inference remain unavailable. Operator-assisted recovery has a guarded local verification path in the [account lifecycle runbook](../operations/account-lifecycle.md). Tests use synthetic accounts only; hosted provisioning and real-account operations require separate approval.
+Email/password authentication supports operator-provisioned accounts. Manual/CSV Data, Goals, owned JSON export and resumable account deletion are implemented. Public signup and email invitations/recovery remain unavailable. The authorized hosted owner pilot uses Luna under consent and budget controls. Operator-assisted recovery has a guarded local verification path in the [account lifecycle runbook](../operations/account-lifecycle.md). Tests use synthetic accounts only; hosted provisioning and real-account operations require separate approval.
 
 ## Configuration
 
@@ -30,7 +30,7 @@ Restart the full app after configuration changes. Development and preview CSP al
 
 Use the existing guarded local integration/browser tests for disposable synthetic provisioning and cleanup. They do not grant permission to create real or family accounts.
 
-The approved small-pilot policy is operator-assisted reset without SMTP. Before real/family use, verify out-of-band identity checks, protected credential handoff and the hosted operator/Auth/session path. Do not assume default mail delivery or make family users project administrators. Local admin/Auth verification does not close the external OPS-05 gate.
+The approved small-pilot policy is operator-assisted reset without SMTP. Before family use, verify out-of-band identity checks, protected credential handoff and the hosted operator/Auth/session path. Do not assume default mail delivery or make family users project administrators. Local admin/Auth verification does not close the external OPS-05 gate.
 
 ## Encryption and retention
 

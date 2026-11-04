@@ -59,7 +59,7 @@ Export and test backups before real use. Keep schema, RLS, functions, Storage ob
 
 ## 6. Vercel setup
 
-Follow the [controlled synthetic hosting procedure](../../operations/synthetic-hosting.md). The root `vercel.json` deliberately refuses an unbound hosted build. Local preparation generates a target-specific configuration with the exact Supabase CSP origin, selected function region and guarded build command. Git automatic deployment remains disabled. Verify hosted deep links and API errors separately; unknown API paths must not return `index.html`, and `/api/account` continues through the Settings entry point.
+Follow the [current owner operations](../../operations/owner-pilot-data.md). The root `vercel.json` deliberately refuses an unbound hosted build. Local preparation generates a target-specific configuration with the exact Supabase CSP origin, selected function region and guarded build command. Git automatic deployment remains disabled. Verify hosted deep links and API errors separately; unknown API paths must not return `index.html`, and `/api/account` continues through the Settings entry point.
 
 Set server secrets only in server environments; the public client receives only Supabase's URL/publishable key and public app metadata. Disable live inference and use synthetic data in preview deployments. Do not give fork/PR previews production credentials or production database access.
 
