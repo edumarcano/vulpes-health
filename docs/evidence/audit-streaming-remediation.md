@@ -106,3 +106,5 @@ reviewed but unexecuted. No shared stack, reset, cloud resource, `.env`, real he
 record, provider activation or paid request was accessed. Provider requests: zero;
 inference spend: USD 0. Deployment, recovery and decision-log work belong to the
 parent remediation task. This draft does not establish merge or release readiness.
+
+CI follow-up: integration/browser assertions exposed a valid parsed text prefix being dropped when a later provider frame failed or the stream ended without completion. Two new pure regressions failed before repair and all 19 streaming cases passed afterward. Generation-event batching now flushes previously parsed valid events before propagating a non-cancellation source failure, persisting text before emission. Raw unflushed transport batches and owner cancellation still do not flush. Original integration/browser prefix assertions are retained for the database/browser rerun; no pass is inferred from pure tests.

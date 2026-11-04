@@ -649,6 +649,40 @@ it('disposes an agent iterator without trailing emissions or a released usage ho
   expectPending('failed');
 });
 
+it.each(['truncated', 'malformed'])(
+  'commits parsed text before a later %s provider failure',
+  async (failure) => {
+    const text = 'Durable synthetic prefix 🦊';
+    const chunks = [frame({ type: 'response.output_text.delta', delta: text })];
+    if (failure === 'malformed')
+      chunks.push(Buffer.from('data: invalid-json\n\n'));
+    const agent = new VulpesAgent(context, {
+      adapter: new OpenRouterResponsesAdapter(),
+      transport: transport(chunks),
+      price,
+      maxRunCostUSD: '1',
+    });
+    const events = [];
+    for await (const event of agent.run(
+      input,
+      lease,
+      summary,
+      null,
+      new AbortController().signal,
+    ))
+      events.push(event);
+    expect(events.at(-1)?.type).toBe('run.failed');
+    expect(store.parts).toEqual([{ type: 'text', text }]);
+    expect(
+      events
+        .filter((e) => e.type === 'text.delta')
+        .map((e) => e.payload.text)
+        .join(''),
+    ).toBe(text);
+    expectPending('failed');
+  },
+);
+
 it('retains authoritative usage and the fixed expiry through successful settlement', async () => {
   const text = 'Synthetic final answer';
   const chunks = [

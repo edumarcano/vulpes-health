@@ -348,6 +348,7 @@ export class VulpesAgent {
             (raw) =>
               raw.type === 'text.delta' ? Buffer.byteLength(raw.text) : 0,
             () => generation.abort(),
+            'flush',
           )) {
             let pendingText = '';
             for (const raw of batch) {

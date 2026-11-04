@@ -56,6 +56,7 @@ export async function* streamBatches<T>(
   signal: AbortSignal,
   byteLength: (value: T) => number,
   close: () => void,
+  sourceFailure: 'discard' | 'flush' = 'discard',
 ): AsyncGenerator<T[]> {
   const iterator = source[Symbol.asyncIterator]();
   let pending: Promise<IteratorResult<T>> | undefined;
@@ -77,7 +78,18 @@ export async function* streamBatches<T>(
       });
       while (bytes < CHECKPOINT_BYTES) {
         pending ??= iterator.next();
-        const next = await Promise.race([pending, elapsed, aborted]);
+        let next: IteratorResult<T> | null;
+        try {
+          next = await Promise.race([pending, elapsed, aborted]);
+        } catch (error) {
+          // Parsed generation events remain valid when a later frame fails.
+          // Owner cancellation and raw transport failures never flush a batch.
+          if (sourceFailure === 'flush' && batch.length && !signal.aborted) {
+            clearTimeout(timer);
+            yield batch;
+          }
+          throw error;
+        }
         signal.throwIfAborted();
         if (next === null) break;
         pending = undefined;
