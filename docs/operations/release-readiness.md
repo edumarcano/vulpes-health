@@ -38,6 +38,8 @@ npm run evidence:release
 
 The assembler writes `.scratch/release-evidence/m6-local.json`; its inputs include the tracked acceptance map and reviewed synthetic screenshot manifest. Records are candidate-bound, local evidence, not signed attestations. Missing checks stay `not_run`; do not publish private command output, logs or screenshots. The tracked report remains a historical result, not a current pass.
 
+If a Windows fork worker exits unexpectedly, preserve that failed record. A crashed worker can leave the unique app-month fixture bucket behind, causing later setup conflicts rather than exercising application behavior. Finish/stop the failed run, reset **only** the guarded disposable workspace with `--check=reset`, then run `--check=integrationThreads` on the same executable candidate. Keep the fork failure as an environment limitation; a threaded pass does not erase it. Never reset the retained local or hosted personal database to recover a test run.
+
 ## Required deployment and pilot checklist
 
 Before expanding use, establish current evidence for the applicable scope:
