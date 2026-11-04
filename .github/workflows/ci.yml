@@ -37,13 +37,10 @@ jobs:
         run: npm run format:check
       - name: Lint
         run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
       - name: Unit tests
         run: npm test
-      - name: Production build
-        run: npm run build
-      - name: Bundle secret checks
+      # test:bundle runs the full build (including typecheck) with secret canaries.
+      - name: Production build and bundle secret checks
         run: npm run test:bundle
       - name: Specification validation
         run: python3 docs/spec/v0.1.0/scripts/validate_spec_package.py
