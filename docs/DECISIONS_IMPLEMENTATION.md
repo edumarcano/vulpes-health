@@ -18,6 +18,8 @@ Owner-data capture, journal and maintenance use explicit owner manifests and a s
 
 The original accounting fingerprint query selected the wrong XML root, so its historical match results did not prove freshness. The corrected query and synthetic regressions require current independent reconciliation before operational reliance.
 
+Audit F-06 adds a seven-day manual snapshot target and a pre-release capture requirement without changing the 30-day retention ceiling. Cloud restoration/cutover remains a distinct unverified gate; the existing fenced local restore cannot enable a hosted destination. Missing source-loss deletion/accounting completeness must still block access. No personal backup, recurring scheduler or cloud resource change is implied by the runbook.
+
 ## Data and goals
 
 Measurements preserve exact decimal values, provenance, original units and timestamps. Unsupported leap-second timestamps are rejected before JavaScript and PostgreSQL can interpret them differently. Daily goal totals use local-day bounds. Direct and chat goals share explicit approval, revisions and deterministic progress.
@@ -31,3 +33,5 @@ Import completion offers explicit navigation per series using full-batch metadat
 ## Retention and PWA
 
 Account deletion is resumable and preserves uncertain charges until settlement. Completed deletion receipts persist at least 31 days; encrypted database backups have a 30-day maximum. The PWA caches public shell assets only. [Account lifecycle](operations/account-lifecycle.md) owns the current details.
+
+Audit F-10 retains the approved conservative 24-hour uncertain-charge policy. The current single-request reserve is `$0.0093192`; reducing it because ordinary requests often cost less would lose the existing bounded-cost guarantee. Streaming repairs and saved-run inspection are the smallest nonfinancial mitigation. Any allocation or settlement-policy change requires separate owner approval.

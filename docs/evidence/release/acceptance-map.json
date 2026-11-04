@@ -327,7 +327,7 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Current v4 real-model missing-data behavior not evaluated.",
+    "external": "Current-template real-model missing-data behavior not evaluated.",
     "applicability": "required"
   },
   {
@@ -340,7 +340,7 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Current v4 real-model unavailable-index behavior not evaluated.",
+    "external": "Current-template real-model unavailable-index behavior not evaluated.",
     "applicability": "required"
   },
   {
@@ -353,7 +353,7 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Current v4 real-model adverse safety scenarios not evaluated; synthetic guards are not clinical validation.",
+    "external": "Current-template real-model adverse safety scenarios not evaluated; synthetic guards are not clinical validation.",
     "applicability": "required"
   },
   {
@@ -366,7 +366,7 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Current v4 real-model association/causality behavior not evaluated.",
+    "external": "Current-template real-model association/causality behavior not evaluated.",
     "applicability": "required"
   },
   {
@@ -379,7 +379,7 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Current v4 real-model research/citation behavior not evaluated.",
+    "external": "Current-template real-model research/citation behavior not evaluated.",
     "applicability": "required"
   },
   {
@@ -404,9 +404,10 @@
       "providers",
       "browser"
     ],
-    "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Luna/Flash current-bound live tool/handoff evidence remains absent; production unavailable.",
-    "applicability": "required"
+    "scope": "Luna-first chat, bounded local tools and disabled-Flash denial; scripted providers do not establish live model quality.",
+    "external": "Current-template Luna tool/follow-up verification requires separate paid approval.",
+    "applicability": "required",
+    "disposition": "Flash handoff portion not applicable while Flash is unavailable; Luna-first behavior remains required."
   },
   {
     "id": "AI-08",
@@ -418,7 +419,7 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Scripted follow-up resolution does not establish current v4 real-model contextual quality.",
+    "external": "Scripted follow-up resolution does not establish current-template real-model contextual quality.",
     "applicability": "required"
   },
   {
@@ -431,8 +432,9 @@
       "browser"
     ],
     "scope": "Scripted provider responses and deterministic safety/tool controls only; no real model quality assessment.",
-    "external": "Current-bound live escalation cost/privacy/access evidence remains absent.",
-    "applicability": "required"
+    "external": null,
+    "applicability": "optional_disabled",
+    "disposition": "Live Flash escalation not applicable while unavailable; local denial, permission, budget, trace and call-ceiling protections remain tested."
   },
   {
     "id": "AI-10",
