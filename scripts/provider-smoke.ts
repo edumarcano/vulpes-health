@@ -1,6 +1,6 @@
 import { assessVertex, vertexEvidence } from '../server/ai/vertex-readiness.js';
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -267,12 +267,12 @@ export function renderSmokeReport(report: SmokeReport): string {
     '',
     `Actual provider requests: **${report.actualProviderRequests}**. Inference spend: **$${report.inferenceSpendUSD}**.`,
     '',
-    'Generation fixtures exercise a read-tool continuation with opaque state; decision fixtures exercise keyed finite scores. They do not establish vendor wire compatibility or model quality. See the [first live attempt](m3-live-everyday.md) and [M3 re-verification](m3-live-reverification.md) for separately observed provider evidence.',
+    'Generation fixtures exercise a read-tool continuation with opaque state; decision fixtures exercise keyed finite scores. They do not establish vendor wire compatibility or model quality. See docs/evidence/README.md for separately observed provider evidence.',
     '',
     '## Live verification status',
     '',
     '- Everyday has a conservative verified price snapshot and matching public capability/privacy evidence. Other role prices remain unverified.',
-    '- The M3 verification evidence does not activate production: its approved production smoke binding remains absent. Accepted Google location/retention remains unverified.',
+    '- M3 verification alone does not activate production; the current owner-pilot approval is tracked separately. Accepted Google location/retention remains unverified.',
     '- Production inference requires its approved catalog evidence, explicit live switch, private credentials, consent and durable budgets; this synthetic invocation does not activate it.',
     '- Decision scoring remains disabled; vendor score-range mapping and comparative evaluations belong to PR 14.',
     '',
@@ -282,7 +282,7 @@ export function renderSmokeReport(report: SmokeReport): string {
     '',
     'With the current static Everyday evidence, explicit spend flags and a true live switch still require a valid immutable local synthetic batch, encryption, consent, account/application budgets and credentials. The flags alone do not authorize inference.',
     '',
-    'The report contains no prompts, raw provider payloads, credentials, or health records. See [PR 02 evidence](pr02-contracts.md) for public documentation review, local checks, and acceptance boundaries.',
+    'The report contains no prompts, raw provider payloads, credentials, or health records.',
     '',
   ].join('\n');
 }
@@ -293,18 +293,28 @@ async function main(): Promise<void> {
       process.argv.slice(2),
       process.env,
     );
-    if (writeReport && report.mode === 'synthetic')
+    if (writeReport && report.mode === 'synthetic') {
+      await mkdir(new URL('../.scratch/evidence/', import.meta.url), {
+        recursive: true,
+      });
       await writeFile(
-        new URL('../docs/evidence/PROVIDER_SMOKE_TESTS.md', import.meta.url),
+        new URL(
+          '../.scratch/evidence/PROVIDER_SMOKE_TESTS.md',
+          import.meta.url,
+        ),
         renderSmokeReport(report),
         'utf8',
       );
+    }
     console.info(JSON.stringify(report, null, 2));
     if (writeReport && report.mode === 'live') {
       const name = `live-${report.requested.provider === 'vertex_ai' ? 'vertex' : 'everyday'}-${report.batchId}-${report.scenario}-${report.runId ?? randomUUID()}.json`;
       try {
+        await mkdir(new URL('../.scratch/evidence/', import.meta.url), {
+          recursive: true,
+        });
         await writeFile(
-          new URL(`../docs/evidence/${name}`, import.meta.url),
+          new URL(`../.scratch/evidence/${name}`, import.meta.url),
           JSON.stringify(report, null, 2) + '\n',
           { encoding: 'utf8', flag: 'wx' },
         );

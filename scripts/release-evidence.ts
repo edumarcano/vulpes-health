@@ -24,7 +24,8 @@ import { localEnvironment } from './local-database.js';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const work = path.join(root, '.scratch/pr17-verification');
 const records = path.join(root, '.scratch/release-records');
-const destination = path.join(root, 'docs/evidence/release');
+const destination = path.join(root, '.scratch/release-evidence');
+const screenshotSource = path.join(root, 'docs/evidence/release');
 export const checks = {
   lint: ['run', 'lint'],
   typecheck: ['run', 'typecheck'],
@@ -457,7 +458,7 @@ function assemble() {
       localScope: a.scope,
       localStatus,
       commands: a.checks.map((c) => `npm ${checks[c].join(' ')}`),
-      artifact: 'docs/evidence/release/m6-local.json#verificationRecords',
+      artifact: '.scratch/release-evidence/m6-local.json#verificationRecords',
       manualProcedure: a.external
         ? 'docs/operations/release-readiness.md#required-deployment-and-pilot-checklist'
         : null,
@@ -490,7 +491,7 @@ function assemble() {
       : [],
   );
   const screenshots = JSON.parse(
-    readFileSync(path.join(destination, 'screenshots.json'), 'utf8'),
+    readFileSync(path.join(screenshotSource, 'screenshots.json'), 'utf8'),
   ) as Array<{
     file: string;
     sha256: string;
@@ -500,7 +501,7 @@ function assemble() {
   for (const s of screenshots)
     if (
       !s.reviewed ||
-      sha(readFileSync(path.join(destination, s.file))) !== s.sha256
+      sha(readFileSync(path.join(screenshotSource, s.file))) !== s.sha256
     )
       throw new Error('Screenshot review/hash missing.');
   const npm = process.env.npm_execpath;
@@ -561,11 +562,9 @@ function assemble() {
       'No hosted routing/CSP/Auth/storage/restore verification.',
       'No physical keyboard/PWA/assistive-technology test.',
       'No human recovery handoff, family invitation or pilot.',
-      'Combined independent M5/M6 review and formal M2/M3/M4 acceptance remain separate.',
+      'Formal release and family acceptance remain separate from this local report.',
     ],
-    approvedDeviations: [
-      'PR 14 deferred and disabled; combined independent M5/M6 review follows PR 17.',
-    ],
+    approvedDeviations: ['PR 14 remains deferred and disabled.'],
   };
   mkdirSync(destination, { recursive: true });
   writeFileSync(
@@ -574,7 +573,7 @@ function assemble() {
   );
   console.info(
     JSON.stringify({
-      report: 'docs/evidence/release/m6-local.json',
+      report: '.scratch/release-evidence/m6-local.json',
       acceptanceRows: acceptance.length,
       outcomes,
       releaseReady: false,

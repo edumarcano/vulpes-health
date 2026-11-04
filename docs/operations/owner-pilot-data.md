@@ -1,54 +1,35 @@
-# Owner-data import and operational checkpoint
+# Personal-owner operations
 
-The owner confirmed the private local import preview. The original export and prepared readings stay outside Git; no hosted preview/import or real-data inference is implied. Supported metrics remain those in `shared/data.ts`. This packet changes operator safety boundaries, not the measurement registry, UI or provider catalog.
+The existing hosted personal application uses Luna with current OpenRouter consent, encrypted traces and persistent app/account budgets. The owner handoff and real-data import were completed; [evidence](../evidence/owner-pilot-step5.md) records the tested scope. The [personal-use transition](../evidence/personal-use-transition.md) records the current hosted address and cutover. Repository defaults and CI keep live AI disabled.
 
-## Explicit owner mode
+The owner manually maintains the application. No background backup or maintenance scheduler is configured. Do not change deployment, resources, provider settings, budgets or account data without the appropriate owner authorization.
 
-| Control | Requirement |
-|---|---|
-| Target | A separate strict recovery manifest uses `purpose: owner-pilot`, one `ownerUserId` and at most one `syntheticPeerUserIds` entry. Existing project/origin/region checks and separate-destination constraint remain. |
-| Command | `--owner-pilot` must match that manifest. Without it, owner manifests are refused before credentials/network/Docker. Synthetic defaults and historical target hashes remain unchanged. |
-| Approval | Private, purpose-specific capture/restore/journal/maintenance authorization binds the target hash, exact output/connection or encrypted archive/image, mode and expiry (at most 24 hours). Broad owner approval does not remove these executable bindings. |
-| Classification | Before the first hosted owner-data preview/import, set and verify server-controlled Auth `app_metadata.vulpes_data_scope=owner-pilot` for the exact confirmed owner. Email suffix alone is not evidence of synthetic data. Synthetic recovery/maintenance reject the marked owner even with an `example.invalid` email. |
-| Source inventory | Database/journal capture accepts only the named owner and declared synthetic peer. Missing identities need completed deletion receipts; a completed identity cannot silently reappear. A real peer or unknown identity stops capture. Storage must remain empty. |
-| Confidentiality | Existing verified TLS, private stdin credentials, retained backup/journal/trace keys, AES-GCM encryption, create-only output and 30-day maximum database-backup retention remain. Reports expose aggregates/hashes rather than rows, prompts or credentials. |
-| Restore | Fresh local cached-image container, network none, no published ports/bind mounts, stopped after verification. Replay requires a fresh complete journal, session revocation and matching current accounting. No access-enable command or source-loss completeness guarantee. |
-| Maintenance | Explicitly names only the owner; inspect is the default. Execute is bounded and uses the existing service-only RPC. No new deletion request, password reset, budget refill or provider request. |
+## Provider and budgets
 
-The classification marker is an operator action, not a client preference. Verify the source identity and preserve existing Auth metadata before setting it; do not mark the isolation peer. Keep all prior spent/reserved balances. An unsuccessful capture does not authorize relabeling data as synthetic, widening the allowlist or overwriting an archive.
+The approved pilot uses Luna, per-request ZDR and `openrouter_zdr_v2` consent, including the documented screening/flagged-content exception. Flash, Argon and decision scoring remain unavailable. The recorded dedicated key cap is $0.50 without reset; the current pilot allocation was $0.10 per app/account month and $0.04 per run. Check actual remaining balances and holds before use; these historical allocations are not a promise of future capacity. A missing monthly bucket denies admission. Preserve spent and reserved amounts; do not reset holds or buy credit to continue.
 
-Historical synthetic archives and journals retain their original purposes and hashes. Older database archives lack the new identity metadata; restore comparison handles only those absent metadata fields while preserving schema, grants, RLS, rows, keys and synthetic source checks. Owner archives cannot be downgraded to synthetic mode.
+A lost connection does not guarantee upstream cancellation. Reopen the saved conversation before considering another request. An unknown charge retains its reservation under the existing uncertainty policy. Provider verification and rate/privacy rechecks are described in [Luna verification](luna-verification.md).
 
-`--verify-http` remains a synthetic-fixture option. Owner mode does not launch test Auth/API services with owner credentials, and cannot claim that proof. Current restored access stays blocked; the earlier synthetic Auth/API rehearsal remains separately dated evidence.
+## Maintenance and backups
 
-## Verification without private data
-
-These commands print inert plans and require no credentials:
+Use a strict `owner-pilot` manifest naming the owner and at most one synthetic peer, and add `--owner-pilot` to the relevant recovery, journal and hosted maintenance commands. The owner account has the server-controlled `vulpes_data_scope=owner-pilot` marker; synthetic commands reject it. Do not use historical synthetic fixture plans for owner data.
 
 ```sh
+npm run maintenance:hosted -- --plan --owner-pilot
 npm run recovery:database -- --plan --owner-pilot
 npm run recovery:journal -- --plan --owner-pilot
-npm run maintenance:hosted -- --plan --owner-pilot
 ```
 
-Run operational regressions only against the guarded disposable local stack using synthetic fixtures. No actual export, real reading or owner credential belongs in a test, fixture, screenshot or CI environment. [Step 5 evidence](../evidence/owner-pilot-step5.md) owns actual command results and failures.
+Plans are inert. Inspect hosted maintenance before a separately authorized bounded execute. Check `pendingHolds`, `retryAfter` and `unfinished`; future holds may remain when no work is currently due. Use the exact target, owner, action and expiry in the private authorization. Maintenance can resume an existing deletion; it cannot create a new deletion, reset budgets or rotate backups. Follow [account lifecycle](account-lifecycle.md) for retention and [hosted recovery](hosted-recovery.md) for capture, independent journal, key custody and fenced restoration.
 
-## Before first hosted persistence
+Rotate encrypted backups within 30 days and verify independent ciphertext copies. Keep backup, journal and required trace-key versions separately recoverable. A copy is a snapshot, not an automatic backup; the post-import handoff predates later conversations. Before recovery, capture a fresh independent journal and reconcile current accounting. Missing source-loss completeness, keys or current evidence blocks restored access.
 
-1. Verify the reviewed candidate, current explicit authorization and exact source/owner identity. Reconcile applicable P0/formal acceptance; UI polish and the owner's TalkBack exception do not waive a P0.
-2. Record the owner marker and obtain a stable encrypted database capture. Reuse existing owner-verified key custody only if its exact retained key package still matches; do not invent a new custody attestation. Never reset budgets or uncertain holds to obtain a green result.
-3. Capture an independent complete deletion journal, rehearse fenced restore/replay/current accounting, and retain the stopped destination and safe results. Source changes, missing keys, stale journal or unresolved accounting leave access blocked. Copy verification does not renew journal freshness.
-4. Put the new ciphertext in the already approved private off-machine location and verify downloaded sizes/hashes. Never upload raw exports, unencrypted dumps, keys or private manifests. The owner still controls Google Drive and Proton Pass; no new service/payment is required.
-5. Identify exact synthetic fixture cleanup separately from real readings; preserve execution accounting and deletion evidence. Then prepare the explicit source/profile/units/timezone mapping and owned import preview/commit. Importing/inspecting data must make no model call. A first real Ask request, if used later, remains separately visible and budgeted.
+## Deployments and checks
 
-Future retention runs and backup rotation must use the owner manifest/current operator code. Closed Step 3 rehearsal plans and old synthetic-only command revisions are not owner-data procedures. Family identities, invitations, native connectors, new metrics and automatic restore access remain outside this packet.
+The hosted build requires an explicit target and inference mode. `npm run hosting:prepare -- --plan`, `npm run hosting:probe -- --plan` and `npm run hosting:security -- --plan` describe the guarded tooling without deployment. For an authorized deployment:
 
-## Current checkpoint
+1. Copy `config/hosting-synthetic.example.json` to an ignored target file, fill the approved source, project, origin and region, then run `npm run hosting:prepare -- --target=<private-target-file>`. Inspect the generated configuration and migration hashes and review the exact pending migration dry run.
+2. Export the reviewed Git candidate to an isolated directory, overlay its root `vercel.json` with the generated configuration and verify all other files against the candidate. Bind the hosted build to that target; owner Luna mode requires `--mode=owner-pilot-luna` and its independent provider, consent and budget gates.
+3. Retain production-only server secrets, run the deployment CLI from the isolated candidate directory, and verify the intended deployment, routing, security headers and public bundle before use. Hosted changes and paid requests need their own scope and approval.
 
-The existing account now uses its verified personal identity on the same projects, both named `vulpes`. [Personal-use transition evidence](../evidence/personal-use-transition.md) owns the current hosted address, deployed UI and remaining owner checkpoint. Keep the internal `owner-pilot` safety classification and existing source identity; project/email naming is not permission to run synthetic cleanup against owner data.
-
-The [first-import checkpoint](../evidence/owner-pilot-step5.md#copy-verification-acceptance-reconciliation-and-first-import-2026-11-02) completed the pre-import Drive readback and reconciled all 52 P0 technical criteria with current CI/live/hosted evidence. After explicit approval of the broader trace-removal effect, the known synthetic readings/proposal were removed through owned APIs. The confirmed private dataset was imported and verified for exact values, original units, timestamp offsets, methods, idempotency, sparse coverage and foreign-account denial. Financial records/holds and the peer's product rows stayed unchanged during import; no model was called by those operations.
-
-Post-import encrypted capture and fenced recovery passed with the existing independently verified keys. The restored local destination was stopped and removed after proof; access remains unauthorized. The [completed owner handoff](../evidence/owner-pilot-step5.md#owner-handoff-completed-2026-11-02) verifies the downloaded Drive package and all three encrypted archives. The owner confirmed weight/body-fat values in Data and successful real Ask behavior with an honest insufficient-data result. The owner-initiated run completed within existing caps; its later conversation is newer than the backup capture.
-
-No additional setup is required for the agreed personal-owner pilot. For Data, use Source `RENPHO Health`, Method `Device reported` for weight or `Device estimate` for body fat, Granularity `Instant reading` and the confirmed timezone/date range; the private guide supplies dates without publishing them. Ongoing backups still require a fresh target-bound plan/capture, independent encrypted copy/readback and retained keys. Keep database backups within 30 days and refresh five-minute journals for actual recovery; copies are snapshots, not a scheduler or formal release acceptance. Keep raw exports, keys, passwords and private manifests out of Drive. Broader release/family gates and PR review/merge remain separate.
+The owner reported a Galaxy S23 conversation, installation and offline check. TalkBack and broader release/device acceptance remain unverified. See [release readiness](release-readiness.md) before broadening use or inviting family members.

@@ -66,7 +66,7 @@ All 52 canonical P0 IDs have passing local scope in the historical [release repo
 
 | P0 IDs | Supporting evidence and limits |
 |---|---|
-| SEC-01–SEC-07 | Current synthetic CI plus [hosted security](owner-pilot-step3d.md) and [normal hosted execution isolation/privacy](owner-pilot-step4.md). Covers recorded ownership, parent, bundle, injection, consent and switching cases. |
+| SEC-01–SEC-07 | Current synthetic CI plus [hosted security](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/evidence/owner-pilot-step3d.md) and [normal hosted execution isolation/privacy](owner-pilot-step4.md). Covers recorded ownership, parent, bundle, injection, consent and switching cases. |
 | SEC-08 | [Final hosted runtime checkpoint](owner-pilot-step4.md#final-hosted-repair-checkpoint-2026-11-02): production aliases, deep links, JSON API routing, headers/CSP and public-file canaries. Clears the old report's hosting gap for this deployment. |
 | DATA-01–DATA-15 | Current CSV/manual/measurement lifecycle, numerical/DST and browser regressions; private source/profile/timezone confirmation and exact normalization/readback supplement the selected first import. No native vendor connector is claimed. |
 | GOAL-01–GOAL-05 | Current goal transaction/progress regressions and [bounded live E05](luna-owner-pilot-live.md). The actual hosted proposal stayed pending; no real goal activation was performed. |

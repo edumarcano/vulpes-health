@@ -1,6 +1,6 @@
 # Current Luna synthetic verification
 
-Status: the bounded `vulpes-everyday-v7` synthetic checkpoint passed. [Provider evidence](../evidence/luna-owner-pilot-live.md) preserves all five batches, prior failures, separate host answer review and pending interruption accounting. The selected model remains `openai/gpt-6-luna`, low effort, Responses v2. The subsequently authorized [hosted owner pilot](owner-pilot-luna.md) installs that exact approval with a $0.04 run ceiling and separate $0.10 current-month app/account budgets. [Hosted evidence](../evidence/owner-pilot-step4.md) owns normal-path results; this provider-verification procedure does not enable hosting or optional models. Device, formal acceptance and concrete real-data selection remain gates.
+Status: the bounded `vulpes-everyday-v7` synthetic checkpoint passed. [Provider evidence](../evidence/luna-owner-pilot-live.md) preserves all five batches, prior failures, separate host answer review and pending interruption accounting. The selected model remains `openai/gpt-6-luna`, low effort, Responses v2. The subsequently authorized [hosted owner pilot](owner-pilot-data.md) installs that exact approval with a $0.04 run ceiling and separate $0.10 current-month app/account budgets. [Hosted evidence](../evidence/owner-pilot-step4.md) owns normal-path results; this provider-verification procedure does not enable hosting or optional models. Broader device and formal release acceptance remain separate.
 
 ## Authorization and fixed bounds
 
@@ -19,16 +19,11 @@ The owner authorized necessary synthetic Luna batches within the existing dedica
 
 Every actual continuation counts. No automatic transport retry, unreviewed rerun, fallback or alternate model is permitted. Reports keep model assessment pending for semantic review; structural success alone cannot enable production. Stop after any demonstrated safety failure. Cancelled/disconnected requests retain uncertain reservations under the existing 24-hour policy.
 
-## Owner setup and consent
+## Privacy and credentials
 
-1. Sign in to [OpenRouter privacy settings](https://openrouter.ai/settings/privacy). Enforce ZDR for the OpenAI model group and turn off OpenRouter use of inputs/outputs. Check [observability](https://openrouter.ai/workspaces/default/observability): private input/output logging and external broadcast destinations must be off. These workspace settings may affect other keys in the same workspace; discuss a conflict before changing existing workflows.
-2. Review [data collection](https://openrouter.ai/docs/guides/privacy/data-collection) and [ZDR](https://openrouter.ai/docs/guides/features/zdr). Requests, including ZDR traffic, may be screened in flight; flagged content can be retained for review/reporting/legal preservation. ZDR is not an absolute no-retention promise. Verification sends synthetic data only.
-3. For a first setup, open [API keys](https://openrouter.ai/settings/keys), choose Create Key/Create API Key, name it `Vulpes Luna verification`, and set the credit limit to **$0.50**, with no recurring reset. If available, select a short expiry. Never select unlimited. Verify the saved key row shows the intended limit before using it. The existing dedicated key already meets this configuration; the completed verification did not raise its cap.
-4. If there is insufficient credit, stop and report the required minimum purchase and any fees. Do not buy credits or enable automatic top-ups under this authorization.
-5. Save the key only in the ignored local file prepared for the dedicated verification copy, under `OPENROUTER_API_KEY=`. Never paste the key into chat, command arguments, screenshots, repository files or a `VITE_` variable. Keep a private password-manager copy if needed. The agent supplies a temporary trace-encryption key privately and keeps normal application inference disabled.
-6. For a first setup, report only privacy/logging confirmation, key limit/reset/expiry, adequate existing credit (or the minimum purchase shown), and that the local key file is ready. For the completed checkpoint, privacy controls and standing synthetic-batch approval are already confirmed; no repeated approval is needed within that scope and cap. Do not send the key. No production activation, deployment or real-data permission is included.
+Before a new batch, recheck [OpenRouter privacy](https://openrouter.ai/settings/privacy), [data collection](https://openrouter.ai/docs/guides/privacy/data-collection), [ZDR](https://openrouter.ai/docs/guides/features/zdr), account access, current rates and remaining key/app budgets. ZDR does not preclude the documented screening and flagged-content exception. Keep input/output logging and external broadcasts off under the approved policy. Do not change workspace-wide settings without assessing their effects on other keys.
 
-Dashboard labels behind sign-in were not inspected. If a listed control is missing, stop and report its visible label rather than choosing a permissive substitute.
+Use synthetic data and the dedicated capped key. Keep credentials in the ignored local verification file or protected environment, never in chat, arguments, screenshots, Git or a `VITE_` variable. A new payment, cap increase or privacy-scope change requires separate approval. Dashboard labels may change; investigate missing controls before proceeding.
 
 ## Operator execution within the authorized scope
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 import { localStatus } from './local-database.js';
 import { LocalSupabase } from '../tests/helpers/local-supabase.js';
@@ -502,14 +502,18 @@ try {
     limitations:
       'Scripted control checks do not assess model answers, prompt-injection resistance of a real model, or live provider behavior.',
   };
-  if (args.includes('--write-report'))
+  if (args.includes('--write-report')) {
+    await mkdir(new URL('../.scratch/evidence/', import.meta.url), {
+      recursive: true,
+    });
     await writeFile(
       new URL(
-        '../docs/evidence/pr10-synthetic-evaluation.json',
+        '../.scratch/evidence/pr10-synthetic-evaluation.json',
         import.meta.url,
       ),
       JSON.stringify(report, null, 2) + '\n',
     );
+  }
   console.info(JSON.stringify(report, null, 2));
 } finally {
   try {

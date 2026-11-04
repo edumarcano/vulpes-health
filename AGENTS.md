@@ -1,62 +1,24 @@
-# Agent instructions — Vulpes
+# Agent instructions - Vulpes
 
-You are working in `vulpes-health`, which contains the authoritative v0.1.0 specification, assets, authenticated application shell, owned settings, encrypted private-payload foundation, manual measurements, CSV preview/import, measurement correction/deletion/export, and deterministic Data analysis. Persistent Ask Vulpes conversations, the bounded synthetic tool loop, and the owned execution inspector are implemented. Owned account export, resumable deletion, bounded retention and guarded local backup/recovery verification are implemented; operational procedures are in `docs/operations/account-lifecycle.md`. Direct goals and chat-based pending proposals share explicit approval/rejection, revisions and deterministic progress. The authorized synthetic owner pilot enables normal hosted Luna chat under consent and persistent budget gates; `docs/evidence/owner-pilot-step4.md` owns actual results and limitations. Repository defaults and CI keep live inference off. Formal acceptance and fresh recovery/data-selection gates remain before real-data use; Flash, Argon and decision scoring stay deferred.
+Vulpes is a TypeScript health application with owned measurements, goals, conversations, deterministic analytics, encrypted private payloads and account lifecycle operations. The personal-owner pilot uses hosted Luna with consent and budget controls. Repository defaults and CI keep live inference off. Formal release and family acceptance remain separate; Flash, Argon and decision scoring are unavailable.
 
-## Core documentation references
+## References
 
-1. **[`README.md`](README.md)** — Project overview, architecture summary, and setup instructions.
-2. **[`docs/spec/v0.1.0/`](docs/spec/v0.1.0/)** — Authoritative release specifications and contracts:
-   - [`PRODUCT_SPEC.md`](docs/spec/v0.1.0/PRODUCT_SPEC.md) — Scope, primary workflows, release and safety boundaries.
-   - [`DECISIONS.md`](docs/spec/v0.1.0/DECISIONS.md) — Settled product and architectural decisions (D01–D13).
-   - [`ARCHITECTURE.md`](docs/spec/v0.1.0/ARCHITECTURE.md) — Modular monolith structure, provider boundaries, auth, and PWA behavior.
-   - [`DATA_MODEL.md`](docs/spec/v0.1.0/DATA_MODEL.md) — Tables, ownership, measurement semantics, and transaction invariants.
-   - [`API_CONTRACTS.md`](docs/spec/v0.1.0/API_CONTRACTS.md) — HTTP routes (`/api/chat`, `/api/conversations`, etc.), event stream protocol, proposals, and error envelopes.
-   - [`AI_SPEC.md`](docs/spec/v0.1.0/AI_SPEC.md) — Model roles, context construction, tools, budgets, and execution transparency.
-   - [`UI_SPEC.md`](docs/spec/v0.1.0/UI_SPEC.md) — Mobile screens, Ask Vulpes interaction states, and accessibility standards.
-   - [`SECURITY_AND_PRIVACY.md`](docs/spec/v0.1.0/SECURITY_AND_PRIVACY.md) — Tenant isolation, provider consent, retention policies, and trace encryption.
-   - [`PROVIDER_SETUP.md`](docs/spec/v0.1.0/PROVIDER_SETUP.md) — Server-side typed model catalog, provider adapter conventions, and credential setup.
-   - [`DEPLOYMENT.md`](docs/spec/v0.1.0/DEPLOYMENT.md) — Local development, Vercel/Supabase environment, and operational runbook.
-   - [`IMPLEMENTATION_PLAN.md`](docs/spec/v0.1.0/IMPLEMENTATION_PLAN.md) — Ordered, testable milestones starting with Milestone 0.
-   - [`ACCEPTANCE_TESTS.md`](docs/spec/v0.1.0/ACCEPTANCE_TESTS.md) — Functional, numerical, security, modularity, and release acceptance gates.
-3. **[`docs/plans/v0.1.0-execution.md`](docs/plans/v0.1.0-execution.md)** — Canonical execution sequence, PR boundaries, dependencies, verification gates, and session-resilient progress tracking for v0.1.0.
-4. **[`docs/DECISIONS_IMPLEMENTATION.md`](docs/DECISIONS_IMPLEMENTATION.md)** — Dated decisions, trade-offs, and approved deviations during implementation.
-   Current integrated acceptance evidence is in [`docs/evidence/release/m6-local.json`](docs/evidence/release/m6-local.json); [`docs/operations/release-readiness.md`](docs/operations/release-readiness.md) owns reproduction and deployment/pilot gates. Local verification is separate from release readiness and the pending combined independent M5/M6 review.
-5. **[`.remora/standards/`](.remora/standards/)** — Engineering baseline, testing, and documentation standards:
-   - Before applying shared guidance, read [`engineering.md`](.remora/standards/engineering.md) and any applicable scoped project instructions.
-   - [`testing.md`](.remora/standards/testing.md) — Empirical verification and testing harness requirements.
-   - [`documentation.md`](.remora/standards/documentation.md) — Documentation freshness, ownership, and structure.
+- [README](README.md): local setup, commands and documentation map.
+- [Specifications](docs/spec/v0.1.0/): product, architecture, data, API, AI, security and acceptance contracts.
+- [Current operations](docs/operations/owner-pilot-data.md), [account lifecycle](docs/operations/account-lifecycle.md), [recovery](docs/operations/hosted-recovery.md) and [release readiness](docs/operations/release-readiness.md).
+- [Implementation decisions](docs/DECISIONS_IMPLEMENTATION.md) and [historical evidence](docs/evidence/README.md).
+- Read [.remora/standards/engineering.md](.remora/standards/engineering.md) and applicable scoped guidance before working; use the testing and documentation standards when relevant.
 
-## Non-negotiable project rules
+## Project rules
 
-- **User-facing branding:** The primary AI experience is **Ask Vulpes** (page title), bottom navigation label is **Ask**, and route is `/ask`. Backend routes remain descriptive and provider-neutral (`/api/chat`, `/api/conversations`). Name the agent orchestrator `VulpesAgent` or `AgentOrchestrator`.
-- **Runtime:** TypeScript (strict) and TSX for all v0.1.0 frontend, backend, model/provider adapters, routing, agent tools, and deterministic health analytics. SQL for PostgreSQL migrations and Row Level Security policies; CSS/Tailwind for styling. Kotlin later only for the native Android bridge. No Python/FastAPI runtime for v0.1.0 MVP; a Python analytics worker may be introduced in a future milestone only on validated scientific benefit, behind a tested `AnalyticsService` boundary.
-- **Boundaries & modularity:** Core domain services never import AI-provider SDKs, mobile-source SDKs, or assistant-ui. Replaceable provider adapters implement narrow capability interfaces: generation/streaming, typed decision scoring, and normalized usage. Normalized measurement adapters feed deterministic analytics that work with all AI disabled. Modular monolith, no unnecessary frameworks or microservices. Progressive replaceability tests (`ACCEPTANCE_TESTS.md` MOD-01 to MOD-06) must be maintained across milestones.
-- **Models & configuration:** Model identities, provider assignments, reasoning parameters, and token ceilings live in one server-side typed catalog (`server/config/models.ts`); do not add `VULPES_*_MODEL` environment overrides. Keep OpenRouter Responses generation (`openai/gpt-6-luna`), Vertex GenerateContent generation (`gemini-3.8-flash`, `gemini-4-argon`), and OpenRouter decision scoring (`microsoft/microsoft-decision-1`) as independent adapters with capability checks. Model changes require tests and approval; current identifiers/prices are unverified. Real inference remains off until explicit permission, price verification, and budget configuration.
-- **Security & privacy:** Never commit personal health records, prompts/traces, credentials, or private cloud tokens. The server authorizes user, ownership, and scope; enforce strict isolation for invited family accounts. Don't leak secrets into the client bundle. Use only synthetic data in code, fixtures, tests, and screenshots. Don't claim medical diagnosis.
-- **Autonomy and spend:** Do not deploy, modify live cloud resources, create billable usage, import real data, activate goals, or persist consequential choices without owner approval. Apply provider-specific privacy, budget, trace, and safety gates before requests.
-- **Brand/UI:** Use included Vulpes assets and custom design tokens; shadcn/ui for app components and assistant-ui for chat rendering. No new generative UI framework.
-- **Formatting:** Prettier owns TypeScript, TSX, and JavaScript layout (`npm run format`, `npm run format:check`). ESLint remains the behavior and boundary checker. Do not hand-format generated `server/db/database.types.ts`; regenerate it with `npm run db:types`.
+- The primary AI page is **Ask Vulpes**, navigation label **Ask**, route `/ask`; backend routes remain provider-neutral. Name the orchestrator `VulpesAgent` or `AgentOrchestrator`.
+- Use strict TypeScript/TSX for application and analytics code, SQL for PostgreSQL migrations and RLS, and CSS/Tailwind for styling. Kotlin is reserved for a future native bridge. No Python runtime for the MVP.
+- Keep core domain services independent of provider SDKs, mobile SDKs and assistant-ui. Maintain narrow replaceable provider interfaces and deterministic analytics with AI disabled. Preserve MOD-01 through MOD-06 replaceability coverage.
+- Model identities, providers, parameters and token ceilings belong in `server/config/models.ts`; do not add model environment overrides. Model changes require tests and approval. Keep provider adapters independent; optional models and decision scoring require their separate activation evidence.
+- Authorize users, ownership and scope on the server. Never commit health records, prompts, traces, credentials or private tokens; fixtures and screenshots must use synthetic data. Keep server secrets out of client bundles. Do not claim medical diagnosis.
+- Do not deploy, modify live cloud resources, create billable usage, import real data, activate goals or persist consequential choices without owner approval. Preserve provider consent, privacy, budget, trace and safety gates.
+- Use Vulpes assets and design tokens, shadcn/ui components and assistant-ui chat rendering. Do not introduce a generative UI framework.
+- Prettier owns TypeScript/TSX/JavaScript layout. ESLint checks behavior and boundaries. Regenerate `server/db/database.types.ts` with `npm run db:types`; do not hand-format it.
 
-## Work process
-
-1. Start with **Milestone 0**, then verify Milestones 0 and 1 independently. After those foundation gates pass, use the dependency-bounded PR stacks in [`docs/plans/v0.1.0-execution.md`](docs/plans/v0.1.0-execution.md). The PR plan decomposes the milestone requirements; it does not replace them. Read [`PROVIDER_SETUP.md`](docs/spec/v0.1.0/PROVIDER_SETUP.md), [`ARCHITECTURE.md`](docs/spec/v0.1.0/ARCHITECTURE.md), and [`.remora/standards/engineering.md`](.remora/standards/engineering.md) before scaffolding.
-2. Implement one verified packet at a time per work lane, keeping dependent work to approximately 2–3 open PRs. Preserve milestone acceptance gates and unrelated work. Application code belongs outside `docs/spec/v0.1.0/`, typically under `src/`, `server/`, `api/`, `shared/`, etc. Optional PR 14 (decision scoring) may be deferred without blocking downstream product work; it remains disabled until its separate evidence and activation gates pass.
-3. Record material implementation trade-offs or approved deviations in [`docs/DECISIONS_IMPLEMENTATION.md`](docs/DECISIONS_IMPLEMENTATION.md).
-4. Verify specifications and fixtures using:
-   ```sh
-   python docs/spec/v0.1.0/scripts/validate_spec_package.py
-   ```
-5. After each milestone, report changed files, commands and observed tests, actual spend, blockers, and next steps.
-
-## Completion report template
-
-```text
-Milestone:
-Files changed:
-Commands and tests actually run:
-Results:
-Live services used and maximum/actual spend:
-Known limitations / blocked checks:
-Approved deviations:
-Next milestone:
-```
+Record material trade-offs in the decision log. Verify affected contracts and documentation; run `python docs/spec/v0.1.0/scripts/validate_spec_package.py` for specification or fixture changes. Report actual checks, spend and material limitations.
