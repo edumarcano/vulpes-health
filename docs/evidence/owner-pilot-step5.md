@@ -1,6 +1,6 @@
 # Owner-data operational readiness
 
-Accounting evidence correction: the historical `currentAccountingMatched` result did not establish freshness because the original XPath ignored row fingerprints. The corrected code and synthetic regressions address this defect; operational reliance still requires corrected reconciliation with a fresh independent journal. See [the correction and procedure](../operations/hosted-recovery.md#accounting-fingerprint-correction).
+Accounting evidence correction: the historical `currentAccountingMatched` result did not establish freshness because the original XPath ignored row fingerprints. The corrected code and synthetic regressions address this defect; operational reliance still requires corrected reconciliation with a fresh independent journal. See [the correction and procedure](../operations/hosted-recovery.md#accounting-reconciliation).
 
 This packet follows the owner's confirmation of the private import preview. It prepares the existing backup, deletion-journal and maintenance boundaries for one explicitly named owner, without adding metrics, native connectors, UI polish or a provider. No private export, measurement, filename, key or personal path belongs in this evidence.
 

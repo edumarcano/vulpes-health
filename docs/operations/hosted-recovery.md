@@ -37,7 +37,7 @@ Restore authenticates the entire archive, source and retained trace keys before 
 
 Restored rows/catalog/extensions/trace samples must match the authenticated source snapshot. Comparison normalizes only physical attribute positions, ACL ordering, equivalent CHECK parse trees and database-catalog names. Source reads never create temporary tables; CHECK definitions are reparsed only inside the fenced destination. Table/schema/column identity, logical types, constraints, owners, grantors/grantees/privileges, policies and row contents remain checked. The result always says `restoreAccessAuthorized: false`; journal replay, session revocation and applicable Auth/API gates remain separate. A stopped restored volume contains a decrypted database, including Auth records; it requires the approved private machine/storage even though the backup file stays encrypted.
 
-The existing local-only `backup:verify` retains its source guards and procedure. Shared comparison SQL is extracted without changing its original queries. [3D.4B evidence](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/evidence/owner-pilot-step3d4-database.md) records actual interfaces, failed attempts and proof limits.
+The local-only `backup:verify` has separate source guards. [3D.4B evidence](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/evidence/owner-pilot-step3d4-database.md) records the rehearsal and its limits.
 
 ### Fenced journal replay and recovery validation
 
@@ -83,10 +83,6 @@ Every result says `restoreAccessAuthorized: false`. A fresh snapshot does not pr
 
 The five-minute archive validity is an acceptance window for a current recovery check, not permission to delete older independent records. Keep retained records and their keys under the approved custody/rotation policy. After source loss, an old copy alone cannot prove there were no later deletions; missing current completeness evidence must leave access blocked. Source-loss completeness and cutover remain separate decisions.
 
+## Accounting reconciliation
 
-
-## Accounting fingerprint correction
-
-Independent review found that the original accounting XPath selected a `table` wrapper while PostgreSQL emitted a `row` root. The historical `currentAccountingMatched` results therefore did not establish accounting freshness. Other recorded checks retain their named scope. The corrected query hashes actual rows and rejects missing tables or fingerprints. Synthetic regression coverage changes shared spending, reservations and route blocks, and requires an older restored ledger to fail reconciliation even with unchanged deletion records.
-
-Before relying on a retained package for recovery, rerun the corrected reconciliation against a fresh independently captured journal under the existing authorization and fencing procedure. Earlier reports and ciphertext readback do not replace this check. No correction grants restored access or requires another real-data capture merely to integrate the code.
+Earlier `currentAccountingMatched` results did not establish accounting freshness because the original query selected the wrong XML root. Other recorded checks retain their named scope. Before relying on a retained recovery package, rerun the corrected reconciliation against a fresh independently captured journal under the existing authorization and fencing procedure. Earlier reports and ciphertext readback do not replace this check or authorize restored access.
