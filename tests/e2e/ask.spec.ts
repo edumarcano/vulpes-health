@@ -234,6 +234,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
       .evaluate((element) => element.getBoundingClientRect().bottom <= 0),
   ).toBe(true);
   expect(sends).toBe(1);
+  let summaryStatistic = 'daily_totals';
   await page.route('**/api/conversations?*', async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.get('view') !== 'messages') return route.continue();
@@ -365,6 +366,36 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     }),
   ).toBeVisible();
   await expect(page.getByText(/change null kg/)).toHaveCount(0);
+  await page.route('**/api/conversations?*', async (route) => {
+    if (new URL(route.request().url()).searchParams.get('view') !== 'messages')
+      return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const message of body.data.items)
+      for (const part of message.parts)
+        if (part.type === 'metric_summary') {
+          part.result.analysis.statistic = summaryStatistic;
+          part.result.analysis.coverageStatus = 'sufficient';
+          part.result.analysis.value = null;
+          part.result.analysis.absoluteChange = null;
+          part.result.analysis.relativeChangePercent = null;
+        }
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  await expect(
+    page.getByText(
+      'Daily totals are shown separately; no combined mean is calculated.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/null kg/)).toHaveCount(0);
+  summaryStatistic = 'session_observations';
+  await page.reload();
+  await expect(
+    page.getByText(
+      'Sessions are shown separately; no combined mean is calculated.',
+    ),
+  ).toBeVisible();
   expect(sends).toBe(1);
 });
 test('Ask reads retained message state when replayed execution metadata has expired', async ({
@@ -544,7 +575,7 @@ test('Ask stop and reload retain partial output without inference replay', async
   ).toBeVisible();
   expect(sends).toBe(1);
 });
-test('Ask renders provider HTML, unsafe links, and fabricated references as inert text', async ({
+test('Ask keeps provider HTML, unsafe links, and fabricated references inert', async ({
   page,
 }) => {
   await scenario(page, 'unsafe_text');
@@ -567,6 +598,53 @@ test('Ask renders provider HTML, unsafe links, and fabricated references as iner
       .getByRole('heading', { name: 'Calculated measurement summary' })
       .count(),
   ).toBe(0);
+});
+
+test('Ask renders streamed Markdown and reloads it without loading images or formatting user text', async ({
+  page,
+}) => {
+  await scenario(page, 'markdown');
+  await start(page);
+  let sends = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/chat')) sends++;
+  });
+  await page.getByLabel('Message Ask Vulpes').fill('**Literal user text**');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(
+    page.getByText('Response saved.', { exact: true }),
+  ).toBeVisible();
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    const markdown = page.locator('.chat-assistant .chat-markdown');
+    await expect(
+      markdown.getByRole('heading', { name: 'Synthetic Markdown' }),
+    ).toBeVisible();
+    await expect(markdown.locator('strong')).toHaveText('bold');
+    await expect(markdown.locator('em')).toHaveText('emphasized');
+    await expect(markdown.locator('ul li')).toHaveCount(2);
+    await expect(markdown.locator('ol li')).toHaveCount(1);
+    await expect(markdown.locator('blockquote')).toHaveText('Synthetic quote');
+    await expect(markdown.locator('pre code')).toHaveText(
+      'const value = 70;\n',
+    );
+    await expect(markdown.getByRole('table')).toContainText('70 kg');
+    await expect(
+      markdown.getByRole('link', { name: 'Documentation' }),
+    ).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(markdown.locator('img')).toHaveCount(0);
+    await expect(page.locator('.chat-user .chat-text')).toHaveText(
+      '**Literal user text**',
+    );
+    await expect(page.locator('.chat-user strong')).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+  expect(sends).toBe(1);
 });
 test('Ask account switching discards the pending stream and private history', async ({
   page,

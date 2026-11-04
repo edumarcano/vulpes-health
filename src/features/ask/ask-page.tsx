@@ -38,6 +38,7 @@ import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer, initialAskState } from './state';
 import { ProposalPart, ProgressPart } from './goal-parts';
 import { InspectionBoundary } from '../executions/inspection-boundary';
+import { MarkdownText } from './markdown-text';
 const Inspector = lazy(() => import('../executions/inspector'));
 
 function Welcome() {
@@ -79,9 +80,17 @@ function SummaryPart({ data }: { data: unknown }) {
     <Card className="chat-evidence">
       <h3>Calculated measurement summary</h3>
       <p>
-        {a.coverageStatus === 'sufficient'
-          ? `${a.value} ${a.unit}; ${a.absoluteChange === null ? 'previous-window change unavailable' : `change ${a.absoluteChange} ${a.unit}`}`
-          : 'Insufficient observed days for a trend.'}
+        {a.coverageStatus !== 'sufficient'
+          ? 'Insufficient observations for this summary.'
+          : a.statistic === 'daily_totals'
+            ? 'Daily totals are shown separately; no combined mean is calculated.'
+            : a.statistic === 'session_observations'
+              ? 'Sessions are shown separately; no combined mean is calculated.'
+              : a.value === null
+                ? 'A headline value is unavailable for this summary.'
+                : a.statistic === 'observed_samples'
+                  ? `Observed median: ${a.value} ${a.unit}.`
+                  : `${a.value} ${a.unit}; ${a.absoluteChange === null ? 'previous-window change unavailable' : `change ${a.absoluteChange} ${a.unit}`}`}
       </p>
       <p>
         {a.validDays} valid days · {a.observationCount} observations ·{' '}
@@ -503,7 +512,8 @@ function AskThread({
                   </p>
                   <MessagePrimitive.Parts
                     components={{
-                      Text: plainText,
+                      Text:
+                        message.role === 'assistant' ? MarkdownText : plainText,
                       data: {
                         by_name: {
                           metric_summary: SummaryPart,

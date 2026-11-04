@@ -31,6 +31,7 @@ export class SyntheticChatTransport implements RequestTransport {
       | 'malformed'
       | 'repeated_call'
       | 'unsafe_text'
+      | 'markdown'
       | 'slow' = 'complete',
     private readonly barrier?: { started: () => void; wait: Promise<void> },
   ) {}
@@ -100,6 +101,19 @@ export class SyntheticChatTransport implements RequestTransport {
           '<img src=x onerror=alert(1)> [unsafe](javascript:alert(1)) analysis:00000000-0000-4000-8000-000000000000',
         ),
       ]);
+      return;
+    }
+    if (this.scenario === 'markdown') {
+      const text =
+        '## Synthetic Markdown\n\nA **bold** and *emphasized* response with `inline code`.\n\n- First item\n- Second item\n\n1. Ordered item\n\n> Synthetic quote\n\n| Metric | Value |\n| --- | --- |\n| Weight | 70 kg |\n\n```ts\nconst value = 70;\n```\n\n[Documentation](https://example.com/docs)\n\n![Synthetic image](https://example.com/private-image.png)';
+      for (const delta of [text.slice(0, 40), text.slice(40)]) {
+        yield Buffer.from(
+          'data: ' +
+            JSON.stringify({ type: 'response.output_text.delta', delta }) +
+            '\n\n',
+        );
+      }
+      yield responseFrame([assistantOutput(text)]);
       return;
     }
     if (this.scenario === 'missing_usage') {

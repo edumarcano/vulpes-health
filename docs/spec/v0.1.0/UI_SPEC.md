@@ -49,7 +49,7 @@ Content widths: conversation approximately 760 px maximum; analytic screens appr
 | `EvidenceReferences` | Server-provided owned source references | Open evidence drawer |
 | `RunStatusBadge` | Run ledger | Inspect model, effort and usage |
 
-Cards receive schemas, not HTML, JSX or code from the model. Escape markdown; disallow raw HTML, scripts, iframes and unapproved URL schemes. A model-generated card with unknown type or invalid props is not rendered.
+Assistant prose renders Markdown, including lists, tables and code blocks; user messages remain literal text. Raw HTML is displayed as text, unsafe URL schemes are blocked, and remote images are not loaded. Cards receive schemas, not HTML, JSX or code from the model. A model-generated card with unknown type or invalid props is not rendered.
 
 ## 6. Goals
 

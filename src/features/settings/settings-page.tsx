@@ -162,7 +162,7 @@ export function SettingsPage() {
     onSuccess: (data) => {
       scope.commit(epoch, () => {
         queryClient.setQueryData(key, data);
-        setNotice('Settings saved. AI remains unavailable.');
+        setNotice('Settings saved.');
       });
     },
     onError: (error) => {
@@ -226,8 +226,8 @@ export function SettingsPage() {
               <h2>Provider consent</h2>
               <p>
                 Providers receive data only through separately enabled,
-                permitted requests. No model calls are available in this
-                version.
+                permitted requests. Consent allows a provider to receive data;
+                request availability also depends on activation and budget.
               </p>
               {settings.data.providerConsents.map((consent) => (
                 <section className="consent-section" key={consent.provider}>
@@ -239,7 +239,7 @@ export function SettingsPage() {
                   <p>{consent.notice}</p>
                   <p>
                     {consent.accepted
-                      ? 'Allowed for future requests. AI remains unavailable.'
+                      ? 'Allowed for permitted requests.'
                       : 'Not allowed for new requests.'}
                   </p>
                   {(consent.acceptanceAvailable ||
