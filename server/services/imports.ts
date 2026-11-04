@@ -18,6 +18,7 @@ import {
 } from '../security/private-payloads.js';
 import { parseCsv } from './csv.js';
 import { normalizeObservation } from '../analytics/measurements.js';
+import { importSelections } from '../analytics/import-selection.js';
 
 const hash = (bytes: string | Buffer) =>
   createHash('sha256').update(bytes).digest('hex');
@@ -173,6 +174,11 @@ export async function previewCsv(context: AuthContext, request: PreviewCsv) {
       classification: bundle.classifications[index],
     })),
     historical_result: batch.result,
+    selections: importSelections(
+      bundle.observations,
+      bundle.classifications,
+      bundle.mapping.timezone,
+    ),
   });
 }
 export async function commitImport(

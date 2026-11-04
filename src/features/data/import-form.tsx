@@ -12,6 +12,7 @@ import {
   PreviewCsvSchema,
   type ImportPreview,
   type ImportResult,
+  type ImportSelection,
 } from '../../../shared/imports';
 import type {
   MetricKey,
@@ -25,7 +26,7 @@ type Stage =
   | { kind: 'review'; preview: ImportPreview; requestId: string }
   | { kind: 'stale'; preview: ImportPreview; requestId: string }
   | { kind: 'committing'; preview: ImportPreview; requestId: string }
-  | { kind: 'done'; result: ImportResult };
+  | { kind: 'done'; result: ImportResult; selections: ImportSelection[] };
 type ColumnMapping = {
   metric: MetricKey;
   unit: string;
@@ -36,11 +37,13 @@ export function ImportForm({
   timezone,
   dataRevision,
   onSaved,
+  onView,
 }: {
   sources: Source[];
   timezone: string;
   dataRevision: number;
   onSaved: (result: ImportResult) => void;
+  onView: (sourceId: string, selection: ImportSelection) => void;
 }) {
   const { state, scope } = useAuth();
   const session = state.kind === 'signed_in' ? state.session : null;
@@ -244,7 +247,11 @@ export function ImportForm({
       scope.commit(epoch, () => {
         setCsv('');
         if (p.historical_result) {
-          setStage({ kind: 'done', result: p.historical_result });
+          setStage({
+            kind: 'done',
+            result: p.historical_result,
+            selections: p.selections,
+          });
           onSaved(p.historical_result);
         } else
           setStage({
@@ -287,7 +294,11 @@ export function ImportForm({
         }),
       ).data;
       scope.commit(epoch, () => {
-        setStage({ kind: 'done', result: r });
+        setStage({
+          kind: 'done',
+          result: r,
+          selections: pending.preview.selections,
+        });
         setSource(r.source_id);
         onSaved(r);
       });
@@ -716,6 +727,27 @@ export function ImportForm({
             conflicts excluded; revision {stage.result.dataRevision}. Replaying
             this batch adds nothing.
           </p>
+          {stage.selections.length > 0 && (
+            <section aria-label="View imported readings">
+              <h4>View imported readings</h4>
+              <p>
+                Choose a series. Each range shows up to 366 days ending with its
+                latest imported reading.
+              </p>
+              {stage.selections.map((selection) => (
+                <Button
+                  key={JSON.stringify(selection)}
+                  variant="outline"
+                  onClick={() => onView(stage.result.source_id, selection)}
+                >
+                  {measurementRegistry[selection.metric].label} ·{' '}
+                  {selection.method.replaceAll('_', ' ')} ·{' '}
+                  {selection.granularity.replaceAll('_', ' ')} ·{' '}
+                  {selection.from} to {selection.to}
+                </Button>
+              ))}
+            </section>
+          )}
           <Button
             onClick={() => {
               setStage({ kind: 'editing' });

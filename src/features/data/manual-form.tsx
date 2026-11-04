@@ -18,16 +18,22 @@ export function ManualForm({
   timezone,
   busy,
   save,
+  initialMetric = 'weight',
+  initialSource = 'new',
 }: {
   sources: Source[];
   timezone: string;
   busy: boolean;
   save: (request: AddMeasurement) => Promise<void>;
+  initialMetric?: MetricKey;
+  initialSource?: string;
 }) {
-  const [metric, setMetric] = useState<MetricKey>('weight');
-  const [unit, setUnit] = useState('kg');
+  const [metric, setMetric] = useState<MetricKey>(initialMetric);
+  const [unit, setUnit] = useState<string>(
+    measurementRegistry[initialMetric].units[0],
+  );
   const [value, setValue] = useState('');
-  const [source, setSource] = useState('new');
+  const [source, setSource] = useState(initialSource);
   const [label, setLabel] = useState('');
   const [device, setDevice] = useState('');
   const [app, setApp] = useState('');
@@ -39,7 +45,13 @@ export function ManualForm({
   );
   const [date, setDate] = useState('');
   const [method, setMethod] = useState<MeasurementMethod>('user_reported');
-  const [granularity, setGranularity] = useState<Granularity>('instant');
+  const [granularity, setGranularity] = useState<Granularity>(
+    initialMetric === 'steps_daily'
+      ? 'daily_total'
+      : initialMetric === 'sleep_duration'
+        ? 'session_total'
+        : 'instant',
+  );
   const [review, setReview] = useState(false);
   const [stage, setStage] = useState<
     { kind: 'editing' } | { kind: 'confirming'; request: AddMeasurement }

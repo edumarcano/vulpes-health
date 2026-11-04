@@ -20,6 +20,8 @@ Deleting a measurement also removes the owner's retained exact AI trace payloads
 
 The RENPHO CSV adapter accepts the documented English 31-column layout, imports weight and body-fat percentage through the existing preview and commit flow, and requires profile and timezone confirmation. [Synthetic evidence](evidence/renpho-import.md) records the tested scope.
 
+Import completion offers explicit navigation per series using full-batch metadata, with at most 366 local days ending at the latest imported observation. This avoids inferring the series from the truncated preview or changing the user's filters before they choose a series.
+
 ## Retention and PWA
 
 Account deletion is resumable and preserves uncertain charges until settlement. Completed deletion receipts persist at least 31 days; encrypted database backups have a 30-day maximum. The PWA caches public shell assets only. [Account lifecycle](operations/account-lifecycle.md) owns the current details.

@@ -149,6 +149,23 @@ describe('real encrypted CSV HTTP transactions', () => {
       conflict: 0,
       invalid: 0,
     });
+    expect(p.preview).toHaveLength(20);
+    expect(p.selections).toContainEqual({
+      metric: 'weight',
+      method: 'device_reported',
+      granularity: 'instant',
+      timezone: 'UTC',
+      from: '2026-09-01',
+      to: '2026-09-14',
+    });
+    expect(p.selections).toContainEqual({
+      metric: 'body_fat_percent',
+      method: 'device_estimate',
+      granularity: 'instant',
+      timezone: 'UTC',
+      from: '2026-09-01',
+      to: '2026-09-14',
+    });
     expect(await readings(p.source_id)).toHaveLength(0);
     const raw = (await (
       await db.admin(`/rest/v1/private_payloads?user_id=eq.${a.id}`, 'GET')

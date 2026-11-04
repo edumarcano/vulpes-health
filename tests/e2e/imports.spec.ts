@@ -106,12 +106,19 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
     ).json(),
   ).toEqual([]);
   const source = await confirm(page);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page
-    .getByLabel('Method', { exact: true })
-    .selectOption('device_reported');
-  await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
-  await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
+    .getByRole('region', { name: 'View imported readings', exact: true })
+    .getByRole('button', { name: /^Weight · device reported/ })
+    .click();
+  await expect(page.getByLabel('Method', { exact: true })).toHaveValue(
+    'device_reported',
+  );
+  await expect(page.getByLabel('From date', { exact: true })).toHaveValue(
+    '2026-09-01',
+  );
+  await expect(page.getByLabel('Through date', { exact: true })).toHaveValue(
+    '2026-09-14',
+  );
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
   await page.reload();
   await page
@@ -232,6 +239,25 @@ test('RENPHO CSV requires profile and timezone confirmation before preview, then
       )
     ).json(),
   ).toHaveLength(4);
+  await page
+    .getByRole('region', { name: 'View imported readings', exact: true })
+    .getByRole('button', { name: /^Body fat .*device estimate/ })
+    .click();
+  await expect(page.getByLabel('Metric', { exact: true })).toHaveValue(
+    'body_fat_percent',
+  );
+  await expect(page.getByLabel('Method', { exact: true })).toHaveValue(
+    'device_estimate',
+  );
+  await expect(page.getByRole('table')).toContainText('20 %');
+  await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
+  await expect(page.getByLabel('Entry source', { exact: true })).toHaveValue(
+    source,
+  );
+  await expect(page.getByLabel('Entry metric', { exact: true })).toHaveValue(
+    'body_fat_percent',
+  );
+  await expect(page.getByLabel('Entry unit', { exact: true })).toHaveValue('%');
 });
 
 test('RENPHO CSV refuses nonempty trailing cells instead of discarding them', async ({
