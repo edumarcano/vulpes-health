@@ -21,7 +21,7 @@ Review stack: [#53](https://github.com/edumarcano/vulpes-health/pull/53) → [#5
 
 ## Verification identity and approval boundary
 
-Combined executable candidate: `4eba483efc7194b6af799cef0f1426692c5ffb78`, source digest `a3f479991ea3148cd5e5a4a1af04ad60d500676316c49950b2d1de45f6b480cb`. Documentation/report publication may follow this commit without changing executable bytes. Local records use the disposable `.scratch/pr17-verification` project on loopback ports 27421/27422; the original retained local stack was not reset. Full runner output remains ignored/private; only bounded summaries, safe proof fields and hashes are published.
+Combined executable candidate: `a311ae224f01e20ba7b760cbb4f4355007e5ddc1`, source digest `a82c3ac17d5b36a903919763cb98f7ef3b1ed87c735bc55bcc0389abc1e5e7b5`. Documentation/report publication may follow this commit without changing executable bytes. Local records use the disposable `.scratch/pr17-verification` project on loopback ports 27421/27422; the original retained local stack was not reset. Full runner output remains ignored/private; only bounded summaries, safe proof fields and hashes are published.
 
 Both Remora axes were reviewed against the actual combined diff: requirements/contracts and engineering/security/test assurance. Implementation agents performed their own split-axis reviews; the parent reconciled the stack and policy change. This is not an independent external review or approval to merge.
 
