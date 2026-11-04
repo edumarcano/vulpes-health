@@ -152,16 +152,15 @@ export const toolArguments = {
 const descriptions = {
   request_escalation:
     'Request Flash once using current-run progress or two metric-summary evidence IDs. Tool-only turn; no medical judgment or approval.',
-  list_metrics: 'List owned series, counts, intervals and source limitations.',
+  list_metrics: 'List owned series, counts, dates and source limits.',
   get_measurements:
-    'Read at most 200 observations in a profile-local date interval [from,to). Clarify ambiguous series.',
+    'Read up to 200 rows for profile-local [from,to) dates; clarify ambiguous series.',
   summarize_metric:
-    'Deterministic summary of complete local days; sparse coverage stays insufficient.',
-  list_goals: 'List approved owned goals, versions and definitions.',
+    'Summarize complete local days; sparse coverage stays insufficient.',
+  list_goals: 'List approved owned goals and versions.',
   get_goal_progress:
-    'Read approved goal progress; stale or unsupported baselines stay unavailable.',
-  propose_goal:
-    'Propose a goal for explicit user review. Never activates. Server freezes the baseline.',
+    'Read approved progress; qualify stale/unsupported baselines.',
+  propose_goal: 'Prepare a pending goal; explicit user review required.',
   propose_goal_revision:
     'Propose changed fields of an approved goal. expected_version is its version, not revision number. Never applies changes.',
 };
