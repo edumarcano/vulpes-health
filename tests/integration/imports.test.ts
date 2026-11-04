@@ -262,6 +262,108 @@ describe('real encrypted CSV HTTP transactions', () => {
     );
     expect(row?.canonical_value).toBe(68.0388555);
   });
+  it('deduplicates RENPHO against canonical imports on the same source and retains original encrypted provenance', async () => {
+    const first = await preview({
+      ...base,
+      client_request_id: randomUUID(),
+      csv: 'observed_at,metric,value,unit,source,granularity,method,timezone\n2026-09-01T08:00:00-04:00,weight,150.0,lb,Synthetic Scale A,instant,device_reported,America/New_York\n2026-09-01T08:00:00-04:00,body_fat_percent,20.0,%,Synthetic Scale A,instant,device_estimate,America/New_York',
+    });
+    expect((await commit(first)).inserted).toBe(2);
+    const original = readFileSync(
+      'docs/spec/v0.1.0/fixtures/renpho-synthetic.csv',
+      'utf8',
+    );
+    const request: PreviewCsv = {
+      ...base,
+      client_request_id: randomUUID(),
+      csv: original,
+      source: { kind: 'existing', id: first.source_id },
+      mapping: {
+        schema_version: 1,
+        format: 'renpho',
+        timezone: 'America/New_York',
+        profile: null,
+        single_profile: true,
+        timezone_confirmed: true,
+        review_requested: false,
+      },
+    };
+    const p = await preview(request);
+    expect(p.counts).toMatchObject({
+      new: 2,
+      duplicate: 2,
+      conflict: 0,
+      blank: 2,
+    });
+    expect(await readings(p.source_id)).toHaveLength(2);
+    const batches = (await (
+      await db.admin(
+        `/rest/v1/import_batches?id=eq.${p.batch_id}&select=staging_payload_id,file_hash`,
+        'GET',
+      )
+    ).json()) as Array<{ staging_payload_id: string; file_hash: string }>;
+    expect(batches[0]!.file_hash).toBe(
+      createHash('sha256').update(original).digest('hex'),
+    );
+    const context = await verifySession({
+      headers: { authorization: `Bearer ${a.token}` },
+    });
+    const payload = await readPayload(
+      context,
+      batches[0]!.staging_payload_id,
+      'import_staging',
+    );
+    expect(payload.state).toBe('available');
+    if (payload.state !== 'available')
+      throw new Error('Synthetic staging unavailable');
+    const bundle = JSON.parse(payload.bytes.toString()) as {
+      file_hash: string;
+      observations: Array<Record<string, unknown>>;
+    };
+    expect(bundle.file_hash).toBe(batches[0]!.file_hash);
+    expect(bundle.observations[0]).toMatchObject({
+      external_record_id: null,
+      provenance: {
+        adapter: 'csv',
+        row: 2,
+        column: 'Weight(lb)',
+        mapping: request.mapping,
+      },
+    });
+    expect(payload.bytes.toString()).not.toContain('Synthetic, ignored note');
+    expect((await commit(p)).inserted).toBe(2);
+    expect(await readings(p.source_id)).toHaveLength(4);
+    const changed = await preview({
+      ...request,
+      client_request_id: randomUUID(),
+      csv: original.replace('150.0', '151.0'),
+    });
+    expect(changed.counts).toMatchObject({ new: 0, duplicate: 3, conflict: 1 });
+    expect(await commit(changed)).toMatchObject({
+      inserted: 0,
+      duplicate: 3,
+      conflict: 1,
+    });
+    expect(await readings(p.source_id)).toHaveLength(4);
+    const invalid = await post({
+      ...request,
+      client_request_id: randomUUID(),
+      csv: original.replace('ignored note",', 'ignored note",nonempty'),
+    });
+    expect(invalid.status).toBe(400);
+    console.info(
+      JSON.stringify({
+        artifact: 'renpho_csv_http',
+        synthetic: true,
+        previewNew: p.counts.new,
+        crossFormatDuplicate: p.counts.duplicate,
+        changedConflict: changed.counts.conflict,
+        totalStored: 4,
+        fileHashVerified: true,
+        adapter: 'csv',
+      }),
+    );
+  });
   it('classifies altered external identities and within-file collisions without silently overwriting', async () => {
     const p = await preview();
     await commit(p);
