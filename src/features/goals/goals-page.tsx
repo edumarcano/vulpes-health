@@ -22,19 +22,17 @@ import {
   type GoalDefinition,
 } from '../../../shared/goals';
 import { metricUnits, type MetricKey } from '../../../shared/domain';
-import {
-  DataSummarySchema,
-  MeasurementsPageSchema,
-  SourcesPageSchema,
-} from '../../../shared/data';
+import { SourcesPageSchema } from '../../../shared/data';
 import { DataChartView } from '../data/data-chart-view';
-const rows = z.object({
-  data: z.object({
-    items: z.array(z.record(z.string(), z.json())),
-    nextCursor: z.string().nullable(),
-  }),
-});
-const envelope = z.object({ data: z.record(z.string(), z.json()) });
+import { successEnvelopeSchema } from '../../../shared/api';
+import {
+  GoalsPageSchema,
+  GoalProposalsPageSchema,
+  GoalRevisionsPageSchema,
+  GoalDetailSchema,
+} from '../../../shared/goal-views';
+import { GoalDefinitionView, GoalProposalReview } from './goal-review';
+import { GoalListItem, Progress } from './goal-progress';
 export function GoalsPage() {
   const { state, scope } = useAuth();
   const session = state.kind === 'signed_in' ? state.session : null;
@@ -69,14 +67,14 @@ function GoalsWorkspace({ token }: { token: string }) {
   const list = useQuery({
     queryKey: [...root, 'list', goalCursor],
     queryFn: async () =>
-      rows.parse(
+      successEnvelopeSchema(GoalsPageSchema).parse(
         await load('/api/goals' + (goalCursor ? '?cursor=' + goalCursor : '')),
       ).data,
   });
   const proposals = useQuery({
     queryKey: [...root, 'proposals', proposalCursor],
     queryFn: async () =>
-      rows.parse(
+      successEnvelopeSchema(GoalProposalsPageSchema).parse(
         await load(
           '/api/goals?view=proposals' +
             (proposalCursor ? '&cursor=' + proposalCursor : ''),
@@ -94,7 +92,9 @@ function GoalsWorkspace({ token }: { token: string }) {
     queryKey: [...root, 'detail', selected],
     enabled: !!selected,
     queryFn: async () =>
-      envelope.parse(await load('/api/goals?view=detail&id=' + selected)).data,
+      successEnvelopeSchema(GoalDetailSchema).parse(
+        await load('/api/goals?view=detail&id=' + selected),
+      ).data,
   });
   const detailHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -104,7 +104,7 @@ function GoalsWorkspace({ token }: { token: string }) {
     queryKey: [...root, 'history', selected, historyCursor],
     enabled: !!selected,
     queryFn: async () =>
-      rows.parse(
+      successEnvelopeSchema(GoalRevisionsPageSchema).parse(
         await load(
           '/api/goals?view=revisions&id=' +
             selected +
@@ -139,17 +139,11 @@ function GoalsWorkspace({ token }: { token: string }) {
       scope.commit(epoch, () => setBusy(false));
     }
   }
-  const g = detail.data?.goal as
-    Record<string, z.infer<ReturnType<typeof z.json>>> | undefined;
-  const rev = detail.data?.revision as
-    Record<string, z.infer<ReturnType<typeof z.json>>> | undefined;
-  const payload = GoalRevisionPayloadSchema.safeParse(rev?.payload);
-  const chart = z
-    .object({
-      summary: DataSummarySchema,
-      observations: MeasurementsPageSchema,
-    })
-    .safeParse(detail.data?.chart);
+  const g = detail.data?.goal;
+  const payload = GoalRevisionPayloadSchema.safeParse(
+    detail.data?.revision.payload,
+  );
+  const chart = detail.data?.chart;
   return (
     <>
       <header className="page-heading flex flex-wrap items-center justify-between gap-4">
@@ -226,7 +220,7 @@ function GoalsWorkspace({ token }: { token: string }) {
               State: {String(g.state)} · Review: {String(g.review_status)} ·
               Version: {String(g.version)}
             </p>
-            <Definition value={payload.data} />
+            <GoalDefinitionView value={payload.data} />
             <Progress value={detail.data?.progress} />
             <div className="flex flex-wrap gap-2 my-2">
               <Button
@@ -278,9 +272,9 @@ function GoalsWorkspace({ token }: { token: string }) {
                 </Button>
               )}
             </div>
-            {chart.success && (
+            {chart && (
               <>
-                <DataChartView data={chart.data.summary} />
+                <DataChartView data={chart.summary} />
                 <div
                   className="data-table-scroll"
                   role="region"
@@ -296,7 +290,7 @@ function GoalsWorkspace({ token }: { token: string }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {chart.data.observations.items.map((x) => (
+                      {chart.observations.items.map((x) => (
                         <tr key={x.id}>
                           <td>{x.observedAt}</td>
                           <td>
@@ -307,7 +301,7 @@ function GoalsWorkspace({ token }: { token: string }) {
                     </tbody>
                   </table>
                 </div>
-                {chart.data.observations.nextCursor && (
+                {chart.observations.nextCursor && (
                   <p>
                     Showing the first 200 observations. Open Data for the
                     complete series.
@@ -420,138 +414,6 @@ function GoalsWorkspace({ token }: { token: string }) {
         </SheetContent>
       </Sheet>
     </>
-  );
-}
-function Definition({
-  value,
-}: {
-  value: z.infer<typeof GoalRevisionPayloadSchema>;
-}) {
-  const d = value.definition;
-  const { state, scope } = useAuth();
-  const epoch = scope.epoch;
-  const sources = useQuery({
-    queryKey: ['goals', scope.userId, epoch, 'sources'],
-    enabled: state.kind === 'signed_in',
-    queryFn: async () =>
-      z
-        .object({ data: SourcesPageSchema })
-        .parse(
-          await ownedJson(
-            '/api/data?view=sources&page_size=200',
-            state.kind === 'signed_in' ? state.session.access_token : '',
-            scope,
-            epoch,
-          ),
-        ).data,
-  });
-  const source = sources.data?.items.find((x) => x.id === d.sourceId);
-  return (
-    <dl style={{ overflowWrap: 'anywhere' }}>
-      <dt>Target</dt>
-      <dd>
-        {d.target.direction === 'maintain_range'
-          ? `${d.target.lower}–${d.target.upper}`
-          : `${d.target.direction === 'increase_to' ? 'Increase to' : 'Decrease to'} ${d.target.value}`}{' '}
-        {d.unit}
-      </dd>
-      <dt>Source and calculation</dt>
-      <dd>
-        {source
-          ? `${source.label}${source.deviceLabel ? ' · ' + source.deviceLabel : ''}`
-          : 'Selected source'}{' '}
-        · {d.method.replaceAll('_', ' ')} · {d.granularity.replaceAll('_', ' ')}{' '}
-        · {d.timezone} · Source ID: {d.sourceId}
-      </dd>
-      <dt>Baseline</dt>
-      <dd>
-        {value.baseline.value ?? 'Insufficient data'} · {d.baselineMethod} ·{' '}
-        {d.baselineFrom} to {d.baselineTo} · {value.baseline.provenance}
-      </dd>
-      <dt>Current method</dt>
-      <dd>{d.currentMethod.replaceAll('_', ' ')}</dd>
-      <dt>Target date</dt>
-      <dd>{d.targetDate ?? 'None'}</dd>
-      <dt>Constraints and strategy</dt>
-      <dd>
-        {d.constraints.join('; ')} · {d.proposedStrategy ?? 'None'}
-      </dd>
-      <dt>Resulting state</dt>
-      <dd>
-        {value.state} · Baseline: {value.baselineResolution}
-      </dd>
-    </dl>
-  );
-}
-export function GoalProposalReview({
-  proposal,
-  busy,
-  decide,
-}: {
-  proposal: Record<string, z.infer<ReturnType<typeof z.json>>>;
-  busy: boolean;
-  decide: (action: 'approve' | 'reject') => Promise<void>;
-}) {
-  const { state, scope } = useAuth();
-  const epoch = scope.epoch;
-  const before = useQuery({
-    queryKey: ['goals', scope.userId, epoch, 'before', proposal.target_id],
-    enabled:
-      !!proposal.target_id &&
-      state.kind === 'signed_in' &&
-      proposal.state === 'pending',
-    queryFn: async () =>
-      envelope.parse(
-        await ownedJson(
-          '/api/goals?view=detail&id=' + String(proposal.target_id),
-          state.kind === 'signed_in' ? state.session.access_token : '',
-          scope,
-          epoch,
-        ),
-      ).data,
-  });
-  const previous = GoalRevisionPayloadSchema.safeParse(
-    (before.data?.revision as Record<string, unknown> | undefined)?.payload,
-  );
-  const payload = GoalRevisionPayloadSchema.safeParse(
-    proposal.canonical_payload,
-  );
-  return (
-    <section aria-label="Review goal proposal">
-      <h3>{String(proposal.summary)}</h3>
-      <p>
-        {String(proposal.state)} · Expires {String(proposal.expires_at)}
-      </p>
-      {previous.success && (
-        <>
-          <h4>Before</h4>
-          <Definition value={previous.data} />
-          <h4>Proposed</h4>
-        </>
-      )}
-      {payload.success && <Definition value={payload.data} />}
-      <p>
-        Approval applies these displayed fields only. Changed data or a newer
-        goal version requires fresh review.
-      </p>
-      {proposal.state === 'pending' && payload.success && (
-        <>
-          <Button
-            disabled={busy || (!!proposal.target_id && !previous.success)}
-            onClick={() => void decide('approve')}
-          >
-            Approve goal proposal
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => void decide('reject')}
-          >
-            Reject goal proposal
-          </Button>
-        </>
-      )}
-    </section>
   );
 }
 function GoalForm({
@@ -814,185 +676,6 @@ function GoalForm({
         {!sources.length && <p>Add a source in Data before creating a goal.</p>}
         {error && <p role="alert">{error}</p>}
       </form>
-    </Card>
-  );
-}
-
-export function Progress({ value }: { value: unknown }) {
-  const p = z
-    .object({
-      kind: z.string(),
-      baseline: z.string().optional(),
-      current: z.string().optional(),
-      result: z
-        .object({
-          kind: z.string(),
-          rawPercent: z.number().optional(),
-          displayPercent: z.number().optional(),
-        })
-        .optional(),
-    })
-    .safeParse(value);
-  if (!p.success) return <p>Progress unavailable.</p>;
-  if (p.data.kind !== 'progress')
-    return (
-      <p>
-        {p.data.kind === 'insufficient_data'
-          ? 'Insufficient data for progress.'
-          : 'Progress requires review of the baseline or revision.'}
-      </p>
-    );
-  const r = p.data.result;
-  return (
-    <section aria-label="Goal progress">
-      <h3>Progress</h3>
-      <p>
-        Baseline: {p.data.baseline} · Current: {p.data.current}
-      </p>
-      {r?.kind === 'directional' ? (
-        <>
-          <p>
-            {r.rawPercent === undefined
-              ? 'Directional progress unavailable.'
-              : `${r.rawPercent.toLocaleString(undefined, { maximumFractionDigits: 2 })}% progress`}
-          </p>
-          {r.displayPercent !== undefined && (
-            <progress
-              max={100}
-              value={r.displayPercent}
-              aria-label="Goal progress"
-            />
-          )}
-          <p>
-            The bar is limited to 0–100%; the calculation above preserves
-            regression and overshoot.
-          </p>
-        </>
-      ) : (
-        <p>
-          {r?.kind === 'undefined'
-            ? 'Progress is undefined because the target equals the baseline.'
-            : r?.kind.replaceAll('_', ' ')}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function GoalListItem({
-  goal,
-  open,
-}: {
-  goal: Record<string, z.infer<ReturnType<typeof z.json>>>;
-  open: () => void;
-}) {
-  const { state, scope } = useAuth();
-  const epoch = scope.epoch;
-  const progress = useQuery({
-    queryKey: ['goals', scope.userId, epoch, 'progress', goal.id],
-    enabled: state.kind === 'signed_in',
-    queryFn: async () =>
-      z
-        .object({
-          data: z.object({
-            kind: z.string(),
-            current: z.string().optional(),
-            baseline: z.string().optional(),
-            result: z
-              .object({
-                kind: z.string(),
-                rawPercent: z.number().optional(),
-                displayPercent: z.number().optional(),
-              })
-              .optional(),
-          }),
-        })
-        .parse(
-          await ownedJson(
-            '/api/goals?view=progress&id=' + String(goal.id),
-            state.kind === 'signed_in' ? state.session.access_token : '',
-            scope,
-            epoch,
-          ),
-        ).data,
-  });
-  const policy = goal.source_policy as Record<string, unknown> | null;
-  const result = progress.data?.result;
-  const progressPercent =
-    result?.kind === 'directional' ? result.displayPercent : undefined;
-  return (
-    <Card className="goal-card">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button variant="outline" onClick={open}>
-          {String(goal.title)} · {String(goal.state)}
-        </Button>
-        <span className="text-xs uppercase font-semibold text-muted-foreground">
-          {String(goal.state)}
-        </span>
-      </div>
-      <span style={{ display: 'block' }}>
-        Target:{' '}
-        {goal.direction === 'maintain_range'
-          ? `${String(goal.target_lower)}–${String(goal.target_upper)}`
-          : String(goal.target_value)}{' '}
-        {String(goal.canonical_unit)} · Current method:{' '}
-        {String(policy?.currentMethod ?? 'historical').replaceAll('_', ' ')}
-      </span>
-      <div className="space-y-1 my-2">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Progress</span>
-          <span className="font-semibold">
-            {progress.isPending
-              ? 'Loading'
-              : progress.error
-                ? 'Unavailable'
-                : progress.data?.kind === 'insufficient_data'
-                  ? 'Insufficient data'
-                  : result?.kind === 'directional'
-                    ? result.rawPercent !== undefined
-                      ? `${result.rawPercent.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
-                      : 'Unavailable'
-                    : result?.kind === 'undefined'
-                      ? 'Undefined'
-                      : result?.kind === 'within_range'
-                        ? 'Within range'
-                        : result?.kind === 'below_range'
-                          ? 'Below range'
-                          : result?.kind === 'above_range'
-                            ? 'Above range'
-                            : 'Unavailable'}
-          </span>
-        </div>
-        {progressPercent !== undefined && (
-          <progress
-            className="goal-progress-bar"
-            max={100}
-            value={progressPercent}
-            aria-label={`${String(goal.title)} progress`}
-          />
-        )}
-      </div>
-      <span style={{ display: 'block' }}>
-        {progress.isPending
-          ? 'Loading current value…'
-          : progress.error
-            ? 'Current value unavailable.'
-            : progress.data?.kind === 'progress'
-              ? result?.kind === 'directional'
-                ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Enough data for this method.`
-                : result?.kind === 'undefined'
-                  ? 'Progress is undefined because the target equals the baseline.'
-                  : result?.kind === 'within_range'
-                    ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Within the target range.`
-                    : result?.kind === 'below_range'
-                      ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Below the target range.`
-                      : result?.kind === 'above_range'
-                        ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Above the target range.`
-                        : 'Progress unavailable.'
-              : progress.data?.kind === 'insufficient_data'
-                ? 'Insufficient data for progress.'
-                : 'Baseline review required.'}
-      </span>
     </Card>
   );
 }
