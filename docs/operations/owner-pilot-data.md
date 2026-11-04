@@ -2,7 +2,7 @@
 
 The existing hosted personal application uses Luna with current OpenRouter consent, encrypted traces and persistent app/account budgets. The owner handoff and real-data import were completed; [evidence](../evidence/owner-pilot-step5.md) records the tested scope. The [personal-use transition](../evidence/personal-use-transition.md) records the current hosted address and cutover. Repository defaults and CI keep live AI disabled.
 
-Production deployment requires owner approval and successful CI on the exact `main` commit; follow [deployment activation and approval](deployment-integrity.md). Backups and maintenance remain manual; no background scheduler is configured. Changes to resources, provider settings, budgets or account data require their appropriate owner authorization.
+Production automation requires one-time owner approval and successful CI on the exact `main` commit; after activation, ordinary successful merges deploy automatically. Follow [deployment activation and ordering limits](deployment-integrity.md). Backups and maintenance remain manual; no background scheduler is configured. Changes to resources, provider settings, budgets or account data require their appropriate owner authorization.
 
 ## Provider and budgets
 
