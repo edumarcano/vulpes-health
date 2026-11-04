@@ -26,6 +26,15 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async () => {
   await clearReadings();
 });
+test('mobile date presets describe their bounded range and reflect custom dates', async ({
+  page,
+}) => {
+  const preset = page.getByRole('button', { name: '365D', exact: true });
+  await preset.click();
+  await expect(preset).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
+  await expect(preset).toHaveAttribute('aria-pressed', 'false');
+});
 async function range(page: Page) {
   await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
   await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');

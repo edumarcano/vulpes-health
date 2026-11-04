@@ -234,6 +234,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
       .evaluate((element) => element.getBoundingClientRect().bottom <= 0),
   ).toBe(true);
   expect(sends).toBe(1);
+  let summaryStatistic = 'daily_totals';
   await page.route('**/api/conversations?*', async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.get('view') !== 'messages') return route.continue();
@@ -365,6 +366,36 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     }),
   ).toBeVisible();
   await expect(page.getByText(/change null kg/)).toHaveCount(0);
+  await page.route('**/api/conversations?*', async (route) => {
+    if (new URL(route.request().url()).searchParams.get('view') !== 'messages')
+      return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const message of body.data.items)
+      for (const part of message.parts)
+        if (part.type === 'metric_summary') {
+          part.result.analysis.statistic = summaryStatistic;
+          part.result.analysis.coverageStatus = 'sufficient';
+          part.result.analysis.value = null;
+          part.result.analysis.absoluteChange = null;
+          part.result.analysis.relativeChangePercent = null;
+        }
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  await expect(
+    page.getByText(
+      'Daily totals are shown separately; no combined mean is calculated.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/null kg/)).toHaveCount(0);
+  summaryStatistic = 'session_observations';
+  await page.reload();
+  await expect(
+    page.getByText(
+      'Sessions are shown separately; no combined mean is calculated.',
+    ),
+  ).toBeVisible();
   expect(sends).toBe(1);
 });
 test('Ask reads retained message state when replayed execution metadata has expired', async ({

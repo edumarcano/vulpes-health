@@ -67,14 +67,14 @@ export function DataPage() {
   const tableHeading = useRef<HTMLHeadingElement>(null);
   const manualTrigger = useRef<HTMLButtonElement>(null);
   const importTrigger = useRef<HTMLButtonElement>(null);
-  function applyQuickRange(range: '7D' | '14D' | '30D' | '90D' | 'All') {
+  function applyQuickRange(range: '7D' | '14D' | '30D' | '90D' | '365D') {
     const today = Temporal.Now.plainDateISO(timezone);
     let fromDate: Temporal.PlainDate;
     if (range === '7D') fromDate = today.subtract({ days: 6 });
     else if (range === '14D') fromDate = today.subtract({ days: 13 });
     else if (range === '30D') fromDate = today.subtract({ days: 29 });
     else if (range === '90D') fromDate = today.subtract({ days: 89 });
-    else fromDate = today.subtract({ days: 364 }); // strictly < 366 days
+    else fromDate = today.subtract({ days: 364 });
     setFrom(fromDate.toString());
     setTo(today.toString());
   }
@@ -137,6 +137,18 @@ export function DataPage() {
   } catch {
     selection = null;
     intervalError = 'Choose valid dates and an IANA timezone.';
+  }
+  function isQuickRange(range: string) {
+    try {
+      const today = Temporal.Now.plainDateISO(timezone);
+      return (
+        displayTo === today.toString() &&
+        displayFrom ===
+          today.subtract({ days: Number.parseInt(range) - 1 }).toString()
+      );
+    } catch {
+      return false;
+    }
   }
   const selectionKey = selection ? JSON.stringify(selection) : null;
   const summary = useQuery({
@@ -312,11 +324,12 @@ export function DataPage() {
       {/* Quick Time Ranges & Interval Bar */}
       <div className="time-range-bar">
         <div className="range-pills">
-          {(['7D', '14D', '30D', '90D', 'All'] as const).map((r) => (
+          {(['7D', '14D', '30D', '90D', '365D'] as const).map((r) => (
             <Button
               key={r}
               variant="ghost"
               size="sm"
+              aria-pressed={isQuickRange(r)}
               onClick={() => applyQuickRange(r)}
             >
               {r}

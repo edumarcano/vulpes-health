@@ -40,9 +40,12 @@ test('saves profile and explicit consent through the real API and survives reloa
   await page.getByLabel('Timezone', { exact: true }).fill('America/New_York');
   await page.getByLabel('Units', { exact: true }).selectOption('imperial');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText(
-    'Settings saved. AI remains unavailable.',
-  );
+  await expect(page.getByRole('status')).toHaveText('Settings saved.');
+  await expect(
+    page.getByText('No model calls are available in this version.', {
+      exact: false,
+    }),
+  ).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel('Display name', { exact: true })).toHaveValue(
     'Synthetic saved profile',
@@ -97,9 +100,7 @@ test('saves a personal spending limit and rejects an amount above the account AI
   await page
     .getByRole('button', { name: 'Save personal spending limit', exact: true })
     .click();
-  await expect(page.getByRole('status')).toHaveText(
-    'Settings saved. AI remains unavailable.',
-  );
+  await expect(page.getByRole('status')).toHaveText('Settings saved.');
   await page.reload();
   await expect(
     page.getByLabel('Personal spending limit (USD)', { exact: true }),
@@ -126,9 +127,7 @@ test('saves a personal spending limit and rejects an amount above the account AI
   await page
     .getByRole('button', { name: 'Save personal spending limit', exact: true })
     .click();
-  await expect(page.getByRole('status')).toHaveText(
-    'Settings saved. AI remains unavailable.',
-  );
+  await expect(page.getByRole('status')).toHaveText('Settings saved.');
 });
 
 test('shows an honest unavailable spending state for an account without allocation', async ({
