@@ -227,6 +227,9 @@ test('Ask goal proposal journey imports, reviews, approves, calculates progress 
     mimeType: 'text/csv',
     buffer: fixture,
   });
+  await expect(
+    page.getByText('Selected: synthetic-m4.csv', { exact: true }),
+  ).toBeVisible();
   await page
     .getByLabel('Import source label', { exact: true })
     .fill('Synthetic M4 browser');
