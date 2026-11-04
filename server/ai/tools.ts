@@ -38,7 +38,12 @@ import type { GenerationRequest } from './contracts.js';
 
 export const ToolErrorResultSchema = z.strictObject({
   kind: z.literal('tool_error'),
-  code: z.enum(['invalid_arguments', 'invalid_interval', 'timezone_mismatch']),
+  code: z.enum([
+    'invalid_arguments',
+    'invalid_interval',
+    'timezone_mismatch',
+    'unsafe_goal_target',
+  ]),
   recoverable: z.literal(true),
   hint: z.string(),
 });
@@ -624,6 +629,16 @@ export async function prepareGoalTool(
           };
         })();
   await profileTimezone(context, request.definition.timezone);
+  const { metric, target } = request.definition;
+  const values =
+    target.direction === 'maintain_range'
+      ? [target.lower, target.upper]
+      : [target.value];
+  if (metric === 'body_fat_percent' && values.some((value) => value <= 2))
+    throw new ToolValidationFailure(
+      'unsafe_goal_target',
+      'Vulpes will not propose body-fat targets at or below 2%. This is a conservative product rule, not a medical reference range. Higher targets are not necessarily safe. Do not substitute another target; ask the user to discuss an appropriate target with a qualified clinician.',
+    );
   return GoalProposalToolResultSchema.parse({
     kind: 'goal_proposal',
     request,

@@ -4,6 +4,7 @@ import type { AuthContext } from '../../server/auth/session.js';
 import { buildContext } from '../../server/ai/context.js';
 import {
   executeReadTool,
+  prepareGoalTool,
   toolArguments,
   ToolErrorResultSchema,
 } from '../../server/ai/tools.js';
@@ -431,6 +432,152 @@ function scenario(
 }
 
 describe('bounded production orchestrator with synthetic persistence and transport', () => {
+  it.each([
+    { direction: 'decrease_to', value: 2 },
+    { direction: 'increase_to', value: 1 },
+    { direction: 'maintain_range', lower: 2, upper: 3 },
+  ])(
+    'persists a cautious refusal for an AI body-fat target %j without creating a proposal',
+    async (target) => {
+      const definition = {
+        ...goalDraft,
+        metric: 'body_fat_percent',
+        unit: '%',
+        method: 'device_estimate',
+        granularity: 'instant',
+        currentMethod: 'daily_median_mean_7d',
+        timezone: 'America/New_York',
+        target,
+      };
+      const prepare = vi.spyOn(GoalService.prototype, 'prepareProposal');
+      const run = scenario([
+        responseFrame([functionCall(1, 'propose_goal', { definition })]),
+        responseFrame([
+          assistantOutput(
+            'Please discuss an appropriate target with a qualified clinician.',
+          ),
+        ]),
+      ]);
+      const events = await run.collect();
+      expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+      expect(prepare).not.toHaveBeenCalled();
+      expect(run.ledger.checkpointGoal).not.toHaveBeenCalled();
+      expect(events.some((e) => e.type === 'card.ready')).toBe(false);
+      const output = run.bodies[1]!.input.find(
+        (item) => item.type === 'function_call_output',
+      );
+      expect(JSON.parse(String(output?.output)).result).toMatchObject({
+        kind: 'tool_error',
+        code: 'unsafe_goal_target',
+        recoverable: true,
+      });
+      expect(JSON.parse(String(output?.output)).result.hint).toContain(
+        'Higher targets are not necessarily safe',
+      );
+    },
+  );
+  it('checks the full merged target when AI revises an owned goal', async () => {
+    const definition = GoalDefinitionSchema.parse({
+      ...goalDraft,
+      metric: 'body_fat_percent',
+      unit: '%',
+      method: 'device_estimate',
+      granularity: 'instant',
+      currentMethod: 'latest_value',
+      baselineMethod: 'user_reported',
+      reportedBaseline: 20,
+      baselineFrom: null,
+      baselineTo: null,
+      timezone: 'America/New_York',
+      target: { direction: 'decrease_to', value: 10 },
+    });
+    vi.spyOn(GoalService.prototype, 'revision').mockResolvedValue({
+      revision: {
+        payload: {
+          schemaVersion: 2,
+          definition,
+          state: 'active',
+          baselineResolution: 'replace',
+          reviewedDataRevision: 1,
+          baseline: {
+            schemaVersion: 2,
+            selection: {
+              metric: 'body_fat_percent',
+              source_id: otherId,
+              method: 'device_estimate',
+              granularity: 'instant',
+              timezone: 'America/New_York',
+              from: '2026-10-28T04:00:00Z',
+              to: '2026-11-04T05:00:00Z',
+            },
+            value: '20',
+            dataRevision: 1,
+            algorithmVersion: 'user_reported_v1',
+            provenance: 'user_reported',
+            references: [],
+          },
+        },
+      },
+    } as never);
+    const prepare = vi.spyOn(GoalService.prototype, 'prepareProposal');
+    await expect(
+      prepareGoalTool(
+        context(),
+        'propose_goal_revision',
+        {
+          goal_id: otherId,
+          expected_version: 1,
+          changes: { target: { direction: 'decrease_to', value: 2 } },
+          baseline_resolution: 'retain',
+          rationale: 'Synthetic target change',
+        },
+        otherId,
+      ),
+    ).rejects.toMatchObject({ code: 'unsafe_goal_target' });
+    expect(prepare).not.toHaveBeenCalled();
+  });
+  it.each([
+    {
+      metric: 'body_fat_percent',
+      unit: '%',
+      target: { direction: 'decrease_to', value: 2.001 },
+    },
+    {
+      metric: 'body_fat_percent',
+      unit: '%',
+      target: { direction: 'maintain_range', lower: 2.001, upper: 3 },
+    },
+    {
+      metric: 'weight',
+      unit: 'kg',
+      target: { direction: 'decrease_to', value: 2 },
+    },
+  ])(
+    'keeps the narrow numeric rule separate from ordinary proposal validation %j',
+    async (fields) => {
+      const prepare = vi
+        .spyOn(GoalService.prototype, 'prepareProposal')
+        .mockRejectedValue(new Error('ordinary_proposal_validation_reached'));
+      await expect(
+        prepareGoalTool(
+          context(),
+          'propose_goal',
+          {
+            definition: {
+              ...goalDraft,
+              ...fields,
+              method: 'device_estimate',
+              granularity: 'instant',
+              currentMethod: 'daily_median_mean_7d',
+              timezone: 'America/New_York',
+            },
+          },
+          otherId,
+        ),
+      ).rejects.toThrow('ordinary_proposal_validation_reached');
+      expect(prepare).toHaveBeenCalledOnce();
+    },
+  );
   it('preserves the atomic pending-proposal checkpoint before emitting its review card', async () => {
     const definition = GoalDefinitionSchema.parse({
       ...goalDraft,
