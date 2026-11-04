@@ -102,6 +102,18 @@ describe('hosted schema compatibility before build', () => {
       'hosted_schema_incompatible',
     );
   });
+  it('allows extra forward versions for additive deployment compatibility', async () => {
+    setup({ versions: [...versions, '20990101000100'] });
+    await expect(hostedBuild(args, env)).resolves.toMatchObject({
+      buildRan: true,
+    });
+  });
+  it('refuses duplicated migration evidence', async () => {
+    setup({ versions: [...versions, versions[0]] });
+    await expect(hostedBuild(args, env)).rejects.toThrow(
+      'hosted_schema_incompatible',
+    );
+  });
   it.each([{ versions: ['invalid'] }, {}, null])(
     'refuses malformed schema evidence %j',
     async (body) => {
