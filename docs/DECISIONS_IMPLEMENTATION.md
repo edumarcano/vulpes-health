@@ -10,6 +10,8 @@ After separately approved cloud activation, ordinary successful main merges depl
 
 The repository binds the existing production target and Luna mode, while credentials remain production-only in Vercel. Builds validate the project ID and configured application origin rather than Vercel's preferred-domain metadata, which can name another verified alias. Application deployments do not apply database migrations or run model requests.
 
+Hosted builds require the complete repository migration version set from a read-only, service-only RPC. An exact required set catches older missing migrations that a maximum-version comparison misses; additional forward versions permit additive rollout. This is migration-ledger evidence, not proof against manual schema drift. The introspection migration must be approved and applied before merging dependent code. Future migrations must preserve compatibility with the app still serving traffic.
+
 ## Recovery and data scope
 
 Owner-data capture, journal and maintenance use explicit owner manifests and a server-controlled data-scope marker; synthetic operations reject the marked owner. Backup, journal and trace keys remain separately recoverable. Restores are fenced, reconcile independent deletion and accounting evidence, and do not authorize access. See [recovery](operations/hosted-recovery.md).

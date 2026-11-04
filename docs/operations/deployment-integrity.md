@@ -39,3 +39,12 @@ There is no cross-service atomic operation that compares GitHub main while Verce
 Run `npm test -- tests/unit/deployment-integrity.test.ts tests/unit/production-deployment.test.ts tests/unit/hosting.test.ts`. These use synthetic API responses and make no deployment requests. The CLI refuses invocation outside `workflow_run` before network access. Cloud enforcement, staging/domain behavior, token permissions and rollback remain unverified.
 
 The implementation uses Vercel's [Git deployment API](https://vercel.com/docs/rest-api/deployments/create-a-new-deployment), its client's [`autoAssignCustomDomains` option](https://github.com/vercel/vercel/blob/main/packages/client/src/types.ts), and [staged production promotion](https://vercel.com/docs/cli/deploy). GitHub documents [workflow completion triggers](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run) and [deployment concurrency](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments).
+
+## Migration-before-code gate
+
+The build calls service-only `schema_version_v1()` on the bound Supabase project and requires every version in `supabase/migrations/`. A latest version alone cannot prove an older migration was applied. Missing RPC, unavailable database or malformed/missing versions blocks the build. Extra forward versions are allowed; this checks the migration ledger, not statement equivalence or manual drift.
+
+1. Review `20261104000100_schema_compatibility.sql` and obtain explicit approval to apply this metadata-only migration to production. It adds no application data or table changes. Do not merge the dependent build guard first.
+2. Use the existing reviewed Supabase migration process to apply the migration, then verify the RPC succeeds for `service_role` and fails for `anon` and `authenticated`. Never expose the service key in chat, arguments or browser/client configuration.
+3. Compare the returned version set with the repository, including any other pending migrations. Keep future schema changes additive and compatible with the still-serving app; removing old interfaces requires a later, separately reviewed migration after old code is retired.
+4. Merge the guard only after approval and confirmed migration availability. After approved automation activation, eligible merges deploy after CI; migration approval remains separate. Do not delete ledger rows or bypass the check to force a build.
