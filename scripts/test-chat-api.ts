@@ -96,6 +96,7 @@ const server = createServer((req, res) => {
       'missing_usage',
       'malformed',
       'unsafe_text',
+      'markdown',
       'slow',
       'goal_create',
       'goal_revise',
@@ -119,6 +120,7 @@ const server = createServer((req, res) => {
                   | 'missing_usage'
                   | 'malformed'
                   | 'unsafe_text'
+                  | 'markdown'
                   | 'slow',
               ),
         )

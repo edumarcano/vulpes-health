@@ -38,6 +38,7 @@ import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer, initialAskState } from './state';
 import { ProposalPart, ProgressPart } from './goal-parts';
 import { InspectionBoundary } from '../executions/inspection-boundary';
+import { MarkdownText } from './markdown-text';
 const Inspector = lazy(() => import('../executions/inspector'));
 
 function Welcome() {
@@ -511,7 +512,8 @@ function AskThread({
                   </p>
                   <MessagePrimitive.Parts
                     components={{
-                      Text: plainText,
+                      Text:
+                        message.role === 'assistant' ? MarkdownText : plainText,
                       data: {
                         by_name: {
                           metric_summary: SummaryPart,

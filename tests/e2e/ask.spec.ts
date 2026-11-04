@@ -575,7 +575,7 @@ test('Ask stop and reload retain partial output without inference replay', async
   ).toBeVisible();
   expect(sends).toBe(1);
 });
-test('Ask renders provider HTML, unsafe links, and fabricated references as inert text', async ({
+test('Ask keeps provider HTML, unsafe links, and fabricated references inert', async ({
   page,
 }) => {
   await scenario(page, 'unsafe_text');
@@ -598,6 +598,53 @@ test('Ask renders provider HTML, unsafe links, and fabricated references as iner
       .getByRole('heading', { name: 'Calculated measurement summary' })
       .count(),
   ).toBe(0);
+});
+
+test('Ask renders streamed Markdown and reloads it without loading images or formatting user text', async ({
+  page,
+}) => {
+  await scenario(page, 'markdown');
+  await start(page);
+  let sends = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/chat')) sends++;
+  });
+  await page.getByLabel('Message Ask Vulpes').fill('**Literal user text**');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(
+    page.getByText('Response saved.', { exact: true }),
+  ).toBeVisible();
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    const markdown = page.locator('.chat-assistant .chat-markdown');
+    await expect(
+      markdown.getByRole('heading', { name: 'Synthetic Markdown' }),
+    ).toBeVisible();
+    await expect(markdown.locator('strong')).toHaveText('bold');
+    await expect(markdown.locator('em')).toHaveText('emphasized');
+    await expect(markdown.locator('ul li')).toHaveCount(2);
+    await expect(markdown.locator('ol li')).toHaveCount(1);
+    await expect(markdown.locator('blockquote')).toHaveText('Synthetic quote');
+    await expect(markdown.locator('pre code')).toHaveText(
+      'const value = 70;\n',
+    );
+    await expect(markdown.getByRole('table')).toContainText('70 kg');
+    await expect(
+      markdown.getByRole('link', { name: 'Documentation' }),
+    ).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(markdown.locator('img')).toHaveCount(0);
+    await expect(page.locator('.chat-user .chat-text')).toHaveText(
+      '**Literal user text**',
+    );
+    await expect(page.locator('.chat-user strong')).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+  expect(sends).toBe(1);
 });
 test('Ask account switching discards the pending stream and private history', async ({
   page,
