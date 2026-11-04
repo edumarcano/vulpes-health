@@ -168,9 +168,23 @@ const descriptions = {
 export const readToolDefinitions: GenerationRequest['tools'] = Object.entries(
   toolArguments,
 ).map(([name, schema]) => {
+  // Advertise the preferred date-only input; retain validated instant support
+  // server-side for existing callers without duplicating both forms on wire.
+  const advertised =
+    name === 'get_measurements'
+      ? toolArguments.get_measurements.extend({
+          from: LocalDateSchema,
+          to: LocalDateSchema,
+        })
+      : name === 'summarize_metric'
+        ? toolArguments.summarize_metric.extend({
+            from: LocalDateSchema,
+            to: LocalDateSchema,
+          })
+        : schema;
   // Formats already describe these values to the model. Keep Zod's full
   // calendar/UUID validation server-side rather than repeating its regex on wire.
-  const parameters = z.toJSONSchema(schema, {
+  const parameters = z.toJSONSchema(advertised, {
     override: ({ jsonSchema, zodSchema }) => {
       if (zodSchema === GoalTargetSchema && jsonSchema.oneOf) {
         jsonSchema.oneOf = [
