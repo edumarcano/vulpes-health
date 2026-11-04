@@ -818,6 +818,8 @@ export function DataPage() {
             </SheetDescription>
           </SheetHeader>
           <ManualForm
+            initialMetric={metric}
+            initialSource={chosenSource || 'new'}
             sources={allSources}
             timezone={sources.data?.pages[0]?.timezone ?? 'UTC'}
             busy={mutation.isPending}
@@ -849,6 +851,17 @@ export function DataPage() {
             sources={allSources}
             timezone={timezone}
             dataRevision={sources.data?.pages[0]?.dataRevision ?? 0}
+            onView={(sourceId, selection) => {
+              setSource(sourceId);
+              setMetric(selection.metric);
+              setMethod(selection.method);
+              setGranularity(selection.granularity);
+              setZone(selection.timezone);
+              setFrom(selection.from);
+              setTo(selection.to);
+              setImportOpen(false);
+              setNotice('Showing the selected imported series.');
+            }}
             onSaved={(result) => {
               setSource(result.source_id);
               void client.invalidateQueries({ queryKey: root });

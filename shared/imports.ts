@@ -10,6 +10,7 @@ import {
   HashSchema,
   IanaTimezoneSchema,
   ISOInstantSchema,
+  LocalDateSchema,
   UUIDSchema,
 } from './primitives.js';
 
@@ -130,6 +131,15 @@ export const ImportResultSchema = z.strictObject({
   conflict: CountSchema,
   dataRevision: CountSchema,
 });
+export const ImportSelectionSchema = z.strictObject({
+  metric: MetricKeySchema,
+  method: MeasurementMethodSchema,
+  granularity: GranularitySchema,
+  timezone: IanaTimezoneSchema,
+  from: LocalDateSchema,
+  to: LocalDateSchema,
+});
+export type ImportSelection = z.infer<typeof ImportSelectionSchema>;
 export const ImportPreviewSchema = z.strictObject({
   batch_id: UUIDSchema,
   source_id: UUIDSchema,
@@ -161,6 +171,7 @@ export const ImportPreviewSchema = z.strictObject({
     )
     .max(20),
   historical_result: ImportResultSchema.nullable(),
+  selections: z.array(ImportSelectionSchema).max(96).default([]),
 });
 export type ImportMapping = z.infer<typeof ImportMappingSchema>;
 export type PreviewCsv = z.infer<typeof PreviewCsvSchema>;

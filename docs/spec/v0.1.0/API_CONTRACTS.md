@@ -141,6 +141,8 @@ The server rechecks safety/policy, owner, version, pending state and expiry with
 
 `preview_csv` accepts CSV text, source selection and a versioned mapping object. The server validates format/limits, stages normalized observations privately and returns `batch_id`, `payload_hash`, `expires_at`, counts, errors and a bounded preview.
 
+The response also includes `selections` for navigating to imported readings after commit: metric, method, granularity, timezone, and inclusive local `from`/`to` dates. These cover all normalized new/duplicate observations, independently of the first-20 preview, excluding conflicts. Each series uses at most 366 days ending at its latest observation. Navigation does not commit data or change the validated import result.
+
 `commit_import` accepts the owned batch ID, hash and idempotency key. Committing a preview from another account is 404. Changed mappings require a new preview. All-or-nothing commit for valid staged observations; rejected rows are explicitly excluded in the approved preview rather than silently skipped during commit.
 
 Executable import contracts are in [`shared/imports.ts`](../../../shared/imports.ts). Preview requires `action`, `client_request_id`, `csv`, `source` (the manual Data source-selection shape), and `mapping`. Mapping version 1 declares `format`, `timezone`, nullable exact `profile` column/value filter, `single_profile`, and `review_requested`. Without a filter, the single-profile declaration must be true.
