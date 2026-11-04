@@ -6,7 +6,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ChatSendRequest } from '../../shared/api.js';
-import { ChatPartSchema, type ChatPart } from '../../shared/chat.js';
+import type { ChatPart } from '../../shared/chat.js';
 import type { StreamEvent } from '../../shared/stream.js';
 import type { RunSummary } from '../../shared/executions.js';
 import type { AuthContext } from '../auth/session.js';
@@ -35,14 +35,8 @@ import {
 import { baselineSafety, rejectCredentials } from './prompts/everyday.js';
 import { buildContext } from './context.js';
 import { blocksOf, continuationFor } from './continuation.js';
-import {
-  executeReadTool,
-  prepareGoalTool,
-  readToolDefinitions,
-  providerToolResult,
-  toolProjectionVersion,
-} from './tools.js';
-import { DataSummarySchema } from '../../shared/data.js';
+import { readToolDefinitions } from './tools.js';
+import { executeToolStep } from './tool-execution.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
 
 export interface AgentDependencies {
@@ -600,115 +594,24 @@ export class VulpesAgent {
                   : 'Reading your data',
               },
             });
-            const output = proposing
-              ? await prepareGoalTool(
-                  this.context,
-                  call.name as 'propose_goal' | 'propose_goal_revision',
-                  call.arguments,
-                  toolStep.id,
-                )
-              : await executeReadTool(this.context, call.name, call.arguments);
-            const evidence = {
-              version: 1 as const,
-              ownerId: this.context.userId,
-              runId: lease.runId,
-              stepId: toolStep.id,
-              resultId: randomUUID(),
+            const executed = await executeToolStep({
+              context: this.context,
+              ledger: this.ledger,
+              step: toolStep,
+              call,
               dataRevision: context.dataRevision,
-            };
-            routingEvidence.push({ id: evidence.resultId, result: output });
-            const result = {
-              evidence,
-              result: JSON.parse(
-                JSON.stringify(providerToolResult(output)),
-              ) as z.infer<ReturnType<typeof z.json>>,
-            };
-            const trace = {
-              projectionVersion: toolProjectionVersion,
-              evidence,
-              result: output,
-              providerResult: result.result,
-            };
-            if (proposing) {
-              const saved = await this.ledger.checkpointGoal(
-                toolStep,
-                output,
-                trace,
-              );
-              parts = saved.parts;
-              active = null;
-              yield event({
-                type: 'card.ready',
-                payload: {
-                  message_id: messageId,
-                  card: { type: 'goal_proposal', reference: saved.reference },
-                },
-              });
-            } else {
-              await this.ledger.checkpoint(
-                toolStep,
-                Buffer.from(JSON.stringify(trace)),
-              );
-              await this.ledger.settle(toolStep, null, 'completed');
-            }
-            const summary = z
-              .object({ kind: z.literal('summary'), data: DataSummarySchema })
-              .safeParse(output);
-            if (summary.success) {
-              if (summary.data.data.dataRevision !== context.dataRevision)
-                throw new Error('data_changed');
-              parts.push(
-                ChatPartSchema.parse({
-                  type: 'metric_summary',
-                  evidence,
-                  result: summary.data.data,
-                }),
-              );
-              await this.ledger.checkpointMessage(lease, parts);
-              yield event({
-                type: 'card.ready',
-                payload: {
-                  message_id: messageId,
-                  card: {
-                    type: 'metric_trend',
-                    result: summary.data.data.analysis,
-                  },
-                },
-              });
-            }
-            if (call.name === 'get_goal_progress') {
-              const goalId = z
-                .strictObject({ goal_id: z.uuid() })
-                .parse(call.arguments).goal_id;
-              const progress = GoalProgressResultSchema.parse(output);
-              parts.push({
-                type: 'goal_progress',
-                evidence,
-                goalId,
-                result: progress,
-              });
-              await this.ledger.checkpointMessage(lease, parts);
-              yield event({
-                type: 'card.ready',
-                payload: {
-                  message_id: messageId,
-                  card: { type: 'goal_progress', goalId, result: progress },
-                },
-              });
-            }
-            yield event({
-              type: 'tool.result',
-              payload: {
-                step_id: toolStep.id,
-                tool_name: call.name,
-                result_reference: `analysis:${toolStep.id}`,
-                summary: proposing
-                  ? 'Pending proposal saved. Explicit review and confirmation required.'
-                  : summary.success
-                    ? 'Deterministic summary saved with source and coverage.'
-                    : 'Read-only result saved.',
-              },
+              messageId,
+              parts,
+              signal,
             });
+            parts = executed.parts;
+            const { evidence, result } = executed;
+            routingEvidence.push({
+              id: evidence.resultId,
+              result: executed.output,
+            });
+            active = null;
+            for (const next of executed.events) yield event(next);
             context.manifest.included.push({
               reference: {
                 id: evidence.resultId,
