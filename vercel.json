@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "npm run build:hosted -- --project-ref=vatwmqzjymbhaodwatyn --project-id=prj_k4kQU4k9DVnjskslngj7QbYA7zvW --app-origin=https://vulpes-health.vercel.app --mode=owner-pilot-luna",
   "installCommand": "npm install --global npm@11.18.0 && npm ci",
-  "git": { "deploymentEnabled": { "**": false, "main": true } },
+  "git": { "deploymentEnabled": false },
   "regions": ["iad1"],
   "outputDirectory": "dist",
   "functions": { "api/*.ts": { "maxDuration": 240 } },

@@ -1,0 +1,20 @@
+# Production deployment approval
+
+The repository disables Vercel Git auto-deployment. `build:hosted` refuses an actual build unless the checked-out commit matches Vercel's commit identity, is the current `main` head, and has a completed successful **push** run of `.github/workflows/ci.yml`. All three jobs must succeed on that run's latest attempt: `Fast checks`, `Backend integration checks`, and `Browser integration checks`. PR results, skipped jobs, cancelled runs, missing credentials and GitHub failures do not authorize a build. `--check-only` validates environment shape without building or checking CI.
+
+This is a fail-closed build gate, not a deployment scheduler. Wait for main CI to finish before requesting a deployment. The current immutable production deployment stays available while a new build is refused. A privileged operator can override project settings; repository protections and restricted deployment access are part of the boundary.
+
+## One-time activation (owner approval required)
+
+Do these steps before merging the deployment-remediation PR. They change cloud configuration and are not performed by local tests.
+
+1. In Vercel, open the existing Vulpes project, **Settings → Git**, and disconnect the Git integration temporarily. This closes the current auto-deploy race before any `main` push. Keep the current deployment serving traffic. Reconnect only after the committed `git.deploymentEnabled: false` configuration is effective and verify automatic deployments remain disabled.
+2. In GitHub, open **Settings → Rules → Rulesets**, create an active branch ruleset targeting `main`, with no bypass actors (including administrators). Require a pull request, block deletion and force pushes, and require branches to be up to date before merging. Require the three CI job names above. If the private-repository plan cannot enforce rules, stop here and resolve the plan/access limitation; a displayed but unenforced rule does not close F-01.
+3. Limit Vercel deployment and environment editing access to the owner. Keep the production build command bound to the repository's `npm run build:hosted` command, and keep Production credentials out of previews.
+4. Create a fine-grained GitHub token restricted to this repository with **Actions: read** and **Contents: read** only. In Vercel, add it as server-only `VULPES_GITHUB_READ_TOKEN` in **Production**. Never use a `VITE_` name or paste the token into chat, a command argument, or the repository. Set an expiry and retain a rotation reminder; expiration blocks new builds.
+5. Inspect GitHub's effective rules through the UI/API and verify no bypass applies to the owner. Do not test enforcement by pushing unreviewed code to production-connected `main`. A separately approved harmless rejected-push test can provide additional evidence after the gate is active.
+6. Approve the PR merge separately. Wait for all three CI jobs on the resulting exact `main` commit. A second merge gets a separate CI concurrency group and must complete its own checks.
+7. Approve a manual production build/deployment of that exact commit using the existing Vercel project. Do not change the build command or supply fabricated commit metadata. If the dashboard cannot rebuild the exact repository commit with Git auto-deployment disabled, stop and arrange a separately reviewed deployment mechanism; do not bypass the gate with a local artifact upload.
+8. Confirm the safe build report contains the expected commit and CI run/attempt, then verify `/api/status`, sign-in, routing and the affected feature. Keep the previous immutable deployment for rollback. Record the deployment identity and results without health records or credentials.
+
+No settings were changed by preparing this runbook. Cloud enforcement, rejected-push proof and hosted deployment behavior remain unverified until the approved activation is completed. Rolling back by promoting an existing immutable verified deployment requires owner approval; do not rebuild an old commit by weakening the current-main check.

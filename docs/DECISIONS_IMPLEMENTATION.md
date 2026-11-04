@@ -6,7 +6,9 @@ The [product and architecture decisions](spec/v0.1.0/DECISIONS.md) remain author
 
 The owner authorized a Luna-only hosted pilot under current consent, trace encryption and persistent account/application budgets. Local defaults remain inference-off. The server-side typed catalog owns models and limits; Flash, Argon and decision scoring require separate evidence and approval. [Provider evidence](evidence/luna-owner-pilot-live.md) records the bound v7 verification and its limitations.
 
-Production follows `main` through the existing Vercel Git integration. Preview deployments are disabled; PR verification uses local Supabase and synthetic data. The repository binds the existing production target and Luna mode, while credentials remain production-only in Vercel. Builds validate the project ID and configured application origin rather than Vercel's preferred-domain metadata, which can name another verified alias. Application deployments do not apply database migrations or run model requests.
+Production builds require owner approval and completed CI on the exact current `main` commit. Git auto-deployment is disabled in the repository because PR requirements alone do not prevent Vercel racing main-push CI. The build queries the private repository with a server-only, read-only token and refuses missing, pending, failed, skipped or cancelled evidence. This favors a blocked new build over deploying unverified code. Protected-branch enforcement and cloud activation require separate owner approval; [deployment instructions](operations/deployment-integrity.md) define the boundary. PR verification uses local Supabase and synthetic data.
+
+The repository binds the existing production target and Luna mode, while credentials remain production-only in Vercel. Builds validate the project ID and configured application origin rather than Vercel's preferred-domain metadata, which can name another verified alias. Application deployments do not apply database migrations or run model requests.
 
 ## Recovery and data scope
 

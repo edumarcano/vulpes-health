@@ -2,7 +2,7 @@
 
 The existing hosted personal application uses Luna with current OpenRouter consent, encrypted traces and persistent app/account budgets. The owner handoff and real-data import were completed; [evidence](../evidence/owner-pilot-step5.md) records the tested scope. The [personal-use transition](../evidence/personal-use-transition.md) records the current hosted address and cutover. Repository defaults and CI keep live AI disabled.
 
-Production deployments follow `main` automatically through Vercel's Git integration. Backups and maintenance remain manual; no background scheduler is configured. Changes to resources, provider settings, budgets or account data require their appropriate owner authorization.
+Production deployment requires owner approval and successful CI on the exact `main` commit; follow [deployment activation and approval](deployment-integrity.md). Backups and maintenance remain manual; no background scheduler is configured. Changes to resources, provider settings, budgets or account data require their appropriate owner authorization.
 
 ## Provider and budgets
 
@@ -26,7 +26,7 @@ Rotate encrypted backups within 30 days and verify independent ciphertext copies
 
 ## Deployments and checks
 
-Pushes and merges to `main` trigger production deployments on the existing Vercel project at `https://vulpes-health.vercel.app`. Other branches, including names with slashes, do not trigger preview deployments. Review and verify PRs locally with local Supabase and synthetic data; GitHub CI also verifies PRs. Vercel deployment begins on the `main` push independently of its CI run.
+The repository disables Git auto-deployments to the existing Vercel project at `https://vulpes-health.vercel.app`. Review and verify PRs locally with synthetic data. GitHub verifies PRs and each `main` push independently; the hosted build requires a successful main-push run for the exact current commit before building. Protect `main` and activate the cloud safeguards using the [deployment approval runbook](deployment-integrity.md) before merging operational changes. Repository changes alone do not prove cloud enforcement.
 
 The root `vercel.json` binds the production project, Supabase origin, `iad1` region and existing Luna pilot mode. The build rejects preview environments, Git builds from other branches, wrong project/origin bindings and missing server configuration. Keep credentials in Vercel's Production environment; the repository contains only public target identifiers. Deployment runs the application build and does not apply database migrations, reset data or call a model. Review and apply required migrations separately before merging dependent code.
 
