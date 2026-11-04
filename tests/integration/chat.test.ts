@@ -1681,6 +1681,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
     ).toHaveLength(0);
   });
   it('a failed second message checkpoint preserves only the first durable prefix', async () => {
+    const durablePrefix = 'Durable prefix'.padEnd(8192, '.');
     const original = ExecutionService.prototype.checkpointMessage;
     let writes = 0;
     vi.spyOn(
@@ -1695,12 +1696,14 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       mode: 'mock',
       async *send() {
         yield Buffer.from(
-          'data: {"type":"response.output_text.delta","delta":"Durable prefix"}\n\n',
+          `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: durablePrefix })}\n\n`,
         );
         yield Buffer.from(
           'data: {"type":"response.output_text.delta","delta":" unsaved suffix"}\n\n',
         );
-        yield responseFrame([assistantOutput('Durable prefix unsaved suffix')]);
+        yield responseFrame([
+          assistantOutput(`${durablePrefix} unsaved suffix`),
+        ]);
       },
     };
     await withApi(syntheticChatDependencies(transport), async (api) => {
@@ -1712,12 +1715,12 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
           .filter((e) => e.type === 'text.delta')
           .map((e) => e.payload.text)
           .join(''),
-      ).toBe('Durable prefix');
+      ).toBe(durablePrefix);
       const saved = (
         await (await api(`/api/conversations?view=messages&id=${id}`)).json()
       ).data;
       expect(saved.items[1].parts).toEqual([
-        { type: 'text', text: 'Durable prefix' },
+        { type: 'text', text: durablePrefix },
       ]);
       expect(saved.run).toMatchObject({
         traceState: 'incomplete',
