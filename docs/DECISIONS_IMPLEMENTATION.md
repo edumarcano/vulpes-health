@@ -6,6 +6,8 @@ The [product and architecture decisions](spec/v0.1.0/DECISIONS.md) remain author
 
 The owner authorized a Luna-only hosted pilot under current consent, trace encryption and persistent account/application budgets. Local defaults remain inference-off. The server-side typed catalog owns models and limits; Flash, Argon and decision scoring require separate evidence and approval. [Provider evidence](evidence/luna-owner-pilot-live.md) records the bound v7 verification and its limitations.
 
+Production follows `main` through the existing Vercel Git integration. Preview deployments are disabled; PR verification uses local Supabase and synthetic data. The repository binds the existing production target and Luna mode, while credentials remain production-only in Vercel. Builds validate the project ID and configured application origin rather than Vercel's preferred-domain metadata, which can name another verified alias. Application deployments do not apply database migrations or run model requests.
+
 ## Recovery and data scope
 
 Owner-data capture, journal and maintenance use explicit owner manifests and a server-controlled data-scope marker; synthetic operations reject the marked owner. Backup, journal and trace keys remain separately recoverable. Restores are fenced, reconcile independent deletion and accounting evidence, and do not authorize access. See [recovery](operations/hosted-recovery.md).
