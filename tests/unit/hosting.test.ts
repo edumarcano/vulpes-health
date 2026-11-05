@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import * as catalog from '../../server/config/models.js';
 import {
   HostingTargetSchema,
   renderHostingConfig,
@@ -43,8 +44,14 @@ const errorBody = {
   error: { code: 'unauthorized', message: 'Sign in.', retryable: false },
   request_id,
 };
+afterEach(() => vi.restoreAllMocks());
 describe('synthetic hosting preparation', () => {
   it('disables native Git builds and binds manual builds to the production target', () => {
+    // Isolate target validation from separately tested, current-template approval.
+    vi.spyOn(catalog, 'getRoleAvailability').mockReturnValue({
+      state: 'available',
+      reason: 'verified',
+    });
     const config = JSON.parse(readFileSync('vercel.json', 'utf8'));
     expect(config.git.deploymentEnabled).toBe(false);
     expect(config.regions).toEqual(['iad1']);
@@ -219,6 +226,10 @@ describe('synthetic hosting preparation', () => {
     expect(send).not.toHaveBeenCalled();
   });
   it('requires explicit Luna pilot build mode as well as live approval, a private key and exact target', () => {
+    vi.spyOn(catalog, 'getRoleAvailability').mockReturnValue({
+      state: 'available',
+      reason: 'verified',
+    });
     const targetInput = {
       projectRef: target.supabaseProjectRef,
       projectId: target.vercelProjectId,
@@ -272,6 +283,27 @@ describe('synthetic hosting preparation', () => {
         active,
       ),
     ).toThrow();
+  });
+  it('refuses an actual owner-pilot configuration until current-template evidence exists', () => {
+    expect(catalog.getRoleAvailability('everyday', true)).toEqual({
+      state: 'unavailable',
+      reason: 'capability_evidence_mismatch',
+    });
+    expect(() =>
+      checkHostedEnvironment(
+        {
+          projectRef: target.supabaseProjectRef,
+          projectId: target.vercelProjectId,
+          appOrigin: target.appOrigin,
+        },
+        {
+          ...env(),
+          VULPES_LIVE_AI_ENABLED: 'true',
+          OPENROUTER_API_KEY: 'sk-or-v1-synthetic_private_canary',
+        },
+        'owner-pilot-luna',
+      ),
+    ).toThrow('owner_pilot_inference_unverified');
   });
   it('probes only public GETs, never sends credentials or follows redirects, and keeps untested gates explicit', async () => {
     const security = securityHeadersForSupabase(env().VITE_SUPABASE_URL);

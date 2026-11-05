@@ -10,6 +10,7 @@ import { HttpFailure } from '../http/failure.js';
 import type { ChatSendRequest } from '../../shared/api.js';
 import type { ContextManifest } from '../../shared/domain.js';
 import { blocksOf, continuationFor } from './continuation.js';
+import { Temporal } from '@js-temporal/polyfill';
 
 export interface ContextGroup {
   id: string;
@@ -287,6 +288,15 @@ export async function buildContext(
           : saved.data.continuation,
     });
   }
+  const now = Temporal.Now.instant();
+  const clock = {
+    instant: now.toString(),
+    localDate: now
+      .toZonedDateTimeISO(profile.data.timezone)
+      .toPlainDate()
+      .toString(),
+    timezone: profile.data.timezone,
+  };
   const essential: GenerationRequest = {
     turns: [
       { type: 'message', role: 'system', text: safetyInstructions },
@@ -295,6 +305,7 @@ export async function buildContext(
         role: 'system',
         text: JSON.stringify({
           profile: profile.data,
+          clock,
           selection: input.context_selection,
           selectedGoal,
         }),
@@ -317,6 +328,15 @@ export async function buildContext(
         },
         contentHash: requestHash(safetyInstructions),
         tokenEstimate: Buffer.byteLength(safetyInstructions),
+      },
+      {
+        reference: {
+          id: 'clock:current',
+          kind: 'profile_field',
+          label: 'Current instant and profile local date',
+        },
+        contentHash: requestHash(clock),
+        tokenEstimate: Buffer.byteLength(JSON.stringify(clock)),
       },
       {
         reference: {
