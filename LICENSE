@@ -199,39 +199,3 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-
-
-Vulpes attribution and third-party notices
-========================================
-
-Copyright 2026 Eduardo Marcano
-
-The Apache License 2.0 above applies to original Vulpes code and documentation.
-Copied third-party materials retain their original licenses as identified below.
-
-UI components derived from shadcn/ui (https://github.com/shadcn-ui/ui) and managed
-Remora guidance (https://github.com/edumarcano/remora, source revision
-b873369ee3a2072d93ac461b5b089bfd15a81a52) retain the following MIT terms:
-
-MIT License
-
-Copyright (c) 2023 shadcn
-Copyright (c) 2026 Eduardo Marcano
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.

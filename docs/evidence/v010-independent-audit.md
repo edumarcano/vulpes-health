@@ -127,7 +127,7 @@ An offline simulation with synthetic Responses-API events, worst case of one eve
 ### F-06 — Medium: recovery has no recovery-point target and no rehearsed return to service
 
 - Supabase Free has no managed backups or point-in-time recovery, and backups are manual.
-- The last verified backup is the 2026-11-02 post-import capture (`owner-pilot-step5.md:94-108`). It predates later conversations.
+- The last verified backup recorded for this audit is the [2026-11-02 post-import capture](owner-pilot-step5.md#post-import-recovery-and-handoff). It predates later conversations.
 - The runbooks deliberately offer no access-enable or cutover path, and "source-loss/cutover completeness" is recorded as unverified (`hosted-recovery.md:19,57`). After real source loss, there is no rehearsed way to put a restored database back behind the app.
 
 **Fix:**
