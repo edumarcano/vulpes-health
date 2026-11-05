@@ -174,6 +174,17 @@ export class VulpesAgent {
     let active: PreparedStep | null = null;
     let parts: ChatPart[] = [];
     let last: RunSummary = initial;
+    let failureHandled = false;
+    const finishFailure = async () => {
+      failureHandled = true;
+      if (active)
+        await this.ledger
+          .settle(active, null, signal.aborted ? 'cancelled' : 'failed')
+          .catch(() => undefined);
+      last = await this.ledger
+        .finish(lease, signal.aborted ? 'cancelled' : 'failed')
+        .catch(() => last);
+    };
     const messageId = initial.assistantMessageId!;
     try {
       yield event({
@@ -224,6 +235,7 @@ export class VulpesAgent {
           this.ledger,
           dependencies.transport,
           'failed',
+          'consumer',
         );
         yield event({
           type: 'route.selected',
@@ -560,6 +572,7 @@ export class VulpesAgent {
                 this.ledger,
                 flash.transport,
                 'failed',
+                'consumer',
               );
               request = {
                 ...request,
@@ -676,13 +689,7 @@ export class VulpesAgent {
         });
       } else throw new Error('run_not_completed');
     } catch (error) {
-      if (active)
-        await this.ledger
-          .settle(active, null, signal.aborted ? 'cancelled' : 'failed')
-          .catch(() => undefined);
-      last = await this.ledger
-        .finish(lease, signal.aborted ? 'cancelled' : 'failed')
-        .catch(() => last);
+      await finishFailure();
       if (last.state === 'cancellation_requested')
         last = await this.ledger.summary(lease.runId).catch(() => last);
       yield last.state === 'cancelled'
@@ -708,6 +715,11 @@ export class VulpesAgent {
               retryable: false,
             },
           });
+    } finally {
+      // The consumer owns finalization so a parser's valid buffered prefix can
+      // checkpoint while the run is writable. Iterator disposal must still close
+      // the run, even when it bypasses the catch block; it emits nothing here.
+      if (!failureHandled && last.state !== 'completed') await finishFailure();
     }
   }
 }

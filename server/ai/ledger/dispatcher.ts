@@ -115,6 +115,7 @@ export function createDispatcher(
   ledger: ExecutionService,
   transport: RequestTransport,
   consumerExitStatus: 'failed' | 'cancelled' = 'cancelled',
+  finalization: 'dispatcher' | 'consumer' = 'dispatcher',
 ): StepDispatcher {
   const dispatcher: StepDispatcher = {
     bind(lease, binding, onPrepared, cancellationSignal) {
@@ -244,12 +245,13 @@ export function createDispatcher(
             cancellationSignal.aborted ? 'cancelled' : 'failed',
           )
           .catch(() => undefined);
-        await ledger
-          .finish(
-            step.lease,
-            cancellationSignal.aborted ? 'cancelled' : 'failed',
-          )
-          .catch(() => undefined);
+        if (finalization === 'dispatcher')
+          await ledger
+            .finish(
+              step.lease,
+              cancellationSignal.aborted ? 'cancelled' : 'failed',
+            )
+            .catch(() => undefined);
         throw new HttpFailure(
           503,
           'execution_interrupted',
@@ -268,7 +270,8 @@ export function createDispatcher(
             ? 'cancelled'
             : consumerExitStatus;
           await ledger.settle(step, null, status).catch(() => undefined);
-          await ledger.finish(step.lease, status).catch(() => undefined);
+          if (finalization === 'dispatcher')
+            await ledger.finish(step.lease, status).catch(() => undefined);
         }
       }
     },

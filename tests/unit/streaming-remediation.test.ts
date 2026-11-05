@@ -27,6 +27,7 @@ const store = vi.hoisted(() => ({
   payloads: new Map<string, unknown>(),
   input: null as null | { input_payload_id: string; request_body_hash: string },
   response: null as unknown,
+  runState: 'running',
   parts: [] as { type: string; text?: string }[],
   fail: '',
   cleanup: 'ok' as 'ok' | 'fail' | 'hang',
@@ -58,8 +59,11 @@ vi.mock('../../server/db/administrative.js', () => ({
       }
       if (name === 'authorize_send_v1') data = true;
       if (name === 'checkpoint_step_v1') store.response = args.p_output;
+      if (name === 'checkpoint_message_v1' && store.runState !== 'running')
+        return { data: null, error: { message: 'run_not_writable' } };
       if (name === 'checkpoint_message_v1')
         store.parts = structuredClone(args.p_parts) as typeof store.parts;
+      if (name === 'finish_run_v1') store.runState = String(args.p_status);
       if (
         ['heartbeat_run_v1', 'settle_step_v1', 'finish_run_v1'].includes(name)
       )
@@ -169,6 +173,7 @@ beforeEach(() => {
   store.response = null;
   store.parts = [];
   store.fail = '';
+  store.runState = 'running';
   store.cleanup = 'ok';
   vi.stubEnv('VULPES_TRACE_ENCRYPTION_KEY_ID', 'synthetic');
   vi.stubEnv(
