@@ -284,10 +284,14 @@ describe('synthetic hosting preparation', () => {
       ),
     ).toThrow();
   });
-  it('refuses an actual owner-pilot configuration until current-template evidence exists', () => {
+  it('refuses owner-pilot builds when current-template evidence is unavailable', () => {
     expect(catalog.getRoleAvailability('everyday', true)).toEqual({
+      state: 'available',
+      reason: 'verified',
+    });
+    vi.spyOn(catalog, 'getRoleAvailability').mockReturnValue({
       state: 'unavailable',
-      reason: 'capability_evidence_mismatch',
+      reason: 'live_smoke_mismatch',
     });
     expect(() =>
       checkHostedEnvironment(

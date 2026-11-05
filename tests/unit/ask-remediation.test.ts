@@ -30,6 +30,11 @@ import { normalizeObservation } from '../../server/analytics/measurements.js';
 import { getRoleAvailability } from '../../server/config/models.js';
 import { everydayProductionEvidence } from '../../server/config/everyday-production.js';
 import { everydayTemplateVersion } from '../../server/config/everyday-versions.js';
+import { everydayCapabilityEvidence } from '../../server/config/everyday-verification.js';
+import {
+  assessEverydayPreflight,
+  LiveSmokeEvidenceSchema,
+} from '../../server/ai/live-preflight.js';
 import { GoalService } from '../../server/services/goals.js';
 import { GoalDefinitionSchema } from '../../shared/goals.js';
 
@@ -275,15 +280,38 @@ describe('Ask server temporal grounding', () => {
       }).success,
     ).toBe(true);
   });
-  it('keeps recorded production approval bound to v7 while v8 remains unavailable', () => {
-    expect(everydayTemplateVersion).toBe('vulpes-everyday-v8');
+  it('binds technical approval to v9, records deferred model assessment and rejects stale v7 evidence', () => {
+    expect(everydayTemplateVersion).toBe('vulpes-everyday-v9');
     expect(everydayProductionEvidence?.templateVersion).toBe(
-      'vulpes-everyday-v7',
+      'vulpes-everyday-v9',
     );
-    expect(getRoleAvailability('everyday', true)).toEqual({
-      state: 'unavailable',
-      reason: 'capability_evidence_mismatch',
+    expect(everydayProductionEvidence?.assessment).toMatchObject({
+      scope: 'technical_controls',
+      modelQuality: 'deferred_by_owner',
     });
+    expect(getRoleAvailability('everyday', true)).toEqual({
+      state: 'available',
+      reason: 'verified',
+    });
+    expect(
+      assessEverydayPreflight({
+        enabled: true,
+        mode: 'production',
+        model: models.everyday.modelId,
+        effort: models.everyday.reasoning.effort,
+        adapterVersion: 'openrouter-responses-v2',
+        templateVersion: everydayTemplateVersion,
+        maxInputTokens: models.everyday.maxInputTokens,
+        maxOutputTokens: models.everyday.maxOutputTokens,
+        price: models.everyday.price,
+        capabilities: everydayCapabilityEvidence,
+        smoke: {
+          ...LiveSmokeEvidenceSchema.strip().parse(everydayProductionEvidence),
+          templateVersion: 'vulpes-everyday-v7',
+        },
+        maxCostUSD: '0.04',
+      }),
+    ).toEqual({ state: 'unavailable', reason: 'live_smoke_mismatch' });
   });
 });
 
@@ -854,10 +882,13 @@ describe('bounded production orchestrator with synthetic persistence and transpo
             const output = wire.input.findLast(
               (item: { type: string }) => item.type === 'function_call_output',
             );
-            const summary = JSON.parse(output.output).result.data.analysis;
+            const data = JSON.parse(output.output).result.data;
+            const summary = data.analysis;
             yield responseFrame([
               assistantOutput(
-                `Synthetic trailing seven-day mean ${summary.value} kg; ${summary.validDays} days; ${summary.from} to ${summary.to}.`,
+                data.requestedIntervalMatches
+                  ? `Synthetic trailing seven-day mean ${summary.value} kg; ${summary.validDays} days; ${summary.from} to ${summary.to}.`
+                  : 'This summary cannot answer the requested interval.',
               ),
             ]);
           }
@@ -898,7 +929,9 @@ describe('bounded production orchestrator with synthetic persistence and transpo
           (event) =>
             event.type === 'text.delta' &&
             event.payload.text.includes(
-              question === 'last 7 days' ? '67 kg' : '66.5 kg',
+              question === 'last 7 days'
+                ? '67 kg'
+                : 'cannot answer the requested interval',
             ),
         ),
       ).toBe(true);

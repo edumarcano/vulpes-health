@@ -277,7 +277,7 @@ export class InspectionService {
           const result = z
             .strictObject({
               projectionVersion: z
-                .union([z.literal(1), z.literal(2), z.literal(3)])
+                .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
                 .optional(),
               evidence: EvidenceSchema,
               result: z.json(),
@@ -326,7 +326,7 @@ export class InspectionService {
           if (output.kind === 'tool_error') {
             ToolErrorResultSchema.parse(result.result);
             if (
-              result.projectionVersion !== 3 ||
+              ![3, 4].includes(result.projectionVersion ?? 1) ||
               !step.tool_name ||
               step.tool_name === 'request_escalation' ||
               !Object.hasOwn(kinds, step.tool_name)

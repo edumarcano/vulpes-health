@@ -216,7 +216,7 @@ export class SyntheticChatTransport implements RequestTransport {
                 source_id: source.source_id,
                 method: source.method,
                 granularity: source.granularity,
-                from: '2026-09-01T00:00:00Z',
+                from: '2026-09-08T00:00:00Z',
                 to: '2026-09-15T00:00:00Z',
                 timezone: 'UTC',
               }),

@@ -8,6 +8,19 @@ export const ProductionEvidenceSchema = LiveSmokeEvidenceSchema.extend({
   policyHash: z.string().regex(/^[a-f0-9]{64}$/),
   safetyEvaluationId: z.uuid(),
   ownerApprovedAt: z.iso.datetime(),
+  assessment: z
+    .discriminatedUnion('scope', [
+      z.strictObject({
+        scope: z.literal('technical_controls'),
+        modelQuality: z.literal('deferred_by_owner'),
+        ownerDecisionAt: z.iso.datetime(),
+      }),
+      z.strictObject({
+        scope: z.literal('technical_and_model'),
+        modelQuality: z.literal('reviewed'),
+      }),
+    ])
+    .optional(),
 });
 export function openRouterPolicyHash(): string {
   return createHash('sha256')
@@ -24,16 +37,21 @@ export const everydayProductionEvidence: z.infer<
   model: 'openai/gpt-6-luna',
   effort: 'low',
   adapterVersion: 'openrouter-responses-v2',
-  templateVersion: 'vulpes-everyday-v7',
+  templateVersion: 'vulpes-everyday-v9',
   priceId: 'openrouter-gpt-6-luna-20261031-conservative',
   priceHash: '0a5a7a4099aeff7c38bcc37991a7f8243f534c4a870069ad3e20bb93d466bc2f',
-  runId: '91fda175-7102-4988-8a9c-ab5ba24337a1',
-  checkedAt: '2026-10-31T23:51:37.831Z',
+  runId: '07f6cff8-95dd-4449-8237-36299101233c',
+  checkedAt: '2026-11-05T17:59:14.859Z',
   result: 'passed',
   policyVersion: 'openrouter_zdr_v2',
   policyHash:
     'c4446166b4f12430000892d989c682d5e5e1f6dbdcce8987b09c80465b37f1d5',
-  safetyEvaluationId: 'd741ba54-58a7-49ff-9213-4a33d17d70b8',
-  ownerApprovedAt: '2026-11-02T04:41:02.340Z',
+  safetyEvaluationId: '2505bb84-d2c7-4af1-a1fc-a118d4b4f1a6',
+  ownerApprovedAt: '2026-11-05T18:02:35.635Z',
+  assessment: {
+    scope: 'technical_controls',
+    modelQuality: 'deferred_by_owner',
+    ownerDecisionAt: '2026-11-05T18:02:35.635Z',
+  },
 };
 export const everydayMaxRunCostUSD: string = '0.04';

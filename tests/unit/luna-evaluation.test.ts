@@ -20,7 +20,11 @@ describe('fixed Luna verification plan', () => {
     );
     expect(
       new Set(Object.values(verificationFixtures).map((f) => f.hash)).size,
-    ).toBe(4);
+    ).toBe(5);
+    expect(lunaCases.find((c) => c.id === 'V02')?.timezone).toBe(
+      'America/New_York',
+    );
+    expect(lunaCases.find((c) => c.id === 'E07')?.prompt).toContain('2%');
   });
   it('binds stable attempt identities to the batch and scenario', () => {
     const batch = '11111111-1111-4111-8111-111111111111';
@@ -35,5 +39,17 @@ describe('fixed Luna verification plan', () => {
     await expect(verifyLuna(['--plan', '--case=unknown'])).rejects.toThrow(
       'live_opt_in_required',
     );
+  });
+  it('bounds the technical packet independently of deferred model benchmarks', async () => {
+    const plan = await verifyLuna(['--plan', '--technical-only']);
+    expect(plan).toMatchObject({
+      assessment: 'technical_only',
+      requests: 7,
+      maximumUSD: '0.0652344',
+    });
+    expect(lunaPlan('technical_only').cases.map((c) => c.id)).toEqual([
+      'E10',
+      'V03',
+    ]);
   });
 });

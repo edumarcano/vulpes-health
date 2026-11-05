@@ -74,8 +74,8 @@ describe('typed catalog and honest role availability', () => {
       reason: 'live_ai_disabled',
     });
     expect(getRoleAvailability('everyday', true)).toEqual({
-      state: 'unavailable',
-      reason: 'capability_evidence_mismatch',
+      state: 'available',
+      reason: 'verified',
     });
   });
   it.each([

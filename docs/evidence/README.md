@@ -4,6 +4,7 @@ Evidence records describe dated candidates and named test scopes, not a current 
 
 - [Owner use and recovery](owner-pilot-step5.md), [hosted Luna and device report](owner-pilot-step4.md), and [personal-use transition](personal-use-transition.md).
 - [Luna provider verification](luna-owner-pilot-live.md) and [machine-readable results](luna-owner-pilot-live.json); earlier failures and accounting are retained alongside it.
+- [Luna v8 failure and v9 technical verification](luna-v8-v9-verification.md), including deferred model benchmarks and uncertain interrupted charges.
 - [Integrated local report](release/m6-local.json), [acceptance map](release/acceptance-map.json), reviewed synthetic screenshots and [PR 17 reconciliation](pr17-integrated-acceptance.md).
 - [M5/M6 remediation](m56-review-remediation.md) and [RENPHO import](renpho-import.md).
 - [Independent v0.1.0 audit](v010-independent-audit.md) and [F-01 through F-12 remediation closure](audit-remediation-closure.md), with approval-blocked work kept explicit.

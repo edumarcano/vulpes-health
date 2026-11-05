@@ -74,6 +74,10 @@ export interface LiveSmokeReport {
   };
   effective: { model: string | null; effort: string | null };
   limitations: string;
+  modelAssessment?:
+    | 'passed_value_presence_check'
+    | 'failed_value_presence_check'
+    | 'deferred_by_owner';
 }
 // This function is reachable from the CLI only after opt-in and static
 // capability/price/privacy preflight. It runs one attempt, never a retry.
@@ -85,6 +89,7 @@ export async function runLiveEveryday(
   scenario: 'tool_loop' | 'cancel' | 'disconnect' = 'tool_loop',
   attemptId: string = randomUUID(),
   vertexRole?: 'intermediate' | 'advanced',
+  assessment: 'model_quality' | 'technical_only' = 'model_quality',
 ): Promise<LiveSmokeReport> {
   if (!allowSpend) throw new Error('live_opt_in_required');
   const parsedBatch = UUIDSchema.safeParse(env.VULPES_SMOKE_BATCH_ID);
@@ -294,7 +299,7 @@ export async function runLiveEveryday(
     conversation_id: conversation,
     message: {
       id: attemptId,
-      text: 'Using the imported synthetic scale records, calculate the seven-day weight mean and change for 2026-09-01 through 2026-09-14 UTC. Use the available read tool and explain its coverage.',
+      text: 'Using the imported synthetic scale records, calculate the seven-day weight mean and change for the half-open interval 2026-09-08 through 2026-09-15 UTC. Use summarize_metric and explain its coverage.',
     },
     depth: vertexRole ? 'auto' : 'everyday',
   });
@@ -324,6 +329,8 @@ export async function runLiveEveryday(
   let reservationUSD: string | null = null;
   let traceState = 'unavailable';
   let effective: LiveSmokeReport['effective'] = { model: null, effort: null };
+  let modelAssessment: LiveSmokeReport['modelAssessment'] =
+    assessment === 'technical_only' ? 'deferred_by_owner' : undefined;
   async function report(limitations: string): Promise<LiveSmokeReport> {
     let batchSpentUSD: string | null = null;
     let batchReservedUSD: string | null = null;
@@ -390,6 +397,7 @@ export async function runLiveEveryday(
       batchSpentUSD,
       batchReservedUSD,
       limitations,
+      ...(modelAssessment ? { modelAssessment } : {}),
     };
   }
   try {
@@ -518,7 +526,11 @@ export async function runLiveEveryday(
       .filter((part) => part.type === 'text')
       .map((part) => part.text)
       .join(' ');
-    if (!matchesSyntheticAnswer(answer))
+    if (assessment === 'model_quality')
+      modelAssessment = matchesSyntheticAnswer(answer)
+        ? 'passed_value_presence_check'
+        : 'failed_value_presence_check';
+    if (assessment === 'model_quality' && !matchesSyntheticAnswer(answer))
       throw new Error('verification_answer_inconsistent');
     if (costUSD === null || costStatus === 'pending' || reservationUSD !== '0')
       throw new Error('verification_usage_pending');

@@ -446,6 +446,7 @@ it.each(['E01', 'E10'])(
     const { verifyLuna } = await import('../../scripts/verify-luna.js');
     const root = join(projectRoot, '.scratch/luna-batches');
     await mkdir(root, { recursive: true });
+    await mkdir(join(root, batch + '-requests'));
     const path = join(root, batch + '.json');
     const planHash = createHash('sha256')
       .update(JSON.stringify(lunaPlan()))
@@ -530,6 +531,7 @@ it('verifies pending approval, contextual goal progress and deterministic reimpo
   const { verifyLuna } = await import('../../scripts/verify-luna.js');
   const root = join(projectRoot, '.scratch/luna-batches');
   await mkdir(root, { recursive: true });
+  await mkdir(join(root, batch + '-requests'));
   const path = join(root, batch + '.json');
   const attempt = stableAttempt(batch, 'E05');
   batches.push(stableAttempt(batch, 'E05:allocation'));

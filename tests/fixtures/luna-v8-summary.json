@@ -1,0 +1,100 @@
+{
+  "selection": {
+    "metric": "weight",
+    "source_id": "11111111-1111-4111-8111-111111111111",
+    "from": "2026-11-04T05:00:00Z",
+    "to": "2026-11-05T05:00:00Z",
+    "timezone": "America/New_York",
+    "method": "device_reported",
+    "granularity": "instant"
+  },
+  "dataRevision": 1,
+  "latest": null,
+  "analysis": {
+    "method": "device_reported",
+    "granularity": "instant",
+    "statistic": "daily_median_mean_7d",
+    "statistics": null,
+    "previousWindow": {
+      "from": "2026-10-22T04:00:00Z",
+      "to": "2026-10-29T04:00:00Z",
+      "validDays": 0,
+      "coverageStatus": "insufficient_data"
+    },
+    "id": "analysis:11111111-1111-4111-8111-111111111111:1:weight:device_reported:instant:America/New_York:2026-11-04T05:00:00Z:2026-11-05T05:00:00Z",
+    "metric": "weight",
+    "unit": "kg",
+    "sourceId": "11111111-1111-4111-8111-111111111111",
+    "from": "2026-10-29T04:00:00Z",
+    "to": "2026-11-05T05:00:00Z",
+    "timezone": "America/New_York",
+    "algorithmVersion": "daily_median_mean_7d_v1",
+    "dataRevision": 1,
+    "observationCount": 4,
+    "validDays": 3,
+    "coverageStatus": "sufficient",
+    "value": 78,
+    "previousValue": null,
+    "absoluteChange": null,
+    "relativeChangePercent": null,
+    "points": [
+      {
+        "localDate": "2026-10-29",
+        "value": null
+      },
+      {
+        "localDate": "2026-10-30",
+        "value": null
+      },
+      {
+        "localDate": "2026-10-31",
+        "value": null
+      },
+      {
+        "localDate": "2026-11-01",
+        "value": 71
+      },
+      {
+        "localDate": "2026-11-02",
+        "value": 90
+      },
+      {
+        "localDate": "2026-11-03",
+        "value": null
+      },
+      {
+        "localDate": "2026-11-04",
+        "value": 73
+      }
+    ],
+    "exclusions": [],
+    "references": [
+      {
+        "id": "measurement:11111111-1111-4111-8111-111111111111",
+        "kind": "measurement",
+        "label": "2026-11-01T05:30:00+00:00 kg"
+      },
+      {
+        "id": "measurement:11111111-1111-4111-8111-111111111111",
+        "kind": "measurement",
+        "label": "2026-11-01T06:30:00+00:00 kg"
+      },
+      {
+        "id": "measurement:11111111-1111-4111-8111-111111111111",
+        "kind": "measurement",
+        "label": "2026-11-02T05:00:00+00:00 kg"
+      },
+      {
+        "id": "measurement:11111111-1111-4111-8111-111111111111",
+        "kind": "measurement",
+        "label": "2026-11-04T13:00:00+00:00 kg"
+      }
+    ]
+  },
+  "series": [
+    {
+      "localDate": "2026-11-04",
+      "value": 73
+    }
+  ]
+}
