@@ -214,16 +214,16 @@ export const readToolDefinitions: GenerationRequest['tools'] = Object.entries(
     >,
   };
 });
-export const toolProjectionVersion = 3;
+export const toolProjectionVersion = 4;
 const MeasurementResultSchema = MeasurementsPageSchema.extend({
   kind: z.literal('measurements'),
   selection: DataSelectionSchema,
 });
 export function providerToolResult(
   output: unknown,
-  version: 1 | 2 | 3 = toolProjectionVersion,
+  version: 1 | 2 | 3 | 4 = toolProjectionVersion,
 ): unknown {
-  if (version === 3) {
+  if (version >= 3) {
     const proposal = GoalProposalToolResultSchema.safeParse(output);
     if (proposal.success)
       return {
@@ -310,15 +310,37 @@ export function providerToolResult(
   } = analysis;
   void _points;
   void _references;
+  const requestedIntervalMatches =
+    Temporal.Instant.compare(selection.from, analysis.from) === 0 &&
+    Temporal.Instant.compare(selection.to, analysis.to) === 0;
+  const projectedCalculation =
+    version >= 4 && !requestedIntervalMatches
+      ? {
+          ...calculation,
+          value: null,
+          previousValue: null,
+          absoluteChange: null,
+          relativeChangePercent: null,
+          statistics: null,
+        }
+      : calculation;
   return {
     kind: 'summary',
     data: {
       selection,
       dataRevision,
-      analysis: { ...calculation, excludedObservations: exclusions.length },
+      ...(version >= 4 ? { requestedIntervalMatches } : {}),
+      analysis: {
+        ...projectedCalculation,
+        excludedObservations: exclusions.length,
+      },
     },
     detail:
-      'Full dated observations, exclusions and evidence remain in the owned tool trace; this projection supplies the qualified calculation.',
+      version >= 4 && !requestedIntervalMatches
+        ? 'The calculation interval differs from the requested selection. Scalar values are withheld; this summary cannot answer a mean or change for the requested interval. Explain the limitation instead of substituting another period. Full calculation evidence remains in the owned tool trace.'
+        : version >= 4
+          ? 'Full dated evidence remains in the owned tool trace.'
+          : 'Full dated observations, exclusions and evidence remain in the owned tool trace; this projection supplies the qualified calculation.',
   };
 }
 const InventorySchema = z.strictObject({

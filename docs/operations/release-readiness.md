@@ -4,6 +4,8 @@ The personal-owner handoff is complete. Broader release and family acceptance re
 
 The [independent audit closure matrix](../evidence/audit-remediation-closure.md) tracks F-01 through F-12 and their approval boundaries. No F-13 exists. A local pass or disabled optional provider does not close a required operational or paid-verification gate.
 
+The 2026-11-05 [v8 synthetic verification failed](../evidence/luna-v8-verification.md). Production remains on v7 with deployment disabled. The v9 repair has no passing live binding and must not be treated as release acceptance.
+
 ## Reproduce local evidence
 
 Use the pinned Node/npm toolchain, locked dependencies, Docker and Python. These commands prepare and test a disposable local Supabase project. Inspect the existing `.scratch/pr17-verification` before using `--sync`. Reset and upgrade are destructive inside that disposable project. Run database and browser checks serially and stop the stack even after a failure.

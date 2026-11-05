@@ -54,6 +54,10 @@ import {
 } from '../../server/ai/contracts.js';
 import { addMeasurement } from '../../server/services/measurements.js';
 import { goalDraft } from '../fixtures/contracts.js';
+import { verificationFixtures } from '../../server/ai/verification-fixture.js';
+import { previewCsv, commitImport } from '../../server/services/imports.js';
+import { PreviewCsvSchema } from '../../shared/imports.js';
+import { DataSummarySchema } from '../../shared/data.js';
 
 let db: LocalSupabase;
 let a: AuthContext;
@@ -197,6 +201,60 @@ const send = (id: string, text = 'How has my imported weight changed?') => ({
   client_request_id: randomUUID(),
   message: { id: randomUUID(), text },
   depth: 'auto',
+});
+it('withholds a rolling scalar from a single-day provider result using real New York observations', async () => {
+  const fixture = verificationFixtures.new_york;
+  await db.admin(`/rest/v1/profiles?user_id=eq.${a.userId}`, 'PATCH', {
+    timezone: 'America/New_York',
+  });
+  const preview = await previewCsv(
+    a,
+    PreviewCsvSchema.parse({
+      action: 'preview_csv',
+      client_request_id: randomUUID(),
+      csv: fixture.csv,
+      source: {
+        kind: 'new',
+        label: fixture.displayLabel,
+        origin_app: null,
+        device_label: null,
+      },
+      mapping: {
+        schema_version: 1,
+        format: 'canonical',
+        timezone: 'America/New_York',
+        profile: null,
+        single_profile: true,
+        review_requested: false,
+        source_label: fixture.sourceLabel,
+      },
+    }),
+  );
+  await commitImport(a, {
+    action: 'commit_import',
+    client_request_id: randomUUID(),
+    batch_id: preview.batch_id,
+    payload_hash: preview.payload_hash,
+  });
+  const result = await executeReadTool(a, 'summarize_metric', {
+    metric: 'weight',
+    from: '2026-11-04',
+    to: '2026-11-05',
+    timezone: 'America/New_York',
+    granularity: 'instant',
+  });
+  const data = DataSummarySchema.parse((result as { data: unknown }).data);
+  expect(data.analysis.value).toBe(78);
+  expect(data.series).toEqual([{ localDate: '2026-11-04', value: 73 }]);
+  const projected = providerToolResult(result) as {
+    data: { requestedIntervalMatches: boolean; analysis: typeof data.analysis };
+  };
+  expect(projected.data.requestedIntervalMatches).toBe(false);
+  expect(projected.data.analysis.value).toBeNull();
+  const historical = providerToolResult(result, 3) as {
+    data: { analysis: typeof data.analysis };
+  };
+  expect(historical.data.analysis.value).toBe(78);
 });
 it.each([
   ['list_metrics', { extra: 'synthetic' }, 'invalid_arguments'],
@@ -853,7 +911,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       expect(output.state).toBe('available');
       if (output.state !== 'available') throw new Error();
       const stored = JSON.parse(output.bytes.toString());
-      expect(stored.projectionVersion).toBe(3);
+      expect(stored.projectionVersion).toBe(4);
       expect(stored.result.items).toHaveLength(14);
       const query = {
         view: 'payload' as const,

@@ -26,6 +26,7 @@ import { ChatSendRequestSchema } from '../shared/api.js';
 import { ConversationQuerySchema } from '../shared/chat.js';
 import { UUIDSchema, DecimalUSDSchema } from '../shared/primitives.js';
 import { runLiveEveryday } from './live-everyday.js';
+import { claimLunaRequest } from './luna-request-budget.js';
 
 export async function verifyLuna(
   args: string[],
@@ -110,6 +111,7 @@ export async function verifyLuna(
     )
       throw new Error('initialization_requires_empty_disposable_stack');
     await mkdir(root, { recursive: true });
+    await mkdir(join(root, batch + '-requests'));
     const manifest = {
       batch,
       ceiling,
@@ -161,6 +163,10 @@ export async function verifyLuna(
   if (app.error || !new Decimal(app.data.allocated_ceiling_usd).eq(ceiling))
     throw new Error('suite_budget_mismatch');
   const allocation = stableAttempt(batch, id + ':allocation');
+  const boundedNetwork: typeof fetch = async (input, init) => {
+    await claimLunaRequest(join(root, batch + '-requests'), id);
+    return network(input, init);
+  };
   process.env.VULPES_SMOKE_BATCH_ID = allocation;
   let report: unknown;
   if (['tool_loop', 'cancel', 'disconnect'].includes(id))
@@ -168,7 +174,7 @@ export async function verifyLuna(
       ceiling,
       true,
       verificationEnv,
-      network,
+      boundedNetwork,
       id as 'tool_loop' | 'cancel' | 'disconnect',
       attempt,
     );
@@ -180,6 +186,13 @@ export async function verifyLuna(
       ceiling,
       scenario.fixture,
     );
+    if (scenario.timezone) {
+      await new LocalSupabase().admin(
+        `/rest/v1/profiles?user_id=eq.${context.userId}`,
+        'PATCH',
+        { timezone: scenario.timezone },
+      );
+    }
     if (id === 'E10') {
       await new LocalSupabase().admin(
         `/rest/v1/profiles?user_id=eq.${context.userId}`,
@@ -198,6 +211,7 @@ export async function verifyLuna(
       async (input, init) => {
         if (sent.length >= scenario.requests)
           throw new Error('scenario_request_limit');
+        await claimLunaRequest(join(root, batch + '-requests'), id);
         sent.push(Buffer.from(init?.body as Uint8Array));
         return network(input, init);
       },
@@ -351,6 +365,41 @@ export async function verifyLuna(
       }
       const inspector = new InspectionService(context);
       let index = 0;
+      const privateTools: Array<{ input: string; output: string }> = [];
+      for (const runId of runs) {
+        for (const step of (await inspector.overview(runId)).steps.filter(
+          (s) => s.type === 'tool',
+        )) {
+          const input = await inspector.evidence({
+            view: 'payload',
+            run: runId,
+            step: step.id,
+            part: 'input',
+          });
+          const output = await inspector.evidence({
+            view: 'payload',
+            run: runId,
+            step: step.id,
+            part: 'output',
+          });
+          if (input.state !== 'available' || output.state !== 'available')
+            throw new Error('tool_evidence_unavailable');
+          privateTools.push({
+            input: input.bytes.toString('utf8'),
+            output: output.bytes.toString('utf8'),
+          });
+        }
+      }
+      await writeFile(
+        join(root, `${batch}-${id}.review.private.json`),
+        JSON.stringify({ answers, tools: privateTools }, null, 2),
+        { flag: 'wx', mode: 0o600 },
+      );
+      if (
+        id === 'V03' &&
+        !privateTools.some((t) => t.output.includes('"tool_error"'))
+      )
+        throw new Error('typed_error_not_exercised');
       for (const runId of runs)
         for (const step of (await inspector.overview(runId)).steps.filter(
           (s) => s.type === 'generation',
@@ -379,6 +428,8 @@ export async function verifyLuna(
         'request_count_mismatch',
         'budget_control_failed',
         'attempt_already_exists_no_dispatch',
+        'typed_error_not_exercised',
+        'tool_evidence_unavailable',
       ];
       failure =
         error instanceof Error && safe.includes(error.message)
@@ -390,6 +441,8 @@ export async function verifyLuna(
     );
     report = {
       case: id,
+      serverDate: new Date().toISOString(),
+      timezone: scenario.timezone ?? 'UTC',
       structural,
       failure,
       runIds: runs,

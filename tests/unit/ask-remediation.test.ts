@@ -275,8 +275,8 @@ describe('Ask server temporal grounding', () => {
       }).success,
     ).toBe(true);
   });
-  it('keeps recorded production approval bound to v7 while v8 remains unavailable', () => {
-    expect(everydayTemplateVersion).toBe('vulpes-everyday-v8');
+  it('keeps recorded production approval bound to v7 while the current candidate remains unavailable', () => {
+    expect(everydayTemplateVersion).toBe('vulpes-everyday-v9');
     expect(everydayProductionEvidence?.templateVersion).toBe(
       'vulpes-everyday-v7',
     );
@@ -854,10 +854,13 @@ describe('bounded production orchestrator with synthetic persistence and transpo
             const output = wire.input.findLast(
               (item: { type: string }) => item.type === 'function_call_output',
             );
-            const summary = JSON.parse(output.output).result.data.analysis;
+            const data = JSON.parse(output.output).result.data;
+            const summary = data.analysis;
             yield responseFrame([
               assistantOutput(
-                `Synthetic trailing seven-day mean ${summary.value} kg; ${summary.validDays} days; ${summary.from} to ${summary.to}.`,
+                data.requestedIntervalMatches
+                  ? `Synthetic trailing seven-day mean ${summary.value} kg; ${summary.validDays} days; ${summary.from} to ${summary.to}.`
+                  : 'This summary cannot answer the requested interval.',
               ),
             ]);
           }
@@ -898,7 +901,9 @@ describe('bounded production orchestrator with synthetic persistence and transpo
           (event) =>
             event.type === 'text.delta' &&
             event.payload.text.includes(
-              question === 'last 7 days' ? '67 kg' : '66.5 kg',
+              question === 'last 7 days'
+                ? '67 kg'
+                : 'cannot answer the requested interval',
             ),
         ),
       ).toBe(true);

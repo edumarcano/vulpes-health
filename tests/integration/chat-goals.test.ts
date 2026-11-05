@@ -325,7 +325,7 @@ it('completes import → Ask → inspect → propose → approve → additional 
     expect(bytes.state).toBe('available');
     if (bytes.state === 'available')
       expect(JSON.parse(bytes.bytes.toString())).toMatchObject({
-        projectionVersion: 3,
+        projectionVersion: 4,
         providerResult: { requiresUserConfirmation: true },
       });
     const pair = await new ConversationService(a).read({

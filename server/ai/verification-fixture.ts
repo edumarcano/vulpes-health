@@ -8,7 +8,21 @@ const sparseCsv =
   'observed_at,metric,value,unit,source,granularity,external_record_id,local_date,timezone,method\n2026-09-01T10:00:00Z,heart_rate,75,bpm,Synthetic Heart Rate,instant,synthetic-hr-1,,UTC,device_reported\n2026-09-03T16:00:00Z,heart_rate,90,bpm,Synthetic Heart Rate,instant,synthetic-hr-2,,UTC,device_reported\n';
 const hash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
+const newYorkCsv =
+  'observed_at,metric,value,unit,source,granularity,external_record_id,local_date,timezone,method\n' +
+  '2026-11-01T05:30:00Z,weight,70,kg,Synthetic New York,instant,ny-first-hour,,America/New_York,device_reported\n' +
+  '2026-11-01T06:30:00Z,weight,72,kg,Synthetic New York,instant,ny-second-hour,,America/New_York,device_reported\n' +
+  '2026-11-02T05:00:00Z,weight,90,kg,Synthetic New York,instant,ny-next-midnight,,America/New_York,device_reported\n' +
+  '2026-11-04T13:00:00Z,weight,73,kg,Synthetic New York,instant,ny-relative-day,,America/New_York,device_reported\n';
 export const verificationFixtures = {
+  new_york: {
+    hash: hash(newYorkCsv),
+    csv: newYorkCsv,
+    rows: 4,
+    sources: 1,
+    sourceLabel: 'Synthetic New York',
+    displayLabel: 'Synthetic verification import',
+  },
   scale: {
     hash: verificationFixtureHash,
     csv: null,
