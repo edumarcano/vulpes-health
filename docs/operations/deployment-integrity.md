@@ -1,7 +1,5 @@
 # CI-gated automatic production deployment
 
-The 2026-11-05 [deployment checkpoint](../evidence/luna-v9-deployment.md) records active main protection and `VULPES_AUTODEPLOY_ENABLED=true`. The v9 repair remains unmerged; its deployment awaits PR merge and successful exact-main CI. Existing production continues serving. Treat that checkpoint as dated evidence and verify current cloud state before operating.
-
 After one-time approved activation, successful merges need no manual deployment approval. `.github/workflows/production.yml` runs only after a successful main-push `CI` run. It checks out that exact SHA, verifies the latest CI run and attempt and all three required jobs, then asks Vercel to build the same immutable Git SHA with production settings and automatic domain assignment disabled. Once READY, it verifies project, source, current main and CI again before requesting promotion of that artifact. It never pulls production environment files into GitHub.
 
 | Required check             | Evidence                                                 |

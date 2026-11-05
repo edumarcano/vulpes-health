@@ -1,10 +1,10 @@
 # Current Luna synthetic verification
 
-The v9 candidate has passing [technical deployment evidence](../evidence/luna-v9-technical.json). On 2026-11-05 the owner authorized deployment verification with model benchmarks deferred. Capability and production approval bind v9 to the configured model, adapter, price and privacy policy. This enables the candidate's owner-pilot build gate; deployment still requires merging the unmerged repair PR, successful exact-main CI and the approved cloud controls. The existing hosted artifact continues serving until promotion.
+The v9 candidate has passing [technical deployment evidence](../evidence/luna-v8-v9-verification.md). On 2026-11-05 the owner authorized deployment verification with model benchmarks deferred. Capability and production approval bind v9 to the configured model, adapter, price and privacy policy. The owner-pilot build also requires exact-main CI and the deployment controls described in [deployment integrity](deployment-integrity.md).
 
 The technical packet used six requests: a completed persisted tool loop/reload, seeded typed-error feedback compatibility, cancellation and disconnection. Zero-budget denial sent no request. Confirmed charges were $0.000590675; two interrupted requests retained $0.0186384 in reservations with final charges unknown. The explicitly synthetic error transcript proves wire-format acceptance, not that Luna independently emitted and repaired invalid arguments. Offline PostgreSQL regressions cover rejected-call inspection/export and calculation-interval scalar withholding.
 
-The [failed v8 batch](../evidence/luna-v8-verification.md) remains historical evidence: eight requests cost $0.001482870. Model answer quality, broader safety evaluation, device and formal release acceptance remain open. The model remains `openai/gpt-6-luna`, low effort, Responses v2.
+The [failed v8 batch](../evidence/luna-v8-v9-verification.md) remains historical evidence: eight requests cost $0.001482870. Model answer quality, broader safety evaluation, device and formal release acceptance remain open. The model remains `openai/gpt-6-luna`, low effort, Responses v2.
 
 ## Future candidate verification
 
