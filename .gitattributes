@@ -1,1 +1,6 @@
 docs/spec/v0.1.0/SOURCES.md whitespace=-blank-at-eol
+*.png binary
+*.ico binary
+docs/spec/v0.1.0/assets/brand/*.md text eol=lf
+docs/spec/v0.1.0/assets/brand/**/*.json text eol=lf
+
