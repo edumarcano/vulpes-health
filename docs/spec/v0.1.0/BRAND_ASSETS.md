@@ -2,6 +2,8 @@
 
 Source: the supplied `vulpes-brand-assets-v2-review.zip`. All source files below were copied byte-for-byte; no logo was redesigned. Their SHA-256 values are recorded in `assets/brand-inventory.json`. The v2 README is included under `assets/brand/README.md`.
 
+This document records repository approval. The supplied README's review-candidate status describes the source package before adoption; it is preserved unchanged for provenance and inventory verification. The Vulpes branding was created by the project author using ChatGPT-generated images.
+
 ## Use map
 
 | Surface | Approved source | Notes |

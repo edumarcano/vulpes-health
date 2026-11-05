@@ -48,3 +48,7 @@ Database and browser tests use disposable synthetic accounts and a local Supabas
 | [AGENTS.md](AGENTS.md) | Project engineering and safety rules |
 
 Vulpes uses React, Vite, TypeScript, Supabase and Vercel in a modular monolith. Provider adapters are isolated from domain services. The application is a wellness tool and does not provide medical diagnosis.
+
+## License
+
+Vulpes is licensed under [Apache-2.0](LICENSE). Copyright 2026 Eduardo Marcano. Copied source and included Remora guidance retain their [upstream MIT licenses](THIRD_PARTY_NOTICES.md). Installed dependencies retain their own licenses.

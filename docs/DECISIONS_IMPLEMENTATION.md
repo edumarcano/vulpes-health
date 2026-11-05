@@ -2,6 +2,12 @@
 
 The [product and architecture decisions](spec/v0.1.0/DECISIONS.md) remain authoritative. This file records implementation choices that affect ongoing operation. Detailed dated implementation history remains in [Git](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/DECISIONS_IMPLEMENTATION.md).
 
+## Public source and licensing
+
+Vulpes uses Apache-2.0. Copied source and included Remora guidance retain their upstream MIT licenses and notices. The npm package remains private to prevent accidental registry publication.
+
+Public evidence records technical results, dated candidates and verification limits rather than personal usage, account balances or backup-custody details. Detailed operator records stay outside the repository. The publication cleanup preserves existing Git history; it does not erase earlier operational metadata. Publishing source does not authorize hosted testing, deployment, provider usage or broader release acceptance.
+
 ## Owner pilot and providers
 
 The owner authorized a Luna-only hosted pilot under current consent, trace encryption and persistent account/application budgets. Local defaults remain inference-off. The server-side typed catalog owns models and limits; Flash, Argon and decision scoring require separate evidence and approval. [Provider evidence](evidence/luna-owner-pilot-live.md) records the bound v7 verification and its limitations.
