@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -9,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -93,7 +94,7 @@ jobs:
   browser_integration:
     name: Browser integration checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -117,6 +118,8 @@ jobs:
       # Never upload browser reports, traces, screenshots, or local service logs.
       - name: Playwright Chromium tests
         run: npm run test:e2e
+      - name: Development browser acceptance
+        run: npm run test:dev
       - name: Static PWA privacy proof
         run: npm run test:pwa
       - name: Stop disposable Supabase

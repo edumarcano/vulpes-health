@@ -421,6 +421,7 @@ function assemble() {
     scope: string;
     external: string | null;
     applicability: 'required' | 'optional_disabled';
+    disposition?: string;
   }>;
   const ids = [
     ...readFileSync(
@@ -471,6 +472,7 @@ function assemble() {
               ? 'blocked'
               : localStatus,
       remainingConsequence: a.external,
+      disposition: a.disposition ?? null,
     };
   });
   const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));

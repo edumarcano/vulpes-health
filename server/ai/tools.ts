@@ -27,6 +27,7 @@ import {
   CountSchema,
   IanaTimezoneSchema,
   ISOInstantSchema,
+  LocalDateSchema,
   UUIDSchema,
 } from '../../shared/primitives.js';
 import type { AuthContext } from '../auth/session.js';
@@ -35,11 +36,95 @@ import { goalProgress } from '../analytics/goals.js';
 import { HttpFailure } from '../http/failure.js';
 import type { GenerationRequest } from './contracts.js';
 
+export const ToolErrorResultSchema = z.strictObject({
+  kind: z.literal('tool_error'),
+  code: z.enum([
+    'invalid_arguments',
+    'invalid_interval',
+    'timezone_mismatch',
+    'unsafe_goal_target',
+  ]),
+  recoverable: z.literal(true),
+  hint: z.string(),
+});
+export class ToolValidationFailure extends Error {
+  constructor(
+    readonly code: z.infer<typeof ToolErrorResultSchema>['code'],
+    readonly hint: string,
+  ) {
+    super(hint);
+  }
+}
+function parseArguments<S extends z.ZodType>(
+  schema: S,
+  args: unknown,
+): z.output<S> {
+  const parsed = schema.safeParse(args);
+  if (!parsed.success)
+    throw new ToolValidationFailure(
+      'invalid_arguments',
+      'Match the advertised tool schema: use valid metric, UUID, numeric target/unit, and date fields; remove extra fields. Targets must satisfy metric representation limits, not clinical reference ranges.',
+    );
+  return parsed.data;
+}
+async function profileTimezone(context: AuthContext, supplied: string) {
+  const profile = await context.db
+    .from('profiles')
+    .select('timezone')
+    .eq('user_id', context.userId)
+    .single();
+  if (profile.error)
+    throw new HttpFailure(
+      503,
+      'context_unavailable',
+      'Profile timezone could not be checked.',
+    );
+  const timezone = IanaTimezoneSchema.parse(profile.data.timezone);
+  if (timezone !== supplied)
+    throw new ToolValidationFailure(
+      'timezone_mismatch',
+      'Use the owned profile.timezone exactly; never substitute UTC or another timezone.',
+    );
+  return timezone;
+}
+function resolveInterval(from: string, to: string, timezone: string) {
+  const boundary = (value: string) => {
+    if (!LocalDateSchema.safeParse(value).success)
+      return Temporal.Instant.from(value).toZonedDateTimeISO(timezone);
+    const date = Temporal.PlainDate.from(value);
+    const zoned = date.toZonedDateTime(timezone);
+    if (!date.equals(zoned.toPlainDate()))
+      throw new Error('nonexistent_local_date');
+    return zoned;
+  };
+  try {
+    const a = boundary(from);
+    const b = boundary(to);
+    if (
+      Temporal.ZonedDateTime.compare(a, b) >= 0 ||
+      a.toPlainDate().until(b.toPlainDate()).days > 366 ||
+      !a.equals(a.startOfDay()) ||
+      !b.equals(b.startOfDay())
+    )
+      throw new Error('invalid_local_interval');
+    return {
+      from: a.toInstant().toString(),
+      to: b.toInstant().toString(),
+      timezone,
+    };
+  } catch {
+    throw new ToolValidationFailure(
+      'invalid_interval',
+      'Use 1-366 complete local calendar days: inclusive from, exclusive to, preferably YYYY-MM-DD. Each instant must be profile-local midnight with its own DST offset.',
+    );
+  }
+}
+
 const selection = z.strictObject({
   metric: MetricKeySchema,
   source_id: UUIDSchema.nullish(),
-  from: ISOInstantSchema,
-  to: ISOInstantSchema,
+  from: z.union([LocalDateSchema, ISOInstantSchema]),
+  to: z.union([LocalDateSchema, ISOInstantSchema]),
   timezone: IanaTimezoneSchema,
   method: MeasurementMethodSchema.optional(),
   granularity: GranularitySchema.optional(),
@@ -67,25 +152,38 @@ export const toolArguments = {
 const descriptions = {
   request_escalation:
     'Request Flash once using current-run progress or two metric-summary evidence IDs. Tool-only turn; no medical judgment or approval.',
-  list_metrics: 'List owned series, counts, intervals and source limitations.',
+  list_metrics: 'List owned series, counts, dates and source limits.',
   get_measurements:
-    'Read at most 200 observations in an explicit interval. Clarify ambiguous series.',
+    'Read up to 200 rows for profile-local [from,to) dates; clarify ambiguous series.',
   summarize_metric:
-    'Deterministic summary of complete local days; sparse coverage stays insufficient.',
-  list_goals: 'List approved owned goals, versions and definitions.',
+    'Summarize complete local days; sparse coverage stays insufficient.',
+  list_goals: 'List approved owned goals and versions.',
   get_goal_progress:
-    'Read approved goal progress; stale or unsupported baselines stay unavailable.',
-  propose_goal:
-    'Propose a goal for explicit user review. Never activates. Server freezes the baseline.',
+    'Read approved progress; qualify stale/unsupported baselines.',
+  propose_goal: 'Prepare a pending goal; explicit user review required.',
   propose_goal_revision:
     'Propose changed fields of an approved goal. expected_version is its version, not revision number. Never applies changes.',
 };
 export const readToolDefinitions: GenerationRequest['tools'] = Object.entries(
   toolArguments,
 ).map(([name, schema]) => {
+  // Advertise the preferred date-only input; retain validated instant support
+  // server-side for existing callers without duplicating both forms on wire.
+  const advertised =
+    name === 'get_measurements'
+      ? toolArguments.get_measurements.extend({
+          from: LocalDateSchema,
+          to: LocalDateSchema,
+        })
+      : name === 'summarize_metric'
+        ? toolArguments.summarize_metric.extend({
+            from: LocalDateSchema,
+            to: LocalDateSchema,
+          })
+        : schema;
   // Formats already describe these values to the model. Keep Zod's full
   // calendar/UUID validation server-side rather than repeating its regex on wire.
-  const parameters = z.toJSONSchema(schema, {
+  const parameters = z.toJSONSchema(advertised, {
     override: ({ jsonSchema, zodSchema }) => {
       if (zodSchema === GoalTargetSchema && jsonSchema.oneOf) {
         jsonSchema.oneOf = [
@@ -338,11 +436,11 @@ export async function executeReadTool(
       'This read tool is unavailable.',
     );
   if (name === 'list_metrics') {
-    toolArguments.list_metrics.parse(args);
+    parseArguments(toolArguments.list_metrics, args);
     return { kind: 'metrics', ...(await inventory(context)) };
   }
   if (name === 'list_goals') {
-    const parsed = toolArguments.list_goals.parse(args);
+    const parsed = parseArguments(toolArguments.list_goals, args);
     return {
       kind: 'goals',
       items: (await approvedGoals(context, parsed.status)).map((g) => ({
@@ -364,7 +462,7 @@ export async function executeReadTool(
     };
   }
   if (name === 'get_goal_progress') {
-    const parsed = toolArguments.get_goal_progress.parse(args);
+    const parsed = parseArguments(toolArguments.get_goal_progress, args);
     const goal = (await approvedGoals(context, undefined, parsed.goal_id))[0];
     if (!goal)
       throw new HttpFailure(
@@ -437,8 +535,10 @@ export async function executeReadTool(
   }
   const parsed =
     name === 'get_measurements'
-      ? toolArguments.get_measurements.parse(args)
-      : toolArguments.summarize_metric.parse(args);
+      ? parseArguments(toolArguments.get_measurements, args)
+      : parseArguments(toolArguments.summarize_metric, args);
+  const timezone = await profileTimezone(context, parsed.timezone);
+  const interval = resolveInterval(parsed.from, parsed.to, timezone);
   const available = await inventory(context);
   const candidates = available.items.filter(
     (item) =>
@@ -482,9 +582,7 @@ export async function executeReadTool(
   const chosen = candidates[0]!;
   const query = {
     metric: parsed.metric,
-    from: parsed.from,
-    to: parsed.to,
-    timezone: parsed.timezone,
+    ...interval,
     source_id: chosen.source_id,
     method: chosen.method,
     granularity: chosen.granularity,
@@ -496,7 +594,7 @@ export async function executeReadTool(
       ...((await readData(context, {
         ...query,
         view: 'measurements',
-        page_size: toolArguments.get_measurements.parse(args).limit,
+        page_size: parseArguments(toolArguments.get_measurements, args).limit,
         data_revision: available.dataRevision,
       })) as object),
     };
@@ -520,10 +618,13 @@ export async function prepareGoalTool(
       ? {
           action: 'propose_create' as const,
           client_request_id: requestId,
-          ...toolArguments.propose_goal.parse(args),
+          ...parseArguments(toolArguments.propose_goal, args),
         }
       : await (async () => {
-          const input = toolArguments.propose_goal_revision.parse(args);
+          const input = parseArguments(
+            toolArguments.propose_goal_revision,
+            args,
+          );
           const previous = await service.revision(input.goal_id);
           const payload = GoalRevisionPayloadSchema.parse(
             previous.revision.payload,
@@ -533,13 +634,24 @@ export async function prepareGoalTool(
             client_request_id: requestId,
             goal_id: input.goal_id,
             expected_version: input.expected_version,
-            definition: GoalDefinitionSchema.parse({
+            definition: parseArguments(GoalDefinitionSchema, {
               ...payload.definition,
               ...input.changes,
             }),
             baseline_resolution: input.baseline_resolution,
           };
         })();
+  await profileTimezone(context, request.definition.timezone);
+  const { metric, target } = request.definition;
+  const values =
+    target.direction === 'maintain_range'
+      ? [target.lower, target.upper]
+      : [target.value];
+  if (metric === 'body_fat_percent' && values.some((value) => value <= 2))
+    throw new ToolValidationFailure(
+      'unsafe_goal_target',
+      'Vulpes will not propose body-fat targets at or below 2%. This is a conservative product rule, not a medical reference range. Higher targets are not necessarily safe. Do not substitute another target; ask the user to discuss an appropriate target with a qualified clinician.',
+    );
   return GoalProposalToolResultSchema.parse({
     kind: 'goal_proposal',
     request,

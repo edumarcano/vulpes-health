@@ -204,6 +204,25 @@ export class ConversationService {
     const binding = query.view === 'messages' ? query.id : query.archived;
     const conversation =
       query.view === 'messages' ? await this.owned(query.id) : null;
+    // Read run state first: terminal finalization also commits message status.
+    // A transition during the later message read leaves an active run to poll,
+    // rather than a terminal run paired with an older streaming message.
+    const latest =
+      query.view === 'messages'
+        ? await this.context.db
+            .from('ai_runs')
+            .select('id')
+            .eq('user_id', this.context.userId)
+            .eq('conversation_id', query.id)
+            .order('admitted_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : null;
+    if (latest?.error) throw failed();
+    const run = latest?.data
+      ? await new ExecutionService(this.context).summary(latest.data.id)
+      : null;
     let selection =
       query.view === 'messages'
         ? this.context.db
@@ -291,16 +310,6 @@ export class ConversationService {
         }),
         nextCursor,
       };
-    const latest = await this.context.db
-      .from('ai_runs')
-      .select('id')
-      .eq('user_id', this.context.userId)
-      .eq('conversation_id', query.id)
-      .order('admitted_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latest.error) throw failed();
     const profile = await this.context.db
       .from('profiles')
       .select('data_revision')
@@ -327,9 +336,7 @@ export class ConversationService {
         }),
       ),
       nextCursor,
-      run: latest.data
-        ? await new ExecutionService(this.context).summary(latest.data.id)
-        : null,
+      run,
     });
   }
 }

@@ -1,0 +1,12 @@
+begin;
+set local search_path = public, extensions;
+select plan(7);
+select ok(has_function_privilege('service_role', 'public.schema_version_v1()', 'execute'), 'service can read migration evidence');
+select ok(not has_function_privilege('anon', 'public.schema_version_v1()', 'execute'), 'anonymous cannot read migration evidence');
+select ok(not has_function_privilege('authenticated', 'public.schema_version_v1()', 'execute'), 'users cannot read migration evidence');
+select is((select prosecdef from pg_proc where oid = 'public.schema_version_v1()'::regprocedure), true, 'definer can read protected migration metadata');
+select is((select proconfig[1] from pg_proc where oid = 'public.schema_version_v1()'::regprocedure), 'search_path=""', 'search path pinned');
+select is(jsonb_typeof(public.schema_version_v1()->'versions'), 'array', 'migration inventory is an array');
+select ok((public.schema_version_v1()->'versions') ? '20261104000100', 'inventory includes this deployed migration');
+select * from finish();
+rollback;

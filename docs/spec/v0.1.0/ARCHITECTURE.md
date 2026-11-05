@@ -36,7 +36,7 @@ Vite is supported on Vercel; SPA deep links need deliberate routing. Avoid rewri
 ## 2. Proposed repository layout to create during implementation
 
 ```text
-api/                         # Nine thin Vercel entry points; see API_CONTRACTS
+api/                         # Eight thin Vercel entry points; see API_CONTRACTS
 src/
   app/                       # Router, shell, providers
   features/{ask,goals,data,settings}/

@@ -29,7 +29,7 @@ describe('chat proposal authority and bounded catalogue', () => {
         }),
       );
     expect(safetyInstructions).toContain(
-      'Calculated baselineMethod must equal currentMethod (latest_value for latest-value tracking)',
+      'Calculated baselineMethod equals currentMethod; latest-value tracking uses latest_value',
     );
     for (const method of ['latest_value', 'daily_median_mean_7d'])
       expect(

@@ -1,6 +1,8 @@
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { verifyProductionCommit } from './deployment-integrity.js';
+import { verifyHostedSchema } from './schema-compatibility.js';
 import {
   BuildTargetSchema,
   HostedInferenceModeSchema,
@@ -40,25 +42,36 @@ export function hostedBuild(
     HostedInferenceModeSchema.parse(v.mode ?? 'disabled'),
   );
   if (v['check-only']) return { ...checked, buildRan: false };
+  return verifiedBuild(checked, buildEnv);
+}
+async function verifiedBuild(
+  checked: ReturnType<typeof checkHostedEnvironment>,
+  env: NodeJS.ProcessEnv,
+) {
+  const source = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' });
+  if (source.status !== 0 || source.stdout.trim() !== env.VERCEL_GIT_COMMIT_SHA)
+    throw new Error('deployment_source_mismatch');
+  const verification = await verifyProductionCommit(env);
+  const schema = await verifyHostedSchema(env);
   const npm = env.npm_execpath;
   if (!npm) throw new Error('Run with npm run build:hosted.');
   const result = spawnSync(process.execPath, [npm, 'run', 'build'], {
-    env: buildEnv,
+    env,
     stdio: 'inherit',
   });
   if (result.error || result.status !== 0)
     throw new Error('hosted_build_failed');
-  return { ...checked, buildRan: true };
+  return { ...checked, ...verification, ...schema, buildRan: true };
 }
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    console.info(JSON.stringify(hostedBuild(process.argv.slice(2))));
+    console.info(JSON.stringify(await hostedBuild(process.argv.slice(2))));
   } catch {
     console.error(
-      'Hosted build refused or failed. Check target identity, approved inference mode and server-only configuration.',
+      'Hosted build refused or failed. Check target identity, exact-main CI, applied migrations, approved inference mode and server-only configuration.',
     );
     process.exitCode = 1;
   }

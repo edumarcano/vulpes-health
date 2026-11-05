@@ -6,11 +6,9 @@ import { matchesSyntheticAnswer } from '../../scripts/live-everyday.js';
 
 const canary = 'synthetic-credential-canary-not-a-real-key';
 async function cli(args: string[], liveSwitch = 'false') {
-  const npm = process.env.npm_execpath;
-  if (!npm) throw new Error('Run through npm test.');
   const child = spawn(
     process.execPath,
-    [npm, 'run', 'test:providers', '--', ...args],
+    ['--import', 'tsx', 'scripts/provider-smoke.ts', ...args],
     {
       env: {
         ...process.env,
@@ -101,7 +99,7 @@ describe('real provider-smoke CLI', () => {
   );
   it.each([
     ['false', 'live_ai_disabled'],
-    ['true', 'verification_attempt_required'],
+    ['true', 'capability_evidence_mismatch'],
     ['TRUE', 'invalid_live_switch'],
   ])(
     'denies fully supplied live flags with switch %s',

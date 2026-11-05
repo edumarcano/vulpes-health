@@ -137,7 +137,6 @@ export async function readPayload(
     if (!data) return { state: 'not_found' };
     if (Date.parse(data.expires_at) <= Date.now()) return { state: 'expired' };
     const bytes = decryptBytes(data, readEncryptionKeys());
-    await cleanupExpiredPayloads(context.userId);
     return { state: 'available', bytes };
   } catch {
     return { state: 'unavailable' };

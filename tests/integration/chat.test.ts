@@ -198,6 +198,220 @@ const send = (id: string, text = 'How has my imported weight changed?') => ({
   message: { id: randomUUID(), text },
   depth: 'auto',
 });
+it.each([
+  ['list_metrics', { extra: 'synthetic' }, 'invalid_arguments'],
+  [
+    'summarize_metric',
+    { metric: 'weight', from: '2026-11-04', to: '2026-10-28', timezone: 'UTC' },
+    'invalid_interval',
+  ],
+] as const)(
+  'inspects and exports rejected tool evidence for %s',
+  async (name, args, code) => {
+    let requests = 0;
+    const transport: RequestTransport = {
+      mode: 'mock',
+      async *send() {
+        yield responseFrame(
+          ++requests === 1
+            ? [
+                {
+                  type: 'function_call',
+                  id: 'rejected',
+                  call_id: 'call-rejected',
+                  name,
+                  arguments: JSON.stringify(args),
+                },
+              ]
+            : [
+                assistantOutput(
+                  'The synthetic tool arguments need correction.',
+                ),
+              ],
+        );
+      },
+    };
+    await withApi(syntheticChatDependencies(transport), async (api) => {
+      const events = await stream(
+        await api('/api/chat', send(await conversation())),
+      );
+      expect(events.at(-1)?.type).toBe('run.completed');
+      const run = events[0]!.run_id;
+      const tool = (
+        await rows('ai_steps', `run_id=eq.${run}&step_type=eq.tool`)
+      )[0]!;
+      const inspector = new InspectionService(a);
+      for (const part of ['input', 'output'] as const) {
+        const raw = await readPayload(
+          a,
+          String(tool[`${part}_payload_id`]),
+          part === 'input' ? 'tool_input' : 'tool_output',
+        );
+        expect(raw.state).toBe('available');
+        if (raw.state !== 'available')
+          throw new Error('missing synthetic evidence');
+        const query = {
+          view: 'payload' as const,
+          run,
+          step: String(tool.id),
+          part,
+        };
+        expect((await inspector.evidence(query)).state).toBe('available');
+        const payload = await api(
+          `/api/executions?${new URLSearchParams(query)}`,
+        );
+        expect((await payload.json()).data.base64).toBe(
+          raw.bytes.toString('base64'),
+        );
+        const exported = await api(
+          `/api/executions?${new URLSearchParams({ ...query, view: 'export' })}`,
+        );
+        expect(exported.headers.get('content-type')).toBe(
+          'application/octet-stream',
+        );
+        expect(Buffer.from(await exported.arrayBuffer())).toEqual(raw.bytes);
+        expect(
+          (
+            await api(
+              `/api/executions?${new URLSearchParams(query)}`,
+              undefined,
+              tokenB,
+            )
+          ).status,
+        ).toBe(404);
+        expect(
+          (
+            await api(
+              `/api/executions?${new URLSearchParams(query)}`,
+              undefined,
+              null,
+            )
+          ).status,
+        ).toBe(401);
+        const parsed = JSON.parse(raw.bytes.toString());
+        if (part === 'output')
+          expect(parsed.result).toMatchObject({
+            kind: 'tool_error',
+            code,
+            recoverable: true,
+          });
+        else expect(parsed.arguments).toEqual(args);
+      }
+      const outputId = String(tool.output_payload_id);
+      const envelope = (
+        await rows('private_payloads', `id=eq.${outputId}`)
+      )[0]!;
+      const raw = await readPayload(a, outputId, 'tool_output');
+      if (raw.state !== 'available') throw new Error('missing output');
+      const original = JSON.parse(raw.bytes.toString());
+      const query = {
+        view: 'payload' as const,
+        run,
+        step: String(tool.id),
+        part: 'output' as const,
+      };
+      const replace = async (
+        id: string,
+        purpose: 'tool_input' | 'tool_output',
+        value: unknown,
+      ) => {
+        await db.admin(
+          `/rest/v1/private_payloads?id=eq.${id}`,
+          'PATCH',
+          encryptBytes(
+            {
+              id,
+              user_id: a.userId,
+              purpose,
+              expires_at: String(envelope.expires_at),
+            },
+            Buffer.from(JSON.stringify(value)),
+            readEncryptionKeys(),
+          ),
+        );
+      };
+      for (const bad of [
+        { ...original, result: { ...original.result, recoverable: false } },
+        { ...original, result: { ...original.result, code: 'invented' } },
+        { ...original, evidence: { ...original.evidence, ownerId: b.userId } },
+        {
+          ...original,
+          providerResult: { ...original.providerResult, hint: 'different' },
+        },
+      ]) {
+        await replace(outputId, 'tool_output', bad);
+        expect((await inspector.evidence(query)).state).toBe('corrupt');
+      }
+      await db.admin(
+        `/rest/v1/private_payloads?id=eq.${outputId}`,
+        'PATCH',
+        envelope,
+      );
+      await replace(String(tool.input_payload_id), 'tool_input', {
+        callId: 'altered',
+        name,
+        arguments: args,
+      });
+      expect(
+        (await inspector.evidence({ ...query, part: 'input' })).state,
+      ).toBe('corrupt');
+      await db.admin(`/rest/v1/private_payloads?id=eq.${outputId}`, 'PATCH', {
+        created_at: new Date(Date.now() - 2000).toISOString(),
+        expires_at: new Date(Date.now() - 1000).toISOString(),
+      });
+      expect((await inspector.evidence(query)).state).toBe('expired');
+    });
+  },
+);
+it('checkpoints buffered parsed text before finalizing a malformed provider run in PostgreSQL', async () => {
+  const text = 'Valid buffered synthetic prefix 🦊';
+  const bytes = Buffer.from(
+    `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\ndata: invalid-json\n\n`,
+  );
+  const transport: RequestTransport = {
+    mode: 'mock',
+    async *send() {
+      yield bytes;
+    },
+  };
+  await withApi(syntheticChatDependencies(transport), async (api) => {
+    const id = await conversation();
+    const events = await stream(await api('/api/chat', send(id)));
+    expect(events.at(-1)?.type).toBe('run.failed');
+    expect(
+      events
+        .filter((e) => e.type === 'text.delta')
+        .map((e) => e.payload.text)
+        .join(''),
+    ).toBe(text);
+    const saved = (
+      await (await api(`/api/conversations?view=messages&id=${id}`)).json()
+    ).data;
+    expect(saved.items[1].parts).toEqual([{ type: 'text', text }]);
+    expect(saved.items[1].status).toBe('failed');
+    expect(saved.run).toMatchObject({
+      state: 'failed',
+      partialOutput: true,
+      costStatus: 'pending',
+      costUSD: null,
+    });
+    expect(Number(saved.run.reservationUSD)).toBeGreaterThan(0);
+    const steps = await rows('ai_steps', `run_id=eq.${events[0]!.run_id}`);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      status: 'failed',
+      cost_status: 'pending',
+      cost_usd: null,
+    });
+    const trace = await readPayload(
+      a,
+      String(steps[0]!.output_payload_id),
+      'ai_response',
+    );
+    expect(trace.state).toBe('available');
+    if (trace.state === 'available') expect(trace.bytes).toEqual(bytes);
+  });
+});
 it('executes the production composition through HTTP, ledger, exact capture and reload with a synthetic provider', async () => {
   const readiness = vi
     .spyOn(catalog, 'getRoleAvailability')
@@ -1416,6 +1630,52 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       expect(transport.requests).toHaveLength(1);
     });
   });
+  it('reads terminal message status when cancellation completes during a conversation read', async () => {
+    let reached!: () => void;
+    const started = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const transport = new SyntheticChatTransport('complete', {
+      started: reached,
+      wait,
+    });
+    await withApi(syntheticChatDependencies(transport), async (api) => {
+      const id = await conversation();
+      const response = await api('/api/chat', send(id));
+      await started;
+      const run = (await rows('ai_runs', `conversation_id=eq.${id}`))[0]!;
+      const original = ExecutionService.prototype.summary;
+      const summary = vi.spyOn(ExecutionService.prototype, 'summary');
+      summary.mockImplementationOnce(async function (
+        this: ExecutionService,
+        runId,
+      ) {
+        await new ExecutionService(a).cancel(String(run.id));
+        release();
+        await stream(response);
+        return original.call(this, runId);
+      });
+      try {
+        const saved = (
+          await (await api(`/api/conversations?view=messages&id=${id}`)).json()
+        ).data;
+        expect(saved.run.state).toBe('cancelled');
+        expect(
+          saved.items.find(
+            (item: { role: string }) => item.role === 'assistant',
+          ).status,
+        ).toBe('interrupted');
+        expect(transport.requests).toHaveLength(1);
+      } finally {
+        release();
+        summary.mockRestore();
+      }
+    });
+  });
   it('revoked consent before continuation blocks a second dispatch', async () => {
     const base = new SyntheticChatTransport();
     const transport: RequestTransport = {
@@ -1516,6 +1776,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
     ).toHaveLength(0);
   });
   it('a failed second message checkpoint preserves only the first durable prefix', async () => {
+    const durablePrefix = 'Durable prefix'.padEnd(8192, '.');
     const original = ExecutionService.prototype.checkpointMessage;
     let writes = 0;
     vi.spyOn(
@@ -1530,12 +1791,14 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       mode: 'mock',
       async *send() {
         yield Buffer.from(
-          'data: {"type":"response.output_text.delta","delta":"Durable prefix"}\n\n',
+          `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: durablePrefix })}\n\n`,
         );
         yield Buffer.from(
           'data: {"type":"response.output_text.delta","delta":" unsaved suffix"}\n\n',
         );
-        yield responseFrame([assistantOutput('Durable prefix unsaved suffix')]);
+        yield responseFrame([
+          assistantOutput(`${durablePrefix} unsaved suffix`),
+        ]);
       },
     };
     await withApi(syntheticChatDependencies(transport), async (api) => {
@@ -1547,12 +1810,12 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
           .filter((e) => e.type === 'text.delta')
           .map((e) => e.payload.text)
           .join(''),
-      ).toBe('Durable prefix');
+      ).toBe(durablePrefix);
       const saved = (
         await (await api(`/api/conversations?view=messages&id=${id}`)).json()
       ).data;
       expect(saved.items[1].parts).toEqual([
-        { type: 'text', text: 'Durable prefix' },
+        { type: 'text', text: durablePrefix },
       ]);
       expect(saved.run).toMatchObject({
         traceState: 'incomplete',

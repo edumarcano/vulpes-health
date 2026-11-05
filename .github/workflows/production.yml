@@ -1,0 +1,44 @@
+name: Production deployment
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
+# Serialize promotions; cancellation cannot recall a request already at Vercel.
+concurrency:
+  group: vulpes-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.VULPES_AUTODEPLOY_ENABLED == 'true' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: package.json
+      - name: Install locked dependencies without deployment credentials
+        run: npm ci
+      - name: Stage verified Git commit and promote after rechecking
+        run: node --import tsx scripts/deploy-production.ts
+        env:
+          VULPES_GITHUB_READ_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}

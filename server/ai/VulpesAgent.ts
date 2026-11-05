@@ -6,7 +6,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { ChatSendRequest } from '../../shared/api.js';
-import { ChatPartSchema, type ChatPart } from '../../shared/chat.js';
+import type { ChatPart } from '../../shared/chat.js';
 import type { StreamEvent } from '../../shared/stream.js';
 import type { RunSummary } from '../../shared/executions.js';
 import type { AuthContext } from '../auth/session.js';
@@ -21,6 +21,7 @@ import {
 } from './ledger/execution.js';
 import {
   createDispatcher,
+  streamBatches,
   type RequestTransport,
 } from './ledger/dispatcher.js';
 import type { VerifiedPrice } from './ledger/pricing.js';
@@ -35,14 +36,8 @@ import {
 import { baselineSafety, rejectCredentials } from './prompts/everyday.js';
 import { buildContext } from './context.js';
 import { blocksOf, continuationFor } from './continuation.js';
-import {
-  executeReadTool,
-  prepareGoalTool,
-  readToolDefinitions,
-  providerToolResult,
-  toolProjectionVersion,
-} from './tools.js';
-import { DataSummarySchema } from '../../shared/data.js';
+import { readToolDefinitions } from './tools.js';
+import { executeToolStep } from './tool-execution.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
 
 export interface AgentDependencies {
@@ -179,6 +174,17 @@ export class VulpesAgent {
     let active: PreparedStep | null = null;
     let parts: ChatPart[] = [];
     let last: RunSummary = initial;
+    let failureHandled = false;
+    const finishFailure = async () => {
+      failureHandled = true;
+      if (active)
+        await this.ledger
+          .settle(active, null, signal.aborted ? 'cancelled' : 'failed')
+          .catch(() => undefined);
+      last = await this.ledger
+        .finish(lease, signal.aborted ? 'cancelled' : 'failed')
+        .catch(() => last);
+    };
     const messageId = initial.assistantMessageId!;
     try {
       yield event({
@@ -229,6 +235,7 @@ export class VulpesAgent {
           this.ledger,
           dependencies.transport,
           'failed',
+          'consumer',
         );
         yield event({
           type: 'route.selected',
@@ -340,54 +347,75 @@ export class VulpesAgent {
             (step) => {
               active = step;
             },
-          );
-          for await (const raw of dependencies.adapter.generate(request, {
             signal,
-            dispatch,
-          })) {
-            const next = GenerationEventSchema.parse(raw);
-            const prepared = active as PreparedStep | null;
-            if (prepared && !announced) {
-              announced = true;
-              yield event({
-                type: 'step.started',
-                payload: {
-                  step_id: prepared.id,
-                  step_type: 'generation',
-                  label: 'Generating a response',
-                },
-              });
+          );
+          const generation = new AbortController();
+          const generationSignal = AbortSignal.any([signal, generation.signal]);
+          for await (const batch of streamBatches(
+            dependencies.adapter.generate(request, {
+              signal: generationSignal,
+              dispatch,
+            }),
+            generationSignal,
+            (raw) =>
+              raw.type === 'text.delta' ? Buffer.byteLength(raw.text) : 0,
+            () => generation.abort(),
+            'flush',
+          )) {
+            let pendingText = '';
+            for (const raw of batch) {
+              signal.throwIfAborted();
+              const next = GenerationEventSchema.parse(raw);
+              const prepared = active as PreparedStep | null;
+              if (prepared && !announced) {
+                announced = true;
+                yield event({
+                  type: 'step.started',
+                  payload: {
+                    step_id: prepared.id,
+                    step_type: 'generation',
+                    label: 'Generating a response',
+                  },
+                });
+              }
+              if (completion) throw new Error('event_after_completion');
+              if (next.type === 'text.delta') {
+                if (!active) throw new Error('adapter_bypassed_dispatcher');
+                if (Buffer.byteLength(text + next.text) > 65536)
+                  throw new Error('output_limit');
+                text += next.text;
+                const prefix = parts.filter((p) => p.type !== 'text');
+                const oldText = parts
+                  .filter((p) => p.type === 'text')
+                  .map((p) => p.text)
+                  .join('');
+                if (Buffer.byteLength(oldText + next.text) > 65536)
+                  throw new Error('output_limit');
+                parts = [
+                  ...prefix,
+                  { type: 'text', text: oldText + next.text },
+                ];
+                pendingText += next.text;
+              } else if (next.type === 'tool.call') {
+                if (
+                  calls.has(next.call.callId) ||
+                  toolCalls.some((call) => call.callId === next.call.callId)
+                )
+                  throw new Error('repeated_tool_call');
+                toolCalls.push(next.call);
+              } else if (next.type === 'usage') {
+                if (usage) throw new Error('duplicate_usage');
+                usage = next.usage;
+              } else completion = next;
             }
-            if (completion) throw new Error('event_after_completion');
-            if (next.type === 'text.delta') {
-              if (!active) throw new Error('adapter_bypassed_dispatcher');
-              if (Buffer.byteLength(text + next.text) > 65536)
-                throw new Error('output_limit');
-              text += next.text;
-              const prefix = parts.filter((p) => p.type !== 'text');
-              const oldText = parts
-                .filter((p) => p.type === 'text')
-                .map((p) => p.text)
-                .join('');
-              if (Buffer.byteLength(oldText + next.text) > 65536)
-                throw new Error('output_limit');
-              parts = [...prefix, { type: 'text', text: oldText + next.text }];
+            if (pendingText) {
               await this.ledger.checkpointMessage(lease, parts);
+              signal.throwIfAborted();
               yield event({
                 type: 'text.delta',
-                payload: { message_id: messageId, text: next.text },
+                payload: { message_id: messageId, text: pendingText },
               });
-            } else if (next.type === 'tool.call') {
-              if (
-                calls.has(next.call.callId) ||
-                toolCalls.some((call) => call.callId === next.call.callId)
-              )
-                throw new Error('repeated_tool_call');
-              toolCalls.push(next.call);
-            } else if (next.type === 'usage') {
-              if (usage) throw new Error('duplicate_usage');
-              usage = next.usage;
-            } else completion = next;
+            }
           }
           if (!active || !completion)
             throw new Error('provider_stream_truncated');
@@ -544,6 +572,7 @@ export class VulpesAgent {
                 this.ledger,
                 flash.transport,
                 'failed',
+                'consumer',
               );
               request = {
                 ...request,
@@ -600,115 +629,24 @@ export class VulpesAgent {
                   : 'Reading your data',
               },
             });
-            const output = proposing
-              ? await prepareGoalTool(
-                  this.context,
-                  call.name as 'propose_goal' | 'propose_goal_revision',
-                  call.arguments,
-                  toolStep.id,
-                )
-              : await executeReadTool(this.context, call.name, call.arguments);
-            const evidence = {
-              version: 1 as const,
-              ownerId: this.context.userId,
-              runId: lease.runId,
-              stepId: toolStep.id,
-              resultId: randomUUID(),
+            const executed = await executeToolStep({
+              context: this.context,
+              ledger: this.ledger,
+              step: toolStep,
+              call,
               dataRevision: context.dataRevision,
-            };
-            routingEvidence.push({ id: evidence.resultId, result: output });
-            const result = {
-              evidence,
-              result: JSON.parse(
-                JSON.stringify(providerToolResult(output)),
-              ) as z.infer<ReturnType<typeof z.json>>,
-            };
-            const trace = {
-              projectionVersion: toolProjectionVersion,
-              evidence,
-              result: output,
-              providerResult: result.result,
-            };
-            if (proposing) {
-              const saved = await this.ledger.checkpointGoal(
-                toolStep,
-                output,
-                trace,
-              );
-              parts = saved.parts;
-              active = null;
-              yield event({
-                type: 'card.ready',
-                payload: {
-                  message_id: messageId,
-                  card: { type: 'goal_proposal', reference: saved.reference },
-                },
-              });
-            } else {
-              await this.ledger.checkpoint(
-                toolStep,
-                Buffer.from(JSON.stringify(trace)),
-              );
-              await this.ledger.settle(toolStep, null, 'completed');
-            }
-            const summary = z
-              .object({ kind: z.literal('summary'), data: DataSummarySchema })
-              .safeParse(output);
-            if (summary.success) {
-              if (summary.data.data.dataRevision !== context.dataRevision)
-                throw new Error('data_changed');
-              parts.push(
-                ChatPartSchema.parse({
-                  type: 'metric_summary',
-                  evidence,
-                  result: summary.data.data,
-                }),
-              );
-              await this.ledger.checkpointMessage(lease, parts);
-              yield event({
-                type: 'card.ready',
-                payload: {
-                  message_id: messageId,
-                  card: {
-                    type: 'metric_trend',
-                    result: summary.data.data.analysis,
-                  },
-                },
-              });
-            }
-            if (call.name === 'get_goal_progress') {
-              const goalId = z
-                .strictObject({ goal_id: z.uuid() })
-                .parse(call.arguments).goal_id;
-              const progress = GoalProgressResultSchema.parse(output);
-              parts.push({
-                type: 'goal_progress',
-                evidence,
-                goalId,
-                result: progress,
-              });
-              await this.ledger.checkpointMessage(lease, parts);
-              yield event({
-                type: 'card.ready',
-                payload: {
-                  message_id: messageId,
-                  card: { type: 'goal_progress', goalId, result: progress },
-                },
-              });
-            }
-            yield event({
-              type: 'tool.result',
-              payload: {
-                step_id: toolStep.id,
-                tool_name: call.name,
-                result_reference: `analysis:${toolStep.id}`,
-                summary: proposing
-                  ? 'Pending proposal saved. Explicit review and confirmation required.'
-                  : summary.success
-                    ? 'Deterministic summary saved with source and coverage.'
-                    : 'Read-only result saved.',
-              },
+              messageId,
+              parts,
+              signal,
             });
+            parts = executed.parts;
+            const { evidence, result } = executed;
+            routingEvidence.push({
+              id: evidence.resultId,
+              result: executed.output,
+            });
+            active = null;
+            for (const next of executed.events) yield event(next);
             context.manifest.included.push({
               reference: {
                 id: evidence.resultId,
@@ -751,13 +689,7 @@ export class VulpesAgent {
         });
       } else throw new Error('run_not_completed');
     } catch (error) {
-      if (active)
-        await this.ledger
-          .settle(active, null, signal.aborted ? 'cancelled' : 'failed')
-          .catch(() => undefined);
-      last = await this.ledger
-        .finish(lease, signal.aborted ? 'cancelled' : 'failed')
-        .catch(() => last);
+      await finishFailure();
       if (last.state === 'cancellation_requested')
         last = await this.ledger.summary(lease.runId).catch(() => last);
       yield last.state === 'cancelled'
@@ -783,6 +715,11 @@ export class VulpesAgent {
               retryable: false,
             },
           });
+    } finally {
+      // The consumer owns finalization so a parser's valid buffered prefix can
+      // checkpoint while the run is writable. Iterator disposal must still close
+      // the run, even when it bypasses the catch block; it emits nothing here.
+      if (!failureHandled && last.state !== 'completed') await finishFailure();
     }
   }
 }

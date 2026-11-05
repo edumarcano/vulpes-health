@@ -98,6 +98,7 @@ export interface PreparedStep {
   readonly bodyHash: string;
   readonly price: VerifiedPrice | null;
   readonly type: StepInput['type'];
+  readonly payloadExpiresAt: string;
 }
 type Functions = Database['public']['Functions'];
 
@@ -270,13 +271,17 @@ export class ExecutionService {
       );
     return RunSummarySchema.parse(value);
   }
-  private async envelope(purpose: PayloadPurpose, bytes: Uint8Array) {
+  private envelope(
+    purpose: PayloadPurpose,
+    bytes: Uint8Array,
+    expiresAt: string,
+  ) {
     return encryptBytes(
       {
         id: randomUUID(),
         user_id: this.context.userId,
         purpose,
-        expires_at: await payloadExpiry(purpose),
+        expires_at: expiresAt,
       },
       bytes,
       readEncryptionKeys(),
@@ -334,16 +339,18 @@ export class ExecutionService {
       reservationUSD: price ? reserveMaximum(price) : '0',
       metadata,
     };
-    const envelope = await this.envelope(
-      input.type === 'tool' ? 'tool_input' : 'ai_request',
-      body,
-    );
+    const purpose = input.type === 'tool' ? 'tool_input' : 'ai_request';
+    // All run purposes share the database's seven-day limit. Fix it at prepare
+    // time so later checkpoints cannot extend this step's retention window.
+    const payloadExpiresAt = await payloadExpiry(purpose);
+    const envelope = this.envelope(purpose, body, payloadExpiresAt);
     const context =
       input.context === undefined
         ? undefined
-        : await this.envelope(
+        : this.envelope(
             'provider_state',
             Buffer.from(JSON.stringify(input.context)),
+            payloadExpiresAt,
           );
     await this.rpc('prepare_step_v1', {
       p_owner: this.context.userId,
@@ -361,6 +368,7 @@ export class ExecutionService {
       bodyHash: envelope.content_hash,
       price,
       type: input.type,
+      payloadExpiresAt,
     });
   }
   async authorize(step: PreparedStep): Promise<void> {
@@ -528,9 +536,10 @@ export class ExecutionService {
         'response_too_large',
         'The provider response exceeded its trace limit.',
       );
-    const output = await this.envelope(
+    const output = this.envelope(
       step.type === 'tool' ? 'tool_output' : 'ai_response',
       bytes,
+      step.payloadExpiresAt,
     );
     return this.rpc('checkpoint_step_v1', {
       p_owner: this.context.userId,
@@ -565,7 +574,7 @@ export class ExecutionService {
           p_step: step.id,
           p_request: result.request,
           p_payload: result.payload,
-          p_output: await this.envelope('tool_output', bytes),
+          p_output: this.envelope('tool_output', bytes, step.payloadExpiresAt),
         }),
       );
   }
@@ -585,9 +594,10 @@ export class ExecutionService {
       void _raw;
       void _cost;
       try {
-        const payload = await this.envelope(
+        const payload = this.envelope(
           'provider_state',
           Buffer.from(JSON.stringify(checked)),
+          step.payloadExpiresAt,
         );
         usageEvidence = {
           usagePayload: payload,
@@ -664,9 +674,10 @@ export class ExecutionService {
       p_executor: step.lease.executor,
       p_fence: step.lease.fence,
       p_step: step.id,
-      p_state: await this.envelope(
+      p_state: this.envelope(
         'provider_state',
         Buffer.from(JSON.stringify(state)),
+        step.payloadExpiresAt,
       ),
     });
   }
