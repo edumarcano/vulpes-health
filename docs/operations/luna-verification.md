@@ -12,6 +12,8 @@ Status: the historical `vulpes-everyday-v7` synthetic checkpoint passed and rema
 
 These steps are a pending approval boundary, not a claim that v8 verification or activation occurred.
 
+The committed `--mode=owner-pilot-luna` build requires matching availability evidence. With unverified v8 it refuses the whole hosted build as `owner_pilot_inference_unverified`; accepting reduced Ask availability alone cannot deploy it. Keep the existing v7 production artifact serving until approved v8 verification/activation, or a separately reviewed hosting-mode change. Do not change evidence merely to pass the build.
+
 ## Historical v7 authorization and fixed bounds
 
 For the completed v7 checkpoint, the owner authorized necessary synthetic Luna batches within the dedicated OpenRouter key's **$0.50 nonrecurring total cap**, with the same confirmed privacy/logging controls and accepted screening exception. That superseded the original one-batch approval. It does not authorize v8 calls, raising the cap, buying credit, changing privacy scope or a new production activation.
