@@ -198,6 +198,171 @@ const send = (id: string, text = 'How has my imported weight changed?') => ({
   message: { id: randomUUID(), text },
   depth: 'auto',
 });
+it.each([
+  ['list_metrics', { extra: 'synthetic' }, 'invalid_arguments'],
+  [
+    'summarize_metric',
+    { metric: 'weight', from: '2026-11-04', to: '2026-10-28', timezone: 'UTC' },
+    'invalid_interval',
+  ],
+] as const)(
+  'inspects and exports rejected tool evidence for %s',
+  async (name, args, code) => {
+    let requests = 0;
+    const transport: RequestTransport = {
+      mode: 'mock',
+      async *send() {
+        yield responseFrame(
+          ++requests === 1
+            ? [
+                {
+                  type: 'function_call',
+                  id: 'rejected',
+                  call_id: 'call-rejected',
+                  name,
+                  arguments: JSON.stringify(args),
+                },
+              ]
+            : [
+                assistantOutput(
+                  'The synthetic tool arguments need correction.',
+                ),
+              ],
+        );
+      },
+    };
+    await withApi(syntheticChatDependencies(transport), async (api) => {
+      const events = await stream(
+        await api('/api/chat', send(await conversation())),
+      );
+      expect(events.at(-1)?.type).toBe('run.completed');
+      const run = events[0]!.run_id;
+      const tool = (
+        await rows('ai_steps', `run_id=eq.${run}&step_type=eq.tool`)
+      )[0]!;
+      const inspector = new InspectionService(a);
+      for (const part of ['input', 'output'] as const) {
+        const raw = await readPayload(
+          a,
+          String(tool[`${part}_payload_id`]),
+          part === 'input' ? 'tool_input' : 'tool_output',
+        );
+        expect(raw.state).toBe('available');
+        if (raw.state !== 'available')
+          throw new Error('missing synthetic evidence');
+        const query = {
+          view: 'payload' as const,
+          run,
+          step: String(tool.id),
+          part,
+        };
+        expect((await inspector.evidence(query)).state).toBe('available');
+        const payload = await api(
+          `/api/executions?${new URLSearchParams(query)}`,
+        );
+        expect((await payload.json()).data.base64).toBe(
+          raw.bytes.toString('base64'),
+        );
+        const exported = await api(
+          `/api/executions?${new URLSearchParams({ ...query, view: 'export' })}`,
+        );
+        expect(exported.headers.get('content-type')).toBe(
+          'application/octet-stream',
+        );
+        expect(Buffer.from(await exported.arrayBuffer())).toEqual(raw.bytes);
+        expect(
+          (
+            await api(
+              `/api/executions?${new URLSearchParams(query)}`,
+              undefined,
+              tokenB,
+            )
+          ).status,
+        ).toBe(404);
+        expect(
+          (
+            await api(
+              `/api/executions?${new URLSearchParams(query)}`,
+              undefined,
+              null,
+            )
+          ).status,
+        ).toBe(401);
+        const parsed = JSON.parse(raw.bytes.toString());
+        if (part === 'output')
+          expect(parsed.result).toMatchObject({
+            kind: 'tool_error',
+            code,
+            recoverable: true,
+          });
+        else expect(parsed.arguments).toEqual(args);
+      }
+      const outputId = String(tool.output_payload_id);
+      const envelope = (
+        await rows('private_payloads', `id=eq.${outputId}`)
+      )[0]!;
+      const raw = await readPayload(a, outputId, 'tool_output');
+      if (raw.state !== 'available') throw new Error('missing output');
+      const original = JSON.parse(raw.bytes.toString());
+      const query = {
+        view: 'payload' as const,
+        run,
+        step: String(tool.id),
+        part: 'output' as const,
+      };
+      const replace = async (
+        id: string,
+        purpose: 'tool_input' | 'tool_output',
+        value: unknown,
+      ) => {
+        await db.admin(
+          `/rest/v1/private_payloads?id=eq.${id}`,
+          'PATCH',
+          encryptBytes(
+            {
+              id,
+              user_id: a.userId,
+              purpose,
+              expires_at: String(envelope.expires_at),
+            },
+            Buffer.from(JSON.stringify(value)),
+            readEncryptionKeys(),
+          ),
+        );
+      };
+      for (const bad of [
+        { ...original, result: { ...original.result, recoverable: false } },
+        { ...original, result: { ...original.result, code: 'invented' } },
+        { ...original, evidence: { ...original.evidence, ownerId: b.userId } },
+        {
+          ...original,
+          providerResult: { ...original.providerResult, hint: 'different' },
+        },
+      ]) {
+        await replace(outputId, 'tool_output', bad);
+        expect((await inspector.evidence(query)).state).toBe('corrupt');
+      }
+      await db.admin(
+        `/rest/v1/private_payloads?id=eq.${outputId}`,
+        'PATCH',
+        envelope,
+      );
+      await replace(String(tool.input_payload_id), 'tool_input', {
+        callId: 'altered',
+        name,
+        arguments: args,
+      });
+      expect(
+        (await inspector.evidence({ ...query, part: 'input' })).state,
+      ).toBe('corrupt');
+      await db.admin(`/rest/v1/private_payloads?id=eq.${outputId}`, 'PATCH', {
+        created_at: new Date(Date.now() - 2000).toISOString(),
+        expires_at: new Date(Date.now() - 1000).toISOString(),
+      });
+      expect((await inspector.evidence(query)).state).toBe('expired');
+    });
+  },
+);
 it('executes the production composition through HTTP, ledger, exact capture and reload with a synthetic provider', async () => {
   const readiness = vi
     .spyOn(catalog, 'getRoleAvailability')

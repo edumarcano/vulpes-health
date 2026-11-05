@@ -14,7 +14,11 @@ import { EvidenceSchema } from '../../shared/chat.js';
 import { ContextManifestSchema } from '../../shared/domain.js';
 import { DataSummarySchema } from '../../shared/data.js';
 import { ToolCallSchema } from '../ai/contracts.js';
-import { providerToolResult, toolArguments } from '../ai/tools.js';
+import {
+  providerToolResult,
+  toolArguments,
+  ToolErrorResultSchema,
+} from '../ai/tools.js';
 import { isVertexEndpoint } from '../config/vertex-endpoint.js';
 
 type Step = Awaited<ReturnType<InspectionService['steps']>>[number];
@@ -266,9 +270,9 @@ export class InspectionService {
             !Object.hasOwn(toolArguments, call.name)
           )
             throw new Error('invalid_tool');
-          toolArguments[call.name as keyof typeof toolArguments].parse(
-            call.arguments,
-          );
+          // Captured arguments can legitimately have been rejected. Integrity
+          // comes from the authenticated envelope, request hash and step binding,
+          // not from retroactively requiring a successful domain validation.
         } else {
           const result = z
             .strictObject({
@@ -300,6 +304,7 @@ export class InspectionService {
                 'insufficient_data',
                 'progress',
                 'routing',
+                'tool_error',
               ]),
             })
             .passthrough()
@@ -318,7 +323,19 @@ export class InspectionService {
             propose_goal: ['goal_proposal'],
             propose_goal_revision: ['goal_proposal'],
           };
-          if (!step.tool_name || !kinds[step.tool_name]?.includes(output.kind))
+          if (output.kind === 'tool_error') {
+            ToolErrorResultSchema.parse(result.result);
+            if (
+              result.projectionVersion !== 3 ||
+              !step.tool_name ||
+              step.tool_name === 'request_escalation' ||
+              !Object.hasOwn(kinds, step.tool_name)
+            )
+              throw new Error('invalid_tool_error');
+          } else if (
+            !step.tool_name ||
+            !kinds[step.tool_name]?.includes(output.kind)
+          )
             throw new Error('invalid_tool_result');
           if (
             output.kind === 'summary' &&
