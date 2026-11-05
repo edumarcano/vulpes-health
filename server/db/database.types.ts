@@ -728,6 +728,9 @@ isOneToOne: false
 "save_chat_state_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_state": Json,"p_step": string }; Returns: string
                            },
+"schema_version_v1":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "settle_step_v1":
 { Args: { "p_evidence": Json,"p_owner": string,"p_run": string,"p_status": string,"p_step": string }; Returns: Json
                            },

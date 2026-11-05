@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { verifyProductionCommit } from './deployment-integrity.js';
+import { verifyHostedSchema } from './schema-compatibility.js';
 import {
   BuildTargetSchema,
   HostedInferenceModeSchema,
@@ -51,6 +52,7 @@ async function verifiedBuild(
   if (source.status !== 0 || source.stdout.trim() !== env.VERCEL_GIT_COMMIT_SHA)
     throw new Error('deployment_source_mismatch');
   const verification = await verifyProductionCommit(env);
+  const schema = await verifyHostedSchema(env);
   const npm = env.npm_execpath;
   if (!npm) throw new Error('Run with npm run build:hosted.');
   const result = spawnSync(process.execPath, [npm, 'run', 'build'], {
@@ -59,7 +61,7 @@ async function verifiedBuild(
   });
   if (result.error || result.status !== 0)
     throw new Error('hosted_build_failed');
-  return { ...checked, ...verification, buildRan: true };
+  return { ...checked, ...verification, ...schema, buildRan: true };
 }
 if (
   process.argv[1] &&
@@ -69,7 +71,7 @@ if (
     console.info(JSON.stringify(await hostedBuild(process.argv.slice(2))));
   } catch {
     console.error(
-      'Hosted build refused or failed. Check target identity, approved inference mode and server-only configuration.',
+      'Hosted build refused or failed. Check target identity, exact-main CI, applied migrations, approved inference mode and server-only configuration.',
     );
     process.exitCode = 1;
   }
