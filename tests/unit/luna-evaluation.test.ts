@@ -40,4 +40,16 @@ describe('fixed Luna verification plan', () => {
       'live_opt_in_required',
     );
   });
+  it('bounds the technical packet independently of deferred model benchmarks', async () => {
+    const plan = await verifyLuna(['--plan', '--technical-only']);
+    expect(plan).toMatchObject({
+      assessment: 'technical_only',
+      requests: 7,
+      maximumUSD: '0.0652344',
+    });
+    expect(lunaPlan('technical_only').cases.map((c) => c.id)).toEqual([
+      'E10',
+      'V03',
+    ]);
+  });
 });

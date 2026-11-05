@@ -4,7 +4,7 @@ The personal-owner handoff is complete. Broader release and family acceptance re
 
 The [independent audit closure matrix](../evidence/audit-remediation-closure.md) tracks F-01 through F-12 and their approval boundaries. No F-13 exists. A local pass or disabled optional provider does not close a required operational or paid-verification gate.
 
-The 2026-11-05 [v8 synthetic verification failed](../evidence/luna-v8-verification.md). Production remains on v7 with deployment disabled. The v9 repair has no passing live binding and must not be treated as release acceptance.
+The 2026-11-05 [v8 synthetic verification failed](../evidence/luna-v8-verification.md). The v9 repair has passing [technical deployment evidence](../evidence/luna-v9-technical.json), with model benchmarks deferred by the owner. It remains subject to PR merge and exact-main CI before deployment. This disposition does not establish formal release acceptance or model answer quality.
 
 ## Reproduce local evidence
 

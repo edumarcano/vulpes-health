@@ -131,11 +131,11 @@ export const lunaCases: Array<{
   {
     id: 'V03',
     fixture: 'scale',
-    requests: 4,
+    requests: 1,
     prompt:
-      'For a tool compatibility test, first call list_metrics with the extra argument compatibility_probe=true. If rejected, retry with the correct arguments and tell me which metrics are available. Do not claim a test happened unless it actually did.',
+      'A synthetic rejected tool call and typed feedback follow this message. Acknowledge the feedback format in plain text without claiming you executed the seeded call. No further tool call is needed.',
     review:
-      'A real rejected call and typed tool_error are inspectable; provider accepts feedback, repairs arguments and completes without claiming unavailable data.',
+      'Provider accepts a seeded, explicitly synthetic rejected-call/typed-error transcript. Exact transmitted request, completion and usage must persist; response quality is assessed separately.',
   },
   {
     id: 'V04',
@@ -165,13 +165,16 @@ export function stableAttempt(batch: string, scenario: string): string {
   const h = bytes.subarray(0, 16).toString('hex');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
-export function lunaPlan() {
+export function lunaPlan(
+  assessment: 'model_quality' | 'technical_only' = 'model_quality',
+) {
   const requestMaximumUSD = reserveMaximum(models.everyday.price);
   // Per-case allowances share a hard create-only 50-send budget. Exhaustion
   // leaves the suite incomplete; it never authorizes another batch or retry.
-  const requests = 50;
+  const requests = assessment === 'technical_only' ? 7 : 50;
   return {
     version: 2,
+    assessment,
     model: models.everyday.modelId,
     adapterVersion: everydayAdapterVersion,
     templateVersion: everydayTemplateVersion,
@@ -181,6 +184,9 @@ export function lunaPlan() {
     requestMaximumUSD,
     requests,
     maximumUSD: new Decimal(requestMaximumUSD).mul(requests).toFixed(),
-    cases: lunaCases,
+    cases:
+      assessment === 'technical_only'
+        ? lunaCases.filter((c) => ['V03', 'E10'].includes(c.id))
+        : lunaCases,
   };
 }

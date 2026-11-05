@@ -27,6 +27,7 @@ import { ConversationQuerySchema } from '../shared/chat.js';
 import { UUIDSchema, DecimalUSDSchema } from '../shared/primitives.js';
 import { runLiveEveryday } from './live-everyday.js';
 import { claimLunaRequest } from './luna-request-budget.js';
+import { toolErrorProbeAdapter } from './luna-tool-error-probe.js';
 
 export async function verifyLuna(
   args: string[],
@@ -38,6 +39,7 @@ export async function verifyLuna(
     allowPositionals: false,
     options: {
       plan: { type: 'boolean' },
+      'technical-only': { type: 'boolean' },
       initialize: { type: 'boolean' },
       case: { type: 'string' },
       'batch-id': { type: 'string' },
@@ -46,8 +48,14 @@ export async function verifyLuna(
       'max-cost-usd': { type: 'string' },
     },
   }).values;
-  const plan = lunaPlan();
-  if (v.plan && Object.keys(v).length === 1) return plan;
+  const plan = lunaPlan(
+    v['technical-only'] ? 'technical_only' : 'model_quality',
+  );
+  if (
+    v.plan &&
+    Object.keys(v).every((k) => ['plan', 'technical-only'].includes(k))
+  )
+    return plan;
   if (!v['allow-spend']) throw new Error('live_opt_in_required');
   const batch = UUIDSchema.parse(v['batch-id']);
   const ceiling = DecimalUSDSchema.parse(v['max-cost-usd']);
@@ -164,7 +172,7 @@ export async function verifyLuna(
     throw new Error('suite_budget_mismatch');
   const allocation = stableAttempt(batch, id + ':allocation');
   const boundedNetwork: typeof fetch = async (input, init) => {
-    await claimLunaRequest(join(root, batch + '-requests'), id);
+    await claimLunaRequest(join(root, batch + '-requests'), id, plan.requests);
     return network(input, init);
   };
   process.env.VULPES_SMOKE_BATCH_ID = allocation;
@@ -177,9 +185,11 @@ export async function verifyLuna(
       boundedNetwork,
       id as 'tool_loop' | 'cancel' | 'disconnect',
       attempt,
+      undefined,
+      plan.assessment,
     );
   else {
-    const scenario = lunaCases.find((c) => c.id === id);
+    const scenario = plan.cases.find((c) => c.id === id);
     if (!scenario) throw new Error('unknown_case');
     const { context, fixtureHash } = await prepareSyntheticBatch(
       allocation,
@@ -211,7 +221,11 @@ export async function verifyLuna(
       async (input, init) => {
         if (sent.length >= scenario.requests)
           throw new Error('scenario_request_limit');
-        await claimLunaRequest(join(root, batch + '-requests'), id);
+        await claimLunaRequest(
+          join(root, batch + '-requests'),
+          id,
+          plan.requests,
+        );
         sent.push(Buffer.from(init?.body as Uint8Array));
         return network(input, init);
       },
@@ -223,7 +237,10 @@ export async function verifyLuna(
       client_request_id: attempt,
     });
     const agent = new VulpesAgent(context, {
-      adapter: new OpenRouterResponsesAdapter(),
+      adapter:
+        id === 'V03'
+          ? await toolErrorProbeAdapter(context)
+          : new OpenRouterResponsesAdapter(),
       transport,
       price: models.everyday.price,
       maxRunCostUSD: new Decimal(plan.requestMaximumUSD).mul(4).toFixed(),
@@ -397,7 +414,14 @@ export async function verifyLuna(
       );
       if (
         id === 'V03' &&
-        !privateTools.some((t) => t.output.includes('"tool_error"'))
+        !sent.some((body) =>
+          JSON.parse(body.toString()).input.some(
+            (turn: { type?: string; output?: string }) =>
+              turn.type === 'function_call_output' &&
+              turn.output &&
+              JSON.parse(turn.output).result?.kind === 'tool_error',
+          ),
+        )
       )
         throw new Error('typed_error_not_exercised');
       for (const runId of runs)
@@ -450,7 +474,12 @@ export async function verifyLuna(
       answersSHA256: answers.map((a) =>
         createHash('sha256').update(a).digest('hex'),
       ),
-      modelAssessment: id === 'E10' ? 'not_applicable' : 'pending_review',
+      modelAssessment:
+        id === 'E10'
+          ? 'not_applicable'
+          : plan.assessment === 'technical_only'
+            ? 'deferred_by_owner'
+            : 'pending_review',
       review: scenario.review,
       accounting: summaries.map((r) => ({
         costUSD: r.costUSD,

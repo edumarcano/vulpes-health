@@ -99,7 +99,7 @@ describe('real provider-smoke CLI', () => {
   );
   it.each([
     ['false', 'live_ai_disabled'],
-    ['true', 'capability_evidence_mismatch'],
+    ['true', 'verification_attempt_required'],
     ['TRUE', 'invalid_live_switch'],
   ])(
     'denies fully supplied live flags with switch %s',
