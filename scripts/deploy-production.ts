@@ -52,7 +52,8 @@ export async function deployProduction(
     .string()
     .regex(/^team_[a-zA-Z0-9]+$/)
     .parse(env.VERCEL_TEAM_ID);
-  if (!token) throw new Error('deployment_credential_missing');
+  if (!token || !env.VULPES_GITHUB_READ_TOKEN)
+    throw new Error('deployment_credential_missing');
   const gateEnv = {
     ...env,
     VERCEL_GIT_COMMIT_SHA: run.head_sha,
@@ -66,7 +67,7 @@ export async function deployProduction(
   }
   async function vercel(path: string, body?: unknown) {
     const response = await request(
-      `https://api.vercel.com/${path}?teamId=${team}`,
+      `https://api.vercel.com/${path}${path.includes('?') ? '&' : '?'}teamId=${team}`,
       {
         method: body === undefined ? 'GET' : 'POST',
         headers: {
@@ -84,6 +85,134 @@ export async function deployProduction(
       ? null
       : response.text().then((s) => (s ? (JSON.parse(s) as unknown) : null));
   }
+  async function github(path: string, body?: unknown) {
+    const response = await request(
+      `https://api.github.com/repos/edumarcano/vulpes-health/${path}`,
+      {
+        method: body === undefined ? 'GET' : 'POST',
+        headers: {
+          Authorization: `Bearer ${env.VULPES_GITHUB_READ_TOKEN}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        redirect: 'error',
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!response.ok) throw new Error('promotion_journal_unavailable');
+    return response.json() as Promise<unknown>;
+  }
+  const Intent = z.object({
+    id: z.number().int().positive(),
+    payload: z.object({
+      version: z.literal(1),
+      deploymentId: Deployment.shape.id,
+      after: z.number().nonnegative(),
+    }),
+  });
+  const Project = z.object({
+    id: z.literal(project),
+    rollingRelease: z.unknown().nullish(),
+    targets: z.object({ production: z.object({ id: Deployment.shape.id }) }),
+    lastAliasRequest: z
+      .object({
+        jobStatus: z.string(),
+        type: z.string(),
+        toDeploymentId: Deployment.shape.id,
+        requestedAt: z.number().nonnegative(),
+      })
+      .nullish(),
+  });
+  async function projectState() {
+    const state = Project.parse(await vercel(`v9/projects/${project}`));
+    if (state.rollingRelease)
+      throw new Error('promotion_rolling_release_unsupported');
+    return state;
+  }
+  async function complete(intent: z.infer<typeof Intent>) {
+    for (let poll = 0; poll < 60; poll++) {
+      const state = await projectState();
+      const job = state.lastAliasRequest;
+      // An accepted POST can precede visibility of its alias job. Never mistake
+      // an older success for this intent, even when it targets the same artifact.
+      if (job && job.requestedAt > intent.payload.after) {
+        if (
+          job.type !== 'promote' ||
+          job.toDeploymentId !== intent.payload.deploymentId
+        )
+          throw new Error('promotion_superseded');
+        if (job.jobStatus === 'succeeded') {
+          const aliases = z
+            .object({
+              aliases: z
+                .array(
+                  z.object({
+                    status: z.literal('completed'),
+                    alias: z.object({
+                      alias: z.string(),
+                      deploymentId: Deployment.shape.id,
+                    }),
+                  }),
+                )
+                .min(1),
+              pagination: z.object({ next: z.number().nullish() }),
+            })
+            .parse(
+              await vercel(`v9/projects/${project}/promote/aliases?limit=100`),
+            );
+          if (
+            state.targets.production.id !== intent.payload.deploymentId ||
+            aliases.pagination.next != null ||
+            !aliases.aliases.some(
+              (a) => a.alias.alias === 'vulpes-health.vercel.app',
+            ) ||
+            aliases.aliases.some(
+              (a) => a.alias.deploymentId !== intent.payload.deploymentId,
+            )
+          )
+            throw new Error('promotion_aliases_unverified');
+          await github(`deployments/${intent.id}/statuses`, {
+            state: 'success',
+            auto_inactive: false,
+          });
+          return;
+        }
+        if (!['queued', 'pending', 'in-progress'].includes(job.jobStatus))
+          throw new Error('promotion_failed');
+      }
+      await pause();
+    }
+    throw new Error('promotion_unresolved');
+  }
+  // A durable intent is written BEFORE the external mutation. Process death,
+  // ambiguous responses and timeouts cannot silently release the cross-run fence.
+  const previous = z
+    .array(Intent)
+    .max(1)
+    .parse(
+      await github(
+        'deployments?environment=production&task=vulpes-promote&per_page=1',
+      ),
+    )[0];
+  if (previous) {
+    const status = z
+      .array(z.object({ state: z.string(), description: z.string().nullish() }))
+      .parse(await github(`deployments/${previous.id}/statuses?per_page=1`))[0];
+    const manuallyResolved =
+      status?.state === 'inactive' &&
+      status.description ===
+        'Owner verified no pending promotion and consistent production aliases.';
+    if (status?.state !== 'success' && !manuallyResolved)
+      await complete(previous);
+  }
+  const initial = await projectState();
+  if (
+    initial.lastAliasRequest &&
+    initial.lastAliasRequest.jobStatus !== 'succeeded'
+  )
+    throw new Error('promotion_unresolved');
   await verify();
   const created = z.object({ id: Deployment.shape.id }).parse(
     await vercel('v13/deployments', {
@@ -108,8 +237,45 @@ export async function deployProduction(
       throw new Error('deployment_build_failed');
     if (deployed.readyState === 'READY') {
       const proof = await verify();
+      const before = await projectState();
+      if (
+        before.lastAliasRequest &&
+        before.lastAliasRequest.jobStatus !== 'succeeded'
+      )
+        throw new Error('promotion_unresolved');
+      const payload = {
+        version: 1,
+        deploymentId: created.id,
+        after: before.lastAliasRequest?.requestedAt ?? 0,
+      };
+      const intent = Intent.parse({
+        ...z.object({ id: Intent.shape.id }).parse(
+          await github('deployments', {
+            ref: run.head_sha,
+            task: 'vulpes-promote',
+            environment: 'production',
+            production_environment: true,
+            auto_merge: false,
+            required_contexts: [],
+            payload,
+          }),
+        ),
+        payload,
+      });
+      await github(`deployments/${intent.id}/statuses`, {
+        state: 'in_progress',
+        auto_inactive: false,
+      });
+      await verify();
       await vercel(`v10/projects/${project}/promote/${created.id}`, {});
-      return { ...proof, deployment: created.id, promotion: 'requested' };
+      await complete(intent);
+      await verify();
+      return {
+        ...proof,
+        deployment: created.id,
+        promotion: 'succeeded',
+        promotionRecord: intent.id,
+      };
     }
     await pause();
   }

@@ -31,25 +31,107 @@ function fixture(
     wrongSource?: boolean;
     attempt?: number;
     denied?: boolean;
+    promotionStates?: string[];
+    previousIntent?: boolean;
+    partial?: boolean;
+    promotionSuperseded?: boolean;
+    ambiguousPost?: boolean;
+    staleJob?: boolean;
+    supersededAfterPost?: boolean;
+    journalDenied?: boolean;
   } = {},
 ) {
   const mutations: { url: string; body: Record<string, unknown> }[] = [];
   let staged = false;
   let ready = false;
+  let promoting = options.previousIntent ?? false;
+  let promotionReads = 0;
+  let requestVersion = options.previousIntent ? 1 : 0;
+  const statuses: string[] = [];
   const request = (async (
     input: string | URL | Request,
     init?: RequestInit,
   ) => {
     const url = String(input);
     expect(init?.redirect).toBe('error');
+    if (
+      url.includes('/deployments') &&
+      url.startsWith('https://api.github.com/')
+    ) {
+      if (url.includes('/statuses')) {
+        if (init?.method === 'POST') {
+          statuses.push(JSON.parse(String(init.body)).state);
+          return Response.json({ id: 1 });
+        }
+        return Response.json([{ state: 'in_progress' }]);
+      }
+      if (init?.method === 'POST')
+        return Response.json(
+          { id: 456 },
+          { status: options.journalDenied ? 403 : 200 },
+        );
+      return Response.json(
+        options.previousIntent
+          ? [
+              {
+                id: 456,
+                payload: {
+                  version: 1,
+                  deploymentId: 'dpl_synthetic',
+                  after: 0,
+                },
+              },
+            ]
+          : [],
+      );
+    }
     if (url.startsWith('https://api.vercel.com/')) {
       if (init?.method === 'POST') {
         mutations.push({ url, body: JSON.parse(String(init.body)) });
         staged = true;
+        if (url.includes('/promote/')) {
+          expect(statuses.at(-1)).toBe('in_progress');
+          promoting = true;
+          requestVersion++;
+          if (options.ambiguousPost)
+            throw new Error('ambiguous_network_failure');
+          return new Response(null, { status: 202 });
+        }
         return Response.json(
           { id: 'dpl_synthetic' },
           { status: options.denied ? 403 : 200 },
         );
+      }
+      if (url.includes(`/v9/projects/${projectId}/promote/aliases`))
+        return Response.json({
+          aliases: [
+            {
+              status: options.partial ? 'failed' : 'completed',
+              alias: {
+                alias: 'vulpes-health.vercel.app',
+                deploymentId: 'dpl_synthetic',
+              },
+            },
+          ],
+          pagination: { next: null },
+        });
+      if (url.includes(`/v9/projects/${projectId}?`)) {
+        const states = options.promotionStates ?? ['succeeded'];
+        const jobStatus = states[Math.min(promotionReads++, states.length - 1)];
+        return Response.json({
+          id: projectId,
+          targets: { production: { id: 'dpl_synthetic' } },
+          lastAliasRequest: promoting
+            ? {
+                jobStatus,
+                type: 'promote',
+                toDeploymentId: options.promotionSuperseded
+                  ? 'dpl_other'
+                  : 'dpl_synthetic',
+                requestedAt: options.staleJob ? 0 : requestVersion,
+              }
+            : null,
+        });
       }
       ready = true;
       return Response.json({
@@ -68,7 +150,8 @@ function fixture(
         object: {
           sha:
             (staged && options.superseded) ||
-            (ready && options.supersededAtPromotion)
+            (ready && options.supersededAtPromotion) ||
+            (promoting && options.supersededAfterPost)
               ? 'b'.repeat(40)
               : sha,
         },
@@ -93,7 +176,7 @@ function fixture(
       ],
     });
   }) as typeof fetch;
-  return { request, mutations };
+  return { request, mutations, statuses, promotionReads: () => promotionReads };
 }
 describe('automatic production release', () => {
   it('stages an immutable Git SHA without assigning domains, then promotes the verified artifact', async () => {
@@ -103,7 +186,7 @@ describe('automatic production release', () => {
     ).resolves.toMatchObject({
       commit: sha,
       deployment: 'dpl_synthetic',
-      promotion: 'requested',
+      promotion: 'succeeded',
     });
     expect(f.mutations).toHaveLength(2);
     expect(f.mutations[0]!.body).toEqual({
@@ -114,6 +197,61 @@ describe('automatic production release', () => {
       autoAssignCustomDomains: false,
     });
     expect(f.mutations[1]!.url).toContain(`/promote/dpl_synthetic?`);
+  });
+  it('waits through queued and pending promotion until terminal success', async () => {
+    const f = fixture({
+      promotionStates: ['pending', 'in-progress', 'succeeded'],
+    });
+    await expect(
+      deployProduction(event, env, f.request, async () => {}),
+    ).resolves.toMatchObject({ promotion: 'succeeded' });
+    expect(f.statuses).toEqual(['in_progress', 'success']);
+    expect(f.promotionReads()).toBeGreaterThanOrEqual(3);
+  });
+  it.each([
+    { promotionStates: ['failed'] },
+    { promotionStates: ['pending'] },
+    { partial: true },
+    { promotionSuperseded: true },
+    { ambiguousPost: true },
+    { staleJob: true },
+  ])(
+    'retains an unresolved intent when promotion cannot be verified %j',
+    async (options) => {
+      const f = fixture(options);
+      await expect(
+        deployProduction(event, env, f.request, async () => {}),
+      ).rejects.toThrow();
+      expect(f.statuses).toEqual(['in_progress']);
+    },
+  );
+  it('refuses another staging request while a previous workflow promotion remains unresolved', async () => {
+    const f = fixture({ previousIntent: true, promotionStates: ['pending'] });
+    await expect(
+      deployProduction(event, env, f.request, async () => {}),
+    ).rejects.toThrow();
+    expect(f.mutations).toEqual([]);
+  });
+  it('finishes tracking an accepted promotion before reporting a newer main head', async () => {
+    const f = fixture({ supersededAfterPost: true });
+    await expect(
+      deployProduction(event, env, f.request, async () => {}),
+    ).rejects.toThrow('deployment_commit_not_main');
+    expect(f.statuses).toEqual(['in_progress', 'success']);
+  });
+  it('does not submit a promotion without a durable intent', async () => {
+    const f = fixture({ journalDenied: true });
+    await expect(deployProduction(event, env, f.request)).rejects.toThrow(
+      'promotion_journal_unavailable',
+    );
+    expect(f.mutations).toHaveLength(1);
+  });
+  it('reconciles a previous completed promotion before beginning a new deployment', async () => {
+    const f = fixture({ previousIntent: true });
+    await expect(
+      deployProduction(event, env, f.request, async () => {}),
+    ).resolves.toMatchObject({ promotion: 'succeeded' });
+    expect(f.statuses).toEqual(['success', 'in_progress', 'success']);
   });
   it.each(['failure', 'cancelled', null])(
     'rejects unsuccessful trigger %s before any request',
