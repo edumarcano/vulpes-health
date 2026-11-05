@@ -44,11 +44,9 @@ const errorBody = {
   request_id,
 };
 describe('synthetic hosting preparation', () => {
-  it('binds native Git builds to the existing production target and rejects preview or other-branch execution', () => {
+  it('disables native Git builds and binds manual builds to the production target', () => {
     const config = JSON.parse(readFileSync('vercel.json', 'utf8'));
-    // ** also matches branch names containing slashes; Vercel enables a branch
-    // when any matching rule is true.
-    expect(config.git.deploymentEnabled).toEqual({ '**': false, main: true });
+    expect(config.git.deploymentEnabled).toBe(false);
     expect(config.regions).toEqual(['iad1']);
     expect(
       config.headers.find(

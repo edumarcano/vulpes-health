@@ -6,11 +6,9 @@ import { matchesSyntheticAnswer } from '../../scripts/live-everyday.js';
 
 const canary = 'synthetic-credential-canary-not-a-real-key';
 async function cli(args: string[], liveSwitch = 'false') {
-  const npm = process.env.npm_execpath;
-  if (!npm) throw new Error('Run through npm test.');
   const child = spawn(
     process.execPath,
-    [npm, 'run', 'test:providers', '--', ...args],
+    ['--import', 'tsx', 'scripts/provider-smoke.ts', ...args],
     {
       env: {
         ...process.env,
