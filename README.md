@@ -46,5 +46,11 @@ Database and browser tests use disposable synthetic accounts and a local Supabas
 | [Implementation decisions](docs/DECISIONS_IMPLEMENTATION.md) | Lasting decisions and corrections |
 | [Evidence index](docs/evidence/README.md) | Recorded provider, owner-pilot and historical results |
 | [AGENTS.md](AGENTS.md) | Project engineering and safety rules |
+| [Contributing](CONTRIBUTING.md) | Local verification and safe public contributions |
+| [Security policy](SECURITY.md) | Private vulnerability reporting |
 
 Vulpes uses React, Vite, TypeScript, Supabase and Vercel in a modular monolith. Provider adapters are isolated from domain services. The application is a wellness tool and does not provide medical diagnosis.
+
+## License
+
+Original code and documentation are licensed under [Apache-2.0](LICENSE). Supplied brand artwork has separate [branding permissions](BRANDING.md), and copied third-party materials retain their [upstream licenses](THIRD_PARTY_NOTICES.md).
