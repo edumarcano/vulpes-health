@@ -13,8 +13,10 @@ export function pwaShell(): Plugin {
         '/offline.css',
         '/manifest.webmanifest',
         '/icons/favicon-32.png',
+        '/icons/apple-touch-icon.png',
         '/icons/vulpes-192.png',
         '/icons/vulpes-512.png',
+        '/icons/vulpes-maskable-1024.png',
         '/brand/vulpes-horizontal.png',
         '/brand/vulpes-reversed.png',
       ];

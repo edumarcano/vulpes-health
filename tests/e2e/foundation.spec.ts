@@ -44,7 +44,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
         expect(
           await logo.evaluate(
             (image: HTMLImageElement) =>
-              image.complete && image.naturalWidth === 3200,
+              image.complete &&
+              image.naturalWidth === 2945 &&
+              image.naturalHeight === 940,
           ),
         ).toBe(true);
         expect(

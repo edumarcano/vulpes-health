@@ -1,0 +1,296 @@
+{
+  "masters/descriptor-charcoal-transparent-1800.png": {
+    "width": 1800,
+    "height": 66,
+    "bytes": 104899,
+    "sha256": "ad675dae7637c2dddfa23e898fd830e9a45cb24142927d7cdf358df8be02d44c"
+  },
+  "masters/vulpes-wordmark-white-transparent.png": {
+    "width": 2600,
+    "height": 755,
+    "bytes": 207975,
+    "sha256": "7bce583542e577dd0b428ad2d3db86472cf4dfa8605fb52f316960dc32cbc298"
+  },
+  "masters/fox-orange-transparent-2000.png": {
+    "width": 1712,
+    "height": 1600,
+    "bytes": 882232,
+    "sha256": "7e9098bb0c88a561cc2b00df4350f30fb1cc40832fe7bc4e8bd7322bad3d084d"
+  },
+  "masters/vulpes-fox-charcoal-transparent.png": {
+    "width": 2191,
+    "height": 2048,
+    "bytes": 1152520,
+    "sha256": "ed6421f8c3a5c3ce81a2489a401a3b42499edca405dc4419c32393cf9e7ffa64"
+  },
+  "masters/vulpes-wordmark-native.png": {
+    "width": 530,
+    "height": 154,
+    "bytes": 14010,
+    "sha256": "b095ad9ea3979dec51a0b199afeb14bfb6e26681282689e64cbb27aa3256fdda"
+  },
+  "masters/wordmark-charcoal-transparent-2500.png": {
+    "width": 2500,
+    "height": 726,
+    "bytes": 347954,
+    "sha256": "ae26afe7bc6b4aac6b89c58e683a8b93d9de4d19c2aa5c6642eb9585abab1a5d"
+  },
+  "masters/vulpes-wordmark-orange-transparent.png": {
+    "width": 2600,
+    "height": 755,
+    "bytes": 419407,
+    "sha256": "52f9351d0b95c0e3ade2e4d9efc5669ce2e82dd680ac06950e994c8a81ad4305"
+  },
+  "masters/vulpes-fox-orange-transparent.png": {
+    "width": 2191,
+    "height": 2048,
+    "bytes": 1298383,
+    "sha256": "4a61ece2425e6b84475c2219ca29c00cd1ef537228e7055bedf21cd45f03ec8a"
+  },
+  "masters/vulpes-wordmark-charcoal-transparent.png": {
+    "width": 2600,
+    "height": 755,
+    "bytes": 370000,
+    "sha256": "eeabfb4997d9a02c05db2863cd0a387f310fbacc561c35f97aa42c0af3466881"
+  },
+  "masters/descriptor-native.png": {
+    "width": 516,
+    "height": 19,
+    "bytes": 6028,
+    "sha256": "d201520757c4d7e51381bffdfbf2cc39d0735054c4efa1a3332dd7ac45691acf"
+  },
+  "masters/fox-orange-native.png": {
+    "width": 214,
+    "height": 200,
+    "bytes": 17215,
+    "sha256": "8c5b20cd1fad9bc7018b409c52fce531bfac53f1643bbbcf82fde9e829ea42b5"
+  },
+  "masters/vulpes-fox-white-transparent.png": {
+    "width": 2191,
+    "height": 2048,
+    "bytes": 531986,
+    "sha256": "6a8d05b294d165bd3339bf260fb423deca227708e156bb6c19cccd8fc52a111b"
+  },
+  "preview/01-main-proof.png": {
+    "width": 2200,
+    "height": 2450,
+    "bytes": 542664,
+    "sha256": "d4048a64a6a7ea0b09eb91bf03b9e051a75c41683838ca31b215c3c897ba29e6"
+  },
+  "preview/02-variants-proof.png": {
+    "width": 2100,
+    "height": 1760,
+    "bytes": 347419,
+    "sha256": "7e503f09cb3768b1cf3942a2b791dbb88323721ed889e5d73035e9672964a38b"
+  },
+  "favicons/favicon-32.png": {
+    "width": 32,
+    "height": 32,
+    "bytes": 1625,
+    "sha256": "05975d13899bca2b1c35da5e419e548d7f748e73dbccb06918bd520a4f08d05a"
+  },
+  "favicons/favicon-512.png": {
+    "width": 512,
+    "height": 512,
+    "bytes": 73050,
+    "sha256": "8fd87331b1970d721f32c9bb4f4f2779905d6f671dae951c7453e58eb0c3ed83"
+  },
+  "favicons/favicon-48.png": {
+    "width": 48,
+    "height": 48,
+    "bytes": 2793,
+    "sha256": "9c2b2deb88d38314e95c2cf6b9843da3098192df66c7afa209358bebcc4e1d48"
+  },
+  "favicons/favicon-256.png": {
+    "width": 256,
+    "height": 256,
+    "bytes": 27251,
+    "sha256": "23b9d7199a22c3e7d4afaa6239cc0fb9cd479502f125043d6bb9bb1baa42b7dd"
+  },
+  "favicons/favicon-180.png": {
+    "width": 180,
+    "height": 180,
+    "bytes": 16532,
+    "sha256": "573f2fdd8a7614d5e20d726904cec6e234da66769487f1f9167f331383138078"
+  },
+  "favicons/favicon-128.png": {
+    "width": 128,
+    "height": 128,
+    "bytes": 10328,
+    "sha256": "a5b4ea7c6636dd59d658a90e3f0c5649cc67e1cf7f0d23d0cac0a4ff4dd5bd15"
+  },
+  "favicons/favicon-64.png": {
+    "width": 64,
+    "height": 64,
+    "bytes": 4113,
+    "sha256": "e4eae983f0e8cd58780f7f65399425c3ad6296470646599bae0671e2a0ca42dc"
+  },
+  "favicons/favicon-16.png": {
+    "width": 16,
+    "height": 16,
+    "bytes": 596,
+    "sha256": "72e407b71364d56d32664d05972c34aaefa204fc3f49110244f3148e2ff771d9"
+  },
+  "lockups/vulpes-mono-white-wordmark.png": {
+    "width": 2945,
+    "height": 940,
+    "bytes": 251014,
+    "sha256": "02d74a4322a72d68733562812f85b98c8b9e6bd793b4969c284f49f8feaa5d4f"
+  },
+  "lockups/vulpes-mono-charcoal-wordmark.png": {
+    "width": 2945,
+    "height": 940,
+    "bytes": 251025,
+    "sha256": "a7567d87c8ee2993884cc4efcd882fb2ac7999ea072e37e6876e885f6aa3cfc4"
+  },
+  "lockups/vulpes-horizontal-wordmark-light.png": {
+    "width": 2945,
+    "height": 940,
+    "bytes": 272925,
+    "sha256": "2f2bc9479abb85c3477897ad9f109772f561626ec192a3579a9e797d8dc64c89"
+  },
+  "lockups/vulpes-mono-charcoal-descriptor.png": {
+    "width": 2945,
+    "height": 948,
+    "bytes": 303313,
+    "sha256": "b622d5aa294ebb42d59f8b2e25b4eacba304d6fffcd5337f0ccbb06b65e3d2ea"
+  },
+  "lockups/vulpes-horizontal-wordmark-reverse.png": {
+    "width": 2945,
+    "height": 940,
+    "bytes": 271863,
+    "sha256": "ec4096c8f5f83295862e0f0d32799cdcf84b3962cb30a94dde04e65ada3fccb6"
+  },
+  "lockups/vulpes-horizontal-descriptor-reverse.png": {
+    "width": 2945,
+    "height": 948,
+    "bytes": 328870,
+    "sha256": "040594f35889c83a9f56b19d7685bc96816c6bf2766d7bd353f8054bc6ba516a"
+  },
+  "lockups/vulpes-horizontal-descriptor-light.png": {
+    "width": 2945,
+    "height": 948,
+    "bytes": 330103,
+    "sha256": "7a4b2a38593d578cb1f45d5e58f88b1234d61aef46bf2c8487cae58097e67f71"
+  },
+  "lockups/vulpes-stacked-light.png": {
+    "width": 1960,
+    "height": 1656,
+    "bytes": 307230,
+    "sha256": "c3ff7b59881c708ee6fcd753f59869262de4b32199457daa4b465dc79675e101"
+  },
+  "lockups/vulpes-stacked-reverse.png": {
+    "width": 1960,
+    "height": 1656,
+    "bytes": 306428,
+    "sha256": "ddf23837d0413112bdf7290355765ad4179c9b4c58c1344ec68de869840a5223"
+  },
+  "lockups/vulpes-mono-white-descriptor.png": {
+    "width": 2945,
+    "height": 948,
+    "bytes": 303305,
+    "sha256": "6e1925f2ea30c9c2f0534d03404891eeec1fef9f767335dff5b5cd1206b65120"
+  },
+  "icons/vulpes-icon-light-rounded-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 210959,
+    "sha256": "0d60635209fabd0ad91cc1eb8b62d177313047bf52a72726596d60a400775fcc"
+  },
+  "icons/vulpes-icon-dark-rounded-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 210502,
+    "sha256": "5cb66ae4033b5422916e48f9a9b4e77a96a5aaa30c5130450cb79e4033d176df"
+  },
+  "icons/vulpes-icon-dark-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 195457,
+    "sha256": "07d91a4487cd1864ed67a5b6d76f1e0d0596f3b7bdfd96119135bf219e069c47"
+  },
+  "icons/vulpes-icon-light-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 195102,
+    "sha256": "b9e9c1dd242928fa19162137ed2704ef45bbba348c08c5965f27ed1b130c37f7"
+  },
+  "icons/vulpes-icon-light-512.png": {
+    "width": 512,
+    "height": 512,
+    "bytes": 71728,
+    "sha256": "0a84bf7effa7c0580e244aeaed5de25e1f991633ca4f9fa9273a8e7e6c4ad081"
+  },
+  "icons/vulpes-icon-color-512.png": {
+    "width": 512,
+    "height": 512,
+    "bytes": 66233,
+    "sha256": "03112c3153e9f6c44740d40fca022885fb0c34a65b1fafc1ec85e1bfcbf80e97"
+  },
+  "icons/vulpes-icon-color-rounded-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 186748,
+    "sha256": "0c9a3e62cdf7ad54f9856dfe76738bc4c7d32e682ae6e26c0768e4f2688c35eb"
+  },
+  "icons/vulpes-icon-dark-192.png": {
+    "width": 192,
+    "height": 192,
+    "bytes": 18501,
+    "sha256": "ab1654a95b661c518151a72da40896ddbcffbb5f86b8a553b9a8c291117d844c"
+  },
+  "icons/vulpes-icon-light-192.png": {
+    "width": 192,
+    "height": 192,
+    "bytes": 16671,
+    "sha256": "e942a3b0694efdea376dd6a08cab3ba7fac64da4f04cc1a27a2a99035f18f070"
+  },
+  "icons/vulpes-icon-color-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 171277,
+    "sha256": "17364170ff08d79e32a9046350ecc4c11e03922ab656b973517e99a27aab5477"
+  },
+  "icons/vulpes-maskable-color-1024.png": {
+    "width": 1024,
+    "height": 1024,
+    "bytes": 138659,
+    "sha256": "9d08df84912ceddd1341347d469e21ddbe4a039b414ec41331a2b4a7676c4c94"
+  },
+  "icons/vulpes-icon-dark-512.png": {
+    "width": 512,
+    "height": 512,
+    "bytes": 75894,
+    "sha256": "0d95623076ef08e16762a567facaab9abae7da7640e3ea0133d0941a797d2366"
+  },
+  "icons/vulpes-icon-color-192.png": {
+    "width": 192,
+    "height": 192,
+    "bytes": 16202,
+    "sha256": "06c6b6bf12066ad8006943b3c01baf0555226ad0ce4c6234c0bc7b62c22112d6"
+  },
+  "social/vulpes-social-banner-1200x630.png": {
+    "width": 1200,
+    "height": 630,
+    "bytes": 104499,
+    "sha256": "b7366734620bca8e50926437c5050a127ba999fd225f19dfa4b0b5ec49ff7997"
+  },
+  "social/vulpes-avatar-color-1200.png": {
+    "width": 1200,
+    "height": 1200,
+    "bytes": 212847,
+    "sha256": "c7bfc7f206b75fea3053043cf6f368750963cc4d3e31c57baaa84ae1beecab2a"
+  },
+  "social/vulpes-avatar-dark-1200.png": {
+    "width": 1200,
+    "height": 1200,
+    "bytes": 242583,
+    "sha256": "071dd12721c0dfd346aeaf613c5f7b13d9cf52ca3609e61d601796064d0e4bdf"
+  },
+  "social/vulpes-avatar-light-1200.png": {
+    "width": 1200,
+    "height": 1200,
+    "bytes": 245827,
+    "sha256": "345ad860473733581fc3da50514e75df73b6eea4e3257490efb46d152002f4b4"
+  }
+}

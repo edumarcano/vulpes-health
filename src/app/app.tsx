@@ -103,8 +103,8 @@ export function App() {
             <img
               src="/brand/vulpes-horizontal.png"
               alt="Vulpes"
-              width={3200}
-              height={800}
+              width={2945}
+              height={940}
             />
           </picture>
         </NavLink>
