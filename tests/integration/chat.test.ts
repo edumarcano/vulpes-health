@@ -1630,6 +1630,52 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       expect(transport.requests).toHaveLength(1);
     });
   });
+  it('reads terminal message status when cancellation completes during a conversation read', async () => {
+    let reached!: () => void;
+    const started = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const transport = new SyntheticChatTransport('complete', {
+      started: reached,
+      wait,
+    });
+    await withApi(syntheticChatDependencies(transport), async (api) => {
+      const id = await conversation();
+      const response = await api('/api/chat', send(id));
+      await started;
+      const run = (await rows('ai_runs', `conversation_id=eq.${id}`))[0]!;
+      const original = ExecutionService.prototype.summary;
+      const summary = vi.spyOn(ExecutionService.prototype, 'summary');
+      summary.mockImplementationOnce(async function (
+        this: ExecutionService,
+        runId,
+      ) {
+        await new ExecutionService(a).cancel(String(run.id));
+        release();
+        await stream(response);
+        return original.call(this, runId);
+      });
+      try {
+        const saved = (
+          await (await api(`/api/conversations?view=messages&id=${id}`)).json()
+        ).data;
+        expect(saved.run.state).toBe('cancelled');
+        expect(
+          saved.items.find(
+            (item: { role: string }) => item.role === 'assistant',
+          ).status,
+        ).toBe('interrupted');
+        expect(transport.requests).toHaveLength(1);
+      } finally {
+        release();
+        summary.mockRestore();
+      }
+    });
+  });
   it('revoked consent before continuation blocks a second dispatch', async () => {
     const base = new SyntheticChatTransport();
     const transport: RequestTransport = {
