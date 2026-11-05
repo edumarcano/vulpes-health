@@ -31,20 +31,94 @@ export interface PaidRequestDispatcher {
   ): AsyncIterable<Uint8Array>;
 }
 interface StepDispatcher {
-  send(step: PreparedStep, signal: AbortSignal): AsyncIterable<Uint8Array>;
+  send(
+    step: PreparedStep,
+    signal: AbortSignal,
+    cancellationSignal?: AbortSignal,
+  ): AsyncIterable<Uint8Array>;
   bind(
     lease: RunLease,
     binding: Pick<StepInput, 'provider' | 'model' | 'price' | 'context'>,
     onPrepared: (step: PreparedStep) => void,
+    // Distinguish owner cancellation from aborting an adapter's pending read
+    // during disposal after a parser or message-checkpoint failure.
+    cancellationSignal?: AbortSignal,
   ): PaidRequestDispatcher;
 }
+
+const CHECKPOINT_BYTES = 8 * 1024;
+const CHECKPOINT_MS = 250;
+
+// Keep a single outstanding read across timed flushes. Closing must abort the
+// source before awaiting return(), since a provider may be waiting for bytes.
+export async function* streamBatches<T>(
+  source: AsyncIterable<T>,
+  signal: AbortSignal,
+  byteLength: (value: T) => number,
+  close: () => void,
+  sourceFailure: 'discard' | 'flush' = 'discard',
+): AsyncGenerator<T[]> {
+  const iterator = source[Symbol.asyncIterator]();
+  let pending: Promise<IteratorResult<T>> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let abort: () => void = () => undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+  });
+  // A consumer can abort while suspended at yield, before the next race exists.
+  void aborted.catch(() => undefined);
+  try {
+    while (true) {
+      signal.throwIfAborted();
+      const batch: T[] = [];
+      let bytes = 0;
+      const elapsed = new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), CHECKPOINT_MS);
+      });
+      while (bytes < CHECKPOINT_BYTES) {
+        pending ??= iterator.next();
+        let next: IteratorResult<T> | null;
+        try {
+          next = await Promise.race([pending, elapsed, aborted]);
+        } catch (error) {
+          // Parsed generation events remain valid when a later frame fails.
+          // Owner cancellation and raw transport failures never flush a batch.
+          if (sourceFailure === 'flush' && batch.length && !signal.aborted) {
+            clearTimeout(timer);
+            yield batch;
+          }
+          throw error;
+        }
+        signal.throwIfAborted();
+        if (next === null) break;
+        pending = undefined;
+        if (next.done) {
+          if (batch.length) yield batch;
+          return;
+        }
+        batch.push(next.value);
+        bytes += byteLength(next.value);
+      }
+      clearTimeout(timer);
+      if (batch.length) yield batch;
+    }
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener('abort', abort);
+    close();
+    await iterator.return?.();
+  }
+}
+
 export function createDispatcher(
   ledger: ExecutionService,
   transport: RequestTransport,
   consumerExitStatus: 'failed' | 'cancelled' = 'cancelled',
+  finalization: 'dispatcher' | 'consumer' = 'dispatcher',
 ): StepDispatcher {
   const dispatcher: StepDispatcher = {
-    bind(lease, binding, onPrepared) {
+    bind(lease, binding, onPrepared, cancellationSignal) {
       let state: 'fresh' | 'used' = 'fresh';
       return {
         async *send(request, signal) {
@@ -80,11 +154,11 @@ export function createDispatcher(
               'The execution could not start.',
             );
           }
-          yield* dispatcher.send(step, signal);
+          yield* dispatcher.send(step, signal, cancellationSignal);
         },
       };
     },
-    async *send(step, signal) {
+    async *send(step, signal, cancellationSignal = signal) {
       if (
         transport.mode !== 'mock' &&
         !isVerificationTransport(transport) &&
@@ -120,28 +194,64 @@ export function createDispatcher(
       }, executionPolicy.heartbeatSeconds * 1000);
       const chunks: Buffer[] = [];
       let length = 0;
+      let committedLength = -1;
+      let checkpointFailed = false;
       let streamState: 'reading' | 'completed' | 'failed' = 'reading';
-      try {
-        combined.throwIfAborted();
+      const checkpoint = async () => {
+        try {
+          const capturedLength = length;
+          await ledger.checkpoint(step, Buffer.concat(chunks, capturedLength));
+          committedLength = capturedLength;
+        } catch (error) {
+          checkpointFailed = true;
+          throw error;
+        }
+      };
+      async function* capture() {
         for await (const chunk of transport.send(captured, combined)) {
           combined.throwIfAborted();
-          length += chunk.byteLength;
-          if (length > MAX_PAYLOAD_BYTES) throw new Error('response_too_large');
-          chunks.push(Buffer.from(chunk));
-          await ledger.checkpoint(step, Buffer.concat(chunks, length));
-          combined.throwIfAborted();
-          yield chunk;
+          if (length + chunk.byteLength > MAX_PAYLOAD_BYTES)
+            throw new Error('response_too_large');
+          const copy = Buffer.from(chunk);
+          chunks.push(copy);
+          length += copy.byteLength;
+          yield copy;
         }
-        if (length === 0) await ledger.checkpoint(step, Buffer.alloc(0));
+      }
+      try {
+        combined.throwIfAborted();
+        for await (const batch of streamBatches(
+          capture(),
+          combined,
+          (chunk) => chunk.byteLength,
+          () => controller.abort(),
+        )) {
+          combined.throwIfAborted();
+          await checkpoint();
+          combined.throwIfAborted();
+          yield Buffer.concat(batch);
+        }
+        if (length === 0) await checkpoint();
+        signal.throwIfAborted();
         streamState = 'completed';
       } catch {
         streamState = 'failed';
+        if (!checkpointFailed && length > committedLength)
+          await checkpoint().catch(() => undefined);
         await ledger
-          .settle(step, null, signal.aborted ? 'cancelled' : 'failed')
+          .settle(
+            step,
+            null,
+            cancellationSignal.aborted ? 'cancelled' : 'failed',
+          )
           .catch(() => undefined);
-        await ledger
-          .finish(step.lease, signal.aborted ? 'cancelled' : 'failed')
-          .catch(() => undefined);
+        if (finalization === 'dispatcher')
+          await ledger
+            .finish(
+              step.lease,
+              cancellationSignal.aborted ? 'cancelled' : 'failed',
+            )
+            .catch(() => undefined);
         throw new HttpFailure(
           503,
           'execution_interrupted',
@@ -152,11 +262,16 @@ export function createDispatcher(
         controller.abort();
         await heartbeat;
         if (streamState === 'reading') {
+          if (!checkpointFailed && length > committedLength)
+            await checkpoint().catch(() => undefined);
           // A parser rejecting bytes is a failure. The original direct-consumer
           // API continues to classify an abandoned iterator as cancellation.
-          const status = signal.aborted ? 'cancelled' : consumerExitStatus;
+          const status = cancellationSignal.aborted
+            ? 'cancelled'
+            : consumerExitStatus;
           await ledger.settle(step, null, status).catch(() => undefined);
-          await ledger.finish(step.lease, status).catch(() => undefined);
+          if (finalization === 'dispatcher')
+            await ledger.finish(step.lease, status).catch(() => undefined);
         }
       }
     },

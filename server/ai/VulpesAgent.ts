@@ -21,6 +21,7 @@ import {
 } from './ledger/execution.js';
 import {
   createDispatcher,
+  streamBatches,
   type RequestTransport,
 } from './ledger/dispatcher.js';
 import type { VerifiedPrice } from './ledger/pricing.js';
@@ -173,6 +174,17 @@ export class VulpesAgent {
     let active: PreparedStep | null = null;
     let parts: ChatPart[] = [];
     let last: RunSummary = initial;
+    let failureHandled = false;
+    const finishFailure = async () => {
+      failureHandled = true;
+      if (active)
+        await this.ledger
+          .settle(active, null, signal.aborted ? 'cancelled' : 'failed')
+          .catch(() => undefined);
+      last = await this.ledger
+        .finish(lease, signal.aborted ? 'cancelled' : 'failed')
+        .catch(() => last);
+    };
     const messageId = initial.assistantMessageId!;
     try {
       yield event({
@@ -223,6 +235,7 @@ export class VulpesAgent {
           this.ledger,
           dependencies.transport,
           'failed',
+          'consumer',
         );
         yield event({
           type: 'route.selected',
@@ -334,54 +347,75 @@ export class VulpesAgent {
             (step) => {
               active = step;
             },
-          );
-          for await (const raw of dependencies.adapter.generate(request, {
             signal,
-            dispatch,
-          })) {
-            const next = GenerationEventSchema.parse(raw);
-            const prepared = active as PreparedStep | null;
-            if (prepared && !announced) {
-              announced = true;
-              yield event({
-                type: 'step.started',
-                payload: {
-                  step_id: prepared.id,
-                  step_type: 'generation',
-                  label: 'Generating a response',
-                },
-              });
+          );
+          const generation = new AbortController();
+          const generationSignal = AbortSignal.any([signal, generation.signal]);
+          for await (const batch of streamBatches(
+            dependencies.adapter.generate(request, {
+              signal: generationSignal,
+              dispatch,
+            }),
+            generationSignal,
+            (raw) =>
+              raw.type === 'text.delta' ? Buffer.byteLength(raw.text) : 0,
+            () => generation.abort(),
+            'flush',
+          )) {
+            let pendingText = '';
+            for (const raw of batch) {
+              signal.throwIfAborted();
+              const next = GenerationEventSchema.parse(raw);
+              const prepared = active as PreparedStep | null;
+              if (prepared && !announced) {
+                announced = true;
+                yield event({
+                  type: 'step.started',
+                  payload: {
+                    step_id: prepared.id,
+                    step_type: 'generation',
+                    label: 'Generating a response',
+                  },
+                });
+              }
+              if (completion) throw new Error('event_after_completion');
+              if (next.type === 'text.delta') {
+                if (!active) throw new Error('adapter_bypassed_dispatcher');
+                if (Buffer.byteLength(text + next.text) > 65536)
+                  throw new Error('output_limit');
+                text += next.text;
+                const prefix = parts.filter((p) => p.type !== 'text');
+                const oldText = parts
+                  .filter((p) => p.type === 'text')
+                  .map((p) => p.text)
+                  .join('');
+                if (Buffer.byteLength(oldText + next.text) > 65536)
+                  throw new Error('output_limit');
+                parts = [
+                  ...prefix,
+                  { type: 'text', text: oldText + next.text },
+                ];
+                pendingText += next.text;
+              } else if (next.type === 'tool.call') {
+                if (
+                  calls.has(next.call.callId) ||
+                  toolCalls.some((call) => call.callId === next.call.callId)
+                )
+                  throw new Error('repeated_tool_call');
+                toolCalls.push(next.call);
+              } else if (next.type === 'usage') {
+                if (usage) throw new Error('duplicate_usage');
+                usage = next.usage;
+              } else completion = next;
             }
-            if (completion) throw new Error('event_after_completion');
-            if (next.type === 'text.delta') {
-              if (!active) throw new Error('adapter_bypassed_dispatcher');
-              if (Buffer.byteLength(text + next.text) > 65536)
-                throw new Error('output_limit');
-              text += next.text;
-              const prefix = parts.filter((p) => p.type !== 'text');
-              const oldText = parts
-                .filter((p) => p.type === 'text')
-                .map((p) => p.text)
-                .join('');
-              if (Buffer.byteLength(oldText + next.text) > 65536)
-                throw new Error('output_limit');
-              parts = [...prefix, { type: 'text', text: oldText + next.text }];
+            if (pendingText) {
               await this.ledger.checkpointMessage(lease, parts);
+              signal.throwIfAborted();
               yield event({
                 type: 'text.delta',
-                payload: { message_id: messageId, text: next.text },
+                payload: { message_id: messageId, text: pendingText },
               });
-            } else if (next.type === 'tool.call') {
-              if (
-                calls.has(next.call.callId) ||
-                toolCalls.some((call) => call.callId === next.call.callId)
-              )
-                throw new Error('repeated_tool_call');
-              toolCalls.push(next.call);
-            } else if (next.type === 'usage') {
-              if (usage) throw new Error('duplicate_usage');
-              usage = next.usage;
-            } else completion = next;
+            }
           }
           if (!active || !completion)
             throw new Error('provider_stream_truncated');
@@ -538,6 +572,7 @@ export class VulpesAgent {
                 this.ledger,
                 flash.transport,
                 'failed',
+                'consumer',
               );
               request = {
                 ...request,
@@ -654,13 +689,7 @@ export class VulpesAgent {
         });
       } else throw new Error('run_not_completed');
     } catch (error) {
-      if (active)
-        await this.ledger
-          .settle(active, null, signal.aborted ? 'cancelled' : 'failed')
-          .catch(() => undefined);
-      last = await this.ledger
-        .finish(lease, signal.aborted ? 'cancelled' : 'failed')
-        .catch(() => last);
+      await finishFailure();
       if (last.state === 'cancellation_requested')
         last = await this.ledger.summary(lease.runId).catch(() => last);
       yield last.state === 'cancelled'
@@ -686,6 +715,11 @@ export class VulpesAgent {
               retryable: false,
             },
           });
+    } finally {
+      // The consumer owns finalization so a parser's valid buffered prefix can
+      // checkpoint while the run is writable. Iterator disposal must still close
+      // the run, even when it bypasses the catch block; it emits nothing here.
+      if (!failureHandled && last.state !== 'completed') await finishFailure();
     }
   }
 }

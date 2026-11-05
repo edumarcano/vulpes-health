@@ -363,6 +363,55 @@ it.each([
     });
   },
 );
+it('checkpoints buffered parsed text before finalizing a malformed provider run in PostgreSQL', async () => {
+  const text = 'Valid buffered synthetic prefix 🦊';
+  const bytes = Buffer.from(
+    `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: text })}\n\ndata: invalid-json\n\n`,
+  );
+  const transport: RequestTransport = {
+    mode: 'mock',
+    async *send() {
+      yield bytes;
+    },
+  };
+  await withApi(syntheticChatDependencies(transport), async (api) => {
+    const id = await conversation();
+    const events = await stream(await api('/api/chat', send(id)));
+    expect(events.at(-1)?.type).toBe('run.failed');
+    expect(
+      events
+        .filter((e) => e.type === 'text.delta')
+        .map((e) => e.payload.text)
+        .join(''),
+    ).toBe(text);
+    const saved = (
+      await (await api(`/api/conversations?view=messages&id=${id}`)).json()
+    ).data;
+    expect(saved.items[1].parts).toEqual([{ type: 'text', text }]);
+    expect(saved.items[1].status).toBe('failed');
+    expect(saved.run).toMatchObject({
+      state: 'failed',
+      partialOutput: true,
+      costStatus: 'pending',
+      costUSD: null,
+    });
+    expect(Number(saved.run.reservationUSD)).toBeGreaterThan(0);
+    const steps = await rows('ai_steps', `run_id=eq.${events[0]!.run_id}`);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      status: 'failed',
+      cost_status: 'pending',
+      cost_usd: null,
+    });
+    const trace = await readPayload(
+      a,
+      String(steps[0]!.output_payload_id),
+      'ai_response',
+    );
+    expect(trace.state).toBe('available');
+    if (trace.state === 'available') expect(trace.bytes).toEqual(bytes);
+  });
+});
 it('executes the production composition through HTTP, ledger, exact capture and reload with a synthetic provider', async () => {
   const readiness = vi
     .spyOn(catalog, 'getRoleAvailability')
@@ -1681,6 +1730,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
     ).toHaveLength(0);
   });
   it('a failed second message checkpoint preserves only the first durable prefix', async () => {
+    const durablePrefix = 'Durable prefix'.padEnd(8192, '.');
     const original = ExecutionService.prototype.checkpointMessage;
     let writes = 0;
     vi.spyOn(
@@ -1695,12 +1745,14 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       mode: 'mock',
       async *send() {
         yield Buffer.from(
-          'data: {"type":"response.output_text.delta","delta":"Durable prefix"}\n\n',
+          `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: durablePrefix })}\n\n`,
         );
         yield Buffer.from(
           'data: {"type":"response.output_text.delta","delta":" unsaved suffix"}\n\n',
         );
-        yield responseFrame([assistantOutput('Durable prefix unsaved suffix')]);
+        yield responseFrame([
+          assistantOutput(`${durablePrefix} unsaved suffix`),
+        ]);
       },
     };
     await withApi(syntheticChatDependencies(transport), async (api) => {
@@ -1712,12 +1764,12 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
           .filter((e) => e.type === 'text.delta')
           .map((e) => e.payload.text)
           .join(''),
-      ).toBe('Durable prefix');
+      ).toBe(durablePrefix);
       const saved = (
         await (await api(`/api/conversations?view=messages&id=${id}`)).json()
       ).data;
       expect(saved.items[1].parts).toEqual([
-        { type: 'text', text: 'Durable prefix' },
+        { type: 'text', text: durablePrefix },
       ]);
       expect(saved.run).toMatchObject({
         traceState: 'incomplete',

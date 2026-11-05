@@ -671,10 +671,11 @@ describe('persistent run and accounting transactions', () => {
     const lease = await admit(ledger);
     const step = await ledger.prepare(lease, stepInput());
     const encrypt = encryption.encryptBytes;
+    const durablePrefix = 'saved prefix'.padEnd(8192, '.');
     const transport: RequestTransport = {
       mode: 'mock',
       async *send() {
-        yield Buffer.from('saved prefix');
+        yield Buffer.from(durablePrefix);
         vi.spyOn(encryption, 'encryptBytes').mockImplementationOnce(
           (...args) => ({ ...encrypt(...args), key_id: '' }),
         );
@@ -689,7 +690,7 @@ describe('persistent run and accounting transactions', () => {
       ))
         chunks.push(chunk);
     }).rejects.toMatchObject({ code: 'execution_interrupted' });
-    expect(Buffer.concat(chunks).toString()).toBe('saved prefix');
+    expect(Buffer.concat(chunks).toString()).toBe(durablePrefix);
     expect(await ledger.summary(lease.runId)).toMatchObject({
       state: 'failed',
       traceState: 'incomplete',
@@ -704,7 +705,7 @@ describe('persistent run and accounting transactions', () => {
     );
     expect(saved.state).toBe('available');
     if (saved.state === 'available')
-      expect(saved.bytes.toString()).toBe('saved prefix');
+      expect(saved.bytes.toString()).toBe(durablePrefix);
   });
   it('deletion removes retained evidence, excludes history, and fences late response writes while permitting billing', async () => {
     const reading = await addMeasurement(a, {
