@@ -2,6 +2,8 @@
 
 Use the owner-mode commands for the personal account. Synthetic and owner operations have distinct manifest purposes and authorizations; never treat owner data as synthetic. The owner manually rotates backups. There is no scheduler or access-enable command.
 
+The [recovery target and cutover procedure](recovery-cutover.md) sets the seven-day manual snapshot target, the pre-release capture requirement and the explicitly unverified hosted return-to-service gates. It does not add access-enable authority to the fenced tooling.
+
 Before capture, identify the source, output paths, independent encrypted-copy location and separately retained backup, journal and trace keys. Use the exact target/action/path binding and authorization required by the CLI, with an expiry of at most 24 hours. Keep credentials in protected private stdin, not arguments or logs. The plan commands are inert:
 
 ```sh
