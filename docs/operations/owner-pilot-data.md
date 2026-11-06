@@ -2,7 +2,7 @@
 
 The existing hosted personal application uses Luna with current OpenRouter consent, encrypted traces and persistent app/account budgets. The owner handoff and real-data import were completed; [evidence](../evidence/owner-pilot-step5.md) records the tested scope. The [personal-use transition](../evidence/personal-use-transition.md) records the current hosted address and cutover. Repository defaults and CI keep live AI disabled.
 
-Production automation requires one-time owner approval and successful CI on the exact `main` commit; after activation, ordinary successful merges deploy automatically. Follow [deployment activation and ordering limits](deployment-integrity.md). Backups and maintenance remain manual; no background scheduler is configured. Changes to resources, provider settings, budgets or account data require their appropriate owner authorization.
+Production automation requires coordinated owner-approved activation of Vercel Git deployment and the main-only release gate; after activation, successful main commits deploy automatically. Follow [deployment activation and ordering limits](deployment-integrity.md). Backups and maintenance remain manual; no background scheduler is configured. Changes to resources, provider settings, budgets or account data require their appropriate owner authorization.
 
 ## Provider and budgets
 
@@ -32,7 +32,7 @@ The [recovery target](recovery-cutover.md) requires a verified snapshot within s
 
 ## Deployments and checks
 
-The repository disables Git auto-deployments to the existing Vercel project at `https://vulpes-health.vercel.app`. Review and verify PRs locally with synthetic data. GitHub verifies PRs and each `main` push independently; the hosted build requires a successful main-push run for the exact current commit before building. Protect `main` and activate the cloud safeguards using the [deployment approval runbook](deployment-integrity.md) before merging operational changes. Repository changes alone do not prove cloud enforcement.
+The repository enables native Git builds only for `main` on the existing Vercel project at `https://vulpes-health.vercel.app`. Vercel must require `Main / Release gate` before assigning production domains. The gate succeeds only after all three main CI jobs succeed; PR checks retain separate identities. The build independently enforces production configuration, source metadata, approved inference and complete migration compatibility. Follow the [coordinated cutover runbook](deployment-integrity.md) before merging: both old deployment paths must be paused, and the native gate must be configured before Git deployment resumes. Repository changes alone do not prove cloud enforcement.
 
 The root `vercel.json` binds the production project, Supabase origin, `iad1` region and existing Luna pilot mode. The build rejects preview environments, Git builds from other branches, wrong project/origin bindings and missing server configuration. Keep credentials in Vercel's Production environment; the repository contains only public target identifiers. Deployment runs the application build and does not apply database migrations, reset data or call a model. Review and apply required migrations separately before merging dependent code.
 

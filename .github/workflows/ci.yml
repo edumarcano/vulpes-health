@@ -19,7 +19,7 @@ env:
 
 jobs:
   fast:
-    name: Fast checks
+    name: ${{ github.event_name == 'push' && 'Main / Fast checks' || 'Fast checks' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -47,7 +47,7 @@ jobs:
         run: python3 docs/spec/v0.1.0/scripts/validate_spec_package.py
 
   backend_integration:
-    name: Backend integration checks
+    name: ${{ github.event_name == 'push' && 'Main / Backend integration checks' || 'Backend integration checks' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -92,7 +92,7 @@ jobs:
         run: npm run db:stop
 
   browser_integration:
-    name: Browser integration checks
+    name: ${{ github.event_name == 'push' && 'Main / Browser integration checks' || 'Browser integration checks' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -126,3 +126,20 @@ jobs:
         if: ${{ always() }}
         timeout-minutes: 2
         run: npm run db:stop
+
+  release_gate:
+    name: ${{ github.event_name == 'push' && 'Main / Release gate' || 'No production release' }}
+    needs: [fast, backend_integration, browser_integration]
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every main CI job to succeed
+        env:
+          FAST_RESULT: ${{ needs.fast.result }}
+          BACKEND_RESULT: ${{ needs.backend_integration.result }}
+          BROWSER_RESULT: ${{ needs.browser_integration.result }}
+        run: |
+          test "$FAST_RESULT" = success &&
+          test "$BACKEND_RESULT" = success &&
+          test "$BROWSER_RESULT" = success

@@ -1,44 +1,68 @@
-# CI-gated automatic production deployment
+# Native CI-gated production deployment
 
-After one-time approved activation, successful merges need no manual deployment approval. `.github/workflows/production.yml` runs only after a successful main-push `CI` run. It checks out that exact SHA, verifies the latest CI run and attempt and all three required jobs, then asks Vercel to build the same immutable Git SHA with production settings and automatic domain assignment disabled. Once READY, it verifies project, source, current main and CI again before requesting promotion of that artifact. It never pulls production environment files into GitHub.
+Vercel owns production builds, promotion and domain assignment. GitHub Actions owns synthetic CI. Vercel must require **`Main / Release gate`** as a Deployment Check before this flow is activated. Repository configuration alone does not install that cloud check.
 
-| Required check             | Evidence                                                 |
-| -------------------------- | -------------------------------------------------------- |
-| Fast checks                | Successful job on the latest exact-main push run attempt |
-| Backend integration checks | Same run, attempt and SHA                                |
-| Browser integration checks | Same run, attempt and SHA                                |
+A main push starts CI and a Vercel production build. The hosted build validates the bound project, production configuration, source metadata, approved inference mode and complete database migration set before building. It makes no GitHub API requests and needs no local `.git` directory. Vercel holds production promotion until the build and required release check succeed. The application retains its existing ownership, encryption, provider consent and budget controls.
 
-PR checks, skipped jobs, failed/cancelled runs, stale trigger attempts, missing credentials and API errors cannot authorize deployment. Deployment jobs share one concurrency group with cancellation disabled. Before submitting promotion, the workflow writes a `vulpes-promote` deployment intent in GitHub's `production` environment. It waits for Vercel's matching, newer alias job to succeed, checks the production target and every returned alias (including the application domain), then marks the intent successful. Queued promotions remain under observation. Failed builds leave existing production serving; partial or failed promotion may require domain repair.
+## Release check
 
-Every execution reconciles the latest intent before staging anything. Cancellation, timeout, an ambiguous POST response, a superseded alias job or partial alias mapping leaves the durable fence unresolved. Later executions may reconcile a matching completed promotion, but cannot start a new deployment while its outcome is unknown. GitHub's workflow token requires `deployments: write`; the read-only token stored in Vercel retains only Contents/Actions read access. No deployment journal credentials or application secrets are added to the browser.
+| Event | Job identity and behavior |
+| --- | --- |
+| Main push | `Main / Fast checks`, `Main / Backend integration checks`, `Main / Browser integration checks` run independently. |
+| Main push, after all three jobs | `Main / Release gate` runs even after dependency failure and succeeds only when every dependency result is exactly `success`. Failure, cancellation, skipped or absent results cannot pass its shell check. |
+| PR or manual CI | Existing validation names remain; the release job is named `No production release` and is skipped. Its result cannot satisfy the main-only check. |
 
-`build:hosted` independently verifies the checked-out Git identity and CI inside Vercel. Its `--check-only` option validates environment shape without building or checking CI. The Git integration stays connected for source access, while `git.deploymentEnabled: false` prevents its direct deployment path from racing CI.
+Keep the three existing PR checks required by the main ruleset, require up-to-date PRs and prohibit direct/force pushes and deletion with no owner/admin bypass. Configure Vercel to require the release gate, never the old `deploy` job, a generic `CI` status or the PR validation jobs. A passing gate proves the tested main commit; Vercel owns check-status interpretation, retries, supersession and promotion ordering. This replaces the custom latest-attempt/current-main protocol and promotion journal. It makes no absolute zero-window promise about concurrent merges or owner overrides. Do not use Force Promote to bypass a failing gate.
 
-## One-time activation (explicit approval required)
+## Coordinated cutover (owner approval required)
 
-Do not perform these cloud steps until the revised approach is approved. Approve each PR merge separately, in stack dependency order, after updating dependent branches and verifying their new checks.
+This PR enables native Git deployment **only for main** and removes the custom workflow. Do not merge it while the current deployment paths are active. The following operations change cloud configuration and are separate from preparing the PR.
 
-1. Pause merges. In the existing Vercel project's **Settings > Git**, temporarily disconnect Git before any main push. Keep the existing production deployment serving. Do not delete the project, domains, environment variables or deployments.
-2. In GitHub **Settings > Rules > Rulesets**, activate a rule for `main` with no bypass actors, including administrators. Require PRs, up-to-date branches and the three checks above from GitHub Actions; block force pushes and deletion. If the private-repository plan cannot enforce this, stop and resolve that limitation before merging.
-3. In GitHub **Settings > Environments**, create `production`, restrict deployment branches to `main`, and use no required reviewers for ordinary releases. Add a least-privilege, expiring Vercel deployment token as environment secret `VERCEL_TOKEN` and the existing team's ID as environment variable `VERCEL_TEAM_ID`. Restrict the token to the existing project/team as far as the account permits. Do not paste credentials into chat. Keep repository variable `VULPES_AUTODEPLOY_ENABLED` unset until step 6.
-4. In Vercel Production only, add `VULPES_GITHUB_READ_TOKEN`: a fine-grained GitHub token limited to this repository, **Contents: read** and **Actions: read**. Decline any offered redeployment until activation and the first deployment are approved. Set an expiry and rotation reminder. Retain existing production secrets and `npm run build:hosted` configuration. Keep production credentials out of previews and restrict settings/deployment access to the owner.
-5. Inspect effective rules and their enforcement through GitHub's UI/API. After separately authorizing the PR merge, merge with automatic deployment still disabled. Wait for the resulting main CI to pass. Confirm the committed `git.deploymentEnabled: false` is effective when reconnecting Vercel Git, and that reconnection does not create a direct production deployment. If the platform cannot reconnect safely with deployments disabled, stop before reconnecting.
-6. After approving automation activation and its first deployment, set repository variable `VULPES_AUTODEPLOY_ENABLED=true`. Re-run the successful main CI run to trigger the first automated release. No workflow-dispatch deployment path exists. Subsequent successful merges deploy automatically; migrations, provider activation, paid verification and financial changes retain separate approval requirements.
-7. Inspect the Actions safe report (commit, CI run/attempt, deployment ID, promotion record ID and `promotion: succeeded`). Confirm Vercel's staged deployment used the expected project, main SHA, production environment and no production domains before promotion. Verify the completed alias binding independently, then check `/api/status`, sign-in and routing without reading health records or making Luna requests. Record identities and safe outcomes. These live checks remain unverified until authorized.
+1. Pause merges. Disable repository variable `VULPES_AUTODEPLOY_ENABLED` and disconnect the existing Vercel Git integration. Do not delete the project, domains, deployments, secrets or database. Inspect Actions and Vercel for active builds/promotions; allow them to finish and verify consistent production aliases. Resolve any outstanding old `vulpes-promote` intent with the [previous reviewed recovery procedure](https://github.com/edumarcano/vulpes-health/blob/d9fbbc18576abed7196af57138f6f6ab67b5729b/docs/operations/deployment-integrity.md#failure-supersession-and-rollback) before abandoning that journal. Preserve its records. Keep the existing healthy production deployment serving.
+2. After separately approving merge, merge this PR with Git still disconnected. Wait for all main CI jobs and `Main / Release gate` to pass. Record that merge SHA. Keep the existing three PR ruleset requirements; their names have not changed.
+3. In Vercel **Settings > Build and Deployment > Deployment Checks**, choose **Add Checks > GitHub > Select checks to add**, enter the merge SHA and show all checks. Require only **`Main / Release gate`**. Verify it is listed as required before reconnecting Git. If GitHub import requires an active Git connection, stop: first set **Ignored Build Step** to **Don't build anything** and save, then reconnect and configure the check while builds remain disabled. Restore the prior ignored-build setting only after verifying the required check. Do not bypass the check to bootstrap.
+4. Confirm Production tracks `main` and automatic production domain assignment is enabled. Confirm the configured build command still invokes `build:hosted` with the reviewed target and inference mode. Reconnect Git only after the gate is configured (or use the disabled-build sequence in step 3). Inspect any deployment that reconnection creates before requesting another. Verify the expected project and immutable source SHA.
+5. Perform the separately approved live verification below. Do not declare cutover complete from local tests or a green PR. Only after successful verification, remove the unused Vercel `VULPES_GITHUB_READ_TOKEN` and its GitHub token, the GitHub production environment's `VERCEL_TOKEN`/`VERCEL_TEAM_ID`, and the obsolete automation variable. Check they are not shared with another consumer before removing or revoking them. Retain application, database and provider credentials.
 
-## Failure, supersession and rollback
+If any check, ordering or access behavior is unsupported, keep builds paused and the healthy deployment serving. Do not substitute PR-only checks or silently return to unrestricted production publishing.
 
-Disable `VULPES_AUTODEPLOY_ENABLED` to stop future jobs. Inspect both Actions and Vercel's promotion queue; an exited runner can leave a promotion active. A job already started is not stopped by changing the variable. Cancellation cannot recall an accepted API request. With owner approval, use an existing immutable healthy deployment for rollback; do not weaken the current-main check to rebuild an old commit. Retain prior deployments and all existing resources.
+## Live verification and rollback
 
-If the durable intent cannot reconcile, stop and request owner intervention. In plain terms: keep automation off, wait for or resolve every queued Vercel promotion, restore one healthy production deployment if necessary, and verify all production domains point to it with no alias work pending. Preserve the failed intent and workflow logs. Only after approving that reconciliation may the owner mark that GitHub deployment record `inactive` with the exact description `Owner verified no pending promotion and consistent production aliases.` through GitHub's deployment-status API. An ordinary automatically assigned inactive status does not clear the fence. Before resuming, Vercel must show a successful final alias job; failed/partial/unknown states still refuse automation. Do not delete records or mark an unknown outcome successful. No such cloud operation has been performed by these repairs.
+Cloud behavior remains **unverified by repository tests**. With explicit owner approval, use reviewed synthetic-only changes and no provider requests or health-record reads:
 
-There is no cross-service atomic operation that compares GitHub main while Vercel assigns domains. The last current-main/CI check rejects supersession detected before submission; a later merge can still race that request. An accepted promotion is tracked to completion before reporting that the source became stale, and the durable fence protects subsequent workflow executions. This does not prove an absolute zero-window supersession guarantee or prevent an owner changing domains outside automation. If that literal guarantee is required, activation remains blocked pending separately approved coordination. Do not claim F-01 operationally closed until enforcement, journal permissions, staging/domain behavior and rollback have live evidence.
+| Scenario | Required observation |
+| --- | --- |
+| Required main job fails or is skipped | Release gate fails; new artifact never receives the production application domain. |
+| Gate is missing, pending or cancelled | Production promotion remains blocked. PR success alone cannot release it. |
+| All three main jobs succeed | Gate succeeds; Vercel releases that same SHA after its guarded build succeeds. |
+| Required check is rerun and fails | Record whether Vercel uses the current result; never assume an already-promoted artifact will be automatically rolled back. |
+| Two main commits overlap | Record build/check SHAs and final production alias; confirm Vercel's ordering is acceptable and does not roll production back to the older artifact. |
+| Hosted configuration or schema check fails | Build fails with a safe diagnostic; existing production remains serving. |
 
-## Local evidence and sources
+Verify final deployment ID/SHA, application-domain assignment, `/api/status`, sign-in and deep-link routing. The `/api/status` check does not test model quality or authorize inference. Apply no migrations as part of deployment.
 
-Run `npm test -- tests/unit/deployment-integrity.test.ts tests/unit/production-deployment.test.ts tests/unit/hosting.test.ts`. These use synthetic API responses and make no deployment requests. The CLI refuses invocation outside `workflow_run` before network access. Cloud enforcement, staging/domain behavior, token permissions and rollback remain unverified.
+To stop future releases, disconnect Git or use **Don't build anything**; inspect already-running builds/promotions because neither action recalls accepted work. With separate owner approval, use Vercel's existing healthy production artifact for rollback and independently verify aliases. Follow Vercel's rollback/re-promotion procedure before resuming automatic releases. No custom journal repair or automatic rollback script remains in the new flow. Historical unresolved promotions must be reconciled before cutover, not ignored.
 
-The implementation uses Vercel's [Git deployment API](https://vercel.com/docs/rest-api/deployments/create-a-new-deployment), its client's [`autoAssignCustomDomains` option](https://github.com/vercel/vercel/blob/main/packages/client/src/types.ts), and [staged production promotion](https://vercel.com/docs/cli/deploy). GitHub documents [workflow completion triggers](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run) and [deployment concurrency](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments).
+## Build diagnostics
+
+The CLI emits JSON stage markers for `configuration`, `source`, `schema` and `application`. Failure reports include only a stage and an allowlisted literal code; unknown errors become `hosted_build_unexpected`. Never add raw error messages, stacks, validation inputs, environment values, database bodies or provider responses to these logs.
+
+| Diagnostic | Action |
+| --- | --- |
+| `hosted_project_mismatch`, `hosted_origin_mismatch` | Compare nonsecret target/project/environment/origin settings. |
+| `owner_pilot_inference_unverified`, `owner_pilot_credential_missing` | Inspect the current approved catalog/evidence and production-only credential configuration. Do not bypass approval or initiate paid verification. |
+| `deployment_source_missing`, `production_branch_required` | Inspect Vercel's Git SHA/ref metadata; build only the intended main source. |
+| `hosted_schema_unavailable` | Check service-role RPC access and database availability without printing credentials. |
+| `hosted_schema_incompatible` | Compare migration inventory; obtain separate approval for any missing migration. |
+| `hosted_schema_evidence_invalid` | Inspect the schema RPC contract; malformed migration evidence is refused. |
+| `hosted_build_failed` | Inspect preceding application typecheck/build output. |
+| `hosted_build_unexpected` | Use the last stage marker to narrow the boundary; add a reviewed literal diagnostic if further investigation requires it. |
+
+The diagnostics do not establish the cause of the earlier generic hosted-build failure. It may persist after simplification. A read-only configuration reproduction is `npm run build:hosted -- --project-ref=abcdefghijklmnopqrst --project-id=prj_Synthetic --app-origin=https://vulpes-synthetic.vercel.app --check-only` with no hosted credentials: it exits 1 and emits `configuration` / `hosted_project_mismatch` before network access.
+
+Local checks: `npm test -- tests/unit/deployment-policy.test.ts tests/unit/hosted-build-diagnostics.test.ts tests/unit/hosted-schema.test.ts tests/unit/hosting.test.ts`. They exercise the real release shell with success/failure/skipped/cancelled inputs, real CLI diagnostics, synthetic schema responses and retained configuration guards. They do not prove Vercel check enforcement or domain ordering.
+
+Sources: [Vercel Deployment Checks](https://vercel.com/docs/deployment-checks), [Git deployment](https://vercel.com/docs/git), [rollback](https://vercel.com/docs/instant-rollback).
 
 ## Migration-before-code gate
 

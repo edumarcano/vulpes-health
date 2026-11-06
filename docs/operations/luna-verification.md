@@ -1,6 +1,6 @@
 # Current Luna synthetic verification
 
-The v9 candidate has passing [technical deployment evidence](../evidence/luna-v8-v9-verification.md). On 2026-11-05 the owner authorized deployment verification with model benchmarks deferred. Capability and production approval bind v9 to the configured model, adapter, price and privacy policy. The owner-pilot build also requires exact-main CI and the deployment controls described in [deployment integrity](deployment-integrity.md).
+The v9 candidate has passing [technical deployment evidence](../evidence/luna-v8-v9-verification.md). On 2026-11-05 the owner authorized deployment verification with model benchmarks deferred. Capability and production approval bind v9 to the configured model, adapter, price and privacy policy. The owner-pilot build also retains inference approval and migration checks, with main CI required by Vercel before promotion under the deployment controls described in [deployment integrity](deployment-integrity.md).
 
 The technical packet used six requests: a completed persisted tool loop/reload, seeded typed-error feedback compatibility, cancellation and disconnection. Zero-budget denial sent no request. Confirmed charges were $0.000590675; two interrupted requests retained $0.0186384 in reservations with final charges unknown. The explicitly synthetic error transcript proves wire-format acceptance, not that Luna independently emitted and repaired invalid arguments. Offline PostgreSQL regressions cover rejected-call inspection/export and calculation-interval scalar withholding.
 
