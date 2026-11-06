@@ -259,9 +259,17 @@ test('Ask goal proposal journey imports, reviews, approves, calculates progress 
   });
   await page.goto('/ask');
   await scenario(page, 'goal_create');
+  const created = page.waitForResponse(
+    (r) =>
+      r.url().endsWith('/api/conversations') &&
+      r.request().method() === 'POST' &&
+      r.request().postDataJSON()?.action === 'create',
+  );
   await page
     .getByRole('button', { name: 'New conversation', exact: true })
     .click();
+  const conversation = (await (await created).json()).data.id;
+  await expect(page).toHaveURL(new RegExp(`conversation=${conversation}`));
   await expect(
     page.getByLabel('Message Ask Vulpes', { exact: true }),
   ).toBeEnabled();
