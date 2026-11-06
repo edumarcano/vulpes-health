@@ -258,11 +258,11 @@ test('direct Goals latest daily progress includes today without inference', asyn
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%';
     });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      )
+      .toBe(true);
     await expect(
       progress.getByRole('progressbar', { name: 'Goal progress', exact: true }),
     ).toHaveAttribute('value', /66[.]6/);
