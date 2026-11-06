@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
 
 test('built worker caches only public assets and gives private routes a data-free offline page', async ({
@@ -50,6 +52,7 @@ test('built worker caches only public assets and gives private routes a data-fre
   expect(results.names).toHaveLength(1);
   expect(results.names[0]).toMatch(/^vulpes-static-/);
   expect(results.urls.length).toBeGreaterThan(8);
+  expect(results.urls.some((url) => /\/assets\//.test(url))).toBe(false);
   expect(
     results.urls.every((value) => {
       const url = new URL(value);
@@ -97,4 +100,35 @@ test('built worker caches only public assets and gives private routes a data-fre
       fullPage: true,
     });
   }
+});
+
+test('sign-in and worker installation do not fetch deferred features', async ({
+  page,
+}) => {
+  const scripts: string[] = [];
+  page.on('request', (request) => {
+    if (request.resourceType() === 'script')
+      scripts.push(new URL(request.url()).pathname);
+  });
+  await page.goto('/login');
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  const bodies = [...new Set(scripts)]
+    .filter((url) => url.startsWith('/assets/'))
+    .map((url) => readFileSync('dist' + url));
+  const bytes = bodies.reduce((total, body) => total + body.length, 0);
+  const gzip = bodies.reduce((total, body) => total + gzipSync(body).length, 0);
+  expect(bytes).toBeGreaterThan(0);
+  expect(bytes).toBeLessThanOrEqual(750_000);
+  expect(gzip).toBeLessThanOrEqual(220_000);
+  console.info(`Initial JavaScript: ${bytes} bytes; ${gzip} bytes gzipped.`);
+  expect(scripts.length).toBeGreaterThan(0);
+  expect(
+    scripts.some((url) =>
+      /(?:ask-page|data-page|goals-page|settings-page|markdown-text|data-chart|inspector|sync-)/.test(
+        url,
+      ),
+    ),
+  ).toBe(false);
 });

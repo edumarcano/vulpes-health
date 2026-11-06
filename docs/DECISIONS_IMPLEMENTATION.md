@@ -49,3 +49,7 @@ Import completion offers explicit navigation per series using full-batch metadat
 Account deletion is resumable and preserves uncertain charges until settlement. Completed deletion receipts persist at least 31 days; encrypted database backups have a 30-day maximum. The PWA caches public shell assets only. [Account lifecycle](operations/account-lifecycle.md) owns the current details.
 
 Audit F-10 retains the approved conservative 24-hour uncertain-charge policy. The current single-request reserve is `$0.0093192`; reducing it because ordinary requests often cost less would lose the existing bounded-cost guarantee. Streaming repairs and saved-run inspection are the smallest nonfinancial mitigation. Any allocation or settlement-policy change requires separate owner approval.
+
+## 2026-11-06: Deferred client features
+
+Protected pages and assistant Markdown load on demand; React has one shared chunk. The service worker precaches public/offline shell assets only, leaving application JavaScript and CSS to browser caching. This avoids downloading unused features during worker installation while preserving the data-free offline page. Bundle checks cap JavaScript chunks at 500 kB; production browser checks cap initial sign-in JavaScript at 750 kB (220 kB gzipped). npm approval covers only the locked esbuild 0.28.2 install script.

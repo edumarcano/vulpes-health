@@ -317,3 +317,52 @@ test('dark navigation and card accent text meet normal-text contrast', async ({
   expect(ratios).toHaveLength(1);
   for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
 });
+
+test('deferred page loading keeps navigation available and focuses the loaded heading', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/assets/data-page-*.js', async (route) => {
+    await blocked;
+    await route.continue();
+  });
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: 'Data', exact: true })
+    .click();
+  try {
+    await expect(page.getByRole('status')).toHaveText('Loading page…');
+    await expect(
+      page.getByRole('navigation', { name: 'Primary' }),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Data', exact: true }),
+  ).toBeFocused();
+});
+
+test('failed page download offers reload without losing navigation', async ({
+  page,
+}) => {
+  await page.route('**/assets/settings-page-*.js', (route) => route.abort());
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: 'Settings', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toContainText(
+    'This page could not be loaded.',
+  );
+  await expect(page.getByRole('button', { name: 'Reload page' })).toBeVisible();
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: 'Ask', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Ask Vulpes',
+  );
+});
