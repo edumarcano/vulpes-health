@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Database, MessageCircle, Settings, Target } from 'lucide-react';
 import {
   Navigate,
@@ -10,12 +10,22 @@ import {
 import { LoginPage } from '@/features/auth/login-page';
 import { useAuth } from '@/lib/auth/auth-context';
 import type { ReactNode } from 'react';
-import { AskPage } from '@/features/ask/ask-page';
-import { DataPage } from '@/features/data/data-page';
-import { GoalsPage } from '@/features/goals/goals-page';
-import { SettingsPage } from '@/features/settings/settings-page';
 import { Button } from '@/components/ui/button';
 import { DeletionPage } from '@/features/settings/deletion-page';
+const AskPage = lazy(() =>
+  import('@/features/ask/ask-page').then((m) => ({ default: m.AskPage })),
+);
+const DataPage = lazy(() =>
+  import('@/features/data/data-page').then((m) => ({ default: m.DataPage })),
+);
+const GoalsPage = lazy(() =>
+  import('@/features/goals/goals-page').then((m) => ({ default: m.GoalsPage })),
+);
+const SettingsPage = lazy(() =>
+  import('@/features/settings/settings-page').then((m) => ({
+    default: m.SettingsPage,
+  })),
+);
 
 const destinations = [
   { to: '/ask', label: 'Ask', icon: MessageCircle },
@@ -24,7 +34,49 @@ const destinations = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
-function Protected({ children }: { children: ReactNode }) {
+class PageBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <div role="alert">
+        <p>This page could not be loaded.</p>
+        <Button onClick={() => window.location.reload()}>Reload page</Button>
+      </div>
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+function PageContent({
+  children,
+  focus,
+}: {
+  children: ReactNode;
+  focus: boolean;
+}) {
+  useEffect(() => {
+    if (focus) {
+      document.querySelector<HTMLElement>('#main h1')?.focus();
+      window.scrollTo(0, 0);
+    }
+  }, [focus]);
+  return children;
+}
+
+function Protected({
+  children,
+  focus,
+}: {
+  children: ReactNode;
+  focus: boolean;
+}) {
   const { state, scope } = useAuth();
   const { pathname } = useLocation();
   if (state.kind === 'restoring' || state.kind === 'checking_account')
@@ -49,7 +101,11 @@ function Protected({ children }: { children: ReactNode }) {
         pathname === '/ask' ? 'h-full flex flex-col flex-1 min-h-0' : undefined
       }
     >
-      {children}
+      <PageBoundary key={pathname}>
+        <Suspense fallback={<p role="status">Loading page…</p>}>
+          <PageContent focus={focus}>{children}</PageContent>
+        </Suspense>
+      </PageBoundary>
     </div>
   );
 }
@@ -70,7 +126,8 @@ function NotFoundPage() {
 
 export function App() {
   const { state } = useAuth();
-  const { pathname } = useLocation();
+  const { pathname, key: locationKey } = useLocation();
+  const [initialLocationKey] = useState(locationKey);
   const previousPath = useRef(pathname);
   const main = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -136,7 +193,7 @@ export function App() {
           <Route
             path="/ask"
             element={
-              <Protected>
+              <Protected focus={initialLocationKey !== locationKey}>
                 <AskPage />
               </Protected>
             }
@@ -144,7 +201,7 @@ export function App() {
           <Route
             path="/goals"
             element={
-              <Protected>
+              <Protected focus={initialLocationKey !== locationKey}>
                 <GoalsPage />
               </Protected>
             }
@@ -152,7 +209,7 @@ export function App() {
           <Route
             path="/data"
             element={
-              <Protected>
+              <Protected focus={initialLocationKey !== locationKey}>
                 <DataPage />
               </Protected>
             }
@@ -160,7 +217,7 @@ export function App() {
           <Route
             path="/settings"
             element={
-              <Protected>
+              <Protected focus={initialLocationKey !== locationKey}>
                 <SettingsPage />
               </Protected>
             }

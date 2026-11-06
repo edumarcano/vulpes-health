@@ -38,7 +38,16 @@ import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer, initialAskState } from './state';
 import { ProposalPart, ProgressPart } from './goal-parts';
 import { InspectionBoundary } from '../executions/inspection-boundary';
-import { MarkdownText } from './markdown-text';
+const LazyMarkdownText = lazy(() =>
+  import('./markdown-text').then((m) => ({ default: m.MarkdownText })),
+);
+function MarkdownText({ text }: { text: string }) {
+  return (
+    <Suspense fallback={plainText({ text })}>
+      <LazyMarkdownText />
+    </Suspense>
+  );
+}
 const Inspector = lazy(() => import('../executions/inspector'));
 
 function Welcome() {

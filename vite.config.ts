@@ -33,6 +33,20 @@ export default defineConfig(({ mode }) => {
       proxy: { '/api': apiProxy },
     },
     preview: { headers, proxy: { '/api': apiProxy } },
-    build: { sourcemap: false },
+    build: {
+      sourcemap: false,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'react',
+                test: /\/node_modules\/(?:react|react-dom|scheduler)\//,
+              },
+            ],
+          },
+        },
+      },
+    },
   };
 });

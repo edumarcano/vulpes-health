@@ -26,6 +26,11 @@ for (const file of files) {
   const name = path.join(file.parentPath, file.name);
   assert(!name.endsWith('.map'), 'Public source maps must be disabled.');
   const body = await readFile(name, 'utf8');
+  if (name.endsWith('.js'))
+    assert(
+      Buffer.byteLength(body) <= 500_000,
+      `JavaScript chunk exceeds 500 kB: ${name}`,
+    );
   for (const canary of Object.values(canaries))
     assert(!body.includes(canary), `Secret canary leaked into ${name}`);
   for (const marker of [

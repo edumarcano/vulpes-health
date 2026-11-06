@@ -7,7 +7,7 @@ export function pwaShell(): Plugin {
   return {
     name: 'vulpes-static-shell',
     apply: 'build',
-    generateBundle(_options, bundle) {
+    generateBundle() {
       const publicAssets = [
         '/offline.html',
         '/offline.css',
@@ -20,12 +20,7 @@ export function pwaShell(): Plugin {
         '/brand/vulpes-horizontal.png',
         '/brand/vulpes-reversed.png',
       ];
-      const assets = [
-        ...Object.keys(bundle)
-          .filter((name) => /^assets\/[\w.-]+\.(?:js|css)$/.test(name))
-          .map((name) => '/' + name),
-        ...publicAssets,
-      ];
+      const assets = publicAssets;
       const hash = createHash('sha256').update(JSON.stringify(assets));
       for (const asset of publicAssets)
         hash.update(readFileSync('public' + asset));
