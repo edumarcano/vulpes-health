@@ -20,6 +20,8 @@ On 2026-11-05 the owner approved replacing the custom GitHub/Vercel promotion co
 
 The repository binds the existing production target and Luna mode, while credentials remain production-only in Vercel. Builds validate the project ID and configured application origin rather than Vercel's preferred-domain metadata, which can name another verified alias. Application deployments do not apply database migrations or run model requests.
 
+Vercel's Node function compiler discovers the root `tsconfig.json`, which extends the server configuration. Target and module settings are explicit at the root because Vercel applies ES2021 and non-strict module defaults before resolving inherited settings. This preserves ES2023 library declarations and strict discriminated-union narrowing during function packaging, alongside the existing explicit project typechecks.
+
 Hosted builds require the complete repository migration version set from a read-only, service-only RPC. An exact required set catches older missing migrations that a maximum-version comparison misses; additional forward versions permit additive rollout. This is migration-ledger evidence, not proof against manual schema drift. The introspection migration must be approved and applied before merging dependent code. Future migrations must preserve compatibility with the app still serving traffic.
 
 ## Recovery and data scope
