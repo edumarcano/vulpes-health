@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { hostedBuild } from '../../scripts/build-hosted.js';
-import { deploymentChecks } from '../../scripts/deployment-integrity.js';
 
 const sha = 'a'.repeat(40);
 vi.mock('node:child_process', () => ({ spawnSync: vi.fn() }));
@@ -15,7 +14,6 @@ const env = {
   VERCEL_PROJECT_ID: 'prj_Synthetic',
   VERCEL_GIT_COMMIT_REF: 'main',
   VERCEL_GIT_COMMIT_SHA: sha,
-  VULPES_GITHUB_READ_TOKEN: 'synthetic-only',
   VULPES_LIVE_AI_ENABLED: 'false',
   VITE_SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co',
   VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic',
@@ -31,9 +29,9 @@ const args = [
   '--app-origin=https://vulpes-synthetic.vercel.app',
 ];
 function setup(applied: unknown, schemaStatus = 200) {
-  vi.mocked(spawnSync).mockImplementation((command) => ({
+  vi.mocked(spawnSync).mockImplementation(() => ({
     status: 0,
-    stdout: command === 'git' ? sha : '',
+    stdout: '',
     stderr: '',
     pid: 1,
     output: [],
@@ -42,38 +40,10 @@ function setup(applied: unknown, schemaStatus = 200) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
-      const schema = url.endsWith('/rest/v1/rpc/schema_version_v1');
-      const body = schema
-        ? applied
-        : url.endsWith('git/ref/heads/main')
-          ? { object: { sha } }
-          : url.includes('/attempts/1/jobs')
-            ? {
-                total_count: 3,
-                jobs: deploymentChecks.map((name) => ({
-                  name,
-                  head_sha: sha,
-                  status: 'completed',
-                  conclusion: 'success',
-                })),
-              }
-            : {
-                workflow_runs: [
-                  {
-                    id: 1,
-                    run_attempt: 1,
-                    head_sha: sha,
-                    head_branch: 'main',
-                    event: 'push',
-                    path: '.github/workflows/ci.yml',
-                    status: 'completed',
-                    conclusion: 'success',
-                  },
-                ],
-              };
-      return new Response(JSON.stringify(body), {
-        status: schema ? schemaStatus : 200,
-      });
+      expect(url).toBe(
+        `${env.VITE_SUPABASE_URL}/rest/v1/rpc/schema_version_v1`,
+      );
+      return new Response(JSON.stringify(applied), { status: schemaStatus });
     }),
   );
 }
@@ -87,14 +57,39 @@ describe('hosted schema compatibility before build', () => {
     await expect(hostedBuild(args, env)).rejects.toThrow(
       'hosted_schema_incompatible',
     );
-    expect(vi.mocked(spawnSync).mock.calls.map((c) => c[0])).toEqual(['git']);
+    expect(vi.mocked(spawnSync).mock.calls.map((c) => c[0])).toEqual([]);
   });
   it('accepts a complete migration set and then builds', async () => {
     setup({ versions });
     await expect(hostedBuild(args, env)).resolves.toMatchObject({
       buildRan: true,
     });
-    expect(spawnSync).toHaveBeenCalledTimes(2);
+    expect(spawnSync).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    { VERCEL_GIT_COMMIT_SHA: '' },
+    { VERCEL_GIT_COMMIT_SHA: 'invalid' },
+    { VERCEL_GIT_COMMIT_REF: 'feature/test' },
+  ])(
+    'refuses absent or invalid source identity before database access %j',
+    async (patch) => {
+      setup({ versions });
+      await expect(hostedBuild(args, { ...env, ...patch })).rejects.toThrow();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(spawnSync).not.toHaveBeenCalled();
+    },
+  );
+  it('reports application failure after successful schema verification', async () => {
+    setup({ versions });
+    vi.mocked(spawnSync).mockReturnValueOnce({
+      status: 1,
+      stdout: '',
+      stderr: '',
+      pid: 1,
+      output: [],
+      signal: null,
+    });
+    await expect(hostedBuild(args, env)).rejects.toThrow('hosted_build_failed');
   });
   it('rejects an older hole even when the latest migration is present', async () => {
     setup({ versions: versions.slice(1) });

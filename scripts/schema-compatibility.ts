@@ -34,9 +34,11 @@ export async function verifyHostedSchema(
     },
   );
   if (!response.ok) throw new Error('hosted_schema_unavailable');
-  const applied = z
+  const parsed = z
     .object({ versions: z.array(Version) })
-    .parse(await response.json());
+    .safeParse(await response.json());
+  if (!parsed.success) throw new Error('hosted_schema_evidence_invalid');
+  const applied = parsed.data;
   if (
     new Set(applied.versions).size !== applied.versions.length ||
     required.some((v) => !applied.versions.includes(v))

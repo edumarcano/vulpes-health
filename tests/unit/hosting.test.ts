@@ -46,14 +46,14 @@ const errorBody = {
 };
 afterEach(() => vi.restoreAllMocks());
 describe('synthetic hosting preparation', () => {
-  it('disables native Git builds and binds manual builds to the production target', () => {
+  it('enables native builds only for main and binds them to the production target', () => {
     // Isolate target validation from separately tested, current-template approval.
     vi.spyOn(catalog, 'getRoleAvailability').mockReturnValue({
       state: 'available',
       reason: 'verified',
     });
     const config = JSON.parse(readFileSync('vercel.json', 'utf8'));
-    expect(config.git.deploymentEnabled).toBe(false);
+    expect(config.git.deploymentEnabled).toEqual({ '**': false, main: true });
     expect(config.regions).toEqual(['iad1']);
     expect(
       config.headers.find(

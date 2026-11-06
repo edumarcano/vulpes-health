@@ -1,7 +1,6 @@
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { verifyProductionCommit } from './deployment-integrity.js';
 import { verifyHostedSchema } from './schema-compatibility.js';
 import {
   BuildTargetSchema,
@@ -9,10 +8,47 @@ import {
   checkHostedEnvironment,
 } from './hosting.js';
 
+export type HostedBuildStage =
+  'configuration' | 'source' | 'schema' | 'application';
+
+// Only reviewed literal codes may reach build logs. Never print arbitrary messages,
+// Zod issues, response bodies, environment values or stacks.
+const diagnosticCodes = new Set([
+  'production_branch_required',
+  'deployment_source_missing',
+  'hosted_project_mismatch',
+  'inference_must_remain_disabled',
+  'provider_configuration_forbidden',
+  'owner_pilot_inference_unverified',
+  'owner_pilot_credential_missing',
+  'unexpected_public_configuration',
+  'hosted_origin_mismatch',
+  'public_authentication_missing',
+  'invalid_public_authentication',
+  'administrative_key_missing',
+  'administrative_key_invalid',
+  'trace_keys_invalid',
+  'repository_migrations_invalid',
+  'hosted_schema_unavailable',
+  'hosted_schema_incompatible',
+  'hosted_schema_evidence_invalid',
+  'hosted_npm_context_missing',
+  'hosted_build_failed',
+]);
+export function hostedBuildDiagnostic(error: unknown, stage: HostedBuildStage) {
+  const code =
+    error instanceof Error && diagnosticCodes.has(error.message)
+      ? error.message
+      : 'hosted_build_unexpected';
+  return { event: 'hosted_build_failed', stage, code };
+}
+
 export function hostedBuild(
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
+  onStage: (stage: HostedBuildStage) => void = () => {},
 ) {
+  onStage('configuration');
   const v = parseArgs({
     args,
     strict: true,
@@ -42,37 +78,50 @@ export function hostedBuild(
     HostedInferenceModeSchema.parse(v.mode ?? 'disabled'),
   );
   if (v['check-only']) return { ...checked, buildRan: false };
-  return verifiedBuild(checked, buildEnv);
+  return verifiedBuild(checked, buildEnv, onStage);
 }
 async function verifiedBuild(
   checked: ReturnType<typeof checkHostedEnvironment>,
   env: NodeJS.ProcessEnv,
+  onStage: (stage: HostedBuildStage) => void,
 ) {
-  const source = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' });
-  if (source.status !== 0 || source.stdout.trim() !== env.VERCEL_GIT_COMMIT_SHA)
-    throw new Error('deployment_source_mismatch');
-  const verification = await verifyProductionCommit(env);
+  onStage('source');
+  if (env.VERCEL_GIT_COMMIT_REF !== 'main')
+    throw new Error('production_branch_required');
+  const commit = env.VERCEL_GIT_COMMIT_SHA;
+  if (!commit || !/^[a-f0-9]{40}$/.test(commit))
+    throw new Error('deployment_source_missing');
+  // Vercel owns Git checkout and CI-gated promotion. No GitHub token or local
+  // .git directory is needed in its build environment.
+  onStage('schema');
   const schema = await verifyHostedSchema(env);
   const npm = env.npm_execpath;
-  if (!npm) throw new Error('Run with npm run build:hosted.');
+  if (!npm) throw new Error('hosted_npm_context_missing');
+  onStage('application');
   const result = spawnSync(process.execPath, [npm, 'run', 'build'], {
     env,
     stdio: 'inherit',
   });
   if (result.error || result.status !== 0)
     throw new Error('hosted_build_failed');
-  return { ...checked, ...verification, ...schema, buildRan: true };
+  return { ...checked, commit, ...schema, buildRan: true };
 }
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
+  let stage: HostedBuildStage = 'configuration';
   try {
-    console.info(JSON.stringify(await hostedBuild(process.argv.slice(2))));
-  } catch {
-    console.error(
-      'Hosted build refused or failed. Check target identity, exact-main CI, applied migrations, approved inference mode and server-only configuration.',
+    console.info(
+      JSON.stringify(
+        await hostedBuild(process.argv.slice(2), process.env, (next) => {
+          stage = next;
+          console.info(JSON.stringify({ event: 'hosted_build_check', stage }));
+        }),
+      ),
     );
+  } catch (error) {
+    console.error(JSON.stringify(hostedBuildDiagnostic(error, stage)));
     process.exitCode = 1;
   }
 }
