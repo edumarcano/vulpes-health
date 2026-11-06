@@ -13,7 +13,7 @@ Scope: F-01, F-07 and F-08 of the independent v0.1.0 audit, baseline `ad70d74151
 
 The focused deployment, hosting and provider-smoke suite passed 57 tests. Typecheck, format check and the 446-check specification validator passed. The deployment gate tests require the exact SHA, current main head, main-push event, trusted workflow path, successful latest run attempt and all three successful jobs. Pending/cancelled/failed runs, skipped/missing/wrong-SHA jobs, changed main head, GitHub failure and absent identity/credential are refused. Configuration-only checks never build an artifact.
 
-Cloud enforcement and actual hosted build/deployment remain unverified. Before merging operational changes, complete the [owner activation procedure](../operations/deployment-integrity.md), including rules with no bypass and closing the existing auto-deployment race. A new server-only GitHub read token is required because the repository is private. The existing immutable deployment remains the rollback reference. Local passing tests do not close the operational portion of F-01.
+Cloud enforcement and actual hosted build/deployment remain unverified. Before merging operational changes, complete the [owner activation procedure](https://github.com/edumarcano/vulpes-health/blob/d9fbbc18576abed7196af57138f6f6ab67b5729b/docs/operations/deployment-integrity.md), including rules with no bypass and closing the existing auto-deployment race. A new server-only GitHub read token is required because the repository is private. The existing immutable deployment remains the rollback reference. Local passing tests do not close the operational portion of F-01.
 
 ## Automatic deployment revision (2026-11-04)
 

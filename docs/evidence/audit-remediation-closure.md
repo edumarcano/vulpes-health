@@ -25,7 +25,7 @@ Earlier combined executable candidate: `a311ae224f01e20ba7b760cbb4f4355007e5ddc1
 
 Both Remora axes were reviewed against the actual combined diff: requirements/contracts and engineering/security/test assurance. Implementation agents performed their own split-axis reviews; the parent reconciled the stack and policy change. This is not an independent external review or approval to merge.
 
-v0.1.0 is **not complete**. Next owner decisions are cloud safeguard activation ([steps](../operations/deployment-integrity.md)), production metadata migration, a newly bounded v8 paid verification packet ([steps](../operations/luna-verification.md#audit-candidate-approval-steps)), synthetic hosted recovery design/rehearsal, fresh personal backup/copy and explicit remaining device/release acceptance. Approvals are separate; none is inferred from the F-09 policy approval.
+v0.1.0 is **not complete**. Next owner decisions are cloud safeguard activation ([steps](https://github.com/edumarcano/vulpes-health/blob/d9fbbc18576abed7196af57138f6f6ab67b5729b/docs/operations/deployment-integrity.md)), production metadata migration, a newly bounded v8 paid verification packet ([steps](../operations/luna-verification.md#audit-candidate-approval-steps)), synthetic hosted recovery design/rehearsal, fresh personal backup/copy and explicit remaining device/release acceptance. Approvals are separate; none is inferred from the F-09 policy approval.
 
 ## PR #57 browser CI repair (2026-11-04)
 
