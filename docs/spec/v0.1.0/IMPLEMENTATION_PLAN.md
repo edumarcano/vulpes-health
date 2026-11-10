@@ -60,13 +60,13 @@ Apply the approved brand, light/dark tokens, static PWA shell, icons and safe-ar
 
 Implement export/delete, retention cleanup, secure deployment documentation and a tested backup/restore process. Capture screenshots with synthetic data at the required viewports.
 
-**Exit:** the required acceptance matrix passes; untested provider/Android/family functionality is explicitly labelled. Build a release report containing commands, results, screenshots, unresolved issues and approved deviations.
+**Exit:** the required acceptance matrix passes; untested provider/Android/invited-account functionality is explicitly labelled. Build a release report containing commands, results, screenshots, unresolved issues and approved deviations.
 
-## Milestone 7 - Owner pilot, then family pilot
+## Milestone 7 - Owner pilot, then invited pilot
 
 With permission, deploy to the owner's chosen Vercel/Supabase projects. Run a small real-data import only after the owner confirms the source file and consent. Compare a known reading and a computed summary with the source. Observe actual costs and storage.
 
-Invite one adult family tester only after the additional family gates pass. Resolve isolation, recovery or deletion failures before inviting more users.
+Invite one adult tester only after the required invitation gates pass. Resolve isolation, recovery or deletion failures before inviting more users.
 
 ## Stop rules
 

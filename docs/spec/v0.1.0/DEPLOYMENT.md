@@ -2,11 +2,11 @@
 
 ## 1. Operational scope
 
-The repository contains the application and guarded local verification scripts. It does not provision hosted resources, credits or DNS. Local proof does not approve hosted migrations, real-data use or a family pilot. Follow the [account lifecycle/recovery runbook](../../operations/account-lifecycle.md) for storage inventory, interrupted deletion, retention, restoration and operator-assisted credentials.
+The repository contains the application and guarded local verification scripts. It does not provision hosted resources, credits or DNS. Local proof does not approve hosted migrations, real-data use or a invited pilot. Follow the [account lifecycle/recovery runbook](../../operations/account-lifecycle.md) for storage inventory, interrupted deletion, retention, restoration and operator-assisted credentials.
 
 ## 2. Intended cost baseline
 
-Vercel Hobby is intended for personal/noncommercial projects; use it for the private family pilot within the current terms and quotas. [S21](SOURCES.md#s21)
+Vercel Hobby is intended for personal/noncommercial projects; use it for the private pilot for invited adults within the current terms and quotas. [S21](SOURCES.md#s21)
 
 Supabase Free currently lists 500 MB database storage, 1 GB file storage, 50,000 monthly active users and inactivity pausing after one week. Managed automatic backups are not included; Pro starts at a paid baseline. Recheck pricing when deploying. [S22](SOURCES.md#s22)
 
@@ -53,7 +53,7 @@ Never enable live model tests in ordinary CI. Log only safe operational metadata
 
 Apply reviewed migrations, RLS policies, indexes, strict function grants and storage policies. Disable public signup. Provision the owner through trusted admin tooling; do not expose an account-creation endpoint to the public.
 
-Configure production and local redirect URLs narrowly. Do not make health buckets public. The approved recovery path is operator-assisted identity verification, trusted reset and session revocation, without SMTP. Rehearse the human handoff before family use. Email invitations/recovery need separate supported delivery approval if introduced. [S19](SOURCES.md#s19)
+Configure production and local redirect URLs narrowly. Do not make health buckets public. The approved recovery path is operator-assisted identity verification, trusted reset and session revocation, without SMTP. Rehearse the human handoff before invited-account use. Email invitations/recovery need separate supported delivery approval if introduced. [S19](SOURCES.md#s19)
 
 Export and test backups before real use. Keep schema, RLS, functions, Storage objects and necessary encryption key versions recoverable. Document Supabase Auth recovery separately; a measurements CSV is not a complete account/database restore.
 
@@ -75,18 +75,18 @@ Configure auth/database/trace encryption first with inference off; pass hosted s
 
 Set the live-call flag only after complete rate configuration, output bounds and approved provider consent. A successful unauthenticated public model lookup is not a successful provider smoke test.
 
-## 8. Family pilot gate
+## 8. Invited pilot gate
 
-Use two test users to prove separation at API, database, Storage, exported traces, cached responses, conversation history and budget level. Verify that the family user cannot raise an operator allocation or see household health content.
+Use two test users to prove separation at API, database, Storage, exported traces, cached responses, conversation history and budget level. Verify that the invited user cannot raise an operator allocation or see another account's health content.
 
 Test secure onboarding/recovery, export, interrupted deletion, backup/restore, logout/account switching and a revoked provider consent. Explain that the app is a private wellness prototype and that its operator can access backend data.
 
-Family use additionally requires explicit invitation and real-data authorization after all applicable gates. Automatic Health Connect requires the later native Android integration on each person's phone and that person's authorization; no family-wide phone-health permission exists.
+Invited-account use additionally requires explicit invitation and real-data authorization after all applicable gates. Automatic Health Connect requires the later native Android integration on each person's phone and that person's authorization.
 
 ## 9. Operational runbook
 
 When a provider fails, retain privacy constraints, show role unavailability and do not retry into an unapproved provider. When credits/budget are exhausted, keep data/goal browsing and export working. When a trace cannot be saved, do not initiate another unlogged paid call.
 
-Review actual provider spend against app reservations, database/storage usage and failed-run holds regularly during the pilot. Clean up expired data, rotate secrets when necessary, and test one restore before declaring family readiness.
+Review actual provider spend against app reservations, database/storage usage and failed-run holds regularly during the pilot. Clean up expired data, rotate secrets when necessary, and test one restore before declaring invited-account readiness.
 
 Do not claim 24/7 monitoring, guaranteed background inference or continuous availability on the free-tier prototype.

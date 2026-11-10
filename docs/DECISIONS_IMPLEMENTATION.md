@@ -28,7 +28,11 @@ Hosted builds require the complete repository migration version set from a read-
 
 Owner-data capture, journal and maintenance use explicit owner manifests and a server-controlled data-scope marker; synthetic operations reject the marked owner. Backup, journal and trace keys remain separately recoverable. Restores are fenced, reconcile independent deletion and accounting evidence, and do not authorize access. See [recovery](operations/hosted-recovery.md).
 
-Family operations use a separate manifest naming at most ten owner, family and synthetic identities. Each operation retains its own authorization and does not discover accounts. Family invitations remain a separate decision.
+Invited-account operations use an `invited-pilot` manifest naming at most ten owner, invited and synthetic identities through `ownerUserId`, `invitedUserIds` and `syntheticPeerUserIds`. Each operation retains its own authorization and does not discover accounts. Account invitations remain a separate decision.
+
+The 2026-11-10 clean break replaces the previous named-account contract without runtime aliases, legacy readers or SQL migrations. Removed flags, purposes and UUID fields fail closed; owner and synthetic manifest hashes remain unchanged. Local private-directory inspection found no manifests or archives, and the dated hosted verification records temporary-account cleanup and owner-mode backup custody. Current hosted metadata and external private custody were not re-inspected. Verify any required legacy recovery state before retiring its working tooling or updating live markers; no live transition was performed by this change.
+
+Luna's prompt omits account selectors, sharing and data-entry inventory because those details do not help the model perform its task. Prompt v10 retains authorized-tool use, server-supplied identity/permissions and the existing wellness, data-grounding and goal-approval requirements. The v9 capability/production evidence remains historical; v10 requires separately approved matching verification before the owner-pilot hosted build can succeed. No paid verification or provider activation accompanies this change.
 
 Infrastructure status uses a manual aggregate check and the existing maintenance process. Database size and total disk use are reported separately. Backup inspection authenticates the archive, copy and retained trace-key samples; it does not establish independent custody or a successful restore.
 

@@ -1,6 +1,6 @@
 # Agent instructions - Vulpes
 
-Vulpes is a TypeScript health application with owned measurements, goals, conversations, deterministic analytics, encrypted private payloads and account lifecycle operations. The personal-owner pilot uses hosted Luna with consent and budget controls. Repository defaults and CI keep live inference off. Formal release and family acceptance remain separate; Flash, Argon and decision scoring are unavailable.
+Vulpes is a TypeScript health application with owned measurements, goals, conversations, deterministic analytics, encrypted private payloads and account lifecycle operations. The personal-owner pilot uses hosted Luna with consent and budget controls. Repository defaults and CI keep live inference off. Formal release and invited-account acceptance remain separate; Flash, Argon and decision scoring are unavailable.
 
 ## References
 

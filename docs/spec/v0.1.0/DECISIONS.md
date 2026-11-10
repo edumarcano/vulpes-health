@@ -12,7 +12,7 @@ Target: v0.1.0. These decisions consolidate the supplied project conversation; t
 
 **D04 - Deployment.** Vercel frontend plus Node functions; Supabase PostgreSQL and Auth. No second application backend on Supabase Edge Functions for v0.1.0. No paid scheduler, queue, vector store or analytics vendor.
 
-**D05 - Family-ready.** Private separate accounts, ownership on all private records, RLS and server checks. No household data sharing, shared credentials, admin health dashboard or permissions to read another family member's data through the app.
+**D05 - Invited accounts.** Private separate accounts, ownership on all private records, RLS and server checks. No cross-account data sharing, shared credentials, admin health dashboard or permissions to read another account's data through the app.
 
 **D06 - Ingestion.** v0.1.0 supports manual numeric entries and CSV. v0.2 is the intended Health Connect milestone. Dependable Android synchronization is a v1.0 requirement, not an MVP claim. A PWA alone is not an automatic phone-health connector.
 
@@ -37,11 +37,11 @@ These fill gaps without reopening the approved product direction. They are edita
 | Default | Rationale |
 |---|---|
 | Email/password accounts manually provisioned by the operator | No public signup; no dependency on paid email for the first personal account |
-| Adults only for the initial family pilot | Avoid pretending the wellness/safety behavior has been evaluated for children |
+| Adults only for the initial invited pilot | Avoid pretending the wellness/safety behavior has been evaluated for children |
 | Online-only health data; static PWA shell offline | Avoid silently persisting sensitive records in browser caches |
 | assistant-ui ExternalStoreRuntime | Vulpes owns persisted messages, approvals and stream state |
-| Owner-controlled provider list and spending ceilings | Family accounts cannot change the payer's credentials or raise allocated ceilings |
-| Explicit per-user consent to approved model providers | The owner's acceptance does not stand in for family members' consent |
+| Owner-controlled provider list and spending ceilings | Invited accounts cannot change the payer's credentials or raise allocated ceilings |
+| Explicit per-user consent to approved model providers | The owner's acceptance does not stand in for other users' consent |
 | Luna-first routing plus one evidence-backed Flash handoff | Simple routing baseline before semantic classifier evaluation |
 | Complete trace payloads retained 7 days by default | Balance exact inspection with sensitive-data duplication and storage |
 | Usage/accounting metadata retained 90 days by default | Cost reconciliation without retaining prompts indefinitely |
@@ -59,7 +59,7 @@ The owner can revise these defaults before implementation. Codex must record a c
 - API prices, regional access and provider privacy constraints are verified in the owner's account.
 - Prototype deployment uses no real health data in public previews or CI.
 
-## Gate before the first family invitation
+## Gate before the first account invitation
 
 In addition to the above: test backup/restore, export and deletion, account recovery, two-user adversarial access, per-account plus app budgets, source selection, clear limitations and onboarding consent. The deployment operator technically controls the database and server keys; app-level account separation is not end-to-end encryption from the operator.
 

@@ -98,7 +98,7 @@ No demonstrated blocker remains in this remediation surface. The extra database 
 
 ## Remaining acceptance and authorization gates
 
-The PR needs independent review of the repaired candidate and the outstanding formal earlier-milestone acceptance decisions. Current-bound provider rates, privacy/location/access, credentials, live smoke/evaluation and activation remain unverified and require separate authorization. Hosted routing/Auth/RLS/recovery, actual supported devices/assistive technology, operator credential handoff and owner/adult-family real-data gates remain pending as listed in [release readiness](../operations/release-readiness.md). Vulpes is not ready to request pilot authorization on these local results alone.
+The PR needs independent review of the repaired candidate and the outstanding formal earlier-milestone acceptance decisions. Current-bound provider rates, privacy/location/access, credentials, live smoke/evaluation and activation remain unverified and require separate authorization. Hosted routing/Auth/RLS/recovery, actual supported devices/assistive technology, operator credential handoff and owner/invited-adult real-data gates remain pending as listed in [release readiness](../operations/release-readiness.md). Vulpes is not ready to request pilot authorization on these local results alone.
 
 The controlled clock fault proves a causal browser-path failure, without proving the cause of every historical browser failure. Historical PR-level evidence and failed audit runs remain unchanged. The new transport test initially left its synthetic verification allocation, preventing fixture cleanup; its cleanup now uses the existing live-batch test's guarded local SQL pattern and the complete nine-case rerun passes.
 

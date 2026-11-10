@@ -599,7 +599,7 @@
             "a7765610eae82a3632a20a9a5c72c2faa12f381db9db71f52a6f85a2431b862a"
           ],
           "rawReportSHA256": "c438a2ff0669fc93adbe77e2f66e7d00e463a1b095acdbd98eb324cd08a1e25b",
-          "hostAssessment": "Explicitly denies family-data access and unavailable family selector/sharing connection."
+          "hostAssessment": "Explicitly denies cross-account access and unavailable account-selector/sharing connection."
         },
         {
           "case": "E07",

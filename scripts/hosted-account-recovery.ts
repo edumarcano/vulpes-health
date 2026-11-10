@@ -27,7 +27,7 @@ export const HostedAccountRecoveryInputSchema = z.strictObject({
     purpose: z.enum([
       'synthetic-account-recovery',
       'owner-pilot-account-recovery',
-      'family-pilot-account-recovery',
+      'invited-pilot-account-recovery',
     ]),
     targetSHA256: hash,
     bindingSHA256: hash,
@@ -85,22 +85,22 @@ export async function hostedAccountRecoveryCommand(
       execute: { type: 'boolean' },
       'allow-hosted': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
-      'family-pilot': { type: 'boolean' },
+      'invited-pilot': { type: 'boolean' },
       manifest: { type: 'string' },
     },
   }).values;
-  if (flags['owner-pilot'] && flags['family-pilot'])
+  if (flags['owner-pilot'] && flags['invited-pilot'])
     throw new Error('Select exactly one account scope.');
   if (
     flags.plan &&
     Object.keys(flags).every((key) =>
-      ['plan', 'owner-pilot', 'family-pilot'].includes(key),
+      ['plan', 'owner-pilot', 'invited-pilot'].includes(key),
     )
   )
     return {
       ...hostedAccountRecoveryPlan,
-      mode: flags['family-pilot']
-        ? 'family-pilot'
+      mode: flags['invited-pilot']
+        ? 'invited-pilot'
         : flags['owner-pilot']
           ? 'owner-pilot'
           : 'synthetic-only',
@@ -116,7 +116,7 @@ export async function hostedAccountRecoveryCommand(
   checkRecoveryMode(
     manifest.target,
     flags['owner-pilot'] ?? false,
-    flags['family-pilot'] ?? false,
+    flags['invited-pilot'] ?? false,
   );
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw new Error('Invalid recovery target binding.');

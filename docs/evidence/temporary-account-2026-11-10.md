@@ -20,7 +20,7 @@ The final run used two temporary synthetic accounts, each with its own imported 
 | Browser sessions | Headless Chromium checked account switching, draft clearing, saved preferences, cross-tab sign-out and a 360-pixel viewport. |
 | Consent | New accounts had empty consent. Acceptance persisted through the Settings API; missing and revoked consent blocked ledger admission. |
 | Budget enforcement | Execution and ledger code ran locally against hosted SQL without provider transport. Missing or zero allocation blocked requests, and the deployed Settings API rejected a preference above the allocation. No steps or reservations were created. |
-| Account recovery | The bounded `account:recover:hosted` command reset one synthetic account using `--family-pilot`. Its old access and refresh sessions were rejected, the new password signed in and the other account's session remained valid. |
+| Account recovery | The bounded `account:recover:hosted` command reset one synthetic account using its then-current named-account mode. Its old access and refresh sessions were rejected, the new password signed in and the other account's session remained valid. |
 | Cleanup | Both accounts were removed from Auth and the checked owned-data tables; deletion receipts and post-deletion denial were verified. Existing profile timestamps and app budget amounts matched their baselines. The earlier test account's leftover local credential file was removed after confirming Auth absence. |
 
 Provider requests and spend were zero. These checks did not exercise successful paid inference, populated goals or message isolation, physical devices, TalkBack or real recipients. No additional real accounts were created.

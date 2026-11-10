@@ -5,7 +5,7 @@
 
 Repository name: `vulpes-health`.
 
-An AI-first, mobile-first personal health application for the owner and invited family members. Ask Vulpes helps users understand their own measurements, set appropriate goals, and inspect the data and instructions behind every model response.
+An AI-first, mobile-first personal health application for the owner and invited adults. Ask Vulpes helps users understand their own measurements, set appropriate goals, and inspect the data and instructions behind every model response.
 
 **This is a repository-ready specification and asset package, not an implemented application.** It contains no working health integration, live model connection, deployed database, or production credentials. No repository or cloud resource was created or modified in preparing it.
 
@@ -26,7 +26,7 @@ An AI-first, mobile-first personal health application for the owner and invited 
 | UI | shadcn/ui + assistant-ui; Tailwind, Recharts, Motion, Lucide |
 | Hosting | Vercel Hobby for the intended private, noncommercial deployment |
 | Persistence | Supabase PostgreSQL, Auth, private Storage when needed |
-| Accounts | Separate, invitation-only accounts; no shared family health profile |
+| Accounts | Separate, invitation-only accounts; no shared health profile |
 | v0.1.0 ingestion | Canonical CSV, a small column-mapping import flow, manual entries |
 | Next ingestion | Capacitor Android bridge to Health Connect; not a browser API |
 | Raw scale access | Not planned for v0.1.0 or v1.0; future experiment only |

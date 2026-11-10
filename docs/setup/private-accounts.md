@@ -38,8 +38,8 @@ Accounts are created by the operator and credentials are delivered privately; th
 
 | Area | Setup |
 |---|---|
-| Account scope | Set the Auth user's server-controlled `app_metadata.vulpes_data_scope` to `family-pilot` and add the UUID to the private [recovery manifest](../operations/hosted-recovery.md#named-family-operation-scope). Preserve the owner's scope marker. The manifest covers at most ten owner, additional and synthetic identities. |
-| Credentials and device | Follow the provisioning procedure above and check sign-in and basic use on the recipient's device. Password recovery uses `account:recover:hosted` with the matching manifest and `--family-pilot`. |
+| Account scope | Set the Auth user's server-controlled `app_metadata.vulpes_data_scope` to `invited-pilot` and add the UUID to the private [recovery manifest](../operations/hosted-recovery.md#named-invited-account-operation-scope). Preserve the owner's scope marker. The manifest covers at most ten owner, additional and synthetic identities. |
+| Credentials and device | Follow the provisioning procedure above and check sign-in and basic use on the recipient's device. Password recovery uses `account:recover:hosted` with the matching manifest and `--invited-pilot`. |
 | AI access | Start without provider consent or an allocation. The recipient accepts consent; the owner separately approves a monthly allocation within the shared app ceiling. A personal preference cannot increase it. |
 | Backup | Include every account in the manifest and verify a fresh encrypted backup, separate copy, retained keys, current deletion journal and fenced reconciliation before regular use. Hosted restoration remains unverified. |
 

@@ -126,7 +126,7 @@ it('reports the fixed read-only aggregates with unknown disk/backup and omits id
     expect(JSON.stringify(result)).not.toContain('sbp_synthetic');
   }));
 it.each([
-  { purpose: 'family-pilot-operations-inspect' },
+  { purpose: 'invited-pilot-operations-inspect' },
   { targetSHA256: 'a'.repeat(64) },
   { bindingSHA256: 'b'.repeat(64) },
   { expiresAt: new Date(now).toISOString() },

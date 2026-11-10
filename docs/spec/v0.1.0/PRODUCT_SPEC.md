@@ -12,9 +12,9 @@ A user can choose how much AI to use. Opening a dashboard, inspecting a goal, im
 
 ## 2. Users and access
 
-The initial owner and later invited adult family members have independent accounts, measurements, goals, chats, preferences and spending allocations. They do not automatically share data. Family membership is not a data-access role. A deployment operator provisions accounts outside the app; there is no family-management interface in v0.1.0.
+The initial owner and later invited adults have independent accounts, measurements, goals, chats, preferences and spending allocations. Accounts do not share data, and an invitation grants no access to another account's records. A deployment operator provisions accounts outside the app; there is no in-app account-provisioning interface in v0.1.0.
 
-Each account chooses a display unit system, IANA timezone and approved model providers. Onboarding explains that the app is a wellness prototype, not a diagnostic or emergency-monitoring service. Family users also see the operator-access limitation.
+Each account chooses a display unit system, IANA timezone and approved model providers. Onboarding explains that the app is a wellness prototype, not a diagnostic or emergency-monitoring service. Invited users also see the operator-access limitation.
 
 ## 3. Required v0.1.0 functionality
 
@@ -48,7 +48,7 @@ Show excluded/truncated context with reasons, but never label reconstructed text
 
 ### 3.5 Settings
 
-Profile/timezone/units, approved providers, provider availability, per-user lower spending preference, remaining operator allocation, trace retention, data export and account deletion. API keys and operator spending ceilings are not editable by ordinary family users. Settings changes are explicit user actions, not model-generated writes.
+Profile/timezone/units, approved providers, provider availability, per-user lower spending preference, remaining operator allocation, trace retention, data export and account deletion. API keys and operator spending ceilings are not editable by ordinary invited users. Settings changes are explicit user actions, not model-generated writes.
 
 ## 4. Evidence and health boundary
 
@@ -62,7 +62,7 @@ For potentially harmful goals, acute symptoms or requests that need medical judg
 
 The supplied setup screenshots demonstrated RENPHO weight and body-fat records and Samsung Health heart-rate records in Health Connect. Activity and sleep permissions were shown, but successful transfer of those categories was not demonstrated here. No visceral-fat record or raw impedance was demonstrated through Health Connect.
 
-These are observations from the owner's setup, not proof of compatibility across every phone, watch or family account. v0.1.0 does not read those screenshots or that Health Connect store automatically.
+These are observations from the owner's setup, not proof of compatibility across every phone, watch or invited account. v0.1.0 does not read those screenshots or that Health Connect store automatically.
 
 ## 6. Primary screens
 
@@ -72,4 +72,4 @@ These are observations from the owner's setup, not proof of compatibility across
 
 v0.1.0 is complete only when the applicable required tests in [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) pass with real persistence and at least one live generation provider. All selected configured generation roles must have live smoke-test results before the release is described as supporting that role. A disabled optional decision engine is acceptable; a fabricated live success is not.
 
-The initial personal pilot may precede the family pilot. Do not market the first pilot as production-grade, medically validated or suitable for unattended health monitoring.
+The initial personal pilot may precede the invited pilot. Do not market the first pilot as production-grade, medically validated or suitable for unattended health monitoring.

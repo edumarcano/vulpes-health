@@ -42,4 +42,4 @@ After deployment, check `/api/status`, sign-in, routing and the affected feature
 
 For separately authorized manual/synthetic hosting, `npm run hosting:prepare -- --plan`, `npm run hosting:probe -- --plan` and `npm run hosting:security -- --plan` describe the guarded tooling. Generated hosting overlays keep Git deployments disabled and default to inference off; Luna pilot mode requires its explicit mode and existing consent/budget gates.
 
-The owner reported a Galaxy S23 conversation, installation and offline check. TalkBack and broader release/device acceptance remain unverified. See [release readiness](release-readiness.md) before broadening use or inviting family members.
+The owner reported a Galaxy S23 conversation, installation and offline check. TalkBack and broader release/device acceptance remain unverified. See [release readiness](release-readiness.md) before broadening use or inviting additional adults.

@@ -41,7 +41,7 @@ Explicit approval preceded cleanup through the normal owned APIs, including its 
 
 Two private verifier assumptions initially failed: matching null vendor IDs without timestamps selected the wrong row, and expecting new duplicate classifications contradicted the historical-result API contract. Corrected read-only diagnostics established the stored data were correct; no application change or repeated import was used to hide either failure. Financial fingerprints and generation counts remained unchanged through cleanup, import and verification.
 
-The checkpoint reconciled technical evidence for the canonical P0 families against the [historical local release report](release/m6-local.json), [hosted/provider evidence](luna-owner-pilot-live.md) and [device evidence](owner-pilot-step4.md). It did not waive a P0 or turn owner authorization into a passing test. The recorded accessibility exception applied only to the bounded personal pilot, not broader release or family acceptance.
+The checkpoint reconciled technical evidence for the canonical P0 families against the [historical local release report](release/m6-local.json), [hosted/provider evidence](luna-owner-pilot-live.md) and [device evidence](owner-pilot-step4.md). It did not waive a P0 or turn owner authorization into a passing test. The recorded accessibility exception applied only to the bounded personal pilot, not broader release or invited-account acceptance.
 
 ## Post-import recovery and handoff
 
@@ -55,4 +55,4 @@ For `dfec415`, both then-required CI jobs passed in [run 41510252769](https://gi
 
 ## Remaining limits
 
-Owner-mode Auth/API service proof and source-loss/cutover completeness remained unverified. Full release, independent milestone acceptance, broader accessibility, family onboarding, optional models and restored-access authority remained separate gates. The handoff established no scheduler or physical-erasure guarantee. Follow [release readiness](../operations/release-readiness.md) for current gates rather than interpreting this dated record as a current attestation.
+Owner-mode Auth/API service proof and source-loss/cutover completeness remained unverified. Full release, independent milestone acceptance, broader accessibility, invited-account onboarding, optional models and restored-access authority remained separate gates. The handoff established no scheduler or physical-erasure guarantee. Follow [release readiness](../operations/release-readiness.md) for current gates rather than interpreting this dated record as a current attestation.

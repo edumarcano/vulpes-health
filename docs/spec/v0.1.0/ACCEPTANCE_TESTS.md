@@ -2,17 +2,17 @@
 
 These are tests to implement and run, not claims that the application already passes. Package-validation results are separate from application tests.
 
-**P0:** required before any real-data pilot. **P1:** required for the full v0.1.0 release. **F:** required before inviting family. **O:** optional feature gate. No failed P0 can be waived to meet a schedule.
+**P0:** required before any real-data pilot. **P1:** required for the full v0.1.0 release. **I:** required before inviting additional adults. **O:** optional feature gate. No failed P0 can be waived to meet a schedule.
 
 | ID | Gate | Scenario | Expected result |
 |---|---|---|---|
 | SEC-01 | P0 | Unauthenticated requests to data/chat/goals/trace/export | Denied; no private content |
-| SEC-02 | P0,F | User A queries user B IDs through API and Supabase directly | No row/content leakage; safe 404/denial |
-| SEC-03 | P0,F | User A links a goal/message/source to user B's parent ID | Rejected by API and database constraints |
+| SEC-02 | P0,I | User A queries user B IDs through API and Supabase directly | No row/content leakage; safe 404/denial |
+| SEC-03 | P0,I | User A links a goal/message/source to user B's parent ID | Rejected by API and database constraints |
 | SEC-04 | P0 | Browser bundle/source maps inspect environment | No provider/admin/encryption secrets |
 | SEC-05 | P0 | CSV/source/markdown includes scripts or instruction injection | Text treated as data; no executable HTML or permission expansion |
 | SEC-06 | P0 | Provider consent revoked | No new call to that provider; cached UI does not bypass consent |
-| SEC-07 | P0,F | Account switch on same device | No prior user's cached history, chart, trace or pending stream |
+| SEC-07 | P0,I | Account switch on same device | No prior user's cached history, chart, trace or pending stream |
 | SEC-08 | P0 | Production SPA/API routing | Deep links render app; API errors never return index.html |
 | DATA-01 | P0 | Import canonical fixture | Expected row counts, sources, units and timestamps |
 | DATA-02 | P0 | Import same file/mapping twice | No duplicate observations or double commit |
@@ -50,7 +50,7 @@ These are tests to implement and run, not claims that the application already pa
 | COST-03 | P0 | Unknown price/capability | Paid route blocked, not treated as free |
 | COST-04 | P0 | Cancellation/provider timeout without usage | Conservative/pending spend; no automatic free settlement |
 | COST-05 | P0 | Cache/think tokens overlap reported totals | No double counting; actual/estimated label correct |
-| COST-06 | P0,F | Family user raises budget beyond allocation | Rejected server-side |
+| COST-06 | P0,I | Invited user raises budget beyond allocation | Rejected server-side |
 | COST-07 | P0 | Duplicate send or browser reconnection | No second paid generation without explicit new request |
 | TRACE-01 | P0 | Multi-step run, including router/tool continuation | Every actual request represented |
 | TRACE-02 | P0 | Compare HTTP body before send with decrypted trace | Byte-identical except documented secret redactions outside normal prompt fields |

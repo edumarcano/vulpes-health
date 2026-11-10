@@ -87,6 +87,6 @@ The self-review examined the full working diff, including new collector/tests, a
 
 The remaining demonstrated blocker is an unmet development verification gate; a production application root cause is not established. These verdicts are a self-review, not an independent attestation or approval to merge.
 
-PR-level split-axis self-review is separate from the combined independent M5/M6 review. The latter remains pending after the frozen PR 17 implementation. M5/M6 are not fully accepted, no release/pilot readiness is claimed, and PR 14 remains disabled. The [checklist](../operations/release-readiness.md) identifies required human decisions before provider spending/activation, hosting/migrations, backup/key destinations, real-account actions or family invitations.
+PR-level split-axis self-review is separate from the combined independent M5/M6 review. The latter remains pending after the frozen PR 17 implementation. M5/M6 are not fully accepted, no release/pilot readiness is claimed, and PR 14 remains disabled. The [checklist](../operations/release-readiness.md) identifies required human decisions before provider spending/activation, hosting/migrations, backup/key destinations, real-account actions or account invitations.
 
 Provider requests and external spend in this PR: **0 / $0**. Approved policy changes: none; existing 24-hour uncertain holds, 30-day backup maximum and at least 31-day completed journals remain intact.

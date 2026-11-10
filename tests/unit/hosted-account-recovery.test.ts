@@ -30,11 +30,11 @@ const owner: RecoveryTarget = {
   ownerUserId: userId,
   syntheticPeerUserIds: [],
 };
-const family: RecoveryTarget = {
+const invited: RecoveryTarget = {
   ...base,
-  purpose: 'family-pilot',
+  purpose: 'invited-pilot',
   ownerUserId: otherId,
-  familyUserIds: [userId],
+  invitedUserIds: [userId],
   syntheticPeerUserIds: [],
 };
 
@@ -162,7 +162,7 @@ async function httpHarness(
 it('keeps every plan inert and refuses incomplete or ambiguous execute flags before files, secrets or network', async () => {
   const read = vi.fn();
   const network = vi.fn();
-  for (const mode of [[], ['--owner-pilot'], ['--family-pilot']]) {
+  for (const mode of [[], ['--owner-pilot'], ['--invited-pilot']]) {
     expect(
       await hostedAccountRecoveryCommand(['--plan', ...mode], read, network),
     ).toMatchObject({ networkRequests: 0, maximumRequests: 8 });
@@ -172,7 +172,7 @@ it('keeps every plan inert and refuses incomplete or ambiguous execute flags bef
     ['--execute', '--manifest=missing'],
     ['--allow-hosted', '--manifest=missing'],
     ['--plan', '--manifest=missing'],
-    ['--plan', '--owner-pilot', '--family-pilot'],
+    ['--plan', '--owner-pilot', '--invited-pilot'],
   ])
     await expect(
       hostedAccountRecoveryCommand(flags, read, network),
@@ -225,10 +225,10 @@ it.each([
   });
 });
 
-it('requires explicit matching family mode and an exact named account before credentials can mutate anything', async () => {
-  await manifest(family, async (path) => {
+it('requires explicit matching invited mode and an exact named account before credentials can mutate anything', async () => {
+  await manifest(invited, async (path) => {
     const network = vi.fn();
-    const read = vi.fn(async () => input(family));
+    const read = vi.fn(async () => input(invited));
     await expect(
       hostedAccountRecoveryCommand(
         ['--execute', '--allow-hosted', `--manifest=${path}`],
@@ -239,8 +239,13 @@ it('requires explicit matching family mode and an exact named account before cre
     expect(read).not.toHaveBeenCalled();
     await expect(
       hostedAccountRecoveryCommand(
-        ['--execute', '--allow-hosted', '--family-pilot', `--manifest=${path}`],
-        async () => ({ ...input(family), userId: randomUUID() }),
+        [
+          '--execute',
+          '--allow-hosted',
+          '--invited-pilot',
+          `--manifest=${path}`,
+        ],
+        async () => ({ ...input(invited), userId: randomUUID() }),
         network,
       ),
     ).rejects.toThrow();
@@ -251,7 +256,7 @@ it('requires explicit matching family mode and an exact named account before cre
 it.each([
   { email: 'person@example.com' },
   { scope: 'owner-pilot' },
-  { scope: 'family-pilot' },
+  { scope: 'invited-pilot' },
   { returnedId: otherId },
 ])(
   'refuses a synthetic identity downgrade or wrong returned ID before any write: %j',
@@ -292,12 +297,12 @@ it.each(['deleting', null])(
   },
 );
 
-it('requires a declared synthetic peer to remain synthetic even in family mode', async () => {
+it('requires a declared synthetic peer to remain synthetic even in invited mode', async () => {
   const target: RecoveryTarget = {
     ...base,
-    purpose: 'family-pilot',
+    purpose: 'invited-pilot',
     ownerUserId: otherId,
-    familyUserIds: [],
+    invitedUserIds: [],
     syntheticPeerUserIds: [userId],
   };
   await manifest(target, async (path) => {
@@ -309,7 +314,7 @@ it('requires a declared synthetic peer to remain synthetic even in family mode',
             [
               '--execute',
               '--allow-hosted',
-              '--family-pilot',
+              '--invited-pilot',
               `--manifest=${path}`,
             ],
             async () => input(target),
@@ -322,7 +327,7 @@ it('requires a declared synthetic peer to remain synthetic even in family mode',
   });
 });
 
-it.each([synthetic, owner, family])(
+it.each([synthetic, owner, invited])(
   'uses the production reset/revocation service over real loopback HTTP for scope $purpose',
   async (target) => {
     await manifest(target, async (path) => {

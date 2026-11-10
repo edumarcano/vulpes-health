@@ -237,6 +237,6 @@ F-09, F-10 and the rest of F-11 are deferred.
 
 **Before declaring v0.1.0:** PR-1, PR-2 including the approved live re-verification, and PR-5. PR-3 and PR-4 are strongly recommended. At minimum, PR-3's measurement should show that hosted long answers stay well under the 60-second cap.
 
-**Can wait:** keyword-heuristic tuning, budget allocation review, the broader agent refactor, Flash, Argon, decision scoring, family gates (OPS-04/05, F-tagged items) and full TalkBack acceptance, provided it stays an explicit exception.
+**Can wait:** keyword-heuristic tuning, budget allocation review, the broader agent refactor, Flash, Argon, decision scoring, invitation gates (OPS-04/05, F-tagged items) and full TalkBack acceptance, provided it stays an explicit exception.
 
 I'll wait for your approval before implementing any of this.

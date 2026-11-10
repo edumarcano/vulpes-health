@@ -122,7 +122,7 @@ These are module boundaries within a modular monolith. Do not deploy seven micro
 
 Cache only versioned public assets and an offline shell. Use network-only handling for `/api/*`, auth callbacks, model streams and health data. Do not persist conversations, measurements or bearer tokens in the service worker cache. No offline measurement queue in this release.
 
-Session persistence is separate from health-data caching. Use the supported Supabase session mechanism with a restrictive Content Security Policy and no untrusted HTML. Offer sign out; clear user-specific in-memory caches and revoke/refresh sessions as appropriate. Test switching between family accounts on one device.
+Session persistence is separate from health-data caching. Use the supported Supabase session mechanism with a restrictive Content Security Policy and no untrusted HTML. Offer sign out; clear user-specific in-memory caches and revoke/refresh sessions as appropriate. Test switching between invited accounts on one device.
 
 Future Capacitor builds can reuse the interface. Health Connect permission and synchronization logic belongs in the native bridge; it is not delivered by installing the PWA. [S05](SOURCES.md#s05) [S06](SOURCES.md#s06)
 

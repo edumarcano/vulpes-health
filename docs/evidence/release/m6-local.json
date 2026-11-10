@@ -3126,7 +3126,7 @@
     {
       "id": "COST-06",
       "gate": "P0,F",
-      "requirement": "Family user raises budget beyond allocation",
+      "requirement": "Invited user raises budget beyond allocation",
       "expected": "Rejected server-side",
       "environment": "disposable local synthetic; Chromium emulation",
       "testedRevision": "508757f5e5bc8735496d1be9cf481f69bb6985ea",
@@ -3864,7 +3864,7 @@
     "No current-template live model or safety evaluation.",
     "No hosted routing/CSP/Auth/storage/restore verification.",
     "No physical keyboard/PWA/assistive-technology test.",
-    "No human recovery handoff, family invitation or pilot.",
+    "No human recovery handoff, account invitation or pilot.",
     "Combined independent M5/M6 review and formal M2/M3/M4 acceptance remain separate."
   ],
   "approvedDeviations": [

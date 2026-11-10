@@ -2,7 +2,7 @@
 
 ## 1. Trust boundaries
 
-The user trusts the deployment operator, Supabase/Vercel under their applicable terms, and explicitly approved inference providers. The app isolates users from one another but is **not** end-to-end encrypted against the person who controls the backend and keys. Explain this before family onboarding.
+The user trusts the deployment operator, Supabase/Vercel under their applicable terms, and explicitly approved inference providers. The app isolates users from one another but is **not** end-to-end encrypted against the person who controls the backend and keys. Explain this before invited-account onboarding.
 
 Provider "no training" and provider "zero retention" are separate properties. OpenRouter ZDR routing concerns eligible inference endpoints; it does not automatically cover external tools or the app's logs. [S16](SOURCES.md#s16) Google documents no-training commitments plus retention exceptions, including abuse monitoring and some model/features. Do not label every Vertex request ZDR. [S17](SOURCES.md#s17)
 
@@ -62,16 +62,16 @@ Account deletion first blocks new runs, requests cancellation, purges owned app 
 
 Offline backups may retain data until their rotation expires, at most 30 days. Restoration requires current independently retained deletion records; missing evidence blocks access. Revoke restored sessions before access. Never promise instant deletion from third-party provider abuse/security records beyond available contractual controls. The [account lifecycle runbook](../../operations/account-lifecycle.md) owns maintenance, restoration and operator-assisted recovery procedures.
 
-Before family use, perform a restore to a separate nonproduction database. Verify ownership policies, row counts and encryption recovery. A CSV export is not a complete database/auth/policy backup.
+Before invited-account use, perform a restore to a separate nonproduction database. Verify ownership policies, row counts and encryption recovery. A CSV export is not a complete database/auth/policy backup.
 
 ## 7. Account provisioning and recovery
 
-Public signup is disabled. Provision the first owner and invited family accounts through trusted admin tooling. Verify the intended email out of band before marking it confirmed. Supabase's admin user API is server-only. [S20](SOURCES.md#s20)
+Public signup is disabled. Provision the first owner and invited accounts through trusted admin tooling. Verify the intended email out of band before marking it confirmed. Supabase's admin user API is server-only. [S20](SOURCES.md#s20)
 
-Manual provisioning is sufficient for the initial account, but secure credential handoff and a tested recovery process are required before family use. Do not rely on Supabase's default mail delivery for arbitrary family recipients: its built-in SMTP has recipient restrictions. [S19](SOURCES.md#s19) Configure a proper SMTP provider for normal invitation/recovery emails, or explicitly use a documented operator-assisted reset flow during the small private pilot. Do not add family users as Supabase project team members to work around email restrictions.
+Manual provisioning is sufficient for the initial account, but secure credential handoff and a tested recovery process are required before invited-account use. Do not rely on Supabase's default mail delivery for arbitrary invited recipients: its built-in SMTP has recipient restrictions. [S19](SOURCES.md#s19) Configure a proper SMTP provider for normal invitation/recovery emails, or explicitly use a documented operator-assisted reset flow during the small private pilot. Do not add invited users as Supabase project team members to work around email restrictions.
 
 ## 8. Safety is not only permissions
 
 A reversible but unsafe recommendation is still unsafe. Low-cost routing, a high-end model, output probabilities, disclaimers and provider privacy settings do not validate clinical advice. Apply the wellness boundary in PRODUCT_SPEC and test adverse/ambiguous cases. No medication management, diagnostic assessment or emergency monitoring feature is shipped.
 
-The initial family pilot is for adults. Any future expansion to children, clinicians, public users or commercial disease-related use needs separate product, safety, privacy and regulatory review rather than a feature flag alone.
+The initial invited pilot is for adults. Any future expansion to children, clinicians, public users or commercial disease-related use needs separate product, safety, privacy and regulatory review rather than a feature flag alone.

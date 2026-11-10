@@ -165,4 +165,4 @@ Use provider/account spending controls as a second layer. They do not replace pe
 
 Test absent data, contradictory goals, unsupported visceral-fat inference, sparse heart-rate samples, changing sources, stale goal versions, source prompt injection, explicit harmful targets, privacy bypass requests, routing ambiguity, unavailable providers, budget exhaustion and trace completeness. Assertions should be behavioral and structural, not exact prose matching.
 
-Decision scoring must improve measured cost/latency/quality versus deterministic routing before being enabled by default. Use representative synthetic prompts, not real family records in external benchmark logs.
+Decision scoring must improve measured cost/latency/quality versus deterministic routing before being enabled by default. Use representative synthetic prompts, not real personal records in external benchmark logs.

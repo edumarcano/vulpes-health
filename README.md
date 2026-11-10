@@ -2,7 +2,7 @@
 
 Vulpes is a personal health application for measurements, goals and conversations grounded in deterministic calculations. **Ask Vulpes** provides an inspectable assistant; Data and Goals remain usable without model calls.
 
-The personal-owner pilot is in use on the existing hosted application. Luna is enabled there under consent and persistent budgets. Repository defaults and CI keep inference off; Flash, Argon and decision scoring remain unavailable. Full release and family acceptance are separate from the completed owner handoff. Manual encrypted backup rotation remains necessary.
+The personal-owner pilot is in use on the existing hosted application. Luna is enabled there under consent and persistent budgets. Repository defaults and CI keep inference off; Flash, Argon and decision scoring remain unavailable. Full release and invited-account acceptance are separate from the completed owner handoff. Manual encrypted backup rotation remains necessary.
 
 Merges and pushes to `main` deploy production automatically through Vercel. Preview deployments are disabled; verify PRs on localhost with local Supabase and synthetic data. See [owner operations](docs/operations/owner-pilot-data.md#deployments-and-checks) for deployment checks and migration boundaries.
 

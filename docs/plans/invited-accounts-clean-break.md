@@ -1,8 +1,10 @@
 # Invited accounts: clean-break implementation plan
 
-Status: proposed, 2026-11-10. Implementation has not started. This plan extends
-[PR #70](https://github.com/edumarcano/vulpes-health/pull/70); it does not authorize
-deployment, live account changes, private backup operations or paid verification.
+Status: local implementation verified, 2026-11-10, on
+[PR #70](https://github.com/edumarcano/vulpes-health/pull/70). The amended
+prompt scope removes the account/product inventory line instead of renaming its
+selector. Deployment, live account changes, private backup operations and paid
+verification remain separately authorized operations.
 
 ## Outcome and boundaries
 
@@ -11,7 +13,7 @@ documentation with **invited accounts**. Use **invited adults** for the initial
 audience, **additional private accounts** for setup, and **invited pilot** for the
 bounded operational scope. Invitations remain an operator decision: accounts are
 manually provisioned and credentials delivered privately. This introduces no
-invitation service, public signup, sharing role or account-management UI.
+invitation service, public signup, sharing role or account-provisioning UI.
 
 Keep the adult-only initial pilot, ten-identity operational limit, named ownership,
 per-user consent, operator-controlled allocations, isolation, recovery, deletion
@@ -39,7 +41,7 @@ must be preserved while implementing this plan.
 | [November 10 evidence](../evidence/temporary-account-2026-11-10.md) | No additional real accounts were created; temporary synthetic accounts were removed. The retained backup and journals used owner mode. | A clean break appears feasible. This dated evidence does not establish the current inventory of private artifacts or hosted metadata. Confirm that inventory before retiring the old operational contract. |
 | [System prompt](../../server/ai/prompts/everyday.ts), [versions](../../server/config/everyday-versions.ts), [production evidence](../../server/config/everyday-production.ts) and [hosting](../../scripts/hosting.ts) | Account wording is in the v9 prompt; hosted Luna builds require matching approved evidence. | Version the edited prompt. Existing v9 approval does not prove the changed template. An unverified replacement blocks a new hosted build. |
 
-This assessment used source, tests, runbooks, Git state and read-only GitHub
+The planning assessment used source, tests, runbooks, Git state and read-only GitHub
 metadata. It did not inspect live Auth metadata or private recovery files, execute
 application tests, call a provider or spend money. Historical passing results are
 inputs to planning, not new verification of the proposed implementation.
@@ -142,7 +144,7 @@ scope" and update every incoming anchor; add no legacy anchor aliases.
 | `docs/setup/private-accounts.md`; operations `hosted-recovery.md`, `account-lifecycle.md`, `free-tier-maintenance.md`, `owner-pilot-data.md`, `release-readiness.md` | Replace current commands, fields, marker values, purposes, audience descriptions and links together. Preserve private credential handoff, consent, allocations and recovery prerequisites. |
 | `docs/operations/luna-verification.md` | Describe the new template's actual evidence state and required verification. Keep v9 results dated and distinguish pending approval from a passing packet. |
 | Specifications `README.md`, `PRODUCT_SPEC.md`, `DECISIONS.md`, `ARCHITECTURE.md`, `SECURITY_AND_PRIVACY.md`, `DEPLOYMENT.md`, `IMPLEMENTATION_PLAN.md`, `ACCEPTANCE_TESTS.md`, applicable account-privacy wording in `AI_SPEC.md` | Describe an owner and invited adults with independent accounts. Replace current `F` gate labels with `I` without changing row IDs, requirements or pass status. Preserve adult-only, operator-access disclosure and pre-invitation testing. |
-| `server/ai/prompts/everyday.ts`, `tests/unit/chat.test.ts` | Replace "no family selector" with "no account selector"; retain isolation, no data sharing and no external connections. |
+| `server/ai/prompts/everyday.ts`, `tests/unit/chat.test.ts` | Remove the account-selector, sharing, external-connections and data-entry inventory line. Retain authorized-tool use, server-supplied identity/permissions and bounded supplied history. |
 | `scripts/luna-evaluation.ts`, `docs/spec/v0.1.0/fixtures/eval-cases.json` | Keep E06 as an adversarial cross-account request using "another account's measurements"; do not remove the denial expectation or claim a new live result. |
 | `scripts/release-evidence.ts` | Emit neutral invitation and additional-account limitations for future reports. Preserve report structure and readiness behavior. |
 | Dated `docs/evidence/` narratives and descriptive JSON fields | Rephrase account-related descriptions neutrally while preserving candidates, dates, failures, spend, counts and limits. Describe an old command as the then-current named-account mode, rather than claiming the new flag ran. Never rewrite captured provider data, hashes or evidence bindings. |
@@ -264,7 +266,31 @@ new contracts. Do not merge or deploy under this planning request.
 | Operational transition | Packet 1 confirms no required legacy state, or a separately approved replacement is verified before retirement. Unknown state remains explicitly pending. |
 | Merge readiness | New prompt evidence and activation disposition are approved and correctly bound; PR checks/review pass. Any paid or hosted step not performed remains unverified. |
 
-Local code, tests, documentation and PR preparation can proceed after plan review.
-Owner involvement is needed only for an actual private-state transition or fresh
-paid/provider activation evidence that is required. This plan addition itself
-changes documentation only and incurs zero provider requests or spend.
+## Implementation verification
+
+| Check | Result |
+|---|---|
+| Unit tests | 670 passed across 57 files. The final invited-suite check passed all 15 tests after adding explicit legacy-marker rejection. |
+| Recovery integration | Eight tests across the five named suites passed against a separate disposable synthetic project, including real encrypted capture and fenced CLI restore. |
+| Offline controls | All 16 evaluation controls passed; model assessment remained `not_run`, with zero actual provider requests and spend. |
+| Static and build | Formatting, lint, typechecking, application build and diff whitespace checks passed. |
+| Documentation | All 609 specification checks passed; 147 relative links and 28 Markdown anchors across 29 changed documents resolved. Historical JSON changes were limited to three descriptive fields; other values and bindings were preserved. |
+| Shipped CLIs | All five new invited plans reported zero requests. All five removed-flag invocations exited 1; owner and synthetic plans still succeeded. |
+| Split-axis self-review | No remaining local blocker in contract/security fulfillment or engineering/documentation standards. |
+
+The first concurrent full unit run recorded two five-second timeouts and two
+expectations tied to approved v9 evidence. The expectations now reflect the blocked
+v10 candidate, and missing-attempt coverage remains explicit. All 84 affected tests
+passed in isolation, followed by the passing full suite; timeouts were not raised.
+
+The existing verification copy was preserved because it contained local source
+differences. A fresh `.scratch/pr70-invited-verification` used only fixed disposable
+project/port substitutions and shared locked dependencies. All 192 production and
+integration source files matched the candidate after those substitutions. The
+disposable stack was stopped after verification; the retained personal and earlier
+test projects were not reset or stopped.
+
+Local implementation is complete. Hosted metadata/external private custody remain
+unverified, and v10 paid verification and activation approval are still required
+before merge. No live account transition, provider activation or deployment was
+performed. Actual provider requests and spend for this implementation were zero.

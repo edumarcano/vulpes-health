@@ -26,7 +26,7 @@ export const HostedMaintenanceInputSchema = z.strictObject({
     purpose: z.enum([
       'synthetic-maintenance',
       'owner-pilot-maintenance',
-      'family-pilot-maintenance',
+      'invited-pilot-maintenance',
     ]),
     mode: z.enum(['inspect', 'execute']),
     targetSHA256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -83,14 +83,14 @@ export async function hostedMaintenanceCommand(
       manifest: { type: 'string' },
       'allow-hosted': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
-      'family-pilot': { type: 'boolean' },
+      'invited-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
-    !(v['owner-pilot'] && v['family-pilot']) &&
+    !(v['owner-pilot'] && v['invited-pilot']) &&
     Object.keys(v).every((k) =>
-      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+      ['plan', 'owner-pilot', 'invited-pilot'].includes(k),
     )
   )
     return v['owner-pilot']
@@ -99,10 +99,10 @@ export async function hostedMaintenanceCommand(
           scope: 'named_owner_pilot_database_maintenance',
           maximumOwners: 1,
         }
-      : v['family-pilot']
+      : v['invited-pilot']
         ? {
             ...hostedMaintenancePlan,
-            scope: 'named_family_pilot_database_maintenance',
+            scope: 'named_invited_pilot_database_maintenance',
           }
         : hostedMaintenancePlan;
   if (!v['allow-hosted'] || v.plan || (v.inspect && v.execute) || !v.manifest)
@@ -114,7 +114,7 @@ export async function hostedMaintenanceCommand(
   checkRecoveryMode(
     manifest.target,
     v['owner-pilot'] ?? false,
-    v['family-pilot'] ?? false,
+    v['invited-pilot'] ?? false,
   );
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw new Error('Invalid manifest binding.');
