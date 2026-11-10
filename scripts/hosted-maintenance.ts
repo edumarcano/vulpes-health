@@ -15,13 +15,19 @@ import {
   recoveryTargetHash,
   checkRecoveryMode,
   recoveryPurpose,
+  recoveryAccountIds,
+  isSyntheticRecoveryIdentity,
 } from './recovery-target.js';
 
 export const HostedMaintenanceInputSchema = z.strictObject({
   publishableKey: z.string().max(4096),
   adminKey: z.string().max(4096),
   authorization: z.strictObject({
-    purpose: z.enum(['synthetic-maintenance', 'owner-pilot-maintenance']),
+    purpose: z.enum([
+      'synthetic-maintenance',
+      'owner-pilot-maintenance',
+      'family-pilot-maintenance',
+    ]),
     mode: z.enum(['inspect', 'execute']),
     targetSHA256: z.string().regex(/^[a-f0-9]{64}$/),
     owners: z
@@ -77,11 +83,15 @@ export async function hostedMaintenanceCommand(
       manifest: { type: 'string' },
       'allow-hosted': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
+      'family-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
-    Object.keys(v).every((k) => ['plan', 'owner-pilot'].includes(k))
+    !(v['owner-pilot'] && v['family-pilot']) &&
+    Object.keys(v).every((k) =>
+      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+    )
   )
     return v['owner-pilot']
       ? {
@@ -89,14 +99,23 @@ export async function hostedMaintenanceCommand(
           scope: 'named_owner_pilot_database_maintenance',
           maximumOwners: 1,
         }
-      : hostedMaintenancePlan;
+      : v['family-pilot']
+        ? {
+            ...hostedMaintenancePlan,
+            scope: 'named_family_pilot_database_maintenance',
+          }
+        : hostedMaintenancePlan;
   if (!v['allow-hosted'] || v.plan || (v.inspect && v.execute) || !v.manifest)
     throw new Error('Explicit hosted mode/manifest required.');
   const mode = v.execute ? 'execute' : 'inspect';
   const manifest = z
     .object({ target: RecoveryTargetSchema, targetSHA256: z.string() })
     .parse(JSON.parse(await readFile(v.manifest, 'utf8')));
-  checkRecoveryMode(manifest.target, v['owner-pilot'] ?? false);
+  checkRecoveryMode(
+    manifest.target,
+    v['owner-pilot'] ?? false,
+    v['family-pilot'] ?? false,
+  );
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw new Error('Invalid manifest binding.');
   const input = HostedMaintenanceInputSchema.parse(await readCredentials()),
@@ -115,7 +134,13 @@ export async function hostedMaintenanceCommand(
   )
     throw new Error('Explicit owner maintenance scope required.');
   const expiry = Date.parse(authorization.expiresAt);
+  const declared = recoveryAccountIds(manifest.target);
   if (
+    (declared &&
+      authorization.owners.some(
+        (id) =>
+          !declared.some((known) => known.toLowerCase() === id.toLowerCase()),
+      )) ||
     authorization.targetSHA256 !== manifest.targetSHA256 ||
     authorization.mode !== mode ||
     expiry <= now ||
@@ -183,8 +208,10 @@ export async function hostedMaintenanceCommand(
       identity.error ||
       identity.data.user?.id !== owner ||
       (manifest.target.purpose === 'synthetic-only' &&
-        (!identity.data.user.email?.endsWith('@example.invalid') ||
-          identity.data.user.app_metadata?.vulpes_data_scope === 'owner-pilot'))
+        !isSyntheticRecoveryIdentity(identity.data.user)) ||
+      (manifest.target.purpose !== 'synthetic-only' &&
+        manifest.target.syntheticPeerUserIds.includes(owner) &&
+        !isSyntheticRecoveryIdentity(identity.data.user))
     )
       throw new Error('Approved identity required.');
   }

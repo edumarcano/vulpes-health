@@ -79,6 +79,7 @@ const bundleSchema = z.strictObject({
   purpose: z.enum([
     'synthetic-database-recovery',
     'owner-pilot-database-recovery',
+    'family-pilot-database-recovery',
   ]),
   targetSHA256: hash,
   snapshot: RecoverySnapshotSchema,

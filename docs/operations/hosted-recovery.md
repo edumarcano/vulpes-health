@@ -16,6 +16,12 @@ For owner data, add `--owner-pilot` to capture, restore, recover and journal com
 
 Rotate encrypted database backups within 30 days, retain completed deletion receipts for at least 31 days and retain unfinished receipts. Verify an independent encrypted copy and retain keys separately. Copying a journal does not refresh it. Source loss without independently current deletion and accounting completeness leaves restored access blocked. Account export is not a backup.
 
+## Named family operation scope
+
+Use a distinct `family-pilot` manifest and `--family-pilot` for a deployment containing invited family identities. It contains `ownerUserId`, `familyUserIds` and `syntheticPeerUserIds`, with at most ten distinct UUIDs in total. Every declared identity must exist or have an authoritative completed deletion record. Other identities block capture/recovery. Synthetic peers cannot stand in for additional real accounts. Use the server-controlled `vulpes_data_scope=family-pilot` marker for personal family accounts; synthetic commands reject every marker except absent/empty or `synthetic-only`.
+
+Family authorization/archive purposes replace `owner-pilot-` with `family-pilot-`. Authorizations bind the complete manifest hash, so changing an account requires new approval. `--owner-pilot`, `--family-pilot` and unflagged synthetic mode cannot be interchanged. Existing synthetic and owner archives retain their original hashes and formats; family support does not activate restored access or authorize invitations.
+
 The earlier [synthetic rehearsal](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/evidence/owner-pilot-step3-hosted-recovery.md) and [owner recovery](../evidence/owner-pilot-step5.md) record their actual scope and limitations. Owner-mode Auth/API service proof and source-loss/cutover completeness remain unverified.
 
 ## Encrypted database capture and fenced restore
