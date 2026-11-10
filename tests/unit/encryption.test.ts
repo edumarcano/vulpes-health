@@ -24,6 +24,8 @@ const metadata = {
   purpose: 'ai_request' as const,
   expires_at: '2026-11-01T00:00:00Z',
 };
+const changeFirstByte = (value: string) =>
+  `\\x${value.slice(2, 4) === '00' ? '01' : '00'}${value.slice(4)}`;
 describe('authenticated private payload encryption', () => {
   it.each([
     Buffer.from('Synthetic UTF-8: fox 🦊\n\u0000 exact bytes'),
@@ -53,8 +55,8 @@ describe('authenticated private payload encryption', () => {
       { expires_at: '2027-01-01T00:00:00Z' },
       { encoding: 'identity' },
       { content_hash: '0'.repeat(64) },
-      { nonce: `\\x${'00'.repeat(12)}` },
-      { encrypted_bytes: `\\x00${encrypted.encrypted_bytes.slice(4)}` },
+      { nonce: changeFirstByte(encrypted.nonce) },
+      { encrypted_bytes: changeFirstByte(encrypted.encrypted_bytes) },
       {
         encrypted_bytes: `${encrypted.encrypted_bytes.slice(0, -2)}${encrypted.encrypted_bytes.endsWith('00') ? '01' : '00'}`,
       },
@@ -69,6 +71,10 @@ describe('authenticated private payload encryption', () => {
     expect(() =>
       decryptBytes(encrypted, { activeId: 'missing', keys: new Map() }),
     ).toThrow();
+  });
+  it.each(['00', '01', 'ff'])('changes an initial %s byte', (byte) => {
+    const value = `\\x${byte}abcd`;
+    expect(changeFirstByte(value)).not.toBe(value);
   });
   it('uses the recorded key ID after active-key rotation', () => {
     const encrypted = encryptBytes(

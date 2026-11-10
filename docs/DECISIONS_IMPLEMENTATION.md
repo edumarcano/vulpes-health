@@ -28,6 +28,8 @@ Hosted builds require the complete repository migration version set from a read-
 
 Owner-data capture, journal and maintenance use explicit owner manifests and a server-controlled data-scope marker; synthetic operations reject the marked owner. Backup, journal and trace keys remain separately recoverable. Restores are fenced, reconcile independent deletion and accounting evidence, and do not authorize access. See [recovery](operations/hosted-recovery.md).
 
+Family operations use a separate manifest naming at most ten owner, family and synthetic identities. Each operation retains its own authorization and does not discover accounts. Family invitations remain a separate decision.
+
 The original accounting fingerprint query selected the wrong XML root, so its historical match results did not prove freshness. The corrected query and synthetic regressions require current independent reconciliation before operational reliance.
 
 Audit F-06 adds a seven-day manual snapshot target and a pre-release capture requirement without changing the 30-day retention ceiling. Cloud restoration/cutover remains a distinct unverified gate; the existing fenced local restore cannot enable a hosted destination. Missing source-loss deletion/accounting completeness must still block access. No personal backup, recurring scheduler or cloud resource change is implied by the runbook.

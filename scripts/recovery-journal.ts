@@ -35,6 +35,7 @@ const captureSchema = keysSchema.extend({
     purpose: z.enum([
       'synthetic-recovery-journal-capture',
       'owner-pilot-recovery-journal-capture',
+      'family-pilot-recovery-journal-capture',
     ]),
     targetSHA256: hashSchema,
     outputPathSHA256: hashSchema,
@@ -51,6 +52,7 @@ const journalSchema = z
     purpose: z.enum([
       'synthetic-recovery-journal',
       'owner-pilot-recovery-journal',
+      'family-pilot-recovery-journal',
     ]),
     targetSHA256: hashSchema,
     accountingSHA256: hashSchema.optional(),
@@ -349,11 +351,15 @@ export async function recoveryJournalCommand(
       archive: { type: 'string' },
       'allow-hosted': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
+      'family-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
-    Object.keys(v).every((k) => ['plan', 'owner-pilot'].includes(k))
+    !(v['owner-pilot'] && v['family-pilot']) &&
+    Object.keys(v).every((k) =>
+      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+    )
   )
     return v['owner-pilot']
       ? {
@@ -366,7 +372,18 @@ export async function recoveryJournalCommand(
             (e) => e !== 'real data',
           ),
         }
-      : recoveryJournalPlan;
+      : v['family-pilot']
+        ? {
+            ...recoveryJournalPlan,
+            scope: 'independent_family_pilot_deletion_journal',
+            requires:
+              recoveryJournalPlan.requires +
+              ' At most ten explicitly named owner, family and synthetic identities.',
+            excludes: recoveryJournalPlan.excludes.filter(
+              (e) => e !== 'real data',
+            ),
+          }
+        : recoveryJournalPlan;
   if (
     v.plan ||
     !v.manifest ||
@@ -378,7 +395,11 @@ export async function recoveryJournalCommand(
   const manifest = z
     .object({ target: RecoveryTargetSchema, targetSHA256: hashSchema })
     .parse(JSON.parse(await readFile(v.manifest, 'utf8')));
-  checkRecoveryMode(manifest.target, v['owner-pilot'] ?? false);
+  checkRecoveryMode(
+    manifest.target,
+    v['owner-pilot'] ?? false,
+    v['family-pilot'] ?? false,
+  );
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw new Error('Invalid target manifest.');
   if (v.capture) {

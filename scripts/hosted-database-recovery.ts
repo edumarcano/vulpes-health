@@ -47,6 +47,9 @@ const authorizationSchema = z.strictObject({
     'owner-pilot-database-capture',
     'owner-pilot-fenced-database-restore',
     'owner-pilot-fenced-database-recovery',
+    'family-pilot-database-capture',
+    'family-pilot-fenced-database-restore',
+    'family-pilot-fenced-database-recovery',
   ]),
   targetSHA256: hash,
   bindingSHA256: hash,
@@ -145,11 +148,15 @@ export async function databaseRecoveryCommand(
       'allow-fenced-restore': { type: 'boolean' },
       'allow-hosted-journal-read': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
+      'family-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
-    Object.keys(v).every((k) => ['plan', 'owner-pilot'].includes(k))
+    !(v['owner-pilot'] && v['family-pilot']) &&
+    Object.keys(v).every((k) =>
+      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+    )
   )
     return v['owner-pilot']
       ? {
@@ -166,7 +173,21 @@ export async function databaseRecoveryCommand(
             'HTTP test services with owner credentials',
           ],
         }
-      : databaseRecoveryPlan;
+      : v['family-pilot']
+        ? {
+            ...databaseRecoveryPlan,
+            scope: 'family_pilot_database_capture_and_fenced_restore',
+            recovery:
+              'Family replay requires a fresh complete journal, restored-session revocation and current source accounting. HTTP fixture services are synthetic-only; restored access remains blocked.',
+            requires:
+              databaseRecoveryPlan.requires +
+              ' At most ten explicitly named owner, family and synthetic identities.',
+            excludes: [
+              ...databaseRecoveryPlan.excludes.filter((e) => e !== 'real data'),
+              'HTTP test services with personal credentials',
+            ],
+          }
+        : databaseRecoveryPlan;
   if (v['verify-http'] && !v.recover)
     throw new Error('HTTP proof requires explicit recovery mode.');
   if (
@@ -196,8 +217,12 @@ export async function databaseRecoveryCommand(
   const manifest = z
     .object({ target: RecoveryTargetSchema, targetSHA256: hash })
     .parse(JSON.parse(await readFile(v.manifest, 'utf8')));
-  checkRecoveryMode(manifest.target, v['owner-pilot'] ?? false);
-  if (manifest.target.purpose === 'owner-pilot' && v['verify-http'])
+  checkRecoveryMode(
+    manifest.target,
+    v['owner-pilot'] ?? false,
+    v['family-pilot'] ?? false,
+  );
+  if (manifest.target.purpose !== 'synthetic-only' && v['verify-http'])
     throw new Error('HTTP fixture services are synthetic-only.');
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw new Error('Invalid source manifest.');
@@ -335,6 +360,7 @@ export async function databaseRecoveryCommand(
                     '--capture',
                     '--allow-hosted',
                     ...(v['owner-pilot'] ? ['--owner-pilot'] : []),
+                    ...(v['family-pilot'] ? ['--family-pilot'] : []),
                     '--manifest=' + v.manifest,
                     '--output=' + v['journal-latest'],
                   ],
