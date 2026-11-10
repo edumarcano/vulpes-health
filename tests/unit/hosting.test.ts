@@ -284,12 +284,12 @@ describe('synthetic hosting preparation', () => {
       ),
     ).toThrow();
   });
-  it('refuses owner-pilot builds when current-template evidence is unavailable', () => {
+  it('accepts the approved current-template evidence without mocking availability', () => {
     expect(catalog.getRoleAvailability('everyday', true)).toEqual({
-      state: 'unavailable',
-      reason: 'capability_evidence_mismatch',
+      state: 'available',
+      reason: 'verified',
     });
-    expect(() =>
+    expect(
       checkHostedEnvironment(
         {
           projectRef: target.supabaseProjectRef,
@@ -303,7 +303,7 @@ describe('synthetic hosting preparation', () => {
         },
         'owner-pilot-luna',
       ),
-    ).toThrow('owner_pilot_inference_unverified');
+    ).toMatchObject({ inferenceEnabled: true, configuration: 'valid' });
   });
   it('probes only public GETs, never sends credentials or follows redirects, and keeps untested gates explicit', async () => {
     const security = securityHeadersForSupabase(env().VITE_SUPABASE_URL);

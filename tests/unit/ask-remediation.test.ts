@@ -280,18 +280,18 @@ describe('Ask server temporal grounding', () => {
       }).success,
     ).toBe(true);
   });
-  it('keeps v9 approval historical, blocks the changed v10 template and rejects stale smoke evidence', () => {
+  it('accepts approved v10 evidence and rejects stale smoke evidence', () => {
     expect(everydayTemplateVersion).toBe('vulpes-everyday-v10');
     expect(everydayProductionEvidence?.templateVersion).toBe(
-      'vulpes-everyday-v9',
+      'vulpes-everyday-v10',
     );
     expect(everydayProductionEvidence?.assessment).toMatchObject({
       scope: 'technical_controls',
       modelQuality: 'deferred_by_owner',
     });
     expect(getRoleAvailability('everyday', true)).toEqual({
-      state: 'unavailable',
-      reason: 'capability_evidence_mismatch',
+      state: 'available',
+      reason: 'verified',
     });
     expect(
       assessEverydayPreflight({

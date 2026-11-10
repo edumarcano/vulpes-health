@@ -49,7 +49,7 @@ Before expanding use, establish current evidence for the applicable scope:
 | Area | Remaining work |
 |---|---|
 | Review and acceptance | Reconcile formal release criteria and outstanding review decisions against the final candidate; a local result does not establish broader acceptance. |
-| Providers | Prompt v10 requires matching technical verification and activation approval before merge; committed evidence still binds v9 and the new hosted build is blocked. Recheck rates, privacy, capability and budget controls for that packet. Flash, Argon and decision scoring remain unavailable. |
+| Providers | Prompt v10 has approved technical evidence; model benchmarks remain deferred. Recheck rates, privacy, capability and budget controls for any later activation or verification. Flash, Argon and decision scoring remain unavailable. |
 | Hosted application | Verify routing, headers, auth, isolation, private storage, cancellation and budget exhaustion on the intended candidate. |
 | Recovery | Verify a current backup, independent copy, deletion journal and local reconciliation. Whole-project hosted restoration and cutover are deferred for the personal release; see [recovery](recovery-cutover.md). |
 | Operations | Rotate encrypted backups manually within 30 days and retain current keys and deletion receipts. There is no automatic scheduler. |

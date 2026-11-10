@@ -2,8 +2,8 @@
 
 The owner authorized the bounded synthetic technical packet and deferred model
 benchmarks. Candidate `f6fb5ebcc14607a1c26fa769c8579caec985e339` passed all five
-technical cases using five provider requests. This does not approve production
-activation, merge or deployment; committed production evidence still binds v9.
+technical cases using five provider requests. On 2026-11-10 the owner approved binding these results for future owner-pilot
+builds, with model benchmarks deferred. Merge and deployment remain separate.
 
 | Case                           | Requests | Result                                                                                    |
 | ------------------------------ | -------: | ----------------------------------------------------------------------------------------- |
@@ -38,11 +38,12 @@ model error repair. Model quality and broader safety assessment remain deferred.
 
 A fresh disposable local project used fixed project/port substitutions and fresh
 trace keys. Verification-only capability evidence was refreshed inside that copy;
-production evidence was not changed. Initial zero-budget setup stopped at an
+production evidence was not changed during the packet. Initial zero-budget setup stopped at an
 unsubstituted local-port guard before transport or run admission. Accounting was
 checked at zero, and the guard was corrected to require the disposable port before
 continuing. A later optional offline-control invocation stopped on the existing
 application-period bucket (HTTP 409); it produced no new control evaluation.
 The previously recorded 16 passing offline controls remain the candidate's control
-evidence. No retained allocation was reset or replenished. The disposable stack
+evidence. The production record retains the earlier v9 synthetic safety evaluation
+ID `2505bb84-d2c7-4af1-a1fc-a118d4b4f1a6`; it is not a new v10 evaluation ID. No retained allocation was reset or replenished. The disposable stack
 was stopped with its encrypted evidence and accounting preserved.

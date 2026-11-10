@@ -12,7 +12,7 @@ export const everydayCapabilityEvidence: z.infer<
   model: 'openai/gpt-6-luna',
   effort: 'low',
   adapterVersion: 'openrouter-responses-v2',
-  templateVersion: 'vulpes-everyday-v9',
+  templateVersion: 'vulpes-everyday-v10',
   priceId: 'openrouter-gpt-6-luna-20261031-conservative',
   priceHash: '0a5a7a4099aeff7c38bcc37991a7f8243f534c4a870069ad3e20bb93d466bc2f',
   inputBoundTokens: 12000,
@@ -20,6 +20,6 @@ export const everydayCapabilityEvidence: z.infer<
   streaming: true,
   tools: true,
   zdr: true,
-  checkedAt: '2026-11-05T17:56:26.0373327Z',
+  checkedAt: '2026-11-10T22:42:17.699Z',
   sourceURL: 'https://openrouter.ai/api/v1/endpoints/zdr',
 };
