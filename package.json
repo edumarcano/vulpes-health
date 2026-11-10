@@ -28,6 +28,7 @@
     "recovery:journal": "tsx scripts/recovery-journal.ts",
     "recovery:database": "tsx scripts/hosted-database-recovery.ts",
     "account:recover": "tsx scripts/operator-recover.ts",
+    "account:recover:hosted": "tsx scripts/hosted-account-recovery.ts",
     "test:lifecycle-upgrade": "tsx scripts/verify-lifecycle-upgrade.ts",
     "dev:client": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "dev:api": "tsx scripts/local-api.ts",

@@ -65,6 +65,8 @@ Database time determines expiry. Existing run/hold settlement rules remain uncha
 
 Hosted maintenance covers database retention and Auth deletion resumption. It does not rotate encrypted backup or journal copies. Export capture unlinks temporary files before consuming private content. Manual backup rotation and recovery freshness checks remain separate; no scheduler is configured.
 
+For named family accounts, use the [family recovery manifest](hosted-recovery.md#named-family-operation-scope) and `--family-pilot`. Maintenance authorization lists only explicitly approved members of that manifest (at most ten).
+
 | Store | Retention/cleanup |
 |---|---|
 | Measurements, goals/revisions, approved proposals, conversations and message receipts | Explicit product/account deletion; execution expiry preserves transcript history |
@@ -119,3 +121,9 @@ npm run account:recover
 Use only a synthetic account during local verification. In a private interactive terminal, provide the account UUID, attest `IDENTITY VERIFIED` after independent out-of-band verification, and enter the new password through hidden input. Never put credentials in arguments/chat/logs or grant project-team membership. The trusted service resets the password and revokes session/refresh records. App verification, RLS reads and direct mutations reject the old session even while its signed JWT has time remaining.
 
 If reset/revocation is unconfirmed, repeat before credential handoff. Verify a fresh sign-in and deliver credentials through the separately agreed private channel. No SMTP service is added. Local tests establish the admin/Auth/session path; human identity verification/handoff, hosted secrets and operator access remain deployment/pilot gates.
+
+### Explicit hosted password recovery
+
+`npm run account:recover:hosted -- --plan --family-pilot` is inert. Execution requires `--execute --allow-hosted --manifest=<private-file>` and the matching owner/family mode (unflagged only for synthetic manifests). It invokes the same active-account reset and persisted-session revocation service as local recovery, under a bounded transport. It never provisions an identity or changes provider consent/budgets.
+
+Private stdin contains `publishableKey`, `adminKey`, `userId`, `password`, `identityVerified: true` and `authorization`. The purpose is `synthetic-account-recovery`, `owner-pilot-account-recovery` or `family-pilot-account-recovery`. Compute `bindingSHA256` with `hostedAccountRecoveryBinding(targetSHA256,userId)` from `scripts/hosted-account-recovery.ts`; include the exact `targetSHA256`, `approved: true` and expiry within 24 hours. Confirm the account UUID out of band and supply the password privately. Named scopes permit only declared identities; synthetic mode refuses personal markers. Do not hand off a password after an unconfirmed reset or revocation. Human identity and credential delivery remain operator responsibilities.
