@@ -239,37 +239,14 @@ export async function restoreDatabase(
   recovery?: RecoveryReplayInput,
 ) {
   target = RecoveryTargetSchema.parse(target);
-  const opened = openArchive(
-    archive,
-    new Map([[keys.keyId, keys.backup]]),
-    'database',
-    now,
-  );
-  let dump: Buffer | undefined;
+  const inspected = inspectDatabaseArchive(target, archive, keys, now);
+  const { dump, snapshot: expected, header } = inspected;
   try {
-    const record = bundleSchema.parse(
-      JSON.parse(opened.bytes.toString('utf8')),
-    );
-    if (
-      record.targetSHA256 !== recoveryTargetHash(target) ||
-      record.purpose !==
-        recoveryPurpose(
-          target,
-          'synthetic-database-recovery',
-          'owner-pilot-database-recovery',
-        )
-    )
-      throw new Error('Backup source mismatch.');
-    const expected = snapshot(record.snapshot, target);
-    verifyTraces(expected, keys.traces);
-    dump = dumpBytes(Buffer.from(record.dumpBase64, 'base64'));
-    if (dump.toString('base64') !== record.dumpBase64)
-      throw new Error('Invalid dump encoding.');
     const journalKeys = recovery
       ? {
           keyId: recovery.keyId,
           journalKeyB64: recovery.journalKeyB64,
-          backupCreatedAt: opened.header.createdAt,
+          backupCreatedAt: header.createdAt,
         }
       : undefined;
     const initial = recovery
@@ -347,7 +324,7 @@ export async function restoreDatabase(
             'fenced_synthetic_database_recovery',
             'fenced_owner_pilot_database_recovery',
           ),
-          targetSHA256: record.targetSHA256,
+          targetSHA256: recoveryTargetHash(target),
           encryptedArchiveAuthenticated: true,
           catalogAndRowsMatchedBeforeReplay: true,
           ...replay,
@@ -372,7 +349,7 @@ export async function restoreDatabase(
           'fenced_synthetic_database_restore',
           'fenced_owner_pilot_database_restore',
         ),
-        targetSHA256: record.targetSHA256,
+        targetSHA256: recoveryTargetHash(target),
         tables: Object.keys(expected.inventory).length,
         traceKeyVersions: expected.traceKeyIds.length,
         encryptedArchiveAuthenticated: true,
@@ -391,7 +368,55 @@ export async function restoreDatabase(
       if (created) await destination.stop();
     }
   } finally {
+    inspected.dispose();
+  }
+}
+
+export function inspectDatabaseArchive(
+  target: RecoveryTarget,
+  archive: Buffer,
+  keys: { backup: Buffer; keyId: string; traces: EncryptionKeys },
+  now = Date.now(),
+) {
+  const opened = openArchive(
+    archive,
+    new Map([[keys.keyId, keys.backup]]),
+    'database',
+    now,
+  );
+  let dump: Buffer | undefined;
+  try {
+    const record = bundleSchema.parse(
+      JSON.parse(opened.bytes.toString('utf8')),
+    );
+    if (
+      record.targetSHA256 !== recoveryTargetHash(target) ||
+      record.purpose !==
+        recoveryPurpose(
+          target,
+          'synthetic-database-recovery',
+          'owner-pilot-database-recovery',
+        )
+    )
+      throw new Error('Backup source mismatch.');
+    const checked = snapshot(record.snapshot, target);
+    verifyTraces(checked, keys.traces);
+    dump = dumpBytes(Buffer.from(record.dumpBase64, 'base64'));
+    if (dump.toString('base64') !== record.dumpBase64)
+      throw new Error('Invalid dump encoding.');
+    const bytes = dump;
+    return {
+      snapshot: checked,
+      dump: bytes,
+      header: opened.header,
+      dispose: () => {
+        bytes.fill(0);
+        opened.bytes.fill(0);
+      },
+    };
+  } catch (error) {
     dump?.fill(0);
     opened.bytes.fill(0);
+    throw error;
   }
 }

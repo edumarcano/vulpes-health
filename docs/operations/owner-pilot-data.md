@@ -30,6 +30,8 @@ Rotate encrypted backups within 30 days and verify independent ciphertext copies
 
 The [recovery target](recovery-cutover.md) requires a verified snapshot within seven days and a fresh approved capture before release/migration. The owner must adopt a manual reminder; no scheduler or personal-data backup was run during this remediation.
 
+Follow the [weekly free-infrastructure check](free-tier-maintenance.md) for aggregate size/retention inspection, backup/copy authentication and return after inactivity. Its status command is read-only; it cannot authorize cleanup, restore or access.
+
 ## Deployments and checks
 
 The repository enables native Git builds only for `main` on the existing Vercel project at `https://vulpes-health.vercel.app`. Vercel must require `Main / Release gate` before assigning production domains. The gate succeeds only after all three main CI jobs succeed; PR checks retain separate identities. The build independently enforces production configuration, source metadata, approved inference and complete migration compatibility. Repository changes alone do not prove cloud enforcement. Vercel owns promotion ordering and retries; no custom promotion journal remains.
