@@ -28,20 +28,20 @@ Restart the full app after configuration changes. Development and preview CSP al
 4. Hand off credentials through an approved private channel and verify the recipient. Do not log the password, session, administrative key, or full Auth response.
 5. Sign in through `/login`, save profile preferences, reload, and sign out. Verify the account has no foreign settings/data and no provider consent by default. Consent does not enable inference.
 
-Use the existing guarded local integration/browser tests for disposable synthetic provisioning and cleanup. They do not grant permission to create real or family accounts.
+Use the guarded local integration/browser tests for disposable synthetic provisioning and cleanup. Real accounts require owner approval.
 
-The small-pilot policy uses operator-assisted password reset without SMTP. Verify the recipient's identity before reset and deliver credentials privately after session revocation succeeds. Family users do not need Supabase or Vercel administrator access.
+The small-pilot policy uses operator-assisted password reset without SMTP. Verify the recipient's identity before reset and deliver credentials privately after session revocation succeeds. Recipients do not need Supabase or Vercel administrator access.
 
-## Family account preparation
+## Additional account preparation
 
-The [hosted synthetic checks](../evidence/temporary-account-2026-11-10.md) cover account isolation, browser switching, consent, budget denial and hosted password recovery. Actual invitations, recipient identity checks and device onboarding happen separately.
+Accounts are created by the operator and credentials are delivered privately; the app does not send invitations. The [hosted synthetic checks](../evidence/temporary-account-2026-11-10.md) cover isolation, account switching, consent, budget denial and password recovery.
 
 | Area | Setup |
 |---|---|
-| Account scope | Set the Auth user's server-controlled `app_metadata.vulpes_data_scope` to `family-pilot`. Add the returned UUID to the private [family recovery manifest](../operations/hosted-recovery.md#named-family-operation-scope); preserve the owner's existing scope marker. The manifest covers at most ten owner, family and synthetic identities in total. |
-| Credentials | Follow the provisioning procedure, verify the intended recipient and agree on a private delivery channel. Password recovery uses `account:recover:hosted` with the matching manifest and `--family-pilot`. |
-| AI access | Leave provider consent empty and the account without an allocation at creation. The recipient accepts provider consent. The owner separately approves a monthly account allocation within the shared app ceiling. A personal spending preference cannot increase that allocation. |
-| Backup | Include every account in the family manifest and verify a fresh encrypted capture, separate copy, retained keys, current deletion journal and fenced reconciliation before regular use. Whole-project hosted restoration remains unverified; the local restore tools do not restore into Supabase. |
+| Account scope | Set the Auth user's server-controlled `app_metadata.vulpes_data_scope` to `family-pilot` and add the UUID to the private [recovery manifest](../operations/hosted-recovery.md#named-family-operation-scope). Preserve the owner's scope marker. The manifest covers at most ten owner, additional and synthetic identities. |
+| Credentials and device | Follow the provisioning procedure above and check sign-in and basic use on the recipient's device. Password recovery uses `account:recover:hosted` with the matching manifest and `--family-pilot`. |
+| AI access | Start without provider consent or an allocation. The recipient accepts consent; the owner separately approves a monthly allocation within the shared app ceiling. A personal preference cannot increase it. |
+| Backup | Include every account in the manifest and verify a fresh encrypted backup, separate copy, retained keys, current deletion journal and fenced reconciliation before regular use. Hosted restoration remains unverified. |
 
 For an approved AI allocation, use a trusted administrative context to call `provision_pilot_budget_v1` with `p_owner`, `p_app_ceiling` and `p_account_ceiling`. Both ceilings must be positive, and the account ceiling cannot exceed the app ceiling. The function creates missing current UTC-month buckets, preserves spent and reserved amounts, and rejects a different existing ceiling. The `budget:provision` CLI targets local synthetic infrastructure only.
 
