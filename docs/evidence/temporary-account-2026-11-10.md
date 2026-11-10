@@ -38,9 +38,17 @@ After restarting Docker Desktop, the owner-mode recovery commands captured a fre
 | Snapshot | The authenticated archive covered 57 tables and one trace-key version. Restored catalog and rows matched before replay. |
 | Deletions and sessions | All 18 deletion records replayed locally. Restored access and refresh sessions were removed; old sessions were denied. Unaffected rows and shared charges were preserved. |
 | Current reconciliation | A fresh journal was captured and rechecked against the live source after replay. Current accounting matched. Two-owner RLS checks passed in the isolated restore. |
-| Cleanup and custody | The restore container stopped and was removed with its disposable volume. Encrypted backup and journal files remain in private local storage. A fresh independent-storage copy and its readback were not performed. |
+| Cleanup and custody | The restore container stopped and was removed with its disposable volume. The encrypted backup and both journals were subsequently copied to the existing private Google Drive recovery folder and verified as described below. Keys were not copied with them. |
 
 The backup SHA-256 was `1525753ebaaa878db44b27ca5dba0d29d46810987dffb52a1038dfa5b5ee46be`. No restored access was enabled. Actual restored Auth/API services, whole-project hosted restoration and source-loss cutover remain unverified. New family data still requires the backup preparation in the [account setup procedure](../setup/private-accounts.md#family-account-preparation).
+
+### Independent copy verification
+
+At `2026-11-10T21:11:38.302Z`, all three mounted Drive copies matched the original byte counts and SHA-256 digests and authenticated with the separately retained keys. The database copy also passed retained trace-key inspection. Drive desktop metadata contained cloud item IDs, content revisions and matching content checksums for all three files, with no pending operations. The backup and initial journal also appeared with matching checksums in the client's separate change-feed metadata cache.
+
+This establishes copy integrity and client-reported cloud synchronization. A fresh web download was not performed: desktop automation was unavailable and the separate browser required Google sign-in. Journal authentication checked historical integrity at capture time; it did not renew the five-minute recovery window or establish later deletion/accounting completeness.
+
+The pre-invitation preparation is complete for the bounded family pilot on the verified deployment. Account-specific provisioning, identity and credential handoff, recipient consent, approved AI allocations, device checks and a backup covering the new identities occur during onboarding. The deferred hosted restoration and accessibility boundaries remain unchanged.
 
 ## Local verification
 

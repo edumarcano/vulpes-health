@@ -54,7 +54,7 @@ Before expanding use, establish current evidence for the applicable scope:
 | Recovery | Verify a current backup, independent copy, deletion journal and local reconciliation. Whole-project hosted restoration and cutover are deferred for the personal release; see [recovery](recovery-cutover.md). |
 | Operations | Rotate encrypted backups manually within 30 days and retain current keys and deletion receipts. There is no automatic scheduler. |
 | Devices and accessibility | The owner reported Galaxy S23 conversation, install and offline behavior. TalkBack and broader device/accessibility coverage remain unverified. |
-| Family use | Follow [family account preparation](../setup/private-accounts.md#family-account-preparation). The [dated synthetic checks](../evidence/temporary-account-2026-11-10.md#merged-deployment-and-family-preparation) cover isolation, browser switching, consent, budget denial and password recovery. Recipient identity, credential handoff, approved allocations, device checks and a verified backup covering the invited accounts remain part of onboarding. |
+| Family use | Pre-invitation preparation for the bounded family pilot is complete on the [verified deployment](../evidence/temporary-account-2026-11-10.md#merged-deployment-and-family-preparation), including the dated backup/copy checks. Follow [family account preparation](../setup/private-accounts.md#family-account-preparation) during onboarding for recipient identity, credential handoff, consent, approved allocations, device checks and a verified backup covering the invited accounts. |
 
 The local report does not itself authorize deployment, paid inference, restored access or family use.
 
