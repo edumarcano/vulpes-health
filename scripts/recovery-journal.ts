@@ -35,7 +35,7 @@ const captureSchema = keysSchema.extend({
     purpose: z.enum([
       'synthetic-recovery-journal-capture',
       'owner-pilot-recovery-journal-capture',
-      'family-pilot-recovery-journal-capture',
+      'invited-pilot-recovery-journal-capture',
     ]),
     targetSHA256: hashSchema,
     outputPathSHA256: hashSchema,
@@ -52,7 +52,7 @@ const journalSchema = z
     purpose: z.enum([
       'synthetic-recovery-journal',
       'owner-pilot-recovery-journal',
-      'family-pilot-recovery-journal',
+      'invited-pilot-recovery-journal',
     ]),
     targetSHA256: hashSchema,
     accountingSHA256: hashSchema.optional(),
@@ -351,14 +351,14 @@ export async function recoveryJournalCommand(
       archive: { type: 'string' },
       'allow-hosted': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
-      'family-pilot': { type: 'boolean' },
+      'invited-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
-    !(v['owner-pilot'] && v['family-pilot']) &&
+    !(v['owner-pilot'] && v['invited-pilot']) &&
     Object.keys(v).every((k) =>
-      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+      ['plan', 'owner-pilot', 'invited-pilot'].includes(k),
     )
   )
     return v['owner-pilot']
@@ -372,13 +372,13 @@ export async function recoveryJournalCommand(
             (e) => e !== 'real data',
           ),
         }
-      : v['family-pilot']
+      : v['invited-pilot']
         ? {
             ...recoveryJournalPlan,
-            scope: 'independent_family_pilot_deletion_journal',
+            scope: 'independent_invited_pilot_deletion_journal',
             requires:
               recoveryJournalPlan.requires +
-              ' At most ten explicitly named owner, family and synthetic identities.',
+              ' At most ten explicitly named owner, invited and synthetic identities.',
             excludes: recoveryJournalPlan.excludes.filter(
               (e) => e !== 'real data',
             ),
@@ -398,7 +398,7 @@ export async function recoveryJournalCommand(
   checkRecoveryMode(
     manifest.target,
     v['owner-pilot'] ?? false,
-    v['family-pilot'] ?? false,
+    v['invited-pilot'] ?? false,
   );
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw new Error('Invalid target manifest.');

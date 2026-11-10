@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 import { renderSmokeReport, runSmoke } from '../../scripts/provider-smoke.js';
 import { matchesSyntheticAnswer } from '../../scripts/live-everyday.js';
+import { everydayTemplateVersion } from '../../server/config/everyday-versions.js';
 
 const canary = 'synthetic-credential-canary-not-a-real-key';
 async function cli(args: string[], liveSwitch = 'false') {
@@ -115,8 +116,56 @@ describe('real provider-smoke CLI', () => {
       );
       expect(output.code).toBe(1);
       expect(JSON.parse(output.stderr).code).toBe(expected);
+      expect(JSON.parse(output.stderr).actualProviderRequests).toBe(0);
     },
   );
+  it('still requires an attempt after matching synthetic capability evidence, before credential access', async () => {
+    vi.resetModules();
+    vi.doMock(
+      '../../server/config/everyday-verification.js',
+      async (importOriginal) => {
+        const actual =
+          await importOriginal<
+            typeof import('../../server/config/everyday-verification.js')
+          >();
+        return {
+          ...actual,
+          everydayCapabilityEvidence: {
+            ...actual.everydayCapabilityEvidence,
+            templateVersion: everydayTemplateVersion,
+          },
+        };
+      },
+    );
+    const env = new Proxy(
+      { VULPES_LIVE_AI_ENABLED: 'true' },
+      {
+        get(target, key) {
+          if (key === 'VULPES_LIVE_AI_ENABLED')
+            return target.VULPES_LIVE_AI_ENABLED;
+          throw new Error('credential_discovery');
+        },
+      },
+    );
+    try {
+      const { runSmoke: matchingSmoke } =
+        await import('../../scripts/provider-smoke.js');
+      await expect(
+        matchingSmoke(
+          [
+            '--mode=live',
+            '--role=everyday',
+            '--allow-spend',
+            '--max-cost-usd=0.01',
+          ],
+          env,
+        ),
+      ).rejects.toThrow('verification_attempt_required');
+    } finally {
+      vi.doUnmock('../../server/config/everyday-verification.js');
+      vi.resetModules();
+    }
+  });
   it.each([
     '--mode=unexpected',
     '--role=unknown',

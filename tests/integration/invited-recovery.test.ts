@@ -6,37 +6,37 @@ import { withRecoverySource } from '../helpers/recovery-source.js';
 import { captureDatabase } from '../../scripts/recovery-database.js';
 import { databaseRestoreBinding } from '../../scripts/hosted-database-recovery.js';
 import {
-  FamilyRecoveryTargetSchema,
+  InvitedRecoveryTargetSchema,
   recoveryTargetHash,
 } from '../../scripts/recovery-target.js';
 import { localEnvironment, projectRoot } from '../../scripts/local-database.js';
 
-it('captures two named personal identities with synthetic data and restores the authenticated family archive through the CLI', async () => {
+it('captures two named personal identities with synthetic data and restores the authenticated invited archive through the CLI', async () => {
   await withRecoverySource(async (f) => {
     const owner = f.users[0]!.id,
       member = f.users[1]!.id,
-      target = FamilyRecoveryTargetSchema.parse({
+      target = InvitedRecoveryTargetSchema.parse({
         ...f.target,
-        purpose: 'family-pilot',
+        purpose: 'invited-pilot',
         ownerUserId: owner,
-        familyUserIds: [member],
+        invitedUserIds: [member],
         syntheticPeerUserIds: [],
       });
     f.sql(
-      `update auth.users set raw_app_meta_data=raw_app_meta_data || '{"vulpes_data_scope":"family-pilot"}'::jsonb;`,
+      `update auth.users set raw_app_meta_data=raw_app_meta_data || '{"vulpes_data_scope":"invited-pilot"}'::jsonb;`,
     );
     await expect(captureDatabase(f.target, f.source, f.keys)).rejects.toThrow(
       'Synthetic source',
     );
     await expect(
-      captureDatabase({ ...target, familyUserIds: [] }, f.source, f.keys),
+      captureDatabase({ ...target, invitedUserIds: [] }, f.source, f.keys),
     ).rejects.toThrow('identity mismatch');
     const before = await f.source.snapshot(),
       captured = await captureDatabase(target, f.source, f.keys),
-      archive = join(f.root, 'family.vpb'),
-      manifest = join(f.root, 'family.json');
+      archive = join(f.root, 'invited.vpb'),
+      manifest = join(f.root, 'invited.json');
     expect(captured.report).toMatchObject({
-      scope: 'family_pilot_database_capture',
+      scope: 'invited_pilot_database_capture',
       sourceWrites: 0,
       traceKeyVersions: 2,
     });
@@ -59,7 +59,7 @@ it('captures two named personal identities with synthetic data and restores the 
         ),
       },
       authorization: {
-        purpose: 'family-pilot-fenced-database-restore',
+        purpose: 'invited-pilot-fenced-database-restore',
         targetSHA256: recoveryTargetHash(target),
         bindingSHA256: databaseRestoreBinding(captured.archive, f.image),
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
@@ -74,7 +74,7 @@ it('captures two named personal identities with synthetic data and restores the 
           'node_modules/tsx/dist/cli.mjs',
           'scripts/hosted-database-recovery.ts',
           '--restore',
-          '--family-pilot',
+          '--invited-pilot',
           '--allow-fenced-restore',
           '--manifest=' + manifest,
           '--archive=' + archive,
@@ -92,7 +92,7 @@ it('captures two named personal identities with synthetic data and restores the 
       const report = JSON.parse(cli.stdout);
       destination = report.destination;
       expect(report).toMatchObject({
-        scope: 'fenced_family_pilot_database_restore',
+        scope: 'fenced_invited_pilot_database_restore',
         catalogAndRowsMatched: true,
         traceKeyVersions: 2,
         network: 'none',

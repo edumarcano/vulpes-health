@@ -27,14 +27,14 @@ export const OwnerRecoveryTargetSchema = z
       1 + target.syntheticPeerUserIds.length,
     'Owner and synthetic peer must differ.',
   );
-const familyUuid = z.uuid().transform((id) => id.toLowerCase());
-export const FamilyRecoveryTargetSchema = z
+const invitedUuid = z.uuid().transform((id) => id.toLowerCase());
+export const InvitedRecoveryTargetSchema = z
   .strictObject({
     ...HostingTargetSchema.shape,
-    purpose: z.literal('family-pilot'),
-    ownerUserId: familyUuid,
-    familyUserIds: z.array(familyUuid).max(9),
-    syntheticPeerUserIds: z.array(familyUuid).max(9),
+    purpose: z.literal('invited-pilot'),
+    ownerUserId: invitedUuid,
+    invitedUserIds: z.array(invitedUuid).max(9),
+    syntheticPeerUserIds: z.array(invitedUuid).max(9),
   })
   .refine(
     (target) => target.supabaseProjectRef !== target.recoveryProjectRef,
@@ -43,15 +43,15 @@ export const FamilyRecoveryTargetSchema = z
   .refine((target) => {
     const ids = [
       target.ownerUserId,
-      ...target.familyUserIds,
+      ...target.invitedUserIds,
       ...target.syntheticPeerUserIds,
     ];
     return ids.length <= 10 && new Set(ids).size === ids.length;
-  }, 'Family scope requires at most ten distinct named identities.');
+  }, 'Invited scope requires at most ten distinct named identities.');
 export const RecoveryTargetSchema = z.union([
   HostingTargetSchema,
   OwnerRecoveryTargetSchema,
-  FamilyRecoveryTargetSchema,
+  InvitedRecoveryTargetSchema,
 ]);
 export type RecoveryTarget = z.infer<typeof RecoveryTargetSchema>;
 export const RecoveryUserScopeSchema = z
@@ -67,7 +67,7 @@ export function recoveryAccountIds(target: RecoveryTarget) {
     ? undefined
     : [
         target.ownerUserId,
-        ...(target.purpose === 'family-pilot' ? target.familyUserIds : []),
+        ...(target.purpose === 'invited-pilot' ? target.invitedUserIds : []),
         ...target.syntheticPeerUserIds,
       ];
 }
@@ -98,7 +98,7 @@ export function checkRecoveryUsers(
     personal = new Set(
       [
         target.ownerUserId,
-        ...(target.purpose === 'family-pilot' ? target.familyUserIds : []),
+        ...(target.purpose === 'invited-pilot' ? target.invitedUserIds : []),
       ].map((id) => id.toLowerCase()),
     ),
     completed = new Set(completedDeletionOwners.map((id) => id.toLowerCase()));
@@ -122,23 +122,25 @@ export function checkRecoveryUsers(
 export function checkRecoveryMode(
   target: RecoveryTarget,
   ownerPilot: boolean,
-  familyPilot = false,
+  invitedPilot = false,
 ) {
   if (
     (target.purpose === 'owner-pilot') !== ownerPilot ||
-    (target.purpose === 'family-pilot') !== familyPilot
+    (target.purpose === 'invited-pilot') !== invitedPilot
   )
-    throw Error('Explicit matching owner-pilot or family-pilot mode required.');
+    throw Error(
+      'Explicit matching owner-pilot or invited-pilot mode required.',
+    );
 }
 export function recoveryPurpose(
   target: RecoveryTarget,
   synthetic: string,
   owner: string,
 ) {
-  return target.purpose === 'family-pilot'
+  return target.purpose === 'invited-pilot'
     ? owner
-        .replace('owner-pilot', 'family-pilot')
-        .replace('owner_pilot', 'family_pilot')
+        .replace('owner-pilot', 'invited-pilot')
+        .replace('owner_pilot', 'invited_pilot')
     : target.purpose === 'owner-pilot'
       ? owner
       : synthetic;

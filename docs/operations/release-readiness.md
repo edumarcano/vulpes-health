@@ -1,6 +1,6 @@
 # Release readiness
 
-The personal-owner handoff is complete. Broader release and family acceptance remain separate from the recorded local and hosted results. [Owner evidence](../evidence/owner-pilot-step5.md), [device evidence](../evidence/owner-pilot-step4.md), [provider evidence](../evidence/luna-owner-pilot-live.md), and the [historical local report](../evidence/release/m6-local.json) identify the candidates and scopes actually checked.
+The personal-owner handoff is complete. Broader release and additional-account acceptance remain separate from the recorded local and hosted results. [Owner evidence](../evidence/owner-pilot-step5.md), [device evidence](../evidence/owner-pilot-step4.md), [provider evidence](../evidence/luna-owner-pilot-live.md), and the [historical local report](../evidence/release/m6-local.json) identify the candidates and scopes actually checked.
 
 The [independent audit closure matrix](../evidence/audit-remediation-closure.md) records the status of F-01 through F-12 at the time of that audit. Current recovery and release scope is described below.
 
@@ -49,14 +49,14 @@ Before expanding use, establish current evidence for the applicable scope:
 | Area | Remaining work |
 |---|---|
 | Review and acceptance | Reconcile formal release criteria and outstanding review decisions against the final candidate; a local result does not establish broader acceptance. |
-| Providers | Recheck the selected model, rates, privacy terms, capability and budget controls before any new activation. Flash, Argon and decision scoring remain unavailable. |
+| Providers | Prompt v10 has approved technical evidence; model benchmarks remain deferred. Recheck rates, privacy, capability and budget controls for any later activation or verification. Flash, Argon and decision scoring remain unavailable. |
 | Hosted application | Verify routing, headers, auth, isolation, private storage, cancellation and budget exhaustion on the intended candidate. |
 | Recovery | Verify a current backup, independent copy, deletion journal and local reconciliation. Whole-project hosted restoration and cutover are deferred for the personal release; see [recovery](recovery-cutover.md). |
 | Operations | Rotate encrypted backups manually within 30 days and retain current keys and deletion receipts. There is no automatic scheduler. |
 | Devices and accessibility | The owner reported Galaxy S23 conversation, install and offline behavior. TalkBack and broader device/accessibility coverage remain unverified. |
-| Family use | Verify identity, private credential handoff, consent, budgets, isolation, export, deletion and recovery before a separately authorized invitation. |
+| Additional accounts | [Synthetic account and recovery checks](../evidence/temporary-account-2026-11-10.md#merged-deployment-and-account-checks) cover the verified deployment. Follow [account preparation](../setup/private-accounts.md#additional-account-preparation) when onboarding, including a fresh backup covering the new accounts. |
 
-The local report does not itself authorize deployment, paid inference, restored access or family use.
+The local report does not itself authorize deployment, paid inference, restored access or additional accounts.
 
 ## Candidate dispositions
 

@@ -41,7 +41,7 @@ const Input = z.strictObject({
     purpose: z.enum([
       'synthetic-operations-inspect',
       'owner-pilot-operations-inspect',
-      'family-pilot-operations-inspect',
+      'invited-pilot-operations-inspect',
     ]),
     targetSHA256: hash,
     bindingSHA256: hash,
@@ -215,15 +215,15 @@ export async function operationsStatusCommand(
       'allow-hosted': { type: 'boolean' },
       manifest: { type: 'string' },
       'owner-pilot': { type: 'boolean' },
-      'family-pilot': { type: 'boolean' },
+      'invited-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
     Object.keys(v).every((k) =>
-      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+      ['plan', 'owner-pilot', 'invited-pilot'].includes(k),
     ) &&
-    !(v['owner-pilot'] && v['family-pilot'])
+    !(v['owner-pilot'] && v['invited-pilot'])
   )
     return {
       scope: 'operator_status',
@@ -246,7 +246,7 @@ export async function operationsStatusCommand(
   checkRecoveryMode(
     manifest.target,
     v['owner-pilot'] ?? false,
-    v['family-pilot'] ?? false,
+    v['invited-pilot'] ?? false,
   );
   if (manifest.targetSHA256 !== recoveryTargetHash(manifest.target))
     throw Error('Target mismatch.');

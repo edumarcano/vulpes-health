@@ -280,10 +280,10 @@ describe('Ask server temporal grounding', () => {
       }).success,
     ).toBe(true);
   });
-  it('binds technical approval to v9, records deferred model assessment and rejects stale v7 evidence', () => {
-    expect(everydayTemplateVersion).toBe('vulpes-everyday-v9');
+  it('accepts approved v10 evidence and rejects stale smoke evidence', () => {
+    expect(everydayTemplateVersion).toBe('vulpes-everyday-v10');
     expect(everydayProductionEvidence?.templateVersion).toBe(
-      'vulpes-everyday-v9',
+      'vulpes-everyday-v10',
     );
     expect(everydayProductionEvidence?.assessment).toMatchObject({
       scope: 'technical_controls',
@@ -304,7 +304,10 @@ describe('Ask server temporal grounding', () => {
         maxInputTokens: models.everyday.maxInputTokens,
         maxOutputTokens: models.everyday.maxOutputTokens,
         price: models.everyday.price,
-        capabilities: everydayCapabilityEvidence,
+        capabilities: {
+          ...everydayCapabilityEvidence,
+          templateVersion: everydayTemplateVersion,
+        },
         smoke: {
           ...LiveSmokeEvidenceSchema.strip().parse(everydayProductionEvidence),
           templateVersion: 'vulpes-everyday-v7',

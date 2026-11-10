@@ -1,6 +1,6 @@
 # Private account setup
 
-Email/password authentication supports operator-provisioned accounts. Manual/CSV Data, Goals, owned JSON export and resumable account deletion are implemented. Public signup and email invitations/recovery remain unavailable. The authorized hosted owner pilot uses Luna under consent and budget controls. Operator-assisted recovery has a guarded local verification path in the [account lifecycle runbook](../operations/account-lifecycle.md). Tests use synthetic accounts only; hosted provisioning and real-account operations require separate approval.
+Email/password authentication supports operator-provisioned accounts. Manual/CSV Data, Goals, owned JSON export and resumable account deletion are implemented. Public signup and email invitations/recovery remain unavailable. The hosted owner pilot uses Luna under consent and budget controls. Operator-assisted password reset uses the bounded hosted command in the [account lifecycle runbook](../operations/account-lifecycle.md). Real-account provisioning and recovery require owner approval.
 
 ## Configuration
 
@@ -18,7 +18,7 @@ Use the root `.env.example`; keep populated values in ignored `.env.local` or de
 
 Obtain public values from the intended local stack or owner-approved project. Do not copy values from a different project. The guarded browser runner obtains local values in memory; it does not require a populated environment file.
 
-Restart the full app after configuration changes. Development and preview CSP allow the exact configured Auth origin. Production `vercel.json` intentionally keeps `connect-src 'self'` until an owner-selected project exists: before any authorized deployment, add only that project's exact HTTPS origin and verify the resulting hosted headers. Do not add a wildcard, `unsafe-eval`, or permissive credentialed CORS. Configure only the exact supported local/production redirect URLs. OAuth and recovery callbacks are not implemented.
+Restart the full app after configuration changes. Development and preview CSP allow the exact configured Auth origin. Production `vercel.json` allows the selected Supabase origin alongside `'self'` in `connect-src`; verify the deployed headers after changing that origin. Keep Auth Site URL aligned with the app origin and redirect URLs limited to implemented flows. OAuth and recovery callbacks are not implemented.
 
 ## Provisioning procedure
 
@@ -28,9 +28,24 @@ Restart the full app after configuration changes. Development and preview CSP al
 4. Hand off credentials through an approved private channel and verify the recipient. Do not log the password, session, administrative key, or full Auth response.
 5. Sign in through `/login`, save profile preferences, reload, and sign out. Verify the account has no foreign settings/data and no provider consent by default. Consent does not enable inference.
 
-Use the existing guarded local integration/browser tests for disposable synthetic provisioning and cleanup. They do not grant permission to create real or family accounts.
+Use the guarded local integration/browser tests for disposable synthetic provisioning and cleanup. Real accounts require owner approval.
 
-The approved small-pilot policy is operator-assisted reset without SMTP. Before family use, verify out-of-band identity checks, protected credential handoff and the hosted operator/Auth/session path. Do not assume default mail delivery or make family users project administrators. Local admin/Auth verification does not close the external OPS-05 gate.
+The small-pilot policy uses operator-assisted password reset without SMTP. Verify the recipient's identity before reset and deliver credentials privately after session revocation succeeds. Recipients do not need Supabase or Vercel administrator access.
+
+## Additional account preparation
+
+Accounts are created by the operator and credentials are delivered privately; the app does not send invitations. The [hosted synthetic checks](../evidence/temporary-account-2026-11-10.md) cover isolation, account switching, consent, budget denial and password recovery.
+
+| Area | Setup |
+|---|---|
+| Account scope | Set the Auth user's server-controlled `app_metadata.vulpes_data_scope` to `invited-pilot` and add the UUID to the private [recovery manifest](../operations/hosted-recovery.md#named-invited-account-operation-scope). Preserve the owner's scope marker. The manifest covers at most ten owner, additional and synthetic identities. |
+| Credentials and device | Follow the provisioning procedure above and check sign-in and basic use on the recipient's device. Password recovery uses `account:recover:hosted` with the matching manifest and `--invited-pilot`. |
+| AI access | Start without provider consent or an allocation. The recipient accepts consent; the owner separately approves a monthly allocation within the shared app ceiling. A personal preference cannot increase it. |
+| Backup | Include every account in the manifest and verify a fresh encrypted backup, separate copy, retained keys, current deletion journal and fenced reconciliation before regular use. Hosted restoration remains unverified. |
+
+For an approved AI allocation, use a trusted administrative context to call `provision_pilot_budget_v1` with `p_owner`, `p_app_ceiling` and `p_account_ceiling`. Both ceilings must be positive, and the account ceiling cannot exceed the app ceiling. The function creates missing current UTC-month buckets, preserves spent and reserved amounts, and rejects a different existing ceiling. The `budget:provision` CLI targets local synthetic infrastructure only.
+
+Allocations do not renew automatically. Provision each approved account for each new UTC month; missing allocations block paid requests. Review the shared app balance and pending holds before adding accounts. Changing an existing ceiling requires a separately approved operation.
 
 ## Encryption and retention
 

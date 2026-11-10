@@ -563,8 +563,8 @@ function assemble() {
       'Live provider results and host semantic review are recorded separately; no activation approval.',
       'No hosted routing/CSP/Auth/storage/restore verification.',
       'No physical keyboard/PWA/assistive-technology test.',
-      'No human recovery handoff, family invitation or pilot.',
-      'Formal release and family acceptance remain separate from this local report.',
+      'No human recovery handoff, account invitation or invited pilot.',
+      'Formal release and invited-account acceptance remain separate from this local report.',
     ],
     approvedDeviations: ['PR 14 remains deferred and disabled.'],
   };

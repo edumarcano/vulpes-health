@@ -1,2 +1,2 @@
 export const everydayAdapterVersion = 'openrouter-responses-v2';
-export const everydayTemplateVersion = 'vulpes-everyday-v9';
+export const everydayTemplateVersion = 'vulpes-everyday-v10';

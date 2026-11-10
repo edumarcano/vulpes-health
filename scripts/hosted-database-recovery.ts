@@ -47,9 +47,9 @@ const authorizationSchema = z.strictObject({
     'owner-pilot-database-capture',
     'owner-pilot-fenced-database-restore',
     'owner-pilot-fenced-database-recovery',
-    'family-pilot-database-capture',
-    'family-pilot-fenced-database-restore',
-    'family-pilot-fenced-database-recovery',
+    'invited-pilot-database-capture',
+    'invited-pilot-fenced-database-restore',
+    'invited-pilot-fenced-database-recovery',
   ]),
   targetSHA256: hash,
   bindingSHA256: hash,
@@ -148,14 +148,14 @@ export async function databaseRecoveryCommand(
       'allow-fenced-restore': { type: 'boolean' },
       'allow-hosted-journal-read': { type: 'boolean' },
       'owner-pilot': { type: 'boolean' },
-      'family-pilot': { type: 'boolean' },
+      'invited-pilot': { type: 'boolean' },
     },
   }).values;
   if (
     v.plan &&
-    !(v['owner-pilot'] && v['family-pilot']) &&
+    !(v['owner-pilot'] && v['invited-pilot']) &&
     Object.keys(v).every((k) =>
-      ['plan', 'owner-pilot', 'family-pilot'].includes(k),
+      ['plan', 'owner-pilot', 'invited-pilot'].includes(k),
     )
   )
     return v['owner-pilot']
@@ -169,19 +169,19 @@ export async function databaseRecoveryCommand(
             ' One named owner and at most one declared synthetic peer.',
           excludes: [
             ...databaseRecoveryPlan.excludes.filter((e) => e !== 'real data'),
-            'family identities',
+            'invited identities',
             'HTTP test services with owner credentials',
           ],
         }
-      : v['family-pilot']
+      : v['invited-pilot']
         ? {
             ...databaseRecoveryPlan,
-            scope: 'family_pilot_database_capture_and_fenced_restore',
+            scope: 'invited_pilot_database_capture_and_fenced_restore',
             recovery:
-              'Family replay requires a fresh complete journal, restored-session revocation and current source accounting. HTTP fixture services are synthetic-only; restored access remains blocked.',
+              'Invited replay requires a fresh complete journal, restored-session revocation and current source accounting. HTTP fixture services are synthetic-only; restored access remains blocked.',
             requires:
               databaseRecoveryPlan.requires +
-              ' At most ten explicitly named owner, family and synthetic identities.',
+              ' At most ten explicitly named owner, invited and synthetic identities.',
             excludes: [
               ...databaseRecoveryPlan.excludes.filter((e) => e !== 'real data'),
               'HTTP test services with personal credentials',
@@ -220,7 +220,7 @@ export async function databaseRecoveryCommand(
   checkRecoveryMode(
     manifest.target,
     v['owner-pilot'] ?? false,
-    v['family-pilot'] ?? false,
+    v['invited-pilot'] ?? false,
   );
   if (manifest.target.purpose !== 'synthetic-only' && v['verify-http'])
     throw new Error('HTTP fixture services are synthetic-only.');
@@ -360,7 +360,7 @@ export async function databaseRecoveryCommand(
                     '--capture',
                     '--allow-hosted',
                     ...(v['owner-pilot'] ? ['--owner-pilot'] : []),
-                    ...(v['family-pilot'] ? ['--family-pilot'] : []),
+                    ...(v['invited-pilot'] ? ['--invited-pilot'] : []),
                     '--manifest=' + v.manifest,
                     '--output=' + v['journal-latest'],
                   ],

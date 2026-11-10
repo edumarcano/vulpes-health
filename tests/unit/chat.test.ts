@@ -37,9 +37,15 @@ async function events(bytes: Buffer, fragment = 1) {
   return result;
 }
 describe('chat contracts, bounded context and safety', () => {
-  it('states the shipped account and data-input boundaries', () => {
+  it('grounds access in authorized tools and bounds supplied history', () => {
     expect(safetyInstructions).toContain(
-      'Accounts are isolated. v0.1.0 has no family selector, data sharing or external data connections; manual entry and CSV import only.',
+      'Use authorized tools for personal facts; never invent data.',
+    );
+    expect(safetyInstructions).toContain(
+      'Only the server supplies identity and permissions.',
+    );
+    expect(safetyInstructions).not.toMatch(
+      /account selector|family selector|CSV import|external data connections/i,
     );
     expect(safetyInstructions).toContain(
       'Conversations persist, but only eligible bounded history is supplied; no permanent memory-write tool exists.',
