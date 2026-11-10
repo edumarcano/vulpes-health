@@ -291,6 +291,9 @@ disposable stack was stopped after verification; the retained personal and earli
 test projects were not reset or stopped.
 
 Local implementation is complete. Hosted metadata/external private custody remain
-unverified, and v10 paid verification and activation approval are still required
-before merge. No live account transition, provider activation or deployment was
-performed. Actual provider requests and spend for this implementation were zero.
+unverified. The separately authorized
+[v10 technical packet](../evidence/luna-v10-technical.md) subsequently passed;
+activation approval is still required before merge. No live account transition,
+provider activation or deployment was performed. Actual provider requests and
+spend for the local implementation were zero; the separately authorized technical
+packet records its live costs independently.
