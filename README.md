@@ -1,6 +1,6 @@
 # Vulpes
 
-Vulpes is a personal health app that helps you understand your own measurements. You import your weight, body fat or heart rate, set goals, and ask questions in plain language. Every number comes from a deterministic calculation, and every AI answer can be inspected.
+**Vulpes** (*Latin for fox*) is named after the animal genus known for alertness and keen awareness. The app applies that same quiet, observant attention to your personal health measurements: helping you track weight, body fat or heart rate, set goals, and ask questions in plain language. Every number comes from a deterministic calculation, and every AI answer can be inspected.
 
 **Status:** v0.1.0, in active development. It is a personal project used by its author, not a service open to other users. It is a wellness tool and does not diagnose or treat medical conditions.
 

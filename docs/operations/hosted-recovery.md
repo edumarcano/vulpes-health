@@ -14,13 +14,42 @@ This section owns the backup targets. Other documents link here instead of resta
 | Deletion receipts | Keep completed receipts at least 31 days and unfinished receipts until resolved |
 | Keys | Keep backup, journal and trace keys separate from each other and from the data |
 
-## Weekly backup procedure
+## Operational cadence
 
-1. Set a weekly reminder to approve and verify an encrypted backup.
-2. Review `npm run recovery:database -- --plan --owner-pilot` and `npm run recovery:journal -- --plan --owner-pilot`. Confirm the source, private paths, copy location, keys and disk space.
-3. Approve and run the capture and journal operations described below, using private input for credentials.
-4. Authenticate the archive and the independent copy, verify the retained keys, then perform the fenced restore and reconciliation checks. Record safe timestamps and digests.
-5. If capture, copy, key recovery or reconciliation fails, record the target as missed and keep the release blocked. Rotate copies under the retention procedure.
+### 1. Routine headless backup (weekly or scheduled)
+
+Designed to run unattended via scheduled automation or headless background runs, reporting only on failure:
+
+1. **Plan & capture:** Run non-interactive capture using secure stdin for credentials:
+   ```sh
+   npm run recovery:database -- --capture --allow-hosted-capture --owner-pilot \
+     --manifest=<manifest.json> --output=backups/owner-<date>.enc
+   npm run recovery:journal -- --capture --allow-hosted --owner-pilot \
+     --manifest=<manifest.json> --output=backups/journal-<date>.enc
+   ```
+2. **Offline integrity verification:** Verify the archive structure and timestamp coverage:
+   ```sh
+   npm run recovery:journal -- --verify --owner-pilot \
+     --manifest=<manifest.json> --archive=backups/journal-<date>.enc
+   ```
+3. **Alert policy:** Successful runs log safe completion hashes and exit with code `0`. Execution halts and alerts the operator only if:
+   - Credentials or authorization bindings have expired.
+   - Database schema or manifest drift is detected.
+   - Archive encryption, checksum, or disk write fails.
+   - The hosted database is unreachable or paused (see [returning after inactivity](free-tier-maintenance.md#returning-after-inactivity)). Regular routine runs generate loopback/API activity that prevents Supabase free-tier auto-pausing.
+
+### 2. Pre-release fenced restore (release & migration gate)
+
+Executed on-demand before publishing a release tag (e.g. `v0.1.0`) or applying schema migrations:
+
+1. Re-authenticate the latest database archive and independent journal.
+2. Spin up an isolated, network-disabled local container and execute full reconciliation:
+   ```sh
+   npm run recovery:database -- --recover --allow-fenced-restore --allow-hosted-journal-read --owner-pilot \
+     --manifest=<manifest.json> --archive=backups/owner-<date>.enc --image=sha256:<pinned-id> \
+     --journal=backups/journal-initial.enc --journal-latest=backups/journal-latest.enc
+   ```
+3. Confirm that replay revokes all existing sessions, respects deletion receipts, and produces zero accounting drift.
 
 ## Hosted restoration and cutover
 
