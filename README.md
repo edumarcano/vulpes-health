@@ -2,7 +2,7 @@
 
 **Vulpes** (*Latin for fox*) is named after the animal genus known for alertness and keen awareness. The app applies that same quiet, observant attention to your personal health measurements: helping you track weight, body fat or heart rate, set goals, and ask questions in plain language. Every number comes from a deterministic calculation, and every AI answer can be inspected.
 
-**Status:** v0.1.0, in active development. It is a personal project used by its author, not a service open to other users. It is a wellness tool and does not diagnose or treat medical conditions.
+**Status:** v0.1.0, in active development. Vulpes is a personal project I built and use for tracking my own wellness, not a commercial service. It is a wellness tool and does not diagnose or treat medical conditions.
 
 | Ask Vulpes | Execution inspector |
 |---|---|
@@ -30,7 +30,7 @@ Data and Goals work with the AI switched off. The repository and CI default to n
 
 ## Built with AI coding agents
 
-Vulpes is developed with AI coding agents, including OpenAI Codex, Cursor, and Antigravity. The author sets the product direction, writes the specifications, makes the design decisions, and reviews and approves the work. The agents write a large share of the code, tests and documentation.
+Vulpes is developed with AI coding agents, including OpenAI Codex, Cursor, and Antigravity. I set the product direction, define the requirements, make key design decisions, and review and approve all changes. The agents draft the specifications, write the code, generate tests, and maintain documentation based on that direction.
 
 The agents follow the written rules in [AGENTS.md](AGENTS.md), and verification relies on automated tests, specifications and recorded evidence rather than trust in the agent. Material decisions are logged in [implementation decisions](docs/DECISIONS_IMPLEMENTATION.md).
 
