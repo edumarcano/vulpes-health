@@ -1,32 +1,32 @@
 [
   {
     "file": "release-import.png",
-    "sha256": "d14153300c8b7c0c8c77a00e34e6f1b3775399ca3f5bd9fd272482565fe45c87",
+    "sha256": "74b07467f393af8713bf361c5ae9f3ef3f69b35d8b2894bdfd1488aff5b3dd98",
     "reviewed": true,
     "description": "390px light: canonical synthetic CSV review before explicit import."
   },
   {
     "file": "release-inspector.png",
-    "sha256": "f3409511c68ddaf550fb880561f6516fc53b9e0e07954e0839b27eed7ad98296",
+    "sha256": "80178c5a4fc5ea035b4552944d93d01d6a2a5c713733952aadf4712ad7f34e99",
     "reviewed": true,
     "description": "390px light: owned synthetic execution, requested/unknown reported model and usage. No private payload expanded."
   },
   {
     "file": "release-progress.png",
-    "sha256": "6d4f5302492b7dda47d37f92d0330a86dc3fc5babe7ffb42012485aef9af5890",
+    "sha256": "eae64e7c5e07199d55259a054bf369e216f640f578005f80295562ab83c4315a",
     "reviewed": true,
     "description": "390px light full page: explicitly approved goal, current 68.8 and 52.94% progress after reimport/reload. Chart loading and visible keyboard focus are captured states."
   },
   {
     "file": "release-deleted.png",
-    "sha256": "9bc3c8c7662c4932d1e99ea86e5f7e09795162c748807f6731173a560a0196dc",
+    "sha256": "a3ab570dbd4318864c30c8858d48c7462e5dd13f9ef2a73b65bfd393824ecc16",
     "reviewed": true,
     "description": "390px light: authoritative application and Auth deletion confirmation, with restricted navigation."
   },
   {
     "file": "release-ask-dark.png",
-    "sha256": "1c79e5c8744c3723a4eeeaa420ca93bd5c698ff76a3f9f9fc4a09eb226afa7c9",
+    "sha256": "61ec5c54b145a665ae61455045894ffef9b71dac7aa352bd9701e619de355500",
     "reviewed": true,
-    "description": "1440px dark: deterministic synthetic answer and explicit local synthetic/no live calls label; keyboard skip-link focus is visible."
+    "description": "1440px dark: deterministic synthetic answer and explicit local synthetic/no live calls label."
   }
 ]

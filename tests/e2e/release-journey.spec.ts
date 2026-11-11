@@ -86,6 +86,15 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   await expect(
     page.getByText(/seven-day mean 69 kg; change -0.7 kg/),
   ).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.screenshot({
+    path: info.outputPath('release-ask-dark.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await page
     .getByRole('button', { name: 'Inspect execution', exact: true })
     .click();

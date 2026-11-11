@@ -2,7 +2,62 @@
 
 Use the owner-mode commands for the personal account. Synthetic and owner operations have distinct manifest purposes and authorizations; never treat owner data as synthetic. The owner manually rotates backups. There is no scheduler or access-enable command.
 
-The [recovery target and cutover procedure](recovery-cutover.md) sets the seven-day manual snapshot target, the pre-release capture requirement and the explicitly unverified hosted return-to-service gates. It does not add access-enable authority to the fenced tooling.
+## Recovery targets
+
+This section owns the backup targets. Other documents link here instead of restating them.
+
+| Target | Requirement |
+|---|---|
+| Snapshot age | A verified encrypted snapshot no more than seven days old |
+| Before a release or production migration | A fresh approved capture |
+| Backup rotation | Rotate encrypted database backups within 30 days |
+| Deletion receipts | Keep completed receipts at least 31 days and unfinished receipts until resolved |
+| Keys | Keep backup, journal and trace keys separate from each other and from the data |
+
+## Operational cadence
+
+### 1. Routine headless backup (weekly or scheduled)
+
+Designed to run unattended via scheduled automation or headless background runs, reporting only on failure:
+
+1. **Plan & capture:** Run non-interactive capture using secure stdin for credentials:
+   ```sh
+   npm run recovery:database -- --capture --allow-hosted-capture --owner-pilot \
+     --manifest=<manifest.json> --output=backups/owner-<date>.enc
+   npm run recovery:journal -- --capture --allow-hosted --owner-pilot \
+     --manifest=<manifest.json> --output=backups/journal-<date>.enc
+   ```
+2. **Offline integrity verification:** Verify the archive structure and timestamp coverage:
+   ```sh
+   npm run recovery:journal -- --verify --owner-pilot \
+     --manifest=<manifest.json> --archive=backups/journal-<date>.enc
+   ```
+3. **Alert policy:** Successful runs log safe completion hashes and exit with code `0`. Execution halts and alerts the operator only if:
+   - Credentials or authorization bindings have expired.
+   - Database schema or manifest drift is detected.
+   - Archive encryption, checksum, or disk write fails.
+   - The hosted database is unreachable or paused (see [returning after inactivity](free-tier-maintenance.md#returning-after-inactivity)). Regular routine runs generate loopback/API activity that prevents Supabase free-tier auto-pausing.
+
+### 2. Pre-release fenced restore (release & migration gate)
+
+Executed on-demand before publishing a release tag (e.g. `v0.1.0`) or applying schema migrations:
+
+1. Re-authenticate the latest database archive and independent journal.
+2. Spin up an isolated, network-disabled local container and execute full reconciliation:
+   ```sh
+   npm run recovery:database -- --recover --allow-fenced-restore --allow-hosted-journal-read --owner-pilot \
+     --manifest=<manifest.json> --archive=backups/owner-<date>.enc --image=sha256:<pinned-id> \
+     --journal=backups/journal-initial.enc --journal-latest=backups/journal-latest.enc
+   ```
+3. Confirm that replay revokes all existing sessions, respects deletion receipts, and produces zero accounting drift.
+
+## Hosted restoration and cutover
+
+Whole-project hosted restoration and cutover are deferred for the personal release. The existing tools restore into an isolated local destination and cannot import into a hosted project. The local `backup:verify` command exercises encrypted capture and restore, tamper and missing-key rejection, deletion replay, session revocation and accounting with synthetic data. None of these tools can enable access to a restored database.
+
+Before relying on hosted restoration, implement and rehearse an import into an isolated destination, verify platform compatibility and service fencing, and test application behavior and rollback. For a planned cutover or source loss, establish current deletion and accounting completeness before opening restored access. If completeness cannot be established, keep access blocked.
+
+## Capture preparation
 
 Before capture, identify the source, output paths, independent encrypted-copy location and separately retained backup, journal and trace keys. Use the exact target/action/path binding and authorization required by the CLI, with an expiry of at most 24 hours. Keep credentials in protected private stdin, not arguments or logs. The plan commands are inert:
 
@@ -14,7 +69,7 @@ npm run maintenance:hosted -- --plan --owner-pilot
 
 For owner data, add `--owner-pilot` to capture, restore, recover and journal commands below. Use an `owner-pilot` manifest naming one owner and at most one synthetic peer. Authorization purposes use the `owner-pilot-` prefix in place of `synthetic-`. The server-controlled `vulpes_data_scope=owner-pilot` marker prevents synthetic maintenance from operating on the owner. See [owner operations](owner-pilot-data.md) for maintenance.
 
-Rotate encrypted database backups within 30 days, retain completed deletion receipts for at least 31 days and retain unfinished receipts. Verify an independent encrypted copy and retain keys separately. Copying a journal does not refresh it. Source loss without independently current deletion and accounting completeness leaves restored access blocked. Account export is not a backup.
+Verify an independent encrypted copy and retain keys separately. Copying a journal does not refresh it. Source loss without independently current deletion and accounting completeness leaves restored access blocked. Account export is not a backup.
 
 ## Named invited-account operation scope
 
@@ -23,6 +78,20 @@ Use a distinct `invited-pilot` manifest and `--invited-pilot` for a deployment c
 Authorization/archive purposes for this scope replace `owner-pilot-` with `invited-pilot-`. Authorizations bind the complete manifest hash, so changing an account requires new approval. `--owner-pilot`, `--invited-pilot` and unflagged synthetic mode cannot be interchanged. Existing synthetic and owner archives retain their original hashes and formats; this scope does not activate restored access or authorize provisioning. Old named-account manifests, approvals and archives are rejected. Before retiring the previous recovery tooling, confirm hosted markers and private artifact custody. Preserve the prior tooling and keys if any required legacy recovery material remains; replace it only through an approved, verified capture and recovery process.
 
 The earlier [synthetic rehearsal](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/evidence/owner-pilot-step3-hosted-recovery.md) and [owner recovery](../evidence/owner-pilot-step5.md) record their actual scope and limitations. Owner-mode Auth/API service proof and source-loss/cutover completeness remain unverified.
+
+## Command summary
+
+Add `--owner-pilot` or `--invited-pilot` to match the manifest. All commands read credentials and authorization from private stdin, and each section below explains the inputs.
+
+| Command | Purpose | Required flags |
+|---|---|---|
+| `recovery:database -- --plan` | Describe the operation with no credentials or network | none |
+| `recovery:database -- --capture` | Encrypted database capture | `--allow-hosted-capture`, `--manifest=<reviewed-manifest>`, `--output=<new-private-file>` |
+| `recovery:database -- --restore` | Fenced restore into a local isolated container | `--allow-fenced-restore`, `--manifest`, `--archive=<private-file>`, `--image=sha256:<cached-image-id>` |
+| `recovery:database -- --recover` | Restore plus journal replay and reconciliation | `--allow-fenced-restore`, `--allow-hosted-journal-read`, `--manifest`, `--archive`, `--image`, `--journal=<independent-initial-copy>`, `--journal-latest=<new-private-file>`. Add `--verify-http` for the isolated Auth and API check. |
+| `recovery:journal -- --plan` | Describe the journal capture with no credentials or network | none |
+| `recovery:journal -- --capture` | Capture the deletion journal | `--allow-hosted`, `--manifest`, `--output=<new-private-file>` |
+| `recovery:journal -- --verify` | Verify a journal archive offline | `--manifest`, `--archive` (no `--allow-hosted`) |
 
 ## Encrypted database capture and fenced restore
 
