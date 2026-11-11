@@ -2,7 +2,7 @@
 
 **Vulpes** (*Latin for fox*) is named after the animal genus known for alertness and keen awareness. The app applies that same quiet, observant attention to your personal health measurements: helping you track weight, body fat or heart rate, set goals, and ask questions in plain language. Every number comes from a deterministic calculation, and every AI answer can be inspected.
 
-**Status:** v0.1.0, in active development. Vulpes is a personal project I built and use for tracking my own wellness, not a commercial service. It is a wellness tool and does not diagnose or treat medical conditions.
+**Status:** v0.1.0, in active development. Vulpes is a personal wellness project built to track and understand health metrics. It is a wellness tool and does not diagnose or treat medical conditions.
 
 | Ask Vulpes | Execution inspector |
 |---|---|
