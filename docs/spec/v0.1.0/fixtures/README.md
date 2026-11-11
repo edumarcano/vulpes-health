@@ -6,4 +6,4 @@ None of these values are the owner's measurements, desired targets or clinical r
 
 `wide-synthetic.csv` and `import-mapping.example.json` demonstrate a generic column-mapping import. They are not a RENPHO export or evidence of vendor format compatibility. The blank fat value on the third day is missing, not zero, so the mapped output contains five observations.
 
-`eval-cases.json` provides starter behavioral tests. Add the edge cases from ACCEPTANCE_TESTS during implementation. No live model test has been performed by creating these fixtures.
+`eval-cases.json` provides starter behavioral tests. Edge cases from ACCEPTANCE_TESTS are implemented across the automated test suites. No live model test has been performed by creating these fixtures.
