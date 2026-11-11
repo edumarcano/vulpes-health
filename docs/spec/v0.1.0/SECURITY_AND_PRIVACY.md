@@ -24,7 +24,7 @@ The selected Google route is allowed only after an operator approval binds the p
 
 Prefer Vercel OIDC / Google Workload Identity Federation with conditions binding the intended Vercel project and environment. Vercel documents this integration and short-lived credential exchange. [S18](SOURCES.md#s18)
 
-A service-account key is an owner-approved fallback for a prototype only, stored as a server secret, never committed or exposed to Codex logs. Scope permissions narrowly to the needed AI calls and project. Local development can use Application Default Credentials. Do not treat a Google AI Studio API key as a Vertex service-account credential.
+A service-account key is an owner-approved fallback for a prototype only, stored as a server secret, never committed or exposed to coding-agent logs. Scope permissions narrowly to the needed AI calls and project. Local development can use Application Default Credentials. Do not treat a Google AI Studio API key as a Vertex service-account credential.
 
 No user can change a provider's base URL in the app. Custom endpoint support is deferred; this avoids accidental prompt exfiltration and SSRF.
 

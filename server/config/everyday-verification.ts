@@ -3,7 +3,7 @@ import type { LiveCapabilityEvidenceSchema } from '../ai/live-preflight.js';
 
 // Public protocol/endpoint evidence authorizes only the separately opted-in
 // synthetic verification route. Production still requires matching live evidence.
-// See docs/evidence/m3-live-everyday-readiness.md for rates and privacy limitations.
+// See docs/evidence/m3-live-everyday-readiness.md at commit ee4e040 for rates and privacy limitations.
 export const everydayCapabilityEvidence: z.infer<
   typeof LiveCapabilityEvidenceSchema
 > | null = {

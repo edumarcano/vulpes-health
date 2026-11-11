@@ -8,7 +8,7 @@ The 12k/24k/48k context and 3,072/8,192/12,288 output limits are conservative ap
 
 `vercel.example.json` is to be installed and validated only after API entry files/build scripts exist. Known SPA routes are rewritten deliberately; test `/api/*` and all deep links in the deployed preview. Add the final tested security headers/CSP during implementation rather than deploying an untested generic policy.
 
-`pwa-manifest.example.json` refers to runtime icon files that Codex must derive at 192 and 512 pixels from the approved color app-icon master. Do not claim maskable support until safe-zone testing passes; the example uses `purpose: any`. These runtime derivatives are not already present in this spec package.
+`pwa-manifest.example.json` refers to runtime icon files derived at 192 and 512 pixels from the approved color app-icon master. Do not claim maskable support until safe-zone testing passes; the example uses `purpose: any`. The application's copies are in `public/icons/`, not in this spec package.
 
 `design-tokens.css` is an initial custom Vulpes palette/spacing proposal, not a complete shadcn theme or a change to the approved logo. Map these semantic tokens into the installed component library's actual theme variables, and test contrast in both modes.
 

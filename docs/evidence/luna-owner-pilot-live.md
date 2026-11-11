@@ -24,7 +24,7 @@ The case reports retain `pending_review` for model assessment; the evidence file
 
 | Batch | Outcome | Requests | Reported settled USD |
 |---|---|---:|---:|
-| v4 | Mixed calculated-baseline/current methods rejected; [original evidence](luna-v4-live.md) retained | 14 | 0.001251535 |
+| v4 | Mixed calculated-baseline/current methods rejected; [original evidence](https://github.com/edumarcano/vulpes-health/blob/ee4e040/docs/evidence/luna-v4-live.md) retained in history | 14 | 0.001251535 |
 | v5 | Safe clarification instead of the expected proposal; source/direction/baseline wording was ambiguous | 2 | 0.000390470 |
 | v5b | Pending proposal and exact approval worked; follow-up overflowed internal context at 11,034 bytes versus 11,000 allowed | 6 | 0.000924455 |
 | v6 | Goal workflow passed; cross-account answer implied an unavailable selector/sharing connection, so host review stopped the batch | 8 | 0.000945670 |

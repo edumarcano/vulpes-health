@@ -49,7 +49,7 @@ These fill gaps without reopening the approved product direction. They are edita
 | Live model calls disabled in example configuration | Prevent accidental spend or disclosure during first setup |
 | Small bounded imports | Match a quick prototype and serverless payload limits |
 
-The owner can revise these defaults before implementation. Codex must record a change rather than quietly widening scope.
+The owner can revise these defaults. Record any change in [implementation decisions](../../DECISIONS_IMPLEMENTATION.md) rather than quietly widening scope.
 
 ## Gate before real data
 

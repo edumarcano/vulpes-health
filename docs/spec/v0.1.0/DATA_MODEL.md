@@ -10,7 +10,7 @@ No real personal measurements from the planning conversation are seeded. Fixture
 
 ## 2. v0.1.0 tables
 
-This is a migration specification, not executable SQL. Codex must produce reviewed migrations, policies and tests.
+This is a migration specification, not executable SQL. The reviewed migrations, policies and tests are under `supabase/`.
 
 | Table | Important fields | Invariants |
 |---|---|---|

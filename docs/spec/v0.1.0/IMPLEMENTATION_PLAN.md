@@ -1,10 +1,12 @@
-# Codex implementation plan
+# Implementation plan
 
 ## Working rule
 
-Use [`../../plans/v0.1.0-execution.md`](../../plans/v0.1.0-execution.md) as the canonical execution sequence and PR decomposition. Verify Milestones 0 and 1 independently; after both foundation gates pass, deliver dependency-bounded packets in small PR stacks, with approximately 2–3 dependent PRs open at a time. Preserve every milestone exit criterion. The target is a small working product, not all future architecture at once. The existing estimate of a few days is an aspiration for a prototype, not permission to skip security or report tests that were not run.
+The build followed these milestones in order. The original PR-by-PR execution ledger is kept at the [last revision that contained it](https://github.com/edumarcano/vulpes-health/blob/ee4e040/docs/plans/v0.1.0-execution.md). Verify Milestones 0 and 1 independently; after both foundation gates pass, deliver dependency-bounded packets in small PR stacks, with about 2–3 dependent PRs open at a time. Preserve every milestone exit criterion. The target is a small working product, not all future architecture at once. A fast estimate is an aspiration for a prototype, not permission to skip security or report tests that were not run.
 
-Track PR progress in the execution plan so work can resume in a fresh session. Keep the states distinct: proposed, in progress, locally verified, and fully accepted. A local pass does not satisfy a required live-provider or pilot gate. Optional decision scoring (execution-plan PR 14) can be deferred without blocking downstream work and remains disabled unless its own gates pass.
+Keep the states distinct: proposed, in progress, locally verified, and fully accepted. A local pass does not satisfy a required live-provider or pilot gate. Optional decision scoring (execution-plan PR 14) can be deferred without blocking downstream work and remains disabled unless its own gates pass.
+
+Outstanding release work is owned by [release readiness](../../operations/release-readiness.md).
 
 No cloud deployment, paid plan upgrade, production migration, account creation, provider privacy change or real-data upload without explicit owner authorization. Local repository files and synthetic tests are the default workspace.
 

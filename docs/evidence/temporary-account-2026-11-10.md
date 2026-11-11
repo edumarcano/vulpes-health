@@ -10,7 +10,7 @@ Provider requests and spend were zero. These results cover the named production 
 
 ## Merged deployment and account checks
 
-The production alias served revision `5f636069f3f87e1d7d91d37659d3607154a22b53` in Vercel deployment `dpl_8xPAUEMaVjN1KRLPCExuigZrmcVb`. Routing, security headers and unauthenticated-access probes passed. Public signup and anonymous accounts were disabled.
+The production alias served revision `5f636069f3f87e1d7d91d37659d3607154a22b53` in the current Vercel deployment. Routing, security headers and unauthenticated-access probes passed. Public signup and anonymous accounts were disabled.
 
 The final run used two temporary synthetic accounts, each with its own imported measurements and conversation. All temporary accounts created during preparation and the final run were deleted.
 

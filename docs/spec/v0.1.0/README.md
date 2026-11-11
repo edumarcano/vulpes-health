@@ -1,20 +1,18 @@
 # Vulpes
 ## Personal Health Intelligence
 
-**Development specification package | Target release: v0.1.0 | Prepared: 2026-10-19**
-
-Repository name: `vulpes-health`.
+**Specification package | Target release: v0.1.0**
 
 An AI-first, mobile-first personal health application for the owner and invited adults. Ask Vulpes helps users understand their own measurements, set appropriate goals, and inspect the data and instructions behind every model response.
 
-**This is a repository-ready specification and asset package, not an implemented application.** It contains no working health integration, live model connection, deployed database, or production credentials. No repository or cloud resource was created or modified in preparing it.
+These documents define the intended behavior of v0.1.0. They were written before the application and remain its contract. The application source is in the repository root, and the [root README](../../../README.md) covers setup. A specification is not proof of implementation: current behavior is recorded in code, tests and the [evidence index](../../evidence/README.md).
 
-### Start here
+### Where to start
 
 1. Read [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for the release boundary and [DECISIONS.md](DECISIONS.md) for settled choices.
-2. Review root [`AGENTS.md`](../../../AGENTS.md) for repository workflow and non-negotiable project rules.
-3. Implement the numbered milestones in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md), starting with Milestone 0.
-4. Use [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) as the release gate, not a demonstration with mocked data.
+2. Read root [`AGENTS.md`](../../../AGENTS.md) for the rules that govern changes.
+3. Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the milestone order the build followed.
+4. Use [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) as the release gate. A mocked demonstration does not satisfy it.
 
 ### Settled foundation
 
@@ -43,7 +41,9 @@ An AI-first, mobile-first personal health application for the owner and invited 
 | Advanced Reasoning | Gemini 4 Argon | Vertex AI |
 | Decision Engine | Microsoft-Decision-1 | OpenRouter |
 
-Published identifiers were checked against official documentation. **Account access, regional availability, ZDR-compatible endpoints, current rates and actual request behavior still require smoke tests.** The selected models are not silently replaced when unavailable. See [PROVIDER_SETUP.md](PROVIDER_SETUP.md).
+Published identifiers were checked against official documentation. **Account access, regional availability, ZDR-compatible endpoints, current rates and actual request behavior require smoke tests.** The selected models are not silently replaced when unavailable. See [PROVIDER_SETUP.md](PROVIDER_SETUP.md).
+
+This table is the intended lineup. Only Luna is available in the current build. Flash, Argon and decision scoring stay unavailable until each has its own verification and activation decision.
 
 ### Contents
 
@@ -59,7 +59,7 @@ Published identifiers were checked against official documentation. **Account acc
 | [SECURITY_AND_PRIVACY.md](SECURITY_AND_PRIVACY.md) | Tenant isolation, provider consent, retention, deletion and secrets |
 | [PROVIDER_SETUP.md](PROVIDER_SETUP.md) | Verified identifiers, adapter caveats, typed model catalog and credentials |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Local setup, Vercel/Supabase deployment, cost and backup checklist |
-| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Ordered, testable Codex milestones |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Ordered, testable milestones |
 | [ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md) | Functional, numerical, security, modularity, AI and visual checks |
 | [ROADMAP.md](ROADMAP.md) | Post-MVP Health Connect, memory, evidence and research work |
 | [SOURCES.md](SOURCES.md) | Dated official technical references |
@@ -71,8 +71,9 @@ Published identifiers were checked against official documentation. **Account acc
 | [BRAND_ASSETS.md](BRAND_ASSETS.md) | Asset inventory, hashes, roles and measured palette |
 | `scripts/validate_spec_package.py` | Local specification and fixture consistency checks |
 
-### What is deliberately not included
+### Limits of this package
 
-No `package.json`, dependency lockfile, generated migrations, app source, live prices, or fabricated successful test reports. Codex must create and test these against the actual installed versions. Configuration examples are not proof of deployment readiness. The source PNG masters are supplied; there are no SVG masters or font binaries in the original brand archive.
-
-A small vertical slice can be built first; the full acceptance checklist takes precedence over any optimistic estimate of a few days. A functional prototype is not a clinically validated product.
+- Files under `config/` and `contracts/` are design references. The running application uses `server/config/models.ts` and the repository's own types.
+- Configuration examples are not proof of deployment readiness.
+- The brand archive has PNG masters only: no SVG masters or font binaries.
+- A functional prototype is not a clinically validated product.
