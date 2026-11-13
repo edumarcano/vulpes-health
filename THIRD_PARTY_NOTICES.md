@@ -2,6 +2,8 @@
 
 These notices cover copied source and separately licensed guidance included in this repository. They do not relicense upstream materials under Apache-2.0. Installed npm dependencies retain their own licenses; distribution of compiled applications must also preserve the notices applicable to the dependencies actually included.
 
+Third-party product names identify compatibility and data provenance. Their appearance does not grant trademark rights or imply affiliation, sponsorship or endorsement. Any separately licensed manufacturer content included in a future release must retain its applicable license and attribution notices; a citation alone does not establish permission to redistribute it.
+
 ## shadcn/ui
 
 UI components under `src/components/ui/` are based on [shadcn/ui](https://github.com/shadcn-ui/ui). The upstream MIT license follows.

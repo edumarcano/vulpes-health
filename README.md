@@ -13,12 +13,14 @@ Both screenshots come from a local build with synthetic data.
 ## What it does
 
 - **Ask:** Chat with an assistant that reads your data through server-side tools. Each answer shows the calculation behind it.
-- **Data:** Enter measurements by hand or import a CSV (including a RENPHO scale export). The app previews the import, flags duplicates, and keeps original units and timestamps.
+- **Data:** Enter measurements by hand or import a CSV, including supported RENPHO Health exports. The app previews the import, flags duplicates, and keeps original units and timestamps.
 - **Goals:** Set a target such as "reach 68 kg". The assistant can propose a goal, but nothing becomes active until you approve it. Progress is calculated, never written by the model.
 - **Inspector:** Open any answer to see the exact request sent to the model, the tool results, the token counts and the cost.
 - **Settings:** Choose units and timezone, consent to AI use, cap AI spending, export your data as JSON, or delete your account.
 
 Data and Goals work with the AI switched off. The repository and CI default to no model calls.
+
+The current RENPHO adapter imports weight and body-fat percentage from the documented English 31-column Health CSV layout in lb. Other export languages, units and layouts are unverified; [synthetic verification](docs/evidence/renpho-import.md) does not establish physical-device or app-version compatibility.
 
 ## Design choices
 
@@ -94,3 +96,5 @@ Database, integration and browser tests need the local Supabase stack. [Release 
 ## License
 
 Apache-2.0, copyright 2026 Eduardo Marcano. See [LICENSE](LICENSE). Copied source and the Remora agent guidance keep their upstream MIT licenses, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Vulpes is an independent project and is not affiliated with, sponsored by, or endorsed by RENPHO. RENPHO is a trademark of its respective owner. References identify supported export formats and data sources. The Vulpes license does not grant rights to third-party trademarks or separately licensed materials.

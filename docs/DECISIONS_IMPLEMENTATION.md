@@ -19,6 +19,7 @@ The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflic
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.
+- **Third-party names and content (2026-11-13).** Keep RENPHO references that identify CSV compatibility or metric provenance, including technical identifiers and accurate historical records. Public positioning names Vulpes as the independent application; the README and import help disclose the lack of affiliation, sponsorship or endorsement, and current compatibility claims stay bounded to the implemented English layout. The application license grants no third-party trademark or separately licensed content rights. v0.2.0 REF-07 requires a recorded reuse review before including manufacturer-derived content; attribution and factual verification alone do not establish reuse rights.
 - **What public evidence contains.** Technical results, dated candidates and verification limits. It leaves out personal usage, account balances and backup-custody details, which stay outside the repository. Cleaning up the public repository kept the existing Git history, so earlier operational metadata is still there.
 - **Publishing is not activation.** Publishing source does not authorize hosted testing, deployment, provider usage or broader release acceptance.
 

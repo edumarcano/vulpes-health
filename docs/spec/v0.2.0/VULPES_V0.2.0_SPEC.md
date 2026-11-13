@@ -1,6 +1,7 @@
 # Vulpes v0.2.0 Specification
 
-**Release theme:** Focused RENPHO body-composition intelligence  
+**Release theme:** Body-composition history and analysis with RENPHO Health CSV compatibility
+
 **Status:** Draft for implementation planning  
 **Specification date:** 2026-11-11  
 **Repository baseline reviewed:** `585fd614ccd7c5592d7486c40895526124a6c658`  
@@ -17,7 +18,7 @@
 
 ## 1. Purpose and authority
 
-Vulpes helps users understand their RENPHO body-composition history through a focused application with reliable imports, deterministic analysis, persistent goals, and an AI conversation interface.
+Vulpes helps users understand their body-composition history through an independent application with reliable RENPHO Health CSV imports, deterministic analysis, persistent goals, and an AI conversation interface.
 
 The release succeeds when a user can export a CSV from RENPHO, share it to an installed Vulpes PWA or select it in Vulpes, review and import the new measurements, and ask useful questions without repeatedly supplying the same history or definitions.
 
@@ -315,6 +316,8 @@ RENPHO documentation describes app-level metric explanations and reference range
 
 **REF-06.** Implementation must record a per-metric coverage audit: verified reference implemented, not applicable, or unavailable with a reason. Missing verifiable ranges must not be filled from model memory. Range-support UI and tests are required; universal range coverage is not. At least one verified applicable reference must exercise the production path, or an explicit documented evidence blocker must be resolved before claiming that range classification ships.
 
+**REF-07.** Write original metric explanations and use Vulpes-designed charts. Before including manufacturer-derived content, record the exact material reused, source URL/title, review date, applicable website/app terms or license and version/date, reuse basis (license, permission, or reviewed legal exception), required notices, and review outcome. Distinguish numerical facts and functional CSV labels from authored text, illustrations and table presentation. A citation or factual verification alone does not establish reuse rights. Resolve an uncertain basis through permission, an alternative source, or focused legal review; keep the affected content unavailable until resolved. Include any required redistribution notices in `THIRD_PARTY_NOTICES.md` without suggesting the Vulpes license grants third-party trademark or content rights.
+
 ## 10. Goals and simple combinations
 
 ### 10.1 Single-metric goals
@@ -472,7 +475,7 @@ Keep the existing navigation: **Ask | Goals | Data | Settings**. Preserve Vulpes
 
 **UI-03. Trends.** Provide common ranges such as 7, 30, 90, and 365 days plus bounded custom selection. Show measurement points and missingness honestly. Distinguish raw readings from smoothed values and expose the calculation method. Do not use visually misleading shared scales for incompatible units.
 
-**UI-04. Imports.** Both entry points use the same preview. Remember settings, present new/duplicate/conflict/excluded counts, show one clear confirmation action, and preserve an intelligible progress/failure state. A successful result may offer "View data" or "Ask about these measurements" without starting inference.
+**UI-04. Imports.** Both entry points use the same preview. Remember settings, present new/duplicate/conflict/excluded counts, show one clear confirmation action, and preserve an intelligible progress/failure state. Describe only the implemented, verified format scope and keep the independence disclosure near RENPHO import help. Product names identify compatibility or provenance; public wording must not imply affiliation, sponsorship or endorsement. A successful result may offer "View data" or "Ask about these measurements" without starting inference.
 
 **UI-05. References.** Display applicable manufacturer guidance with attribution and accessible labels, separate from user goals. Never rely on color alone for interpretation.
 
@@ -578,7 +581,7 @@ The implementation plan must map each acceptance ID to an automated test, a repr
 | AT-12 | ANA-01..04 | Latest event differs correctly from latest-per-metric; daily median and selected-period calculations match independent expected results; missing days remain missing. |
 | AT-13 | ANA-03..07 | Seven-day versus selected-period windows, percentage points versus percent, zero denominators, repeated observations, sparse periods, and independently dated metrics are labelled and calculated correctly. |
 | AT-14 | ANA-08..10 | UI and AI use the same result identifiers/methods. Correction, deletion, and new imports invalidate current caches; historical evidence is not silently regenerated. |
-| AT-15 | REF-01..06 | Definitions cover all core metrics. Verified reference boundaries, applicability, missing profile attributes, unavailable references, version changes, and exported labels are tested separately. |
+| AT-15 | REF-01..07 | Definitions cover all core metrics. Verified reference boundaries, applicability, missing profile attributes, unavailable references, version changes, and exported labels are tested separately. Included manufacturer-derived content has a reviewed reuse basis and required notices; unresolved content remains unavailable. |
 | AT-16 | GOAL-01..07 | Every resolved numeric metric can use supported goal modes; categorical/unresolved fields cannot. Baseline freezing, needs-data, review, revision, target regression/overshoot, and maintain-range behavior pass. |
 | AT-17 | GOAL-08..11 | Groups show all member outcomes, respect ownership and approval, expose missing evidence, and never replace child progress with a fabricated composite score. |
 | AT-18 | AI-01..08 | Synthetic end-to-end conversations cover full-panel review, precise period comparisons, metric meaning, follow-ups, compact tool use, and single/grouped proposals within the run envelope. |
