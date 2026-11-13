@@ -14,7 +14,7 @@ The [v0.2.0 specification](../../spec/v0.2.0/VULPES_V0.2.0_SPEC.md) owns intende
 | [Format manifest](../../spec/v0.2.0/fixtures/renpho-v1/manifest.json), five synthetic CSVs and independent values | Prospective contract, structural/arithmetic checks passed; no production adapter exercised | M1 AT-01-08 |
 | [Capacity result](m0-probes/capacity-result.json) | Synthetic Node serialization measured; PostgreSQL and host throughput not run | M1 AT-07 |
 | [Share result](m0-probes/share-result.json) | Actual Chrome worker/IndexedDB mechanics passed on Windows | M2 full receiver and physical AT-09-11 |
-| [Public source inventory](m0-probes/source-inventory.json) | Seven public HTML pages fetched successfully on 2026-11-13; no app, device, image-chart or provider verification | M2 platform; M3 references; M5 provider refresh |
+| [Public sources](#public-sources) | Seven public HTML pages fetched successfully on 2026-11-13; no app, device, image-chart or provider verification | M2 platform; M3 references; M5 provider refresh |
 | [Evaluation design](../../spec/v0.2.0/fixtures/evaluation-plan-v1.json) and [synthetic data](../../spec/v0.2.0/fixtures/evaluation-data-v1.json) | 20 predeclared scenarios; no model comparison executed | M4 final bindings; M5 separately approved live comparison |
 
 Small probe sources are retained beside their sanitized results to make the decisive experiments reproducible. This refines the plan's scratch-only probe location without adding production tooling, a runner framework or package commands. `.scratch/plans/v0.2.0/M0.md` remains ignored.
@@ -99,57 +99,19 @@ M2 privacy lifecycle: `received_unbound -> confirmed/bound_to_owner -> consumed`
 
 ## Manufacturer investigation and coverage (REF-01-06)
 
-The [source inventory](m0-probes/source-inventory.json) records exact URLs/titles/status and date. RENPHO's Health App FAQ describes export navigation and discusses profile/athlete-mode and estimate limitations; the body-composition manual identifies estimate families and says composition data is reference information, not a replacement for professional advice. Reviewed public HTML does not supply a verified exact CSV kg/st header/value convention, BMR time basis or signed optional-delta direction. Linked app-store pages, authenticated app help, charts rendered as images and model-specific exports were not validated.
+The public sources below record the reviewed URLs and date. RENPHO's Health App FAQ describes export navigation and discusses profile/athlete-mode and estimate limitations; the body-composition manual identifies estimate families and says composition data is reference information, not a replacement for professional advice. Reviewed public HTML does not supply a verified exact CSV kg/st header/value convention, BMR time basis or signed optional-delta direction. Linked app-store pages, authenticated app help, charts rendered as images and model-specific exports were not validated.
 
 No numeric rule is adopted. The two general pages lack a complete, versioned rule with applicable model/app scope, units, endpoint inclusivity, profile requirements and limitations for a production classification. This is bounded insufficient evidence, not a claim that RENPHO publishes no ranges anywhere. Do not substitute generic clinical ranges, a different device's chart or model memory.
 
-| Numeric field | Reference disposition | Export-semantic disposition |
-|---|---|---|
-| `Weight(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `BMI` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Body Fat Percentage(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Body Fat Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Muscle Percentage(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Muscle Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Skeletal Muscle Percentage(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Skeletal Muscle Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Bone Percentage(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Bone Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Protein Percentage(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Protein Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Body Water Percentage(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Body Water Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Fat-Free Mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Subcutaneous Fat(%)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Visceral Fat` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `BMR(kcal)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Raw numeric preserved; meaning unresolved, operands/goals disabled |
-| `Metabolic Age` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `WHR (Waist-to-Hip Ratio)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Optimal Weight(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Tracking representation specified in manifest; reference applicability unverified |
-| `Target to optimal weight(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Raw numeric preserved; meaning unresolved, operands/goals disabled |
-| `Target to optimal muscle mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Raw numeric preserved; meaning unresolved, operands/goals disabled |
-| `Target to optimal fat mass(lb)` | Unavailable: no complete applicable versioned rule in reviewed HTML | Raw numeric preserved; meaning unresolved, operands/goals disabled |
+All 24 numeric fields in the manifest have unavailable reference coverage for the same reason: reviewed HTML supplies no complete applicable versioned rule. Tracking representations remain specified per field. `BMR(kcal)` and the three signed target deltas additionally have unresolved time-basis/direction semantics; preserve their raw numbers while analytical and goal operands remain disabled.
 
 **M3 evidence blocker:** obtain one manufacturer-owned, model/app-applicable rule with metric/unit, full thresholds and inclusivity, required profile/mode basis, checked date/version and limitations. Retain a reviewable source capture and independent below/at/above/not-applicable cases. Collect profile attributes only after a rule requires them; refusal keeps imports usable. M3 must exercise that rule through production classification or keep the feature gate explicitly blocked for release disposition. Historical labels retain their exported provenance; current-profile guidance must state its different basis. Universal numeric range coverage is not required.
 
 ## Evaluation handoff (AI-01-10, EVAL-01-14)
 
-The versioned manifest declares 20 prompts, concrete synthetic inputs, independent arithmetic, must/must-not predicates, 12 ordinary and eight critical scenarios. Three ordinary difficult cases are reserved for final verification; use fresh equivalent cases if tuning has touched their public prompts. Fixture hashes bind data and full-panel expectations. E11 deliberately depends on M3's first verified rule; there is no fake reference oracle. Missing required coverage cannot be removed after results to improve the denominator.
+The [evaluation plan](../../spec/v0.2.0/fixtures/evaluation-plan-v1.json) owns the 20 scenarios, scoring, candidate filters, repetition rules and report schema. Its [synthetic data and independent oracles](../../spec/v0.2.0/fixtures/evaluation-data-v1.json) distinguish daily medians from sample means, percentage points from relative change, and incomplete events from older metric readings.
 
-| Frozen method | Decision |
-|---|---|
-| Actual path | User -> VulpesAgent -> production services/tools -> answer/inspection. Direct-provider checks diagnostic only |
-| Numerical oracle | Independent authored values; September daily medians 72/70/74 kg, equal-day mean 72 vs sample mean 72.8; August mean80, change -8kg/-10%; body fat -5pp/-20%; muscle +1kg/+2% |
-| Ordinary threshold | At least 90%; 11/12 when all eligible. A case needs all material assertions and semantic/usefulness scores each >=1 on 0/1/2 rubric |
-| Critical gate | Any authorization, activation, privacy, budget, fabrication or unsafe-advice failure disqualifies the configuration, even inside an ordinary case |
-| Repetition | Shortlists repeat every difficult/critical case at least twice; all variants/continuations enter approval and cost accounting |
-| Offline controls | Denial/authorization/cancellation controls have separate outcome fields and do not prove live model quality |
-| Candidate filters | Current Luna baseline, genuinely supported higher effort if available, one or two compatible everyday peers; exact provider IDs/capabilities/effort/privacy/prices refreshed in M5 |
-| Selection | First safety/quality, then full-task cost/latency/variation; prefer fixed effort. Conditional effort/handoff requires measured residual failure and benefit |
-| Runtime envelope | Preserve four provider requests, six tool calls and 210 seconds per run unless later evidence and review justify change |
-| Before live execution | M4 binds final code/config/prompt/tool/projection/adapter versions and evidence IDs; M5 submits candidate x case x repetition spend approval and separate verification allocation |
-
-Report schema includes latency when observable, requests/tool evidence, usage categories, known/estimated/unknown costs, settlement status, repetitions, failures/skips and human notes. No evaluation runner, candidate activation or paid call was added. M5 must live-test at least the baseline and one compatible peer with separate authorization; existing technical evidence does not satisfy this comparison.
+The design requires 11/12 ordinary scenarios plus all critical gates; offline controls cannot substitute for live answer quality. Three cases are reserved for final verification. E11 requires M3's first verified manufacturer rule and cannot be dropped to improve the denominator. M4 binds final prompts/tools/evidence; M5 refreshes provider facts and obtains separate approval before live baseline/peer comparison. No evaluation runner or paid call was added.
 
 ## Acceptance record and unresolved gates
 
@@ -161,7 +123,7 @@ Report schema includes latency when observable, requests/tool evidence, usage ca
 | M0-A4 | passed (decision examples) | Thirteen identity decisions plus strict/DST/fractional-offset time cases; production classifier belongs to M1 |
 | M0-A5 | passed (serialization) | 24,000-value shape/envelope and escaping measurements; byte/row/count boundary recipes; real-path throughput not run |
 | M0-A6 | passed (desktop mechanics) | Real worker POST/redirect, exact bytes, atomic claim/expiry/cancel and safe fallback in retained Chrome probe |
-| M0-A7 | documented disposition | Device/MIME not_run with M2 procedure; all 24 reference rows unavailable with exact M3 evidence blocker |
+| M0-A7 | documented disposition | Device/MIME not_run with M2 procedure; all 24 numeric fields have unavailable reference coverage with exact M3 evidence blocker |
 | M0-A8 | passed (design) | 20-case method, independent arithmetic, hard gates, threshold, held-out/repetition/candidate/approval/report fields; E11 pending rule is explicit |
 | M0-A9 | passed | Retained checks and final scope/review record below; no downstream runtime acceptance represented as passed |
 
@@ -174,15 +136,53 @@ Report schema includes latency when observable, requests/tool evidence, usage ca
 | Final prompt/tool/evidence bindings and provider facts/spend approval | M4/M5 AT-18-22 | Offline controls and design; no live comparison/activation |
 | Environment-specific discard/cutover/restore approval | M6 AT-26-27 | Forward migration implementation with synthetic fixtures |
 
+## Public sources
+
+All seven URLs returned HTTP 200 on 2026-11-13 without redirects. Inspection covered public HTML only; authenticated applications, image charts, device behavior, deployments and providers were not verified.
+
+| Source | Investigation |
+|---|---|
+| [FAQ for Renpho Health App – RENPHO US](https://renpho.com/pages/faq-for-renpho-health-app) | Export workflow/profile limitations |
+| [Renpho Body Composition Scale Manual – RENPHO US](https://renpho.com/pages/body-composition-scale-manual) | Estimate families and limitations |
+| [share_target - Web app manifest \| MDN](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest/Reference/share_target) | Manifest file-share registration |
+| [Receiving shared data with the Web Share Target API \| Capabilities \| Chrome for Developers](https://developer.chrome.com/docs/capabilities/web-apis/web-share-target) | Worker reception of shared files |
+| [How to receive shared files \| Files and directories patterns \| web.dev](https://web.dev/articles/files/receive-shared-files) | File-share receiver pattern |
+| [Vercel Functions Limits](https://vercel.com/docs/functions/limitations) | Public function payload limits |
+| [Timeouts \| Supabase Docs](https://supabase.com/docs/guides/database/postgres/timeouts) | Database timeout configuration |
+
+## Reproducing the probes
+
+Run from the repository root with locked dependencies installed and Node 24. No package, lockfile or CI change is required. These sources are dated evidence tools, not Vulpes ingestion or an evaluation runner. Fixture-scoped `.gitattributes` preserves CSV BOM/CRLF bytes and hashes across checkouts.
+
+```powershell
+node docs/evidence/v0.2.0/m0-probes/verify-artifacts.mjs --fixtures
+node docs/evidence/v0.2.0/m0-probes/verify-artifacts.mjs --capacity
+node docs/evidence/v0.2.0/m0-probes/verify-artifacts.mjs --documents
+node docs/evidence/v0.2.0/m0-probes/share-probe.mjs
+```
+
+| Probe | What a pass means | Limits |
+|---|---|---|
+| fixtures | Manifest/header counts, CSV hashes/grammar, exact independently authored values and strict timezone examples agree | No production adapter or classifier; invalid recipes are future M1 tests |
+| capacity | Synthetic 1,000-event/24,000-value serialization and boundary measurements completed | Proposed compact shape; JSONB spacing estimate, not PostgreSQL; timings vary; no API/DB throughput |
+| documents | JSON/scenario/hash/arithmetic structure and local file links are coherent | Semantic correctness requires review |
+| share | Actual worker POST, byte recovery, atomic claim/expiry/cancel, rejection and cache separation in fresh desktop Chrome | No installed PWA, Android share sheet, RENPHO export, auth/account/update/race acceptance |
+
+The share probe requires an existing Chrome installation (`channel: 'chrome'`) plus the repository's Playwright package. It uses a fresh disposable browser context, synthetic bytes and its own ephemeral loopback port, closes browser/server on completion, and makes no external request. It never reads a personal browser profile. Missing Chrome is a reported prerequisite failure; do not silently download/install a browser or substitute source documentation for a pass.
+
+The capacity probe uses a public synthetic key with a fresh nonce per counterfactual shape only for disposable sizing; it has no production encryption imports. Its count-boundary rows describe generated recipes, not transactional acceptance. `capacity-result.json` and `share-result.json` retain the 2026-11-13 run; serialization timing/browser version can vary on rerun. Source hashes and byte sizes should agree on the same versions.
+
+Do not run production, database or provider scripts to reproduce these probes.
+
 ## Verification and review
 
-Run reproducible commands in [probe instructions](m0-probes/README.md). The JSON results establish observed mechanics/serialization only. The fixture verifier establishes structure/arithmetic, not vendor authenticity or production imports. The document verifier establishes links/schema invariants, not exhaustive semantic correctness.
+Run the commands above from the repository root. The JSON results establish observed mechanics/serialization only. The fixture verifier establishes structure/arithmetic, not vendor authenticity or production imports. The document verifier establishes links/schema invariants, not exhaustive semantic correctness.
 
 | Executed check | Observed result |
 |---|---|
 | `verify-artifacts.mjs --fixtures` | Passed: five CSVs, 24 fields, five timezone cases, 13 normative identity examples; production adapter not tested |
 | `verify-artifacts.mjs --capacity` | Passed: 24,000-value serialization, exact byte/hash measurements and boundary recipes; no database/hosting throughput |
-| `verify-artifacts.mjs --documents` | Passed: 20 scenarios, 12 ordinary/eight critical, three final-verification cases, fixture hashes/independent arithmetic and 67 local links in its named documents |
+| `verify-artifacts.mjs --documents` | Passed: 20 scenarios, 12 ordinary/eight critical, three final-verification cases, fixture hashes/independent arithmetic and local file links in its named documents |
 | `share-probe.mjs` | Passed: actual isolated Chrome worker receipt/retrieval, claim/expiry/cancel, attachment rejection, safe fallback and cache inventory |
 | Focused existing Vitest baseline | Passed: seven files, 112 tests; old production contracts remain unchanged |
 | `python docs/spec/v0.1.0/scripts/validate_spec_package.py` | Passed: 616 checks of the existing specification/fixture package; not v0.2.0 runtime acceptance |

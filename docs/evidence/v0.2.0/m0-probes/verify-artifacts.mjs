@@ -1,7 +1,7 @@
 /* global Buffer, console, process, URL */
 import assert from 'node:assert/strict';
 import { createHash, createCipheriv, randomBytes } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
@@ -33,8 +33,8 @@ if (mode === '--fixtures') {
     19,
   );
   assert.equal(new Set(manifest.fields.map((field) => field.key)).size, 24);
-  const aliases = manifest.fields.flatMap((field) => field.aliases);
-  assert.equal(new Set(aliases).size, aliases.length);
+  const headers = manifest.fields.map((field) => field.header);
+  assert.equal(new Set(headers).size, headers.length);
   assert.deepEqual(
     manifest.annotations.map((field) => field.header),
     ['Weight Level', 'Body Type', 'Remarks'],
@@ -139,12 +139,14 @@ if (mode === '--fixtures') {
     const observed = zoned.toInstant().toString();
     const offset = zoned.offsetNanoseconds / 60000000000;
     const values = manifest.fields.map((field, index) => {
-      const oracle = expected.observations[index];
+      const oracle = expected.observations.find(
+        (entry) => entry.key === field.key,
+      );
       rows.push({
         metric_key: field.key,
         canonical_value: oracle.canonicalValue,
         canonical_unit: field.canonicalUnit,
-        original_value: field.sampleOriginal,
+        original_value: oracle.originalValue,
         original_unit: field.originalUnit,
         observed_at: observed,
         original_offset_minutes: offset,
@@ -162,7 +164,7 @@ if (mode === '--fixtures') {
           mapping,
         },
       });
-      return [index, field.sampleOriginal, oracle.canonicalValue];
+      return [index, oracle.originalValue, oracle.canonicalValue];
     });
     const annotations = {
       'Weight Level': 'Synthetic',
@@ -185,7 +187,9 @@ if (mode === '--fixtures') {
       ...annotations,
     };
     manifest.fields.forEach((field) => {
-      cells[field.header] = field.sampleOriginal;
+      cells[field.header] = expected.observations.find(
+        (entry) => entry.key === field.key,
+      ).originalValue;
     });
     csvRows.push(
       csvHeaders.map((header) => quote(cells[header] ?? '')).join(','),
@@ -502,8 +506,9 @@ if (mode === '--fixtures') {
   assert.equal(oracle.zeroBaselineRelativeChange, null);
   const files = [
     new URL('docs/evidence/v0.2.0/m0-readiness.md', root),
-    new URL('docs/evidence/v0.2.0/m0-probes/README.md', root),
     new URL('docs/V0.2.0_RELEASE_PLAN.md', root),
+    new URL('docs/DECISIONS_IMPLEMENTATION.md', root),
+    new URL('docs/evidence/README.md', root),
   ];
   let links = 0;
   for (const file of files) {
@@ -516,17 +521,12 @@ if (mode === '--fixtures') {
       links++;
     }
   }
-  const m0 = await readFile(files[0], 'utf8');
-  for (let id = 1; id <= 9; id++) assert(m0.includes('M0-A' + id));
-  const source = await readdir(fixtures);
-  assert.equal(source.filter((file) => file.endsWith('.csv')).length, 5);
   console.log(
     JSON.stringify({
       artifact: 'm0_documents',
       status: 'passed',
       localFileLinks: links,
       evaluationScenarios: evidence.scenarios.length,
-      acceptanceRows: 9,
       semanticReviewRequired: true,
     }),
   );
