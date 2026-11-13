@@ -1,0 +1,106 @@
+{
+  "artifact": "m0_capacity_serialization",
+  "schemaVersion": 1,
+  "synthetic": true,
+  "runtime": {
+    "node": "v24.15.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "events": 1000,
+  "numericObservations": 24000,
+  "csvBytes": 193416,
+  "csvSHA256": "d1b1bb17ab295b97be5b99d900a7d761533f019ecf538c457b944fbb1e0adaa0",
+  "apiJsonBytes": 194749,
+  "flatCounterfactual": {
+    "shapeSHA256": "57d89108e3de01b3b2aaecb0cf78c127ca0fe6a1daac434a7e7e5ad22608cbf9",
+    "plaintextBytes": 14927920,
+    "gzipBytes": 154155,
+    "ciphertextBytes": 154171,
+    "hexPayloadRpcBytes": 308447,
+    "inspectRpcBytes": 14783591,
+    "registerRpcBytes": 16848034,
+    "commitRpcBytes": 16848210,
+    "estimatedJsonbTextBytes": 16151949,
+    "jsonbMeasurement": "spacing estimate only; PostgreSQL not run",
+    "fits4MiBPlaintext": false
+  },
+  "proposedCompact": {
+    "shapeSHA256": "e1a17aeaa3f56bbc421599b9222fc373d8583925a4ef76ac3c59341ffb46c6ce",
+    "plaintextBytes": 791405,
+    "gzipBytes": 16601,
+    "ciphertextBytes": 16617,
+    "hexPayloadRpcBytes": 33339,
+    "inspectRpcBytes": 791491,
+    "registerRpcBytes": 928001,
+    "commitRpcBytes": 928177,
+    "estimatedJsonbTextBytes": 885675,
+    "jsonbMeasurement": "spacing estimate only; PostgreSQL not run",
+    "fits4MiBPlaintext": true
+  },
+  "highEscapingSample": {
+    "csvBytes": 529416,
+    "apiJsonBytes": 652667
+  },
+  "transportEscapingSamples": [
+    {
+      "characterCodePoint": 92,
+      "decodedCsvBytes": 1048576,
+      "apiJsonBytes": 2091254,
+      "syntax": "Valid CSV grammar; annotation control-character policy not established in M0"
+    },
+    {
+      "characterCodePoint": 1,
+      "decodedCsvBytes": 1048576,
+      "apiJsonBytes": 6259942,
+      "syntax": "Valid CSV grammar; annotation control-character policy not established in M0"
+    }
+  ],
+  "byteBoundarySamples": [
+    {
+      "bytes": 1048575,
+      "sourceRows": 255
+    },
+    {
+      "bytes": 1048576,
+      "sourceRows": 255
+    },
+    {
+      "bytes": 1048577,
+      "sourceRows": 255
+    }
+  ],
+  "rowBoundarySamples": [
+    {
+      "sourceRows": 9999,
+      "csvBytes": 239997
+    },
+    {
+      "sourceRows": 10000,
+      "csvBytes": 240021
+    },
+    {
+      "sourceRows": 10001,
+      "csvBytes": 240045
+    }
+  ],
+  "observationBoundarySamples": [
+    {
+      "numericObservations": 24999,
+      "fullEvents": 1041,
+      "remainderValues": 15
+    },
+    {
+      "numericObservations": 25000,
+      "fullEvents": 1041,
+      "remainderValues": 16
+    },
+    {
+      "numericObservations": 25001,
+      "fullEvents": 1041,
+      "remainderValues": 17
+    }
+  ],
+  "serializationMilliseconds": 1232,
+  "evidenceBoundary": "Synthetic serialization only. Flat expansion is counterfactual: current parser handles two fields. Compact format/RPC is proposed, not implemented. No API/database transaction or hosting throughput measured."
+}

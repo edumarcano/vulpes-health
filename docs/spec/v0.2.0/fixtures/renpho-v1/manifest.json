@@ -1,0 +1,711 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "status": "M0 contract decisions; production adapter is M1",
+  "adapterId": "renpho-en-body-composition-v1",
+  "sourceEvidence": {
+    "kind": "repository_header_family",
+    "revision": "3c0c5c8c5ae1171990459bec992c6c1d0b255d28",
+    "paths": [
+      "shared/imports.ts",
+      "docs/evidence/renpho-import.md"
+    ],
+    "vendorAppVersion": "unverified",
+    "deviceModel": "unverified",
+    "note": "Synthetic fixtures establish intended grammar; no physical/vendor export validation claimed."
+  },
+  "dialect": {
+    "encoding": "utf-8",
+    "bom": "optional",
+    "lineEndings": [
+      "LF",
+      "CRLF",
+      "CR"
+    ],
+    "delimiter": ",",
+    "quote": "\"",
+    "date": "YYYY.MM.DD",
+    "time": "HH:mm:ss",
+    "terminalEmptyColumn": "optional only when header and all cells are exactly empty",
+    "requiredHeaders": [
+      "Date",
+      "Time",
+      "Weight(lb)"
+    ],
+    "unavailable": [
+      "",
+      "--"
+    ],
+    "duplicateHeaders": "reject",
+    "aliasCollisions": "reject",
+    "unknownPopulatedColumns": "require explicit unsupported-column acknowledgement",
+    "missingWeightCell": "retain nonempty numeric event after reviewed exclusions; usable weight header/unit required",
+    "invalidTimestamp": "exclude whole event after review"
+  },
+  "unverifiedAliases": [
+    {
+      "candidate": "Mass headers with (kg)",
+      "status": "not_adopted",
+      "reason": "Unit settings documented; exact CSV headers/value convention not verified."
+    },
+    {
+      "candidate": "st or st+lb mass headers",
+      "status": "not_adopted",
+      "reason": "Display setting does not establish CSV syntax; no inferred aliases."
+    }
+  ],
+  "fields": [
+    {
+      "header": "Weight(lb)",
+      "aliases": [
+        "Weight(lb)"
+      ],
+      "key": "weight",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "positive",
+      "sampleOriginal": "150.0",
+      "method": "device_reported",
+      "group": "weight_size",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Mass reported by source; no clinical range.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "BMI",
+      "aliases": [
+        "BMI"
+      ],
+      "key": "renpho.bmi",
+      "requiredNumeric": true,
+      "originalUnit": "kg/m2",
+      "canonicalUnit": "kg/m2",
+      "conversionFactor": "1",
+      "representation": "positive",
+      "sampleOriginal": "23.5",
+      "method": "device_estimate",
+      "group": "weight_size",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Vendor-calculated BMI; do not substitute a Vulpes calculation.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Body Fat Percentage(%)",
+      "aliases": [
+        "Body Fat Percentage(%)"
+      ],
+      "key": "body_fat_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "20.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Vendor estimate; distinct from fat mass.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Body Fat Mass(lb)",
+      "aliases": [
+        "Body Fat Mass(lb)"
+      ],
+      "key": "renpho.body_fat_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "30.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Distinct from body-fat percentage.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Muscle Percentage(%)",
+      "aliases": [
+        "Muscle Percentage(%)"
+      ],
+      "key": "renpho.muscle_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "70.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Vendor muscle definition; not skeletal muscle.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Muscle Mass(lb)",
+      "aliases": [
+        "Muscle Mass(lb)"
+      ],
+      "key": "renpho.muscle_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "105.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Not fat-free mass or skeletal muscle mass.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Skeletal Muscle Percentage(%)",
+      "aliases": [
+        "Skeletal Muscle Percentage(%)"
+      ],
+      "key": "renpho.skeletal_muscle_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "45.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Distinct from total muscle percentage.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Skeletal Muscle Mass(lb)",
+      "aliases": [
+        "Skeletal Muscle Mass(lb)"
+      ],
+      "key": "renpho.skeletal_muscle_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "67.5",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Distinct from total muscle mass.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Bone Percentage(%)",
+      "aliases": [
+        "Bone Percentage(%)"
+      ],
+      "key": "renpho.bone_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "4.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Vendor estimate; not bone density.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Bone Mass(lb)",
+      "aliases": [
+        "Bone Mass(lb)"
+      ],
+      "key": "renpho.bone_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "6.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Not bone mineral density.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Protein Percentage(%)",
+      "aliases": [
+        "Protein Percentage(%)"
+      ],
+      "key": "renpho.protein_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "16.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Body-composition estimate; not dietary protein.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Protein Mass(lb)",
+      "aliases": [
+        "Protein Mass(lb)"
+      ],
+      "key": "renpho.protein_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "24.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Body-composition estimate; not dietary intake.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Body Water Percentage(%)",
+      "aliases": [
+        "Body Water Percentage(%)"
+      ],
+      "key": "renpho.body_water_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "55.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Estimate; not a hydration diagnosis.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Body Water Mass(lb)",
+      "aliases": [
+        "Body Water Mass(lb)"
+      ],
+      "key": "renpho.body_water_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "82.5",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Preserve separately from water percentage.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Fat-Free Mass(lb)",
+      "aliases": [
+        "Fat-Free Mass(lb)"
+      ],
+      "key": "renpho.fat_free_mass",
+      "requiredNumeric": true,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "nonnegative",
+      "sampleOriginal": "120.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Not muscle mass; components need not partition the body.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Subcutaneous Fat(%)",
+      "aliases": [
+        "Subcutaneous Fat(%)"
+      ],
+      "key": "renpho.subcutaneous_fat_percent",
+      "requiredNumeric": true,
+      "originalUnit": "%",
+      "canonicalUnit": "%",
+      "conversionFactor": "1",
+      "representation": "percentage",
+      "sampleOriginal": "17.0",
+      "method": "device_estimate",
+      "group": "composition",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Source-specific estimate.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Visceral Fat",
+      "aliases": [
+        "Visceral Fat"
+      ],
+      "key": "renpho.visceral_fat_index",
+      "requiredNumeric": true,
+      "originalUnit": "index",
+      "canonicalUnit": "index",
+      "conversionFactor": "1",
+      "representation": "nonnegative",
+      "sampleOriginal": "8.5",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Proprietary index; no clinical conversion or integer truncation.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "BMR(kcal)",
+      "aliases": [
+        "BMR(kcal)"
+      ],
+      "key": "renpho.bmr",
+      "requiredNumeric": true,
+      "originalUnit": "kcal",
+      "canonicalUnit": "kcal",
+      "conversionFactor": "1",
+      "representation": "positive",
+      "sampleOriginal": "1500.5",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "unresolved_time_basis",
+      "numericPreservation": true,
+      "analyticsOperand": false,
+      "goalEligible": false,
+      "limitation": "Preserve raw kcal; export-specific time basis unverified; not intake advice.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Metabolic Age",
+      "aliases": [
+        "Metabolic Age"
+      ],
+      "key": "renpho.metabolic_age",
+      "requiredNumeric": true,
+      "originalUnit": "years",
+      "canonicalUnit": "years",
+      "conversionFactor": "1",
+      "representation": "nonnegative",
+      "sampleOriginal": "31.5",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Vendor age-like estimate; not chronological age; preserve decimals.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "WHR (Waist-to-Hip Ratio)",
+      "aliases": [
+        "WHR (Waist-to-Hip Ratio)"
+      ],
+      "key": "renpho.waist_hip_ratio",
+      "requiredNumeric": false,
+      "originalUnit": "ratio",
+      "canonicalUnit": "ratio",
+      "conversionFactor": "1",
+      "representation": "positive",
+      "sampleOriginal": "0.85",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Do not infer waist/hip measurements.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Optimal Weight(lb)",
+      "aliases": [
+        "Optimal Weight(lb)"
+      ],
+      "key": "renpho.optimal_weight",
+      "requiredNumeric": false,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "positive",
+      "sampleOriginal": "145.0",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "resolved_for_tracking",
+      "numericPreservation": true,
+      "analyticsOperand": true,
+      "goalEligible": true,
+      "limitation": "Manufacturer reference; not an approved/recommended goal.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Target to optimal weight(lb)",
+      "aliases": [
+        "Target to optimal weight(lb)"
+      ],
+      "key": "renpho.target_weight_delta",
+      "requiredNumeric": false,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "signed",
+      "sampleOriginal": "-5.0",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "unresolved_direction",
+      "numericPreservation": true,
+      "analyticsOperand": false,
+      "goalEligible": false,
+      "limitation": "Sign preserved; precise source direction remains unverified.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Target to optimal muscle mass(lb)",
+      "aliases": [
+        "Target to optimal muscle mass(lb)"
+      ],
+      "key": "renpho.target_muscle_delta",
+      "requiredNumeric": false,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "signed",
+      "sampleOriginal": "2.5",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "unresolved_direction",
+      "numericPreservation": true,
+      "analyticsOperand": false,
+      "goalEligible": false,
+      "limitation": "Sign preserved; precise source direction remains unverified.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    },
+    {
+      "header": "Target to optimal fat mass(lb)",
+      "aliases": [
+        "Target to optimal fat mass(lb)"
+      ],
+      "key": "renpho.target_fat_delta",
+      "requiredNumeric": false,
+      "originalUnit": "lb",
+      "canonicalUnit": "kg",
+      "conversionFactor": "0.45359237",
+      "representation": "signed",
+      "sampleOriginal": "-7.5",
+      "method": "device_estimate",
+      "group": "vendor_estimates",
+      "semantics": "unresolved_direction",
+      "numericPreservation": true,
+      "analyticsOperand": false,
+      "goalEligible": false,
+      "limitation": "Sign preserved; precise source direction remains unverified.",
+      "referenceCoverage": "unavailable",
+      "referenceReason": "No verified applicable versioned range with complete boundaries/profile basis in the reviewed sources."
+    }
+  ],
+  "annotations": [
+    {
+      "header": "Weight Level",
+      "kind": "vendor_label",
+      "maxCharacters": 200
+    },
+    {
+      "header": "Body Type",
+      "kind": "vendor_label",
+      "maxCharacters": 200
+    },
+    {
+      "header": "Remarks",
+      "kind": "private_plain_text",
+      "maxUtf8Bytes": 4096
+    }
+  ],
+  "provenance": [
+    "No.",
+    "Date",
+    "Time"
+  ],
+  "limits": {
+    "decodedCsvBytes": 1048576,
+    "sourceRows": 10000,
+    "numericObservations": 25000,
+    "recordBytes": 65536
+  },
+  "fixtures": [
+    {
+      "file": "full-panel.csv",
+      "sourceRows": 1,
+      "populatedNumericValues": 24,
+      "sha256": "a775c4c48293f6883b1450e27c6a452a1635935220ce0e2d9fb9259f6d46827c",
+      "synthetic": true
+    },
+    {
+      "file": "reordered-bom-terminal.csv",
+      "sourceRows": 1,
+      "populatedNumericValues": 24,
+      "sha256": "daa17f4578a78cfbc5d6918fa4a0374766e72cd1150c150cc0fd905771185775",
+      "synthetic": true
+    },
+    {
+      "file": "weight-only.csv",
+      "sourceRows": 2,
+      "populatedNumericValues": 2,
+      "sha256": "7d7f1947a1d58388084f814586114bbd559f4dc5753c12261e085bd85a3189c7",
+      "synthetic": true
+    },
+    {
+      "file": "unavailable-and-zero.csv",
+      "sourceRows": 2,
+      "populatedNumericValues": 4,
+      "sha256": "25f718db3fe42e78cd37a802f765b0d8d5def7a9d9e5ea572f6005df75b35761",
+      "synthetic": true
+    },
+    {
+      "file": "untrusted-annotations.csv",
+      "sourceRows": 1,
+      "populatedNumericValues": 24,
+      "sha256": "8098625b5f68688631721217b742ecf3a88bb45a4cd9cdb2d8ee3f9f0e5c94c7",
+      "synthetic": true
+    }
+  ],
+  "invalidRecipes": [
+    {
+      "id": "duplicate_header",
+      "change": "Duplicate Date header",
+      "expected": "reject_layout"
+    },
+    {
+      "id": "nonempty_terminal",
+      "change": "Append empty header with nonempty cell",
+      "expected": "reject_layout"
+    },
+    {
+      "id": "inconsistent_width",
+      "change": "Append an extra cell to a data row",
+      "expected": "reject_layout"
+    },
+    {
+      "id": "malformed_quote",
+      "change": "Remove a closing annotation quote",
+      "expected": "reject_layout"
+    },
+    {
+      "id": "unknown_populated",
+      "change": "Append Experimental with value 7",
+      "expected": "require_acknowledgement"
+    },
+    {
+      "id": "invalid_utf8",
+      "change": "Replace one input byte by FF",
+      "expected": "reject_encoding"
+    }
+  ],
+  "timezoneCases": [
+    {
+      "local": "2026-11-01T01:30:00",
+      "zone": "America/New_York",
+      "expected": "exclude_ambiguous_event"
+    },
+    {
+      "local": "2026-03-08T02:30:00",
+      "zone": "America/New_York",
+      "expected": "exclude_nonexistent_event"
+    },
+    {
+      "local": "2026-09-01T08:00:00",
+      "zone": "Asia/Kathmandu",
+      "expectedInstant": "2026-09-01T02:15:00Z"
+    },
+    {
+      "local": "2026-02-30T08:00:00",
+      "zone": "UTC",
+      "expected": "exclude_invalid_calendar"
+    },
+    {
+      "local": "2026-09-01T23:59:60",
+      "zone": "UTC",
+      "expected": "exclude_invalid_seconds"
+    }
+  ]
+}

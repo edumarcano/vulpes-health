@@ -12,6 +12,7 @@ Records keep their original wording, including failed runs and uncertain charges
 | Provider verification | [Luna v7 live checks](luna-owner-pilot-live.md) with [machine-readable results](luna-owner-pilot-live.json), [v8 failure and v9 technical checks](luna-v8-v9-verification.md), [v10 technical checks](luna-v10-technical.md) |
 | Local release report | [m6-local.json](release/m6-local.json), [acceptance map](release/acceptance-map.json) and the reviewed synthetic screenshots in `release/` |
 | Imports | [RENPHO import](renpho-import.md) |
+| v0.2.0 M0 | [Readiness decisions and evidence](v0.2.0/m0-readiness.md), [reproducible probes](v0.2.0/m0-probes/README.md) |
 | Hosted checks | [Temporary-account checks, 2026-11-10](temporary-account-2026-11-10.md) |
 | Independent audit | [Audit report](v010-independent-audit.md) and [F-01 to F-12 remediation closure](audit-remediation-closure.md) |
 
