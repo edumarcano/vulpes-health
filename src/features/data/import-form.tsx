@@ -348,8 +348,13 @@ export function ImportForm({
     <section className="data-panel" aria-label="CSV import">
       <h2>Import CSV</h2>
       <p>
-        Canonical CSV, English RENPHO Health exports, or an explicit wide-column
-        mapping. No model calls.
+        Import a canonical CSV, a mapped wide-column CSV, or the supported
+        English RENPHO Health CSV layout in lb. RENPHO imports include weight
+        and body-fat percentage only. Importing does not use AI.
+      </p>
+      <p>
+        Vulpes is independent and is not affiliated with, sponsored by, or
+        endorsed by RENPHO.
       </p>
       <form className="settings-form data-form" onSubmit={preview}>
         <fieldset className="settings-form" disabled={locked}>
