@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "oracle": "Independently calculated Decimal products; no production parser/normalizer invoked.",
+  "file": "full-panel.csv",
+  "timezone": "America/New_York",
+  "sourceLocal": "2026-09-01T08:00:00",
+  "observedAt": "2026-09-01T12:00:00Z",
+  "observations": [
+    {
+      "key": "weight",
+      "originalValue": "150.0",
+      "originalUnit": "lb",
+      "canonicalValue": "68.0388555",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.bmi",
+      "originalValue": "23.5",
+      "originalUnit": "kg/m2",
+      "canonicalValue": "23.5",
+      "canonicalUnit": "kg/m2"
+    },
+    {
+      "key": "body_fat_percent",
+      "originalValue": "20.0",
+      "originalUnit": "%",
+      "canonicalValue": "20",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.body_fat_mass",
+      "originalValue": "30.0",
+      "originalUnit": "lb",
+      "canonicalValue": "13.6077711",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.muscle_percent",
+      "originalValue": "70.0",
+      "originalUnit": "%",
+      "canonicalValue": "70",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.muscle_mass",
+      "originalValue": "105.0",
+      "originalUnit": "lb",
+      "canonicalValue": "47.62719885",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.skeletal_muscle_percent",
+      "originalValue": "45.0",
+      "originalUnit": "%",
+      "canonicalValue": "45",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.skeletal_muscle_mass",
+      "originalValue": "67.5",
+      "originalUnit": "lb",
+      "canonicalValue": "30.617484975",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.bone_percent",
+      "originalValue": "4.0",
+      "originalUnit": "%",
+      "canonicalValue": "4",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.bone_mass",
+      "originalValue": "6.0",
+      "originalUnit": "lb",
+      "canonicalValue": "2.72155422",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.protein_percent",
+      "originalValue": "16.0",
+      "originalUnit": "%",
+      "canonicalValue": "16",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.protein_mass",
+      "originalValue": "24.0",
+      "originalUnit": "lb",
+      "canonicalValue": "10.88621688",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.body_water_percent",
+      "originalValue": "55.0",
+      "originalUnit": "%",
+      "canonicalValue": "55",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.body_water_mass",
+      "originalValue": "82.5",
+      "originalUnit": "lb",
+      "canonicalValue": "37.421370525",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.fat_free_mass",
+      "originalValue": "120.0",
+      "originalUnit": "lb",
+      "canonicalValue": "54.4310844",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.subcutaneous_fat_percent",
+      "originalValue": "17.0",
+      "originalUnit": "%",
+      "canonicalValue": "17",
+      "canonicalUnit": "%"
+    },
+    {
+      "key": "renpho.visceral_fat_index",
+      "originalValue": "8.5",
+      "originalUnit": "index",
+      "canonicalValue": "8.5",
+      "canonicalUnit": "index"
+    },
+    {
+      "key": "renpho.bmr",
+      "originalValue": "1500.5",
+      "originalUnit": "kcal",
+      "canonicalValue": "1500.5",
+      "canonicalUnit": "kcal"
+    },
+    {
+      "key": "renpho.metabolic_age",
+      "originalValue": "31.5",
+      "originalUnit": "years",
+      "canonicalValue": "31.5",
+      "canonicalUnit": "years"
+    },
+    {
+      "key": "renpho.waist_hip_ratio",
+      "originalValue": "0.85",
+      "originalUnit": "ratio",
+      "canonicalValue": "0.85",
+      "canonicalUnit": "ratio"
+    },
+    {
+      "key": "renpho.optimal_weight",
+      "originalValue": "145.0",
+      "originalUnit": "lb",
+      "canonicalValue": "65.77089365",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.target_weight_delta",
+      "originalValue": "-5.0",
+      "originalUnit": "lb",
+      "canonicalValue": "-2.26796185",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.target_muscle_delta",
+      "originalValue": "2.5",
+      "originalUnit": "lb",
+      "canonicalValue": "1.133980925",
+      "canonicalUnit": "kg"
+    },
+    {
+      "key": "renpho.target_fat_delta",
+      "originalValue": "-7.5",
+      "originalUnit": "lb",
+      "canonicalValue": "-3.401942775",
+      "canonicalUnit": "kg"
+    }
+  ]
+}

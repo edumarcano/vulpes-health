@@ -1,0 +1,32 @@
+{
+  "artifact": "m0_share_mechanics",
+  "schemaVersion": 1,
+  "synthetic": true,
+  "status": "passed",
+  "browser": "Chrome 157.0.8103.51",
+  "platform": "win32",
+  "fileBytes": 73,
+  "fileSHA256": "9ea89b54093db02b57a4515c4a674acd452f74b4dcc05b86b305594e5e842bde",
+  "workerIntercepted": true,
+  "singleClaim": true,
+  "expiryOnRead": true,
+  "cancellationCleanup": true,
+  "remainingHandoffs": 0,
+  "publicCachePaths": [
+    "/offline.html"
+  ],
+  "invalidAttachmentsRejected": [
+    "missing",
+    "multiple",
+    "text"
+  ],
+  "workerUnavailable": {
+    "status": 503,
+    "persisted": false,
+    "bodyEcho": false
+  },
+  "externalRequests": 0,
+  "applicationUploads": 0,
+  "commits": 0,
+  "evidenceBoundary": "Desktop multipart navigation and worker/IndexedDB mechanics only; no installation, Android/RENPHO share sheet, authentication, account isolation, update/race, or AT-09 acceptance."
+}

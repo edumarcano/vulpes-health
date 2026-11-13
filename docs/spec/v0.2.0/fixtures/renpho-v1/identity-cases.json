@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "note": "Normative decision examples, not executable classifier evidence. Cases share owner/source/time unless overridden.",
+  "cases": [
+    {
+      "id": "identical",
+      "existing": {
+        "source": "A",
+        "local": "2026-09-01T08:00:00",
+        "zone": "America/New_York",
+        "weightKg": "68.0388555"
+      },
+      "incoming": {
+        "source": "A",
+        "local": "2026-09-01T08:00:00",
+        "zone": "America/New_York",
+        "weightKg": "68.038855500"
+      },
+      "expected": "duplicate"
+    },
+    {
+      "id": "enrichment",
+      "existing": {
+        "metrics": {
+          "weight": "68.0388555"
+        }
+      },
+      "incoming": {
+        "metrics": {
+          "weight": "68.0388555",
+          "body_fat_percent": "20"
+        }
+      },
+      "expected": "add_missing_metric"
+    },
+    {
+      "id": "changed_value",
+      "existing": {
+        "weightKg": "68.0388555"
+      },
+      "incoming": {
+        "weightKg": "69"
+      },
+      "expected": "conflict"
+    },
+    {
+      "id": "different_instant",
+      "existing": {
+        "instant": "2026-09-01T12:00:00Z"
+      },
+      "incoming": {
+        "instant": "2026-09-01T12:01:00Z"
+      },
+      "expected": "distinct_event"
+    },
+    {
+      "id": "changed_timezone",
+      "existing": {
+        "local": "2026-09-01T08:00:00",
+        "zone": "America/New_York"
+      },
+      "incoming": {
+        "local": "2026-09-01T08:00:00",
+        "zone": "UTC"
+      },
+      "expected": "time_interpretation_conflict"
+    },
+    {
+      "id": "same_time_incompatible",
+      "existing": {
+        "weightKg": "68"
+      },
+      "incoming": {
+        "weightKg": "70"
+      },
+      "expected": "ambiguous_conflict"
+    },
+    {
+      "id": "rounded_mass",
+      "existing": {
+        "weightKg": "68.0388555"
+      },
+      "incoming": {
+        "weightKg": "68.0"
+      },
+      "expected": "conflict"
+    },
+    {
+      "id": "later_missing",
+      "existing": {
+        "metrics": {
+          "weight": "68",
+          "body_fat_percent": "20"
+        }
+      },
+      "incoming": {
+        "metrics": {
+          "weight": "68"
+        }
+      },
+      "expected": "duplicate_no_deletion"
+    },
+    {
+      "id": "changed_annotation",
+      "existing": {
+        "remarks": "Synthetic A"
+      },
+      "incoming": {
+        "remarks": "Synthetic B"
+      },
+      "expected": "annotation_conflict"
+    },
+    {
+      "id": "different_source",
+      "existing": {
+        "source": "A"
+      },
+      "incoming": {
+        "source": "B"
+      },
+      "expected": "distinct_source"
+    },
+    {
+      "id": "different_owner",
+      "existing": {
+        "owner": "synthetic-owner-A"
+      },
+      "incoming": {
+        "owner": "synthetic-owner-B"
+      },
+      "expected": "no_cross_owner_match"
+    },
+    {
+      "id": "review_flag_only",
+      "existing": {
+        "reviewRequested": false
+      },
+      "incoming": {
+        "reviewRequested": true
+      },
+      "expected": "duplicate_preserve_quality"
+    },
+    {
+      "id": "corrected_history",
+      "existing": {
+        "effectiveWeightKg": "69",
+        "quality": "user_corrected"
+      },
+      "incoming": {
+        "weightKg": "68"
+      },
+      "expected": "conflict_preserve_correction"
+    }
+  ]
+}

@@ -2,6 +2,20 @@
 
 The [product and architecture decisions](spec/v0.1.0/DECISIONS.md) are authoritative. This log records the implementation choices that shape ongoing operation, each with its reason. Dated blow-by-blow history is in [Git](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/DECISIONS_IMPLEMENTATION.md).
 
+## v0.2.0 M0 decisions (2026-11-13)
+
+The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflicting v0.1.0 scope decisions. These are selected implementation directions, not shipped v0.2.0 features. See the [M0 readiness record](evidence/v0.2.0/m0-readiness.md) for alternatives, source inventory, measured probes and remaining gates.
+
+| Decision | Rationale / implementation owner |
+|---|---|
+| Extend through forward migrations; retain Auth, privacy and financial controls | Reuse existing ownership/RPC/lifecycle infrastructure. No migration rewrite, blanket reset, renewed consent or replenished budgets. M1 structural proof; M6 environment-specific cutover |
+| Add owned weigh-in parents and exact linked observations; compact batch mapping | Preserve event context/annotations and reduce repeated staging metadata. M1 chooses schema/RPCs and proves real-path capacity |
+| Identify by owned source and exact interpreted timestamp with local-time collision protection | Reimports can enrich missing fields but changed values conflict; timezone remapping cannot silently duplicate history. No filename/hash/row/proximity identity. M1 classifier |
+| Adopt only evidenced English lb headers; preserve all 24 numeric fields | Avoid inferred units and silent loss. Detailed missing-cell/time/semantic contracts live in the format manifest and M0 record. M1 registry; M3 definitions |
+| Use separate IndexedDB share handoff and an opaque reference | Desktop worker/claim/expiry/fallback mechanics passed. No health bytes in public cache or URLs. M2 auth/device/update/race evidence remains |
+| Adopt no numeric reference rule from incomplete public evidence | M3 obtains one applicable versioned manufacturer rule and independent boundary cases; explicit unavailable states preserve usability |
+| Freeze 20-scenario comparison design before live results | Independent numeric oracles, hard critical gates and at least 90% ordinary completion. M4 final bindings; M5 current provider facts and separately approved live baseline/peer calls |
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.
