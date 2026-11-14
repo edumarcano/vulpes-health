@@ -341,6 +341,56 @@ describe('M1 owned event HTTP transactions', () => {
         .new,
     ).toBe(1);
   });
+  it('links unordered new, enriched and repeated rows to their own parents after an excluded row', async () => {
+    const p = await preview('Date,Time,Weight(lb)\n2026.09.01,08:00:00,150');
+    await commit(p);
+    expect(
+      (
+        await post({
+          action: 'add_measurement',
+          client_request_id: randomUUID(),
+          source: { kind: 'existing', id: p.source_id },
+          observation: {
+            metric: 'weight',
+            value: '150',
+            unit: 'lb',
+            observed_at: '2026-09-04T08:00:00-04:00',
+            timezone: 'America/New_York',
+            local_date: null,
+            granularity: 'instant',
+            method: 'device_reported',
+            quality_flags: [],
+          },
+        })
+      ).status,
+    ).toBe(200);
+    const incoming = await preview(
+      'Date,Time,Weight(lb),BMI\n2026.09.04,08:00:00,151,\n2026.09.03,08:00:00,152,22\n2026.09.01,08:00:00,150,23\n2026.09.02,08:00:00,153,24\n2026.09.03,08:00:00,152,22',
+      p.source_id,
+    );
+    expect(incoming.counts).toMatchObject({
+      new: 5,
+      duplicate: 3,
+      conflict: 1,
+    });
+    expect(await commit(await review(incoming))).toMatchObject({
+      inserted: 5,
+      inserted_events: 2,
+      enriched: 1,
+    });
+    const parents = await table('weigh_in_events', p.source_id);
+    expect(parents).toHaveLength(3);
+    const readings = await table('measurements', p.source_id);
+    expect(readings).toHaveLength(7);
+    expect(readings.filter((r) => r.event_id === null)).toHaveLength(1);
+    for (const parent of parents) {
+      const children = readings.filter((r) => r.event_id === parent.id);
+      expect(children).toHaveLength(2);
+      expect(children.every((r) => r.observed_at === parent.observed_at)).toBe(
+        true,
+      );
+    }
+  });
   it('commits new annotations when every numeric value conflicts without overwriting readings', async () => {
     const header = 'Date,Time,Weight(lb),Remarks\n';
     const initial = await preview(header + '2026.09.01,08:00:00,150,');

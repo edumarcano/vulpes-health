@@ -111,6 +111,18 @@ The repair diff was reviewed on both Remora axes: the HTTP/export assertions est
 
 Local verification uses synthetic data only. The shared stack was not reset: reviewed function definitions were reloaded locally, and the isolated rehearsal also applied all four complete M1 migrations and replayed the fresh schema. The full shared-stack lifecycle reset/maintenance command remains guarded by retained receipts and is exercised by CI on a clean stack. Browser behavior and hosted/device/provider gates were not reverified by this repair.
 
+## CI capacity repair (2026-11-14)
+
+At `2060fc8`, [CI run 43567163356](https://github.com/edumarcano/vulpes-health/actions/runs/43567163356) passed both migration rehearsals, SQL checks, fast checks and browser checks. Backend integration passed 274/275 tests; the 24,000-observation commit returned HTTP 503. This establishes that the earlier migration blocker was repaired, while the capacity path remained too close to the database deadline.
+
+Local rollback profiling reproduced the deadline pressure: the commit function took 7.6–8.3 seconds before deferred constraints, and the authenticated HTTP commit also reproduced 503. `EXPLAIN ANALYZE` showed a nested loop scanning an average of 500 event parents for each of 24,000 observations. The bulk insert took about 5.2 seconds.
+
+Commit now records each input event's resolved UUID and uses that bounded ordinal map during bulk insertion. The timestamp rejoin is removed; ownership, content/revision binding, review checks, foreign keys, deferred constraints and the eight-second authenticated SQL timeout are unchanged. With the same rollback profiler, bulk insertion took about 2.0 seconds and the function 4.3 seconds, followed by 0.33 seconds for deferred constraints. These local timings are diagnostic samples, not hosted latency guarantees.
+
+The uninstrumented HTTP capacity test passed with 1,000 events, 24,000 observations and 3,000 annotations: 7,759 ms preview and 8,365 ms total commit, including application revalidation and transport. All 34 affected integration tests passed. The new mixed-row case verifies that an excluded first row, unordered new events, enrichment and repeated rows retain the correct parent/time links. The existing capacity test remains the executable regression for the deadline failure; no timeout or acceptance limit was raised.
+
+SQL lint, all 807 pgTAP assertions, generated-type consistency, populated/fresh migration replay, ESLint, Prettier and typecheck passed. The repair diff was checked on both Remora axes: no external contract/schema change, relaxed security check or additional application dependency was introduced. No debug function or profiling hook is included in the change. CI must verify the repair on its Linux runner before a complete backend pass is claimed.
+
 ## Remaining environment and release gates
 
 | Boundary | Disposition |

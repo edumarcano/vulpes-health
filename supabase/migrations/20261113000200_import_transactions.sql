@@ -308,7 +308,7 @@ $$;
 create function public.commit_import_v2(p_request jsonb,p_bytes text) returns jsonb
 language plpgsql security definer set search_path='' set jit=off as $$
 declare owner_id uuid:=auth.uid(); revision bigint; batch public.import_batches; envelope public.private_payloads; b jsonb; inspection jsonb; source_row public.data_sources;
- request_id uuid; request_hash text; receipt public.audit_events; answer jsonb; classes jsonb; e jsonb; eo integer; target_event_id uuid; observation_offset integer:=0; first_observation integer; existing_event public.weigh_in_events;
+ request_id uuid; request_hash text; receipt public.audit_events; answer jsonb; classes jsonb; e jsonb; eo integer; target_event_id uuid; event_parent_ids uuid[]:='{}'; observation_offset integer:=0; first_observation integer; existing_event public.weigh_in_events;
  new_annotations jsonb; annotation_origins jsonb; a record; added integer; total_annotations integer:=0; inserted integer:=0; events_inserted integer:=0; linked integer:=0; changed boolean:=false;
 begin
  if owner_id is null or not public.owned_session_valid_v1() then raise exception 'unauthorized' using errcode='28000'; end if;
@@ -371,6 +371,7 @@ begin
     else added:=0; end if;
    end if;
    total_annotations:=total_annotations+added;
+   event_parent_ids[eo]:=target_event_id;
    -- A genuine reviewed RENPHO row may link equivalent existing unlinked readings.
    update public.measurements m set event_id=target_event_id where m.user_id=owner_id and m.source_id=batch.source_id and m.event_id is null
     and m.observed_at=(e->>'instant')::timestamptz and m.granularity='instant' and m.timezone=b->'mapping'->>'timezone' and m.original_offset_minutes=(e->>'offset')::integer
@@ -380,10 +381,10 @@ begin
   end loop;
 
   insert into public.measurements(user_id,source_id,import_batch_id,event_id,metric_key,canonical_value,canonical_unit,original_value,original_unit,observed_at,original_offset_minutes,timezone,local_date,granularity,measurement_method,quality_flags,external_record_id,fingerprint,provenance)
-  select owner_id,batch.source_id,batch.id,w.id,r->>'metric_key',(r->>'canonical_value')::numeric,r->>'canonical_unit',r->>'original_value',r->>'original_unit',(r->>'observed_at')::timestamptz,
+  select owner_id,batch.source_id,batch.id,event_parent_ids[t.event_ordinal],r->>'metric_key',(r->>'canonical_value')::numeric,r->>'canonical_unit',r->>'original_value',r->>'original_unit',(r->>'observed_at')::timestamptz,
    (r->>'original_offset_minutes')::integer,r->>'timezone',(r->>'local_date')::date,r->>'granularity',r->>'measurement_method',array(select jsonb_array_elements_text(r->'quality_flags')),r->>'external_record_id',
    encode(sha256(convert_to(jsonb_build_array(source_row.source_namespace,r->>'metric_key',trim_scale(extract(epoch from (r->>'observed_at')::timestamptz))::text,(r->>'original_offset_minutes')::integer,r->>'granularity',trim_scale((r->>'canonical_value')::numeric)::text,(r->>'local_date')::date)::text,'UTF8')),'hex'),r->'provenance'
-  from public.import_rows_v2(b) t left join public.weigh_in_events w on t.event_ordinal is not null and w.user_id=owner_id and w.source_id=batch.source_id and w.observed_at=(r->>'observed_at')::timestamptz
+  from public.import_rows_v2(b) t
   where classes->>(t.ord::integer-1) in ('new','enrichment');
   get diagnostics inserted=row_count;
   changed:=changed or inserted>0;
