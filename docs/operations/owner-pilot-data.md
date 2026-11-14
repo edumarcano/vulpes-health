@@ -60,16 +60,13 @@ Repository changes alone do not prove that Vercel enforces these settings. Verce
 
 After a deployment, check `/api/status`, sign-in, routing and the affected feature. Keep the previous immutable deployment available for rollback. Local checks do not prove Vercel packaging or production behavior.
 
-### M1 personal-use cutover
+### Import schema upgrades
 
-The next personal-use snapshot includes PR #75's import and event features. M2-M6 feature work is deferred; this limited cutover does not establish complete v0.2.0 acceptance. Supported input and current limits remain in [data imports](data-imports.md).
+The build compares every repository migration version with the hosted `schema_version_v1` inventory. `hosted_schema_incompatible` rejects missing versions or duplicate inventory entries. Passing CI does not establish hosted schema compatibility.
 
-1. Review and merge the stabilization PR, let `Main / Release gate` pass, and select that exact main commit before starting maintenance. M1 is already merged: its schema-gated build can fail while the previous deployment continues serving. This recovery sequence retries that candidate after migration rather than leaving the database upgraded while waiting for main CI. Privately compare its migration files with the hosted `schema_version_v1` inventory; include every missing migration, not only the latest version.
-2. Check retained records against the new representation and provenance constraints. Resolve incompatibilities explicitly without silently rewriting or discarding records. Capture a fresh encrypted backup with its keys and independent copy under the existing [recovery procedure](hosted-recovery.md). Prepare recovery of both the schema and application: an old application alone cannot undo revoked writer grants.
-3. Under separate cutover authorization, stop new writes and AI dispatch and reconcile in-flight work. The four M1 migrations invalidate incompatible pending imports and pending proposals; review that effect before applying them. Preserve records, approved goals, Auth, consent, budgets and unsettled charges.
-4. Apply the missing forward migrations in order without resetting the database. Verify the complete migration inventory, then retry the validated Vercel candidate and require `Main / Release gate` before promotion.
-5. Verify sign-in, existing data and approved goals. Using a synthetic account, exercise the full-panel and large imports, overlap without duplicates, event inspection/correction/deletion and both exports. Close existing app tabs and reopen the installed app to verify the client update. Preserve the approved provider configuration; this cutover does not require paid inference.
-6. Record the deployed commit, migration versions, hosted checks and recovery reference in [M1 evidence](../evidence/v0.2.0/m1-imports.md). Mark the hosted boundary unverified until those checks actually run.
+An upgrade requires compatible retained data and a fresh encrypted backup with its keys and independent copy. Recovery must cover both schema and application: an old application cannot undo revoked writer grants. During authorized maintenance, stop writes and AI dispatch and reconcile in-flight work before applying missing forward migrations without a database reset. Verify the complete inventory, then retry the same validated main commit with a passing `Main / Release gate`. See [import constraints](data-imports.md) and [hosted recovery](hosted-recovery.md).
+
+Hosted checks confirm sign-in, retained records and approved goals. A synthetic account exercises full-panel and large imports, overlap without duplicates, event inspection/correction/deletion and both exports. Reopening the installed app verifies the client update. These checks require no paid inference; [M1 evidence](../evidence/v0.2.0/m1-imports.md) records the verified boundary.
 
 For separately authorized manual or synthetic hosting, `npm run hosting:prepare -- --plan`, `npm run hosting:probe -- --plan` and `npm run hosting:security -- --plan` describe the guarded tooling. Generated overlays keep Git deployments disabled and inference off by default.
 
