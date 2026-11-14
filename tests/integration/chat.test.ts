@@ -57,7 +57,7 @@ import { addMeasurement } from '../../server/services/measurements.js';
 import { goalDraft } from '../fixtures/contracts.js';
 import { verificationFixtures } from '../../server/ai/verification-fixture.js';
 import { previewCsv, commitImport } from '../../server/services/imports.js';
-import { PreviewCsvWireSchema as PreviewCsvSchema } from '../../shared/import-v2.js';
+import { PreviewCsvWireSchema as PreviewCsvSchema } from '../../shared/imports.js';
 import { DataSummarySchema } from '../../shared/data.js';
 
 let db: LocalSupabase;

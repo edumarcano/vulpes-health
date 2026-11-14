@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
-import { ImportResultSchema, CSV_LIMIT_BYTES } from '../../shared/imports.js';
 import {
+  ImportResultSchema,
+  CSV_LIMIT_BYTES,
   IMPORT_METADATA_LIMIT_BYTES,
   ImportBundleSchema,
   ImportPreviewV2Schema,
@@ -13,7 +14,7 @@ import {
   type ImportReadSchema,
   type PreviewCsvWire,
   type ReviewImportSchema,
-} from '../../shared/import-v2.js';
+} from '../../shared/imports.js';
 import {
   METRIC_REGISTRY_VERSION,
   RENPHO_ADAPTER_VERSION,

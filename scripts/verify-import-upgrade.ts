@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { assertImportUpgradePreserved } from '../tests/helpers/import-upgrade.js';
 import {
   databaseGraph,
   databaseTables,
@@ -129,12 +130,45 @@ try {
     reserved_usd: '0.1',
   });
   for (const table of databaseTables) insert(table, graph.rows[table]);
+  const staging = randomUUID();
+  insert('private_payloads', {
+    ...graph.rows.private_payloads,
+    id: staging,
+    purpose: 'import_staging',
+  });
+  insert('import_batches', {
+    ...graph.rows.import_batches,
+    id: randomUUID(),
+    staging_payload_id: staging,
+  });
+  insert('action_proposals', {
+    ...graph.rows.action_proposals,
+    id: randomUUID(),
+    state: 'pending',
+  });
+  const snapshot = () =>
+    Object.fromEntries(
+      databaseTables.map((table) => [
+        table,
+        JSON.parse(
+          sql(
+            'select coalesce(jsonb_agg(to_jsonb(t) order by ' +
+              (table === 'profiles' ? 'user_id' : 'id') +
+              "),'[]'::jsonb)::text from public." +
+              table +
+              ' t;',
+          ),
+        ) as Array<Record<string, unknown>>,
+      ]),
+    );
+  const productBefore = snapshot();
   const control = () =>
     sql(
       "select jsonb_build_object('auth',(select jsonb_agg(to_jsonb(u)) from auth.users u),'profile',(select jsonb_agg(to_jsonb(p)) from public.profiles p),'buckets',(select jsonb_agg(to_jsonb(b) order by id) from public.usage_buckets b),'reservations',(select jsonb_agg(to_jsonb(r)) from public.usage_reservations r))::text;",
     );
   const before = control();
   apply(m1);
+  assertImportUpgradePreserved(productBefore, snapshot());
   assert.equal(
     control(),
     before,

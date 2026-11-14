@@ -1,3 +1,10 @@
+import type { PreviewCsvWire } from '../../shared/imports.js';
+
+export type CsvFixtureRequest = Omit<
+  PreviewCsvWire,
+  'schema_version' | 'csv_base64'
+> & { csv: string };
+
 // Keep generic fixtures readable while exercising the current HTTP wire contract.
 export function dataWireBody(body: unknown): unknown {
   if (!body || typeof body !== 'object' || !('action' in body)) return body;

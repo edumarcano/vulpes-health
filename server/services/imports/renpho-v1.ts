@@ -1,13 +1,14 @@
 import { readCsvRecords } from '../csv-records.js';
 import { Temporal } from '@js-temporal/polyfill';
-import { CSV_LIMIT_BYTES, RENPHO_COLUMNS } from '../../../shared/imports.js';
 import {
+  CSV_LIMIT_BYTES,
+  RENPHO_COLUMNS,
   IMPORT_OBSERVATION_LIMIT,
   IMPORT_ROW_LIMIT,
   type AnnotationKey,
   type ParsedRenpho,
   type RenphoEvent,
-} from '../../../shared/import-v2.js';
+} from '../../../shared/imports.js';
 import { metricRegistry, registryMetricKeys } from '../../../shared/metrics.js';
 import { normalizeObservation } from '../../analytics/measurements.js';
 import { isPrivatePlainText } from '../../../shared/primitives.js';
@@ -30,9 +31,6 @@ const annotationFields: ReadonlyArray<[string, AnnotationKey, number]> = [
   ['Body Type', 'body_type', 200],
   ['Remarks', 'remarks', 4096],
 ];
-export function validPrivateText(value: string): boolean {
-  return isPrivatePlainText(value);
-}
 
 export function parseRenphoV1(
   bytes: Uint8Array,
@@ -67,7 +65,7 @@ export function parseRenphoV1(
     headers.some(
       (header, index) =>
         header.length > 200 ||
-        !validPrivateText(header) ||
+        !isPrivatePlainText(header) ||
         (!header && index !== headers.length - 1),
     )
   )
@@ -140,7 +138,7 @@ export function parseRenphoV1(
       }).toZonedDateTime(timezone, { disambiguation: 'reject' });
       if (zoned.offsetNanoseconds % 60_000_000_000 !== 0) throw new Error();
       const no = cell('No.');
-      if (!validPrivateText(no) || no.length > 500) throw new Error();
+      if (!isPrivatePlainText(no) || no.length > 500) throw new Error();
       event = {
         row: line,
         no: no || null,
@@ -163,7 +161,7 @@ export function parseRenphoV1(
       const text = cell(header);
       if (!text) continue;
       if (
-        !validPrivateText(text) ||
+        !isPrivatePlainText(text) ||
         (key === 'remarks' ? Buffer.byteLength(text) : [...text].length) >
           maximum
       ) {

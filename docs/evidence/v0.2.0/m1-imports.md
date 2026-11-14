@@ -87,6 +87,30 @@ The implementation agent reviewed the staged/unstaged change surface and new fil
 
 **Verdict:** approved with the verification observations recorded here. No remaining demonstrated M1 correctness/security blocker was found in the reviewed surface. The Windows development-server observation and external gates are not passed or waived by local compiled-browser results. CI and external PR review remain separate from this implementation review.
 
+## PR review remediation (2026-11-14)
+
+The follow-up review at `7056d42` found three blockers after the implementation checkpoint above. Each was reproduced before repair; that earlier checkpoint is not evidence that these cases were covered.
+
+| Finding | Reproduction and repair |
+|---|---|
+| Historical baseline copies survived source/metric revisions | Four authenticated HTTP cases created and approved a calculated baseline, revised its source or metric, then corrected or deleted the original reading. All four retained the old value/references before repair. Cleanup now selects each revision's own frozen dependencies, with older payload source/metric fields as fallback. Regression assertions inspect revision/proposal bodies and account export while preserving the unrelated current goal, revision and proposal. |
+| Numeric conflicts silently dropped promised annotations | Reviewed preview reported one annotation addition; commit returned zero. Existing parents now accept nonconflicting annotations even when every numeric value is excluded. A second red case exposed unlinked readings with no eligible parent: preview now excludes those annotations as conflicts. Tests assert the exact commit receipt, persisted annotations, unchanged numeric readings, revision and replay. |
+| Lifecycle CI compared complete rows across a schema transition | Reproduced the same equality failure in a generated isolated database, including pending staging and a pending proposal. Both rehearsals share an exact expected-row comparison allowing only new column defaults, incompatible preview invalidation, orphan staging removal and pending proposal invalidation. Auth and financial controls remain byte-for-byte compared separately in the import rehearsal. CI runs both rehearsals. |
+
+Import schemas and limits now have one owner in `shared/imports.ts`; `shared/import-v2.ts`, the obsolete raw-CSV request schema and the forwarding text-validation wrapper were removed. Readable raw-CSV fixtures derive their type from the current wire contract in the existing test helper. The added migration assertion helper is shared by the two upgrade scripts; it does not remove preservation coverage.
+
+| Follow-up check | Observed result |
+|---|---|
+| Affected integration suites | 69/69 passed across imports, events, measurement lifecycle, goals and capacity; includes all six new regression cases and 24,000 observations |
+| Unit tests | 658/658 passed across 57 files with one thread worker. An earlier concurrent run timed out during ESLint startup; the unchanged boundary suite and complete unit suite passed on rerun |
+| SQL, migration and types | 807/807 pgTAP assertions passed; SQL lint, generated-type consistency, isolated populated upgrade and fresh replay passed |
+| Static/build checks | ESLint, Prettier, typecheck, public-bundle canary/size checks, 621 specification checks and diff whitespace checks passed |
+| Full backend attempt | Exited with status 1 without a test summary. Its two identified synthetic execution accounts and app-budget fixture caused subsequent SQL setup collisions; synthetic accounting metadata was retained privately and only those fixtures were removed before the passing SQL rerun. No complete backend pass is claimed for this revision; CI remains required |
+
+The repair diff was reviewed on both Remora axes: the HTTP/export assertions establish the affected privacy and import contracts; exact migration snapshots, retained ownership/financial checks and consolidated contract ownership address engineering and simplification. No remaining demonstrated blocker was found in this repair surface. Full backend CI and the prior development-browser observation remain verification limitations.
+
+Local verification uses synthetic data only. The shared stack was not reset: reviewed function definitions were reloaded locally, and the isolated rehearsal also applied all four complete M1 migrations and replayed the fresh schema. The full shared-stack lifecycle reset/maintenance command remains guarded by retained receipts and is exercised by CI on a clean stack. Browser behavior and hosted/device/provider gates were not reverified by this repair.
+
 ## Remaining environment and release gates
 
 | Boundary | Disposition |

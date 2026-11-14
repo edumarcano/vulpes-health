@@ -13,7 +13,7 @@ import { verifySession } from '../../server/auth/session.js';
 import { readPayload } from '../../server/security/private-payloads.js';
 import { LocalSupabase } from '../helpers/local-supabase.js';
 import { successEnvelopeSchema } from '../../shared/api.js';
-import { ImportPreviewV2Schema } from '../../shared/import-v2.js';
+import { ImportPreviewV2Schema } from '../../shared/imports.js';
 
 const server = createServer(localRouter);
 let db: LocalSupabase, user: { id: string; token: string }, origin: string;

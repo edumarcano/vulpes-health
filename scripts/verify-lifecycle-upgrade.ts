@@ -10,6 +10,10 @@ import { join } from 'node:path';
 import { LocalSupabase } from '../tests/helpers/local-supabase.js';
 import { localStatus, projectRoot, runSupabase } from './local-database.js';
 import { databaseTables } from '../tests/fixtures/database-graph.js';
+import {
+  assertImportUpgradePreserved,
+  type ProductSnapshot,
+} from '../tests/helpers/import-upgrade.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { spawnSync } from 'node:child_process';
 import { localEnvironment } from './local-database.js';
@@ -101,7 +105,7 @@ try {
   phase = 'second product graph';
   await populated.seed(b.id);
   async function snapshot() {
-    const result: Record<string, unknown> = {};
+    const result: ProductSnapshot = {};
     for (const table of databaseTables)
       result[table] = await (
         await populated!.admin(
@@ -121,11 +125,7 @@ try {
     );
   moved.length = 0;
   runSupabase(['migration', 'up', '--local'], true);
-  assert.deepEqual(
-    await snapshot(),
-    before,
-    'Lifecycle upgrade changed retained product, encrypted payload or budget rows.',
-  );
+  assertImportUpgradePreserved(before, await snapshot());
   phase = 'owned session and deletion fencing';
   const own = await populated.request(
     `/rest/v1/measurements?user_id=eq.${a.id}`,
@@ -236,5 +236,5 @@ try {
 }
 if (passed)
   console.info(
-    'PASS: populated two-owner forward upgrade preserved all product rows, ciphertext and paired accounting; deleting-owner denial and active-owner isolation verified.',
+    'PASS: populated two-owner forward upgrade preserved retained data, ciphertext and paired accounting with required M1 staging/proposal invalidation; deleting-owner denial and active-owner isolation verified.',
   );

@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js';
 import { localStatus } from './local-database.js';
 import { LocalSupabase } from '../tests/helpers/local-supabase.js';
 import { UUIDSchema } from '../shared/primitives.js';
-import { PreviewCsvWireSchema as PreviewCsvSchema } from '../shared/import-v2.js';
+import { PreviewCsvWireSchema as PreviewCsvSchema } from '../shared/imports.js';
 import { verifySession, type AuthContext } from '../server/auth/session.js';
 import { administrativeClient } from '../server/db/administrative.js';
 import { readEncryptionKeys } from '../server/security/encryption.js';

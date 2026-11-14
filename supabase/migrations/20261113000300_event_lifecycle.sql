@@ -13,7 +13,9 @@ begin
  where user_id=p_owner and source_id=p_source and (p_metric is null or metric_key=p_metric);
  update public.goal_revisions r set payload=case when r.payload ? 'baseline' then jsonb_set(r.payload,'{baseline}',(r.payload->'baseline')||'{"value":null,"references":[]}'::jsonb) else r.payload end,
   private_content_removed_at=clock_timestamp()
- where r.user_id=p_owner and exists(select 1 from public.goals g where g.user_id=p_owner and g.id=r.goal_id and g.source_id=p_source and (p_metric is null or g.metric_key=p_metric));
+ where r.user_id=p_owner
+  and coalesce(r.payload#>>'{baseline,selection,source_id}',r.payload#>>'{definition,sourceId}',r.payload->>'sourceId')=p_source::text
+  and (p_metric is null or coalesce(r.payload#>>'{baseline,selection,metric}',r.payload#>>'{definition,metric}',r.payload->>'metric')=p_metric);
  update public.action_proposals a set canonical_payload=case when a.canonical_payload ? 'baseline' then jsonb_set(a.canonical_payload,'{baseline}',(a.canonical_payload->'baseline')||'{"value":null,"references":[]}'::jsonb) else a.canonical_payload end,
   private_content_removed_at=clock_timestamp()
  where a.user_id=p_owner and a.state='approved' and exists(select 1 from public.goal_revisions r where r.user_id=p_owner and r.approved_proposal_id=a.id and r.private_content_removed_at is not null);

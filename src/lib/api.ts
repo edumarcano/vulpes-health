@@ -1,4 +1,4 @@
-import { DATA_CONTRACT_VERSION } from '../../shared/import-v2';
+import { DATA_CONTRACT_VERSION } from '../../shared/imports';
 import { ErrorEnvelopeSchema } from '../../shared/api';
 import type { IdentityScope } from './auth/identity';
 

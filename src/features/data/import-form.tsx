@@ -10,15 +10,13 @@ import {
   ImportResultSchema,
   type ImportResult,
   type ImportSelection,
-} from '../../../shared/imports';
-import {
   ImportPreviewV2Schema,
   ImportStatusSchema,
   ImportItemsSchema,
   PreviewCsvWireSchema,
   type ImportPreviewV2 as ImportPreview,
   type ImportReview,
-} from '../../../shared/import-v2';
+} from '../../../shared/imports';
 import { z } from 'zod';
 import { SourceImportDefaults } from './source-import-defaults';
 import type {

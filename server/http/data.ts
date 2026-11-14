@@ -12,7 +12,7 @@ import {
   ReviewImportSchema,
   DiscardImportSchema,
   ImportReadSchema,
-} from '../../shared/import-v2.js';
+} from '../../shared/imports.js';
 import {
   EventReadSchema,
   EventMutationSchema,

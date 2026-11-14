@@ -1,12 +1,12 @@
 import { readCsvRecords } from './csv-records.js';
 import {
   CSV_LIMIT_BYTES,
-  IMPORT_LIMIT,
+  IMPORT_OBSERVATION_LIMIT,
   ImportMappingSchema,
   type ImportMapping,
 } from '../../shared/imports.js';
 import { normalizeObservation } from '../analytics/measurements.js';
-import { validPrivateText } from './imports/renpho-v1.js';
+import { isPrivatePlainText } from '../../shared/primitives.js';
 
 const required = [
   'observed_at',
@@ -46,7 +46,7 @@ export function parseCsv(csv: string, input: ImportMapping) {
   if (
     !headers ||
     headers.length > 100 ||
-    headers.some((h) => !h || h.length > 200 || !validPrivateText(h)) ||
+    headers.some((h) => !h || h.length > 200 || !isPrivatePlainText(h)) ||
     new Set(headers).size !== headers.length
   )
     throw new Error(
@@ -185,7 +185,10 @@ export function parseCsv(csv: string, input: ImportMapping) {
               ? 'external_record_id'
               : (mapping.external_id_column ?? ''),
           ).trim() || null;
-        if (external && (external.length > 500 || !validPrivateText(external)))
+        if (
+          external &&
+          (external.length > 500 || !isPrivatePlainText(external))
+        )
           throw new Error();
         observations.push({
           ...observation,
@@ -207,7 +210,7 @@ export function parseCsv(csv: string, input: ImportMapping) {
             'Invalid value, unit, method, granularity, flags or time. Check DST offsets and daily dates.',
         });
       }
-      if (observations.length > IMPORT_LIMIT)
+      if (observations.length > IMPORT_OBSERVATION_LIMIT)
         throw new Error(
           'CSV exceeds 25,000 normalized observations. Nothing was staged.',
         );

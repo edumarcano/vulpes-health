@@ -7,11 +7,11 @@ import { localRouter } from '../../server/http/router.js';
 import { localStatus } from '../../scripts/local-database.js';
 import { LocalSupabase } from '../helpers/local-supabase.js';
 import { successEnvelopeSchema } from '../../shared/api.js';
-import { ImportResultSchema } from '../../shared/imports.js';
 import {
+  ImportResultSchema,
   ImportPreviewV2Schema,
   type ImportPreviewV2,
-} from '../../shared/import-v2.js';
+} from '../../shared/imports.js';
 import { EventDetailSchema } from '../../shared/events.js';
 import { parse } from 'csv-parse/sync';
 import { spawnSync } from 'node:child_process';
@@ -340,6 +340,72 @@ describe('M1 owned event HTTP transactions', () => {
       (await preview('Date,Time,Weight(lb)\n2026.09.01,08:00:00,150')).counts
         .new,
     ).toBe(1);
+  });
+  it('commits new annotations when every numeric value conflicts without overwriting readings', async () => {
+    const header = 'Date,Time,Weight(lb),Remarks\n';
+    const initial = await preview(header + '2026.09.01,08:00:00,150,');
+    await commit(initial);
+    const readings = await table('measurements', initial.source_id);
+    const pending = await preview(
+      header + '2026.09.01,08:00:00,151,Synthetic enrichment',
+      initial.source_id,
+    );
+    expect(pending.counts).toMatchObject({ conflict: 1, new: 0 });
+    expect(pending.annotation_additions).toBe(1);
+    const reviewed = await review(pending);
+    expect(reviewed.ready_to_commit).toBe(true);
+    expect(reviewed.annotation_additions).toBe(1);
+    const result = await commit(reviewed);
+    expect(result).toMatchObject({
+      inserted: 0,
+      conflict: 1,
+      annotations_added: 1,
+      inserted_events: 0,
+    });
+    expect(result.dataRevision).toBe(reviewed.dataRevision + 1);
+    expect(await table('measurements', initial.source_id)).toEqual(readings);
+    expect(
+      (await table('weigh_in_events', initial.source_id))[0]!.annotations,
+    ).toEqual({ remarks: 'Synthetic enrichment' });
+    expect(await commit(reviewed)).toEqual(result);
+  });
+  it('excludes annotations when conflicting unlinked readings cannot supply an event parent', async () => {
+    const added = await post({
+      action: 'add_measurement',
+      client_request_id: randomUUID(),
+      source: {
+        kind: 'new',
+        label: 'Synthetic unlinked reading',
+        origin_app: null,
+        device_label: null,
+      },
+      observation: {
+        metric: 'weight',
+        value: '150',
+        unit: 'lb',
+        observed_at: '2026-09-01T08:00:00-04:00',
+        timezone: 'America/New_York',
+        local_date: null,
+        granularity: 'instant',
+        method: 'device_reported',
+        quality_flags: [],
+      },
+    });
+    expect(added.status).toBe(200);
+    const { data: reading } = await added.json();
+    const pending = await preview(
+      'Date,Time,Weight(lb),Remarks\n2026.09.01,08:00:00,151,Synthetic excluded annotation',
+      reading.sourceId,
+    );
+    expect(pending.annotation_additions).toBe(0);
+    expect(pending.annotation_conflicts).toBe(1);
+    const result = await commit(await review(pending));
+    expect(result).toMatchObject({
+      inserted: 0,
+      annotations_added: 0,
+      inserted_events: 0,
+    });
+    expect(await table('weigh_in_events', reading.sourceId)).toEqual([]);
   });
   it('keeps rounded values conflicting, later missing metrics intact and review flags outside identity across owners', async () => {
     const p = await preview();

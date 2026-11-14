@@ -26,7 +26,7 @@ Responses are `no-store`. Account changes abort/discard browser downloads and re
 
 Observation corrections preserve original import provenance. Linked observation time changes require explicit whole-event correction. Event deletion removes every child; deleting the last observation removes its parent. Source defaults never reinterpret recorded instants.
 
-Correction/deletion removes affected private baseline values/references and marks goals for review while preserving approved targets, states and financial records. Where precise dependency removal is unavailable, retained owned conversations and exact AI payloads are removed broadly. Annotation changes remove these conversation/payload copies too. A genuinely new import can recreate deleted readings; replay of a committed batch returns its original receipt without reinsertion. See [data imports](data-imports.md).
+Correction/deletion removes affected private baseline values/references from goal snapshots, historical revisions and approved proposal copies. Historical dependencies come from each revision's frozen selection (or its older source/metric fields), including after a goal changes source or metric. Matching current goals are marked for review; approved targets, states and financial records are preserved. Where precise dependency removal is unavailable, retained owned conversations and exact AI payloads are removed broadly. Annotation changes remove these conversation/payload copies too. A genuinely new import can recreate deleted readings; replay of a committed batch returns its original receipt without reinsertion. See [data imports](data-imports.md).
 
 ## Deletion and interruption
 

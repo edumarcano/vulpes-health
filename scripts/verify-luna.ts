@@ -1,4 +1,4 @@
-import { PreviewCsvWireSchema as PreviewCsvSchema } from '../shared/import-v2.js';
+import { PreviewCsvWireSchema as PreviewCsvSchema } from '../shared/imports.js';
 import { previewCsv, commitImport } from '../server/services/imports.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';

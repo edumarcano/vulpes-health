@@ -1,4 +1,7 @@
-import { dataWireBody } from '../helpers/data-wire.js';
+import {
+  dataWireBody,
+  type CsvFixtureRequest as PreviewCsv,
+} from '../helpers/data-wire.js';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -25,7 +28,7 @@ import {
 } from '../../server/security/encryption.js';
 import { exportMeasurements } from '../../server/services/export.js';
 import type { AddMeasurement, MeasurementMutation } from '../../shared/data.js';
-import type { ImportPreview, PreviewCsv } from '../../shared/imports.js';
+import type { ImportPreview } from '../../shared/imports.js';
 let db: LocalSupabase;
 let a: { id: string; token: string };
 let b: { id: string; token: string };
@@ -199,6 +202,166 @@ afterAll(async () => {
   }
 });
 describe('real M2 correction/deletion/export transactions', () => {
+  it.each([
+    ['source', 'correct'],
+    ['source', 'delete'],
+    ['metric', 'correct'],
+    ['metric', 'delete'],
+  ] as const)(
+    'purges historical baselines after a %s change and measurement %s',
+    async (change, operation) => {
+      const reading = await add({
+        observation: { ...base.observation, value: '70.123' },
+      });
+      const replacement = await add({
+        ...(change === 'metric'
+          ? { source: { kind: 'existing' as const, id: reading.sourceId } }
+          : {}),
+        observation: {
+          ...base.observation,
+          metric: change === 'metric' ? 'heart_rate' : 'weight',
+          value: '80',
+          unit: change === 'metric' ? 'bpm' : 'kg',
+        },
+      });
+      async function goalPost(route: string, body: unknown) {
+        return success<Record<string, unknown>>(
+          await fetch(origin + route, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${a.token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          }),
+        );
+      }
+      async function approve(request: unknown) {
+        const proposal = await goalPost('/api/goals', request);
+        return goalPost('/api/approvals', {
+          action: 'approve',
+          proposal_id: proposal.id,
+          payload_hash: proposal.payload_hash,
+          expected_version: proposal.target_version,
+          client_request_id: randomUUID(),
+        });
+      }
+      const definition = {
+        schemaVersion: 1,
+        title: 'Synthetic historical baseline',
+        metric: 'weight',
+        unit: 'kg',
+        sourceId: reading.sourceId,
+        target: { direction: 'decrease_to', value: 68 },
+        baselineMethod: 'latest_value',
+        reportedBaseline: null,
+        baselineFrom: '2026-09-01T00:00:00Z',
+        baselineTo: '2026-09-15T00:00:00Z',
+        currentMethod: 'latest_value',
+        method: 'device_reported',
+        granularity: 'instant',
+        timezone: 'UTC',
+        targetDate: null,
+        constraints: [],
+        proposedStrategy: null,
+      };
+      const created = await approve({
+        action: 'propose_create',
+        client_request_id: randomUUID(),
+        definition,
+      });
+      const goalId = created.goalId;
+      const original = (
+        await rows('goal_revisions', `goal_id=eq.${goalId}`)
+      )[0]!;
+      expect(original.payload).toMatchObject({
+        baseline: {
+          value: '70.123',
+          references: [{ id: reading.id, version: 1 }],
+        },
+      });
+      await approve({
+        action: 'propose_revision',
+        client_request_id: randomUUID(),
+        goal_id: goalId,
+        expected_version: 1,
+        baseline_resolution: 'replace',
+        definition: {
+          ...definition,
+          sourceId: replacement.sourceId,
+          metric: change === 'metric' ? 'heart_rate' : 'weight',
+          unit: change === 'metric' ? 'bpm' : 'kg',
+        },
+      });
+      const current = (
+        await rows(
+          'goal_revisions',
+          `goal_id=eq.${goalId}&revision_number=eq.2`,
+        )
+      )[0]!;
+      const currentGoal = await rows('goals', `id=eq.${goalId}`);
+      const currentProposal = await rows(
+        'action_proposals',
+        `id=eq.${current.approved_proposal_id}`,
+      );
+      await success(
+        await http(
+          operation === 'correct' ? correction(reading) : deletion(reading),
+        ),
+      );
+      const cleared = (
+        await rows('goal_revisions', `id=eq.${original.id}`)
+      )[0]!;
+      expect(cleared.private_content_removed_at).toEqual(expect.any(String));
+      expect(cleared.payload).toMatchObject({
+        baseline: { value: null, references: [] },
+      });
+      const proposal = (
+        await rows('action_proposals', `id=eq.${original.approved_proposal_id}`)
+      )[0]!;
+      expect(proposal.private_content_removed_at).toEqual(expect.any(String));
+      expect(proposal.canonical_payload).toMatchObject({
+        baseline: { value: null, references: [] },
+      });
+      expect(await rows('goal_revisions', `id=eq.${current.id}`)).toEqual([
+        current,
+      ]);
+      expect(await rows('goals', `id=eq.${goalId}`)).toEqual(currentGoal);
+      expect(
+        await rows('action_proposals', `id=eq.${current.approved_proposal_id}`),
+      ).toEqual(currentProposal);
+      const exported = await fetch(origin + '/api/account', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${a.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'export',
+          trace_parts: [],
+          sensitive_content_acknowledged: false,
+        }),
+      });
+      expect(exported.status).toBe(200);
+      const document = await exported.json();
+      expect(document.sections.goal_revisions).toContainEqual(
+        expect.objectContaining({
+          id: original.id,
+          payload: expect.objectContaining({
+            baseline: expect.objectContaining({ value: null, references: [] }),
+          }),
+        }),
+      );
+      expect(document.sections.action_proposals).toContainEqual(
+        expect.objectContaining({
+          id: proposal.id,
+          canonical_payload: expect.objectContaining({
+            baseline: expect.objectContaining({ value: null, references: [] }),
+          }),
+        }),
+      );
+    },
+  );
   it('rejects second-60 entry and correction through HTTP and direct RPC without changing persisted state', async () => {
     const reading = await add();
     const before = await rows('measurements', `id=eq.${reading.id}`);

@@ -1,6 +1,6 @@
 import { EventAnnotationsSchema } from '../../../shared/events.js';
 import { isPrivatePlainText } from '../../../shared/primitives.js';
-import type { ImportBundle, RenphoEvent } from '../../../shared/import-v2.js';
+import type { ImportBundle, RenphoEvent } from '../../../shared/imports.js';
 
 function encodedText(value: string): string {
   return Buffer.from(value, 'utf8').toString('base64');

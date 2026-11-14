@@ -15,8 +15,10 @@ import {
   DataSummarySchema,
   MeasurementsPageSchema,
 } from '../shared/data.js';
-import { ImportResultSchema } from '../shared/imports.js';
-import { ImportPreviewV2Schema as ImportPreviewSchema } from '../shared/import-v2.js';
+import {
+  ImportResultSchema,
+  ImportPreviewV2Schema as ImportPreviewSchema,
+} from '../shared/imports.js';
 import {
   GoalDefinitionSchema,
   GoalRevisionPayloadSchema,

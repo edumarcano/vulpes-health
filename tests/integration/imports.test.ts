@@ -1,4 +1,7 @@
-import { dataWireBody } from '../helpers/data-wire.js';
+import {
+  dataWireBody,
+  type CsvFixtureRequest as PreviewCsv,
+} from '../helpers/data-wire.js';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -9,13 +12,10 @@ import { localStatus } from '../../scripts/local-database.js';
 import { localRouter } from '../../server/http/router.js';
 import {
   ImportResultSchema,
-  type PreviewCsv,
   type ImportPreview,
-} from '../../shared/imports.js';
-import {
   ImportPreviewV2Schema as ImportPreviewSchema,
   type ImportBundle,
-} from '../../shared/import-v2.js';
+} from '../../shared/imports.js';
 import { successEnvelopeSchema } from '../../shared/api.js';
 import {
   readPayload,
