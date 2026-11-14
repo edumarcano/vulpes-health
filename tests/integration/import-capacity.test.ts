@@ -17,6 +17,7 @@ import { ImportPreviewV2Schema } from '../../shared/imports.js';
 
 const server = createServer(localRouter);
 let db: LocalSupabase, user: { id: string; token: string }, origin: string;
+let commitFailure: string | undefined;
 const rows = parse(
   readFileSync('docs/spec/v0.2.0/fixtures/renpho-v1/full-panel.csv'),
 ) as string[][];
@@ -77,6 +78,30 @@ beforeAll(async () => {
     user_id: user.id,
     display_name: 'Synthetic capacity',
   });
+  const request = globalThis.fetch;
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url !== status.apiUrl + '/rest/v1/rpc/commit_import_v2')
+      return request(input, init);
+    try {
+      const response = await request(input, init);
+      if (!response.ok) {
+        const error = (await response.clone().json()) as { code?: unknown };
+        commitFailure =
+          typeof error.code === 'string' && /^[A-Z0-9]{5,12}$/.test(error.code)
+            ? error.code
+            : 'database_error';
+      }
+      return response;
+    } catch (error) {
+      commitFailure =
+        error instanceof Error &&
+        ['TimeoutError', 'AbortError'].includes(error.name)
+          ? error.name
+          : 'request_error';
+      throw error;
+    }
+  });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const a = server.address();
@@ -89,6 +114,7 @@ afterAll(async () => {
   try {
     if (db) await db.cleanup();
   } finally {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
   }
 });
@@ -192,7 +218,8 @@ it('imports 1,000 complete weigh-ins and 24,000 numeric observations through aut
   expect({
     status: committed.status,
     error: committed.ok ? undefined : ack,
-  }).toEqual({ status: 200, error: undefined });
+    commitFailure,
+  }).toEqual({ status: 200, error: undefined, commitFailure: undefined });
   expect(ack).toMatchObject({
     data: { inserted: 24000, inserted_events: 1000, annotations_added: 3000 },
   });
