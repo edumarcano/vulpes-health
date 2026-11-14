@@ -133,3 +133,17 @@ SQL lint, all 807 pgTAP assertions, generated-type consistency, populated/fresh 
 | Manufacturer numeric reference/classification | M3 evidence gate; no rule inferred from preserved vendor annotations |
 | Live inference/model approval/spend | Unchanged and unverified; no live call is needed for M1 |
 | Hosted cutover/restore access | M6/operator approval; an old application build alone is not a coherent rollback |
+
+## Personal-use stabilization (2026-11-14)
+
+The limited personal-use snapshot includes M1 while later feature development is deferred. The [cutover procedure](../../operations/owner-pilot-data.md#m1-personal-use-cutover) brings forward the applicable deployment work; it does not establish full v0.2.0 acceptance or authorize production operations.
+
+At merged base `5be4b25`, [main CI](https://github.com/edumarcano/vulpes-health/actions/runs/43624204684) passed fast and browser checks but failed the 24,000-observation commit with `503 import_unavailable` (275/276 backend tests passed). Vercel independently rejected the build at its schema guard with `hosted_schema_incompatible`; the exact hosted migration inventory was not inspected. A passing CI run does not satisfy that hosted migration check.
+
+The diagnostic candidate `5e56acf` passed all three required checks in [CI run 43627224674](https://github.com/edumarcano/vulpes-health/actions/runs/43627224674), including all 276 backend tests. Its full HTTP commit took 10,191 ms, including application revalidation and transport. Local rollback profiling of the unchanged SQL measured about 4.1-4.7 seconds inside the commit function plus about 0.3 seconds for deferred constraints. These observations do not establish the cause of the earlier intermittent failure or hosted timing. No production SQL, timeout, capacity limit or application behavior is changed by stabilization.
+
+The capacity test now reports only an allowlisted SQL code or request-timeout category on a failed commit. It also imports the same 1,000 events and 24,000 observations again with changed file bytes, requiring a new preview batch, 24,000 duplicates, zero new observations/events/annotations, unchanged data revision and exactly 24,000 retained observations. This exercises classification instead of the historical committed-file shortcut. The capacity, import-event and existing import suites passed locally: 34/34 tests across three files using `npm run test:integration -- --pool=threads tests/integration/import-capacity.test.ts tests/integration/import-events.test.ts tests/integration/imports.test.ts`. Typecheck, targeted ESLint/Prettier and diff whitespace checks also passed. Final PR-head CI remains a separate check.
+
+Split-axis review inspected the complete stabilization diff. Axis 1 traced the real HTTP assertions and the limited release/cutover scope; Axis 2 checked pass-through diagnostics, excluded private payloads, existing timeout/ownership contracts and documentation ownership. No blocking defect in this diff was identified. This was a same-agent review, not independent release acceptance. The earlier intermittent capacity failure remains an observation, with safer diagnostics for recurrence; no root-cause repair is claimed.
+
+Production migration, retained-data preflight, backup/recovery and hosted verification remain unperformed. The previous deployed application is not proof of compatibility with the M1 schema. Provider requests/spend for stabilization: **0 / $0**.

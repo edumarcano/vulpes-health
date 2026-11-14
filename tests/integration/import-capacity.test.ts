@@ -86,9 +86,12 @@ beforeAll(async () => {
     try {
       const response = await request(input, init);
       if (!response.ok) {
-        const error = (await response.clone().json()) as { code?: unknown };
+        const error = (await response
+          .clone()
+          .json()
+          .catch(() => null)) as { code?: unknown } | null;
         commitFailure =
-          typeof error.code === 'string' && /^[A-Z0-9]{5,12}$/.test(error.code)
+          typeof error?.code === 'string' && /^[A-Z0-9]{5,12}$/.test(error.code)
             ? error.code
             : 'database_error';
       }
@@ -119,7 +122,7 @@ afterAll(async () => {
   }
 });
 
-it('imports 1,000 complete weigh-ins and 24,000 numeric observations through authenticated preview/commit', async () => {
+it('imports and reimports 1,000 complete weigh-ins and 24,000 numeric observations through authenticated preview/commit', async () => {
   const header = rows[0]!,
     template = rows[1]!;
   const csv = [
@@ -257,6 +260,51 @@ it('imports 1,000 complete weigh-ins and 24,000 numeric observations through aut
   );
   console.info(JSON.stringify(measurement));
   payload.bytes.fill(0);
+
+  // Change bytes to classify overlap instead of replaying the committed-file receipt.
+  const overlapping = await post({
+    ...input,
+    client_request_id: randomUUID(),
+    csv_base64: Buffer.from(csv + '\n').toString('base64'),
+    source: { kind: 'existing', id: p.source_id },
+  });
+  expect(overlapping.status).toBe(200);
+  const duplicate = successEnvelopeSchema(ImportPreviewV2Schema).parse(
+    await overlapping.json(),
+  ).data;
+  expect(duplicate.batch_id).not.toBe(p.batch_id);
+  expect(duplicate.counts).toMatchObject({
+    observations: 24000,
+    new: 0,
+    duplicate: 24000,
+    conflict: 0,
+  });
+  const duplicateCommit = await post({
+    schema_version: 2,
+    action: 'commit_import',
+    batch_id: duplicate.batch_id,
+    payload_hash: duplicate.payload_hash,
+    client_request_id: randomUUID(),
+  });
+  expect({ status: duplicateCommit.status, commitFailure }).toEqual({
+    status: 200,
+    commitFailure: undefined,
+  });
+  expect(await duplicateCommit.json()).toMatchObject({
+    data: {
+      inserted: 0,
+      duplicate: 24000,
+      inserted_events: 0,
+      annotations_added: 0,
+      dataRevision: ack.data.dataRevision,
+    },
+  });
+  const retained = await db.request(
+    `/rest/v1/measurements?source_id=eq.${p.source_id}&select=id`,
+    user.token,
+    { method: 'HEAD', headers: { Prefer: 'count=exact' } },
+  );
+  expect(retained.headers.get('content-range')).toMatch(/\/24000$/);
 }, 120000);
 
 it('accepts the complete 1 MiB CSV envelope with bounded control-character annotations', async () => {

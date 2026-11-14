@@ -32,6 +32,8 @@ The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflic
 
 See [M1 evidence](evidence/v0.2.0/m1-imports.md) for executed checks and boundaries. No hosted changes, provider calls or new model approval are part of this implementation.
 
+**Personal-use stabilization (2026-11-14).** Prepare a limited snapshot containing M1 while M2-M6 feature development is deferred. Bring forward only the relevant schema, recovery and hosted verification work through the [personal-use cutover](operations/owner-pilot-data.md#m1-personal-use-cutover). Full v0.2.0 acceptance remains pending; stabilization does not authorize production operations or provider changes.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.
