@@ -1,4 +1,4 @@
-import { PreviewCsvSchema } from '../shared/imports.js';
+import { PreviewCsvWireSchema as PreviewCsvSchema } from '../shared/import-v2.js';
 import { previewCsv, commitImport } from '../server/services/imports.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
@@ -356,8 +356,11 @@ export async function verifyLuna(
           context,
           PreviewCsvSchema.parse({
             action: 'preview_csv',
+            schema_version: 2,
             client_request_id: stableAttempt(attempt, 'preview'),
-            csv: 'observed_at,metric,value,unit,source,granularity,external_record_id,local_date,timezone,method\n2026-09-16T08:00:00Z,weight,68.0,kg,Synthetic Scale A,instant,synthetic-followup-weight,,UTC,device_reported\n',
+            csv_base64: Buffer.from(
+              'observed_at,metric,value,unit,source,granularity,external_record_id,local_date,timezone,method\n2026-09-16T08:00:00Z,weight,68.0,kg,Synthetic Scale A,instant,synthetic-followup-weight,,UTC,device_reported\n',
+            ).toString('base64'),
             source: { kind: 'existing', id: source.data.id },
             mapping: {
               schema_version: 1,
@@ -372,6 +375,7 @@ export async function verifyLuna(
         );
         await commitImport(context, {
           action: 'commit_import',
+          schema_version: 2,
           client_request_id: stableAttempt(attempt, 'commit'),
           batch_id: preview.batch_id,
           payload_hash: preview.payload_hash,

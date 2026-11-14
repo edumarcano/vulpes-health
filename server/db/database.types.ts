@@ -21,14 +21,14 @@ export type Database = {
                   ]
                 },"action_proposals": {
                   Row: {
-                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"result": Json | null,"source_message_id": string | null,"source_run_id": string | null,"source_step_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
+                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"private_content_removed_at": string | null,"result": Json | null,"source_message_id": string | null,"source_run_id": string | null,"source_step_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"private_content_removed_at"?: string | null,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
                   }
                   Update: {
-                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"private_content_removed_at"?: string | null,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -201,14 +201,14 @@ isOneToOne: false
                   ]
                 },"data_sources": {
                   Row: {
-                    "created_at": string,"device_label": string | null,"id": string,"kind": string,"label": string,"measurement_method": string,"origin_app": string | null,"source_namespace": string,"user_id": string
+                    "created_at": string,"device_label": string | null,"id": string,"import_defaults": Json | null,"kind": string,"label": string,"measurement_method": string,"origin_app": string | null,"settings_version": number,"source_namespace": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"device_label"?: string | null,"id"?: string,"kind": string,"label": string,"measurement_method"?: string,"origin_app"?: string | null,"source_namespace": string,"user_id": string
+                    "created_at"?: string,"device_label"?: string | null,"id"?: string,"import_defaults"?: Json | null,"kind": string,"label": string,"measurement_method"?: string,"origin_app"?: string | null,"settings_version"?: number,"source_namespace": string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"device_label"?: string | null,"id"?: string,"kind"?: string,"label"?: string,"measurement_method"?: string,"origin_app"?: string | null,"source_namespace"?: string,"user_id"?: string
+                    "created_at"?: string,"device_label"?: string | null,"id"?: string,"import_defaults"?: Json | null,"kind"?: string,"label"?: string,"measurement_method"?: string,"origin_app"?: string | null,"settings_version"?: number,"source_namespace"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -221,14 +221,14 @@ isOneToOne: false
                   ]
                 },"goal_revisions": {
                   Row: {
-                    "approved_at": string,"approved_proposal_id": string,"goal_id": string,"id": string,"payload": NonNullable<Json>,"payload_version": number,"previous_revision_id": string | null,"revision_number": number,"user_id": string
+                    "approved_at": string,"approved_proposal_id": string,"goal_id": string,"id": string,"payload": NonNullable<Json>,"payload_version": number,"previous_revision_id": string | null,"private_content_removed_at": string | null,"revision_number": number,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_at"?: string,"approved_proposal_id": string,"goal_id": string,"id"?: string,"payload": NonNullable<Json>,"payload_version"?: number,"previous_revision_id"?: string | null,"revision_number": number,"user_id": string
+                    "approved_at"?: string,"approved_proposal_id": string,"goal_id": string,"id"?: string,"payload": NonNullable<Json>,"payload_version"?: number,"previous_revision_id"?: string | null,"private_content_removed_at"?: string | null,"revision_number": number,"user_id": string
                   }
                   Update: {
-                    "approved_at"?: string,"approved_proposal_id"?: string,"goal_id"?: string,"id"?: string,"payload"?: NonNullable<Json>,"payload_version"?: number,"previous_revision_id"?: string | null,"revision_number"?: number,"user_id"?: string
+                    "approved_at"?: string,"approved_proposal_id"?: string,"goal_id"?: string,"id"?: string,"payload"?: NonNullable<Json>,"payload_version"?: number,"previous_revision_id"?: string | null,"private_content_removed_at"?: string | null,"revision_number"?: number,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -291,14 +291,14 @@ isOneToOne: false
                   ]
                 },"import_batches": {
                   Row: {
-                    "committed_at": string | null,"conflict_count": number,"created_at": string,"duplicate_count": number,"expires_at": string,"file_hash": string,"id": string,"mapping_hash": string,"new_count": number,"observation_count": number,"payload_hash": string,"preview_data_revision": number,"result": Json | null,"source_hash": string | null,"source_id": string,"staging_payload_id": string | null,"status": string,"user_id": string
+                    "adapter_version": string | null,"committed_at": string | null,"conflict_count": number,"contract_version": number,"created_at": string,"duplicate_count": number,"enriched_count": number,"event_count": number,"expires_at": string,"file_hash": string,"id": string,"mapping": Json | null,"mapping_hash": string,"new_count": number,"normalized_hash": string | null,"observation_count": number,"payload_hash": string,"preview_data_revision": number,"registry_version": string | null,"result": Json | null,"source_hash": string | null,"source_id": string,"source_rows": number,"staging_payload_id": string | null,"status": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash": string,"id"?: string,"mapping_hash": string,"new_count"?: number,"observation_count"?: number,"payload_hash": string,"preview_data_revision"?: number,"result"?: Json | null,"source_hash"?: string | null,"source_id": string,"staging_payload_id"?: string | null,"status"?: string,"user_id": string
+                    "adapter_version"?: string | null,"committed_at"?: string | null,"conflict_count"?: number,"contract_version"?: number,"created_at"?: string,"duplicate_count"?: number,"enriched_count"?: number,"event_count"?: number,"expires_at"?: string,"file_hash": string,"id"?: string,"mapping"?: Json | null,"mapping_hash": string,"new_count"?: number,"normalized_hash"?: string | null,"observation_count"?: number,"payload_hash": string,"preview_data_revision"?: number,"registry_version"?: string | null,"result"?: Json | null,"source_hash"?: string | null,"source_id": string,"source_rows"?: number,"staging_payload_id"?: string | null,"status"?: string,"user_id": string
                   }
                   Update: {
-                    "committed_at"?: string | null,"conflict_count"?: number,"created_at"?: string,"duplicate_count"?: number,"expires_at"?: string,"file_hash"?: string,"id"?: string,"mapping_hash"?: string,"new_count"?: number,"observation_count"?: number,"payload_hash"?: string,"preview_data_revision"?: number,"result"?: Json | null,"source_hash"?: string | null,"source_id"?: string,"staging_payload_id"?: string | null,"status"?: string,"user_id"?: string
+                    "adapter_version"?: string | null,"committed_at"?: string | null,"conflict_count"?: number,"contract_version"?: number,"created_at"?: string,"duplicate_count"?: number,"enriched_count"?: number,"event_count"?: number,"expires_at"?: string,"file_hash"?: string,"id"?: string,"mapping"?: Json | null,"mapping_hash"?: string,"new_count"?: number,"normalized_hash"?: string | null,"observation_count"?: number,"payload_hash"?: string,"preview_data_revision"?: number,"registry_version"?: string | null,"result"?: Json | null,"source_hash"?: string | null,"source_id"?: string,"source_rows"?: number,"staging_payload_id"?: string | null,"status"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -349,17 +349,29 @@ isOneToOne: true
                   ]
                 },"measurements": {
                   Row: {
-                    "canonical_unit": string,"canonical_value": number,"created_at": string,"deleted_at": string | null,"end_at": string | null,"external_record_id": string | null,"fingerprint": string,"granularity": string,"id": string,"import_batch_id": string | null,"local_date": string | null,"measurement_method": string,"metric_key": string,"observed_at": string,"original_offset_minutes": number | null,"original_unit": string,"original_value": string,"provenance": NonNullable<Json>,"quality_flags": (string)[],"source_id": string,"start_at": string | null,"timezone": string | null,"user_id": string,"version": number
+                    "canonical_unit": string,"canonical_value": number,"created_at": string,"deleted_at": string | null,"end_at": string | null,"event_id": string | null,"external_record_id": string | null,"fingerprint": string,"granularity": string,"id": string,"import_batch_id": string | null,"local_date": string | null,"measurement_method": string,"metric_key": string,"observed_at": string,"original_offset_minutes": number | null,"original_unit": string,"original_value": string,"provenance": NonNullable<Json>,"quality_flags": (string)[],"source_id": string,"start_at": string | null,"timezone": string | null,"user_id": string,"version": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "canonical_unit": string,"canonical_value": number,"created_at"?: string,"deleted_at"?: string | null,"end_at"?: string | null,"external_record_id"?: string | null,"fingerprint": string,"granularity": string,"id"?: string,"import_batch_id"?: string | null,"local_date"?: string | null,"measurement_method"?: string,"metric_key": string,"observed_at": string,"original_offset_minutes"?: number | null,"original_unit": string,"original_value": string,"provenance"?: NonNullable<Json>,"quality_flags"?: (string)[],"source_id": string,"start_at"?: string | null,"timezone"?: string | null,"user_id": string,"version"?: number
+                    "canonical_unit": string,"canonical_value": number,"created_at"?: string,"deleted_at"?: string | null,"end_at"?: string | null,"event_id"?: string | null,"external_record_id"?: string | null,"fingerprint": string,"granularity": string,"id"?: string,"import_batch_id"?: string | null,"local_date"?: string | null,"measurement_method"?: string,"metric_key": string,"observed_at": string,"original_offset_minutes"?: number | null,"original_unit": string,"original_value": string,"provenance"?: NonNullable<Json>,"quality_flags"?: (string)[],"source_id": string,"start_at"?: string | null,"timezone"?: string | null,"user_id": string,"version"?: number
                   }
                   Update: {
-                    "canonical_unit"?: string,"canonical_value"?: number,"created_at"?: string,"deleted_at"?: string | null,"end_at"?: string | null,"external_record_id"?: string | null,"fingerprint"?: string,"granularity"?: string,"id"?: string,"import_batch_id"?: string | null,"local_date"?: string | null,"measurement_method"?: string,"metric_key"?: string,"observed_at"?: string,"original_offset_minutes"?: number | null,"original_unit"?: string,"original_value"?: string,"provenance"?: NonNullable<Json>,"quality_flags"?: (string)[],"source_id"?: string,"start_at"?: string | null,"timezone"?: string | null,"user_id"?: string,"version"?: number
+                    "canonical_unit"?: string,"canonical_value"?: number,"created_at"?: string,"deleted_at"?: string | null,"end_at"?: string | null,"event_id"?: string | null,"external_record_id"?: string | null,"fingerprint"?: string,"granularity"?: string,"id"?: string,"import_batch_id"?: string | null,"local_date"?: string | null,"measurement_method"?: string,"metric_key"?: string,"observed_at"?: string,"original_offset_minutes"?: number | null,"original_unit"?: string,"original_value"?: string,"provenance"?: NonNullable<Json>,"quality_flags"?: (string)[],"source_id"?: string,"start_at"?: string | null,"timezone"?: string | null,"user_id"?: string,"version"?: number
                   }
                   Relationships: [
                     {
+      foreignKeyName: "measurement_batch_source_v2"
+      columns: ["user_id","import_batch_id","source_id"]
+isOneToOne: false
+      referencedRelation: "import_batches"
+      referencedColumns: ["user_id","id","source_id"]
+    },{
+      foreignKeyName: "measurement_event_parent_v2"
+      columns: ["user_id","event_id","source_id","observed_at"]
+isOneToOne: false
+      referencedRelation: "weigh_in_events"
+      referencedColumns: ["user_id","id","source_id","observed_at"]
+    },{
       foreignKeyName: "measurements_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
@@ -523,6 +535,44 @@ isOneToOne: false
                   Relationships: [
 
                   ]
+                },"weigh_in_events": {
+                  Row: {
+                    "adapter_version": string,"annotation_provenance": NonNullable<Json>,"annotations": NonNullable<Json>,"created_at": string,"id": string,"import_batch_id": string,"observed_at": string,"offset_minutes": number,"source_id": string,"source_local_time": string,"source_observed_at": string,"source_offset_minutes": number,"source_row": number,"source_row_id": string | null,"source_timezone": string,"timezone": string,"user_id": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "adapter_version": string,"annotation_provenance"?: NonNullable<Json>,"annotations"?: NonNullable<Json>,"created_at"?: string,"id"?: string,"import_batch_id": string,"observed_at": string,"offset_minutes": number,"source_id": string,"source_local_time": string,"source_observed_at": string,"source_offset_minutes": number,"source_row": number,"source_row_id"?: string | null,"source_timezone": string,"timezone": string,"user_id": string,"version"?: number
+                  }
+                  Update: {
+                    "adapter_version"?: string,"annotation_provenance"?: NonNullable<Json>,"annotations"?: NonNullable<Json>,"created_at"?: string,"id"?: string,"import_batch_id"?: string,"observed_at"?: string,"offset_minutes"?: number,"source_id"?: string,"source_local_time"?: string,"source_observed_at"?: string,"source_offset_minutes"?: number,"source_row"?: number,"source_row_id"?: string | null,"source_timezone"?: string,"timezone"?: string,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "event_batch_source_v2"
+      columns: ["user_id","import_batch_id","source_id"]
+isOneToOne: false
+      referencedRelation: "import_batches"
+      referencedColumns: ["user_id","id","source_id"]
+    },{
+      foreignKeyName: "weigh_in_events_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "weigh_in_events_user_id_import_batch_id_fkey"
+      columns: ["user_id","import_batch_id"]
+isOneToOne: false
+      referencedRelation: "import_batches"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "weigh_in_events_user_id_source_id_fkey"
+      columns: ["user_id","source_id"]
+isOneToOne: false
+      referencedRelation: "data_sources"
+      referencedColumns: ["user_id","id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -541,6 +591,9 @@ isOneToOne: false
 { Args: { "p_owner": string }; Returns: Json
                            },
 "add_measurement_v1":
+{ Args: { "p_request": Json }; Returns: Json
+                           },
+"add_measurement_v2":
 { Args: { "p_request": Json }; Returns: Json
                            },
 "admit_chat_v1":
@@ -576,6 +629,9 @@ isOneToOne: false
 "classify_import_v1":
 { Args: { "p_owner": string,"p_rows": Json,"p_source": string }; Returns: Json
                            },
+"classify_import_v2":
+{ Args: { "b": Json,"p_owner": string,"p_source": string }; Returns: Json
+                           },
 "cleanup_account_retention_v1":
 { Args: { "p_batch_size"?: number }; Returns: Json
                            },
@@ -588,6 +644,9 @@ isOneToOne: false
 "commit_import_v1":
 { Args: { "p_bytes": string,"p_request": Json }; Returns: Json
                            },
+"commit_import_v2":
+{ Args: { "p_bytes": string,"p_request": Json }; Returns: Json
+                           },
 "continue_account_deletion_v1":
 { Args: { "p_batch_size"?: number,"p_owner": string }; Returns: Json
                            },
@@ -596,6 +655,12 @@ isOneToOne: false
                            },
 "discard_import_v1":
 { Args: { "p_batch_id": string }; Returns: undefined
+                           },
+"discard_import_v2":
+{ Args: { "p_batch_id": string }; Returns: Json
+                           },
+"event_annotations_valid_v2":
+{ Args: { "a": Json }; Returns: boolean
                            },
 "expire_goal_proposals_v1":
 { Args: { "p_owner": string }; Returns: undefined
@@ -612,11 +677,28 @@ isOneToOne: false
 "heartbeat_run_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_run": string }; Returns: Json
                            },
+"import_annotations_v2":
+{ Args: { "e": Json }; Returns: Json
+                           },
 "import_equal_key_v1":
 { Args: { "r": Json }; Returns: Json
                            },
+"import_mapping_valid_v2":
+{ Args: { "m": Json }; Returns: boolean
+                           },
+"import_rows_v2":
+{ Args: { "b": Json }; Returns: {
+              "event_ordinal": number,"ord": number,"r": Json
+            }[]
+                           },
 "inspect_import_v1":
 { Args: { "p_rows": Json,"p_source": Json }; Returns: Json
+                           },
+"inspect_import_v2":
+{ Args: { "p_bundle": Json,"p_source": Json }; Returns: Json
+                           },
+"invalidate_measurement_copies_v2":
+{ Args: { "p_metric": string,"p_owner": string,"p_source": string }; Returns: Json
                            },
 "lock_run_v1":
 { Args: { "p_content"?: boolean,"p_executor"?: string,"p_fence"?: number,"p_owner": string,"p_run": string }; Returns: {
@@ -662,11 +744,32 @@ isOneToOne: false
 "maintain_account_v1":
 { Args: { "p_batch_size"?: number,"p_execute"?: boolean,"p_owner": string }; Returns: Json
                            },
+"metric_definition_v2":
+{ Args: { "p_metric": string }; Returns: Json
+                           },
+"metric_representation_valid_v2":
+{ Args: { "p_representation": string,"p_value": number }; Returns: boolean
+                           },
+"metric_value_valid_v2":
+{ Args: { "p_metric": string,"p_unit": string,"p_value": number }; Returns: boolean
+                           },
 "mutate_conversation_v1":
 { Args: { "p_owner": string,"p_request": Json }; Returns: Json
                            },
+"mutate_event_v2":
+{ Args: { "p_request": Json }; Returns: Json
+                           },
 "mutate_measurement_v1":
 { Args: { "p_request": Json }; Returns: Json
+                           },
+"mutate_measurement_v2":
+{ Args: { "p_request": Json }; Returns: Json
+                           },
+"normalize_defined_value_v2":
+{ Args: { "definition": Json,"p_original": string,"p_unit": string }; Returns: number
+                           },
+"normalize_value_v2":
+{ Args: { "p_metric": string,"p_original": string,"p_unit": string }; Returns: number
                            },
 "owned_session_valid_v1":
 { Args: Record<PropertyKey, never>; Returns: boolean
@@ -692,8 +795,17 @@ isOneToOne: false
 "read_data_v1":
 { Args: { "p_query": Json }; Returns: Json
                            },
+"read_event_v2":
+{ Args: { "p_event": string }; Returns: Json
+                           },
+"read_events_v2":
+{ Args: { "p_after"?: string,"p_from": string,"p_limit"?: number,"p_revision"?: number,"p_source": string,"p_to": string }; Returns: Json
+                           },
 "read_export_v1":
 { Args: { "p_query": Json }; Returns: Json
+                           },
+"read_import_status_v2":
+{ Args: { "p_batch_id"?: string,"p_request_id"?: string }; Returns: Json
                            },
 "read_metric_inventory_v1":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -716,8 +828,17 @@ isOneToOne: false
 "register_import_v1":
 { Args: { "p_bytes": string,"p_payload_id": string }; Returns: Json
                            },
+"register_import_v2":
+{ Args: { "p_bytes": string,"p_payload_id": string }; Returns: Json
+                           },
 "replay_chat_v1":
 { Args: { "p_message": Json,"p_owner": string,"p_request": Json }; Returns: Json
+                           },
+"resolve_import_local_v2":
+{ Args: { "p_local": string,"p_zone": string }; Returns: Json
+                           },
+"review_import_v2":
+{ Args: { "p_batch_id": string,"p_bytes": string,"p_expected_hash": string,"p_payload_id": string }; Returns: Json
                            },
 "revoke_account_sessions_v1":
 { Args: { "p_owner": string }; Returns: undefined
@@ -760,7 +881,13 @@ isOneToOne: false
         to: "profiles"
         isOneToOne: true
         isSetofReturn: false
-      } }
+      } },
+"update_source_defaults_v2":
+{ Args: { "p_request": Json }; Returns: Json
+                           },
+"validate_import_bundle_v2":
+{ Args: { "b": Json }; Returns: undefined
+                           }
           }
           Enums: {
             [_ in never]: never

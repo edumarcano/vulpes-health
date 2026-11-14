@@ -186,6 +186,22 @@ async function createFixture(amount: number) {
         database,
         `insert into auth.users(created_at,updated_at,instance_id,id,email,encrypted_password,email_confirmed_at,aud,role,raw_app_meta_data,raw_user_meta_data,confirmation_token,recovery_token,email_change_token_new,email_change) values(clock_timestamp(),clock_timestamp(),'00000000-0000-0000-0000-000000000000','${owner}','${owner}@example.invalid',extensions.crypt('synthetic-only-password',extensions.gen_salt('bf')),clock_timestamp(),'authenticated','authenticated','{"provider":"email","providers":["email"]}','{}','','','','');insert into auth.identities(created_at,updated_at,id,user_id,provider_id,provider,identity_data) values(clock_timestamp(),clock_timestamp(),extensions.uuid_generate_v4(),'${owner}','${owner}','email','{"sub":"${owner}","email":"${owner}@example.invalid"}');insert into public.profiles(user_id,display_name) values('${owner}','Synthetic capture');insert into public.conversations(user_id,title) values('${owner}','Synthetic recovery conversation');insert into public.private_payloads select * from jsonb_populate_record(null::public.private_payloads,'${JSON.stringify({ ...envelope, created_at: new Date().toISOString() })}'::jsonb);`,
       );
+      adminSql(
+        database,
+        `
+        with source as (
+          insert into public.data_sources(user_id,kind,label,source_namespace)
+          values('${owner}','csv','Synthetic recovery scale','synthetic-recovery-scale') returning id
+        ), batch as (
+          insert into public.import_batches(user_id,source_id,file_hash,mapping_hash,payload_hash,contract_version,status,committed_at,result)
+          select '${owner}',id,repeat('a',64),repeat('b',64),repeat('c',64),2,'committed',clock_timestamp(),'{}'::jsonb from source returning id,source_id
+        ), event as (
+          insert into public.weigh_in_events(user_id,source_id,import_batch_id,adapter_version,source_local_time,source_observed_at,source_timezone,source_offset_minutes,observed_at,timezone,offset_minutes,annotations,source_row)
+          select '${owner}',source_id,id,'renpho-en-body-composition-v1','2026-09-01 08:00:00','2026-09-01 12:00:00Z','America/New_York',-240,'2026-09-01 12:00:00Z','America/New_York',-240,'{"remarks":"Synthetic restored event"}',2 from batch returning id,source_id,import_batch_id
+        ) insert into public.measurements(user_id,source_id,import_batch_id,event_id,metric_key,canonical_value,canonical_unit,original_value,original_unit,observed_at,original_offset_minutes,timezone,granularity,measurement_method,fingerprint)
+          select '${owner}',source_id,import_batch_id,id,'weight',68.0388555,'kg','150.0','lb','2026-09-01 12:00:00Z',-240,'America/New_York','instant','device_reported',repeat('d',64) from event;
+      `,
+      );
       users.push({ id: owner, session });
     }
     const target = {

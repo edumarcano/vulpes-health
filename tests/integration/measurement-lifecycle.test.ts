@@ -1,3 +1,4 @@
+import { dataWireBody } from '../helpers/data-wire.js';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -75,9 +76,10 @@ async function http(body: unknown, token: string | null = a.token) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Vulpes-Data-Contract': '2',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(dataWireBody(body)),
   });
 }
 async function success<T>(response: Response): Promise<T> {
@@ -226,8 +228,8 @@ describe('real M2 correction/deletion/export transactions', () => {
         },
       };
       for (const [operation, request] of [
-        ['add_measurement_v1', entry],
-        ['mutate_measurement_v1', change],
+        ['add_measurement_v2', entry],
+        ['mutate_measurement_v2', change],
       ] as const) {
         const response = await http(request);
         expect(response.status).toBe(400);
@@ -236,7 +238,9 @@ describe('real M2 correction/deletion/export transactions', () => {
         });
         const direct = await db.request(`/rest/v1/rpc/${operation}`, a.token, {
           method: 'POST',
-          body: JSON.stringify({ p_request: request }),
+          body: JSON.stringify({
+            p_request: { ...request, schema_version: 2 },
+          }),
         });
         expect(direct.status).toBe(400);
         expect(await direct.json()).toMatchObject({
@@ -338,6 +342,10 @@ describe('real M2 correction/deletion/export transactions', () => {
     expect(current.provenance).toEqual({
       ...(imported.provenance as object),
       user_corrected: true,
+      original_import: expect.objectContaining({
+        value: imported.original_value,
+        unit: imported.original_unit,
+      }),
     });
     expect(current.quality_flags).toEqual(['user_corrected']);
     const after = await success<{ analysis: { value: number } }>(
@@ -381,7 +389,7 @@ describe('real M2 correction/deletion/export transactions', () => {
     expect(
       records.every(
         (r) =>
-          r.schema_version === '1' &&
+          r.schema_version === '2' &&
           r.source_id === p.source_id &&
           r.measurement_id !== imported.id,
       ),
@@ -486,7 +494,7 @@ describe('real M2 correction/deletion/export transactions', () => {
       { ...request.changes, local_date: '2026-02-31' },
     ]) {
       const response = await db.request(
-        '/rest/v1/rpc/mutate_measurement_v1',
+        '/rest/v1/rpc/mutate_measurement_v2',
         a.token,
         {
           method: 'POST',
@@ -524,6 +532,11 @@ describe('real M2 correction/deletion/export transactions', () => {
     const after = (await rows('goals', `id=eq.${goal}`))[0]!;
     expect(after).toEqual({
       ...before,
+      baseline_snapshot: expect.objectContaining({
+        value: null,
+        references: [],
+        contentRemoved: true,
+      }),
       review_status: 'needs_review',
       version: 2,
       updated_at: after.updated_at,
@@ -652,13 +665,22 @@ describe('real M2 correction/deletion/export transactions', () => {
     const goal = (await rows('goals', `id=eq.${g.ids.goals}`))[0]!;
     expect(goal).toEqual({
       ...before,
+      baseline_snapshot: expect.objectContaining({
+        value: null,
+        references: [],
+        contentRemoved: true,
+      }),
       review_status: 'needs_review',
       version: 2,
       updated_at: goal.updated_at,
     });
-    expect(await rows('goal_revisions', `goal_id=eq.${g.ids.goals}`)).toEqual(
-      approved,
-    );
+    const revisions = await rows('goal_revisions', `goal_id=eq.${g.ids.goals}`);
+    expect(revisions).toHaveLength(approved.length);
+    expect(revisions[0]).toMatchObject({
+      id: approved[0]!.id,
+      private_content_removed_at: expect.any(String),
+    });
+    expect(revisions[0]!.payload).toEqual(approved[0]!.payload);
     expect(await rows('private_payloads', `user_id=eq.${u.id}`)).toEqual([]);
     expect((await rows('ai_steps', `user_id=eq.${u.id}`))[0]).toMatchObject({
       input_payload_id: null,
@@ -724,14 +746,14 @@ describe('real M2 correction/deletion/export transactions', () => {
       },
       observation: {
         ...base.observation,
-        metric: 'renpho.visceral_fat_index',
-        unit: 'index',
+        metric: 'renpho.target_weight_delta',
+        unit: 'kg',
         value: '-1.250000000000000001',
         quality_flags: ['review_requested'],
       },
     });
     const response = await get(
-      query(r.sourceId, 'export', { metric: 'renpho.visceral_fat_index' }),
+      query(r.sourceId, 'export', { metric: 'renpho.target_weight_delta' }),
     );
     expect(response.status).toBe(200);
     const exported = parse(await response.text(), { columns: true }) as Array<
@@ -746,7 +768,7 @@ describe('real M2 correction/deletion/export transactions', () => {
       device_label: "'-device",
       measurement_id: r.id,
       source_id: r.sourceId,
-      schema_version: '1',
+      schema_version: '2',
     });
     expect(JSON.parse(exported[0]!.provenance!)).toMatchObject({
       adapter: 'manual',
@@ -816,7 +838,7 @@ describe('real M2 correction/deletion/export transactions', () => {
       ).status,
     ).toBe(403);
     for (const rpc of [
-      'mutate_measurement_v1',
+      'mutate_measurement_v2',
       'read_export_v1',
       'cleanup_data_v1',
     ])
@@ -825,7 +847,7 @@ describe('real M2 correction/deletion/export transactions', () => {
           await db.request('/rest/v1/rpc/' + rpc, 'anon', {
             method: 'POST',
             body: JSON.stringify(
-              rpc === 'mutate_measurement_v1'
+              rpc === 'mutate_measurement_v2'
                 ? { p_request: deletion(foreign) }
                 : rpc === 'read_export_v1'
                   ? { p_query: {} }

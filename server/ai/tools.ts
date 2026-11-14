@@ -1,3 +1,4 @@
+import { LegacyMetricKeySchema } from '../../shared/metrics.js';
 import { EscalationRequestSchema } from './routing.js';
 import { GoalService } from '../services/goals.js';
 import {
@@ -16,7 +17,6 @@ import {
   MeasurementsPageSchema,
 } from '../../shared/data.js';
 import {
-  MetricKeySchema,
   MeasurementMethodSchema,
   GranularitySchema,
   GoalDraftSchema,
@@ -121,7 +121,7 @@ function resolveInterval(from: string, to: string, timezone: string) {
 }
 
 const selection = z.strictObject({
-  metric: MetricKeySchema,
+  metric: LegacyMetricKeySchema,
   source_id: UUIDSchema.nullish(),
   from: z.union([LocalDateSchema, ISOInstantSchema]),
   to: z.union([LocalDateSchema, ISOInstantSchema]),
@@ -348,7 +348,7 @@ const InventorySchema = z.strictObject({
   items: z
     .array(
       z.strictObject({
-        metric: MetricKeySchema,
+        metric: LegacyMetricKeySchema,
         source_id: UUIDSchema,
         source_label: z.string(),
         method: MeasurementMethodSchema,

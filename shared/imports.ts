@@ -47,16 +47,16 @@ export const RENPHO_COLUMNS = [
   'Remarks',
 ] as const;
 export function isRenphoHeader(headers: readonly string[]): boolean {
+  const named = headers.at(-1) === '' ? headers.slice(0, -1) : headers;
   return (
-    headers.length === RENPHO_COLUMNS.length + 1 &&
-    headers.at(-1) === '' &&
-    new Set(headers).size === headers.length &&
-    RENPHO_COLUMNS.every((column) => headers.includes(column))
+    new Set(named).size === named.length &&
+    named.every(Boolean) &&
+    ['Date', 'Time', 'Weight(lb)'].every((column) => named.includes(column))
   );
 }
 
 export const CSV_LIMIT_BYTES = 1024 * 1024;
-export const IMPORT_LIMIT = 5000;
+export const IMPORT_LIMIT = 25000;
 const ColumnSchema = z.string().min(1).max(200);
 const commonMapping = {
   schema_version: z.literal(1),
@@ -130,6 +130,9 @@ export const ImportResultSchema = z.strictObject({
   duplicate: CountSchema,
   conflict: CountSchema,
   dataRevision: CountSchema,
+  inserted_events: CountSchema.optional(),
+  enriched: CountSchema.optional(),
+  annotations_added: CountSchema.optional(),
 });
 export const ImportSelectionSchema = z.strictObject({
   metric: MetricKeySchema,

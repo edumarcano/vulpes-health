@@ -10,6 +10,9 @@ let appId: string | undefined;
 try {
   const args = process.argv.slice(2);
   const devProof = args.includes('--dev-proof');
+  const importProof = args.includes('--imports-proof');
+  const releaseProof = args.includes('--release-proof');
+  const systemChrome = args.includes('--system-chrome');
   const diagnostics = args.includes('--diagnostic');
   const goalsProof = args.includes('--goals-proof');
   const mobileProof = args.includes('--mobile-proof');
@@ -26,6 +29,9 @@ try {
           '--mobile-proof',
           '--lifecycle-proof',
           '--clock-proof',
+          '--imports-proof',
+          '--release-proof',
+          '--system-chrome',
         ].includes(arg),
     )
   )
@@ -164,6 +170,7 @@ try {
     VULPES_TEST_GOAL_OWNER: goalChat.id,
     VULPES_TEST_JOURNEY_OWNER: journey.id,
     VULPES_TEST_MODE: devProof ? 'dev_proof' : 'preview',
+    ...(systemChrome ? { VULPES_TEST_BROWSER_CHANNEL: 'chrome' } : {}),
   };
   async function run(args: string[]) {
     const child = spawn(process.execPath, args, {
@@ -199,15 +206,19 @@ try {
   const npm = process.env.npm_execpath;
   if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm, 'run', 'build']);
-  const filter = lifecycleProof
-    ? 'account lifecycle|saves profile|personal spending limit|stale settings|dark navigation'
-    : mobileProof
-      ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
-      : goalsProof
-        ? 'Ask goal proposal|direct Goals'
-        : devProof
-          ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
-          : null;
+  const filter = releaseProof
+    ? 'release journey'
+    : importProof
+      ? 'imports.spec|measurement-lifecycle.spec|manual entry persists|direct Goals|keyboard confirmation|chart loading failure|Ask synthetic imported-data journey|Ask goal proposal journey|release journey|account lifecycle export'
+      : lifecycleProof
+        ? 'account lifecycle|saves profile|personal spending limit|stale settings|dark navigation'
+        : mobileProof
+          ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
+          : goalsProof
+            ? 'Ask goal proposal|direct Goals'
+            : devProof
+              ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
+              : null;
   await run([
     require.resolve('@playwright/test/cli'),
     'test',

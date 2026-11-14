@@ -6,8 +6,31 @@ import {
   MeasurementMutationSchema,
 } from '../../shared/data.js';
 import { ImportCommitRequestSchema } from '../../shared/api.js';
-import { PreviewCsvSchema } from '../../shared/imports.js';
-import { commitImport, previewCsv } from '../services/imports.js';
+import {
+  DATA_CONTRACT_VERSION,
+  PreviewCsvWireSchema,
+  ReviewImportSchema,
+  DiscardImportSchema,
+  ImportReadSchema,
+} from '../../shared/import-v2.js';
+import {
+  EventReadSchema,
+  EventMutationSchema,
+  SourceDefaultsMutationSchema,
+} from '../../shared/events.js';
+import { z } from 'zod';
+import {
+  readEvents,
+  mutateEvent,
+  updateSourceDefaults,
+} from '../services/events.js';
+import {
+  commitImport,
+  previewCsv,
+  reviewImport,
+  discardImport,
+  readImport,
+} from '../services/imports.js';
 import { verifySession } from '../auth/session.js';
 import {
   addMeasurement,
@@ -27,9 +50,15 @@ export async function handleData(
   try {
     checkOrigin(request);
     const context = await verifySession(request);
-    // Expiry is independently enforced on every read/commit. Cleanup availability
-    // must not make an otherwise valid Data request depend on the service key.
-    await cleanupExpiredData(context.userId).catch(() => undefined);
+    if (request.method === 'POST') {
+      if (request.headers['x-vulpes-data-contract'] !== DATA_CONTRACT_VERSION)
+        throw new HttpFailure(
+          409,
+          'client_upgrade_required',
+          'Reload Vulpes before changing data or imports.',
+        );
+      await cleanupExpiredData(context.userId).catch(() => undefined);
+    }
     if (request.method === 'GET') {
       const params = new URL(request.url ?? '/', 'http://localhost')
         .searchParams;
@@ -40,11 +69,37 @@ export async function handleData(
           'Use one value per filter.',
         );
       const input: Record<string, unknown> = Object.fromEntries(params);
-      for (const key of ['page_size', 'data_revision'])
+      for (const key of ['page_size', 'data_revision', 'offset', 'limit'])
         if (key in input)
           input[key] = /^\d+$/.test(String(input[key]))
             ? Number(input[key])
             : NaN;
+      if (input.view === 'import_status' || input.view === 'import_items') {
+        const parsed = ImportReadSchema.safeParse(input);
+        if (!parsed.success)
+          throw new HttpFailure(
+            400,
+            'invalid_input',
+            'Choose valid import status/detail filters.',
+          );
+        sendJson(response, 200, {
+          data: await readImport(context, parsed.data),
+        });
+        return;
+      }
+      if (input.view === 'event' || input.view === 'events') {
+        const parsed = EventReadSchema.safeParse(input);
+        if (!parsed.success)
+          throw new HttpFailure(
+            400,
+            'invalid_input',
+            'Choose valid weigh-in filters.',
+          );
+        sendJson(response, 200, {
+          data: await readEvents(context, parsed.data),
+        });
+        return;
+      }
       const query = DataQuerySchema.safeParse(input);
       if (!query.success)
         throw new HttpFailure(
@@ -72,7 +127,7 @@ export async function handleData(
             response.setHeader('X-Content-Type-Options', 'nosniff');
             response.setHeader(
               'Content-Disposition',
-              'attachment; filename="vulpes-measurements-v1.csv"',
+              'attachment; filename="vulpes-measurements-v2.csv"',
             );
             response.setHeader('X-Data-Revision', String(result.revision));
             const stream = result.open();
@@ -92,58 +147,56 @@ export async function handleData(
     }
     if (request.method === 'POST') {
       const input = await readJson(request);
-      if (input && typeof input === 'object' && 'action' in input) {
-        if (
-          input.action === 'preview_csv' ||
-          input.action === 'commit_import'
-        ) {
-          const parsed = (
-            input.action === 'preview_csv'
-              ? PreviewCsvSchema
-              : ImportCommitRequestSchema
-          ).safeParse(input);
-          if (!parsed.success)
-            throw new HttpFailure(
-              400,
-              'invalid_input',
-              'Check the import fields and mapping.',
-            );
-          sendJson(response, 200, {
-            data:
-              parsed.data.action === 'preview_csv'
-                ? await previewCsv(context, parsed.data)
-                : await commitImport(context, parsed.data),
-          });
-          return;
-        }
-        if (
-          ['correct_measurement', 'delete_measurement'].includes(
-            String(input.action),
-          )
-        ) {
-          const parsed = MeasurementMutationSchema.safeParse(input);
-          if (!parsed.success)
-            throw new HttpFailure(
-              400,
-              'invalid_input',
-              'Check the reading, expected version and correction fields.',
-            );
-          sendJson(response, 200, {
-            data: await mutateMeasurement(context, parsed.data),
-          });
-          return;
-        }
-      }
-      const parsed = AddMeasurementSchema.safeParse(input);
+      const parsed = z
+        .union([
+          PreviewCsvWireSchema,
+          ImportCommitRequestSchema,
+          ReviewImportSchema,
+          DiscardImportSchema,
+          MeasurementMutationSchema,
+          AddMeasurementSchema,
+          EventMutationSchema,
+          SourceDefaultsMutationSchema,
+        ])
+        .safeParse(input);
       if (!parsed.success)
         throw new HttpFailure(
           400,
           'invalid_input',
-          'Choose valid measurement fields.',
+          'Check the data action, fields and contract version.',
         );
-      sendJson(response, 200, {
-        data: await addMeasurement(context, parsed.data),
-      });
+      const action = parsed.data;
+      let result: unknown;
+      switch (action.action) {
+        case 'preview_csv':
+          result = await previewCsv(context, action);
+          break;
+        case 'review_import':
+          result = await reviewImport(context, action);
+          break;
+        case 'commit_import':
+          result = await commitImport(context, action);
+          break;
+        case 'discard_import':
+          result = await discardImport(context, action.batch_id);
+          break;
+        case 'add_measurement':
+          result = await addMeasurement(context, action);
+          break;
+        case 'correct_measurement':
+        case 'delete_measurement':
+          result = await mutateMeasurement(context, action);
+          break;
+        case 'delete_event':
+        case 'correct_event_time':
+        case 'update_event_annotations':
+          result = await mutateEvent(context, action);
+          break;
+        case 'update_source_defaults':
+          result = await updateSourceDefaults(context, action);
+          break;
+      }
+      sendJson(response, 200, { data: result });
       return;
     }
     response.setHeader('Allow', 'GET, POST');

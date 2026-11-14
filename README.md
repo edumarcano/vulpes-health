@@ -20,7 +20,7 @@ Both screenshots come from a local build with synthetic data.
 
 Data and Goals work with the AI switched off. The repository and CI default to no model calls.
 
-The current RENPHO adapter imports weight and body-fat percentage from the documented English 31-column Health CSV layout in lb. Other export languages, units and layouts are unverified; [synthetic verification](docs/evidence/renpho-import.md) does not establish physical-device or app-version compatibility.
+The v0.2.0 RENPHO adapter preserves 24 supported numeric fields and three annotations from the evidenced English lb header family. Date, Time and Weight(lb) headers are required; optional fields and one wholly empty terminal column may be absent. Imports are bounded to 1 MiB UTF-8, 10,000 rows and 25,000 observations, with explicit review before commit. Other languages and kg/st vendor headers remain unverified. See [import contracts](docs/operations/data-imports.md) and [M1 verification](docs/evidence/v0.2.0/m1-imports.md); synthetic input does not establish device/app-version compatibility.
 
 ## Design choices
 

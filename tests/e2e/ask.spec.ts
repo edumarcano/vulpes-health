@@ -12,7 +12,11 @@ test.beforeEach(async ({ page }) => {
 async function scenario(page: import('@playwright/test').Page, mode: string) {
   await page.route('**/api/chat', (route) =>
     route.continue({
-      headers: { ...route.request().headers(), 'x-vulpes-test-scenario': mode },
+      headers: {
+        'X-Vulpes-Data-Contract': '2',
+        ...route.request().headers(),
+        'x-vulpes-test-scenario': mode,
+      },
     }),
   );
 }
@@ -35,16 +39,22 @@ async function start(page: import('@playwright/test').Page) {
 test('Ask synthetic imported-data journey persists, sanitizes evidence and fits the viewport/theme matrix', async ({
   page,
 }) => {
-  const headers = { Authorization: `Bearer ${chatAccount.token}` };
+  const headers = {
+    'X-Vulpes-Data-Contract': '2',
+    Authorization: `Bearer ${chatAccount.token}`,
+  };
   const preview = await page.request.post('/api/data', {
     headers,
     data: {
+      schema_version: 2,
       action: 'preview_csv',
       client_request_id: randomUUID(),
-      csv: readFileSync(
-        'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
-        'utf8',
-      ),
+      csv_base64: Buffer.from(
+        readFileSync(
+          'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
+          'utf8',
+        ),
+      ).toString('base64'),
       source: {
         kind: 'new',
         label: 'Synthetic Ask browser scale',
@@ -69,6 +79,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
       await page.request.post('/api/data', {
         headers,
         data: {
+          schema_version: 2,
           action: 'commit_import',
           batch_id: p.batch_id,
           payload_hash: p.payload_hash,
@@ -421,7 +432,10 @@ test('Ask reads retained message state when replayed execution metadata has expi
     'PATCH',
     { expires_at: new Date(Date.now() - 1000).toISOString() },
   );
-  const headers = { Authorization: `Bearer ${chatAccount.token}` };
+  const headers = {
+    'X-Vulpes-Data-Contract': '2',
+    Authorization: `Bearer ${chatAccount.token}`,
+  };
   const before = (
     await (
       await page.request.get(
@@ -748,16 +762,22 @@ test('mobile inspector remains open across the final persisted-message refresh',
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
-  const headers = { Authorization: `Bearer ${chatAccount.token}` };
+  const headers = {
+    'X-Vulpes-Data-Contract': '2',
+    Authorization: `Bearer ${chatAccount.token}`,
+  };
   const preview = await page.request.post('/api/data', {
     headers,
     data: {
+      schema_version: 2,
       action: 'preview_csv',
       client_request_id: randomUUID(),
-      csv: readFileSync(
-        'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
-        'utf8',
-      ),
+      csv_base64: Buffer.from(
+        readFileSync(
+          'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
+          'utf8',
+        ),
+      ).toString('base64'),
       source: {
         kind: 'new',
         label: 'Synthetic inspector refresh',
@@ -782,6 +802,7 @@ test('mobile inspector remains open across the final persisted-message refresh',
       await page.request.post('/api/data', {
         headers,
         data: {
+          schema_version: 2,
           action: 'commit_import',
           batch_id: p.batch_id,
           payload_hash: p.payload_hash,

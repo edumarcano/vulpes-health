@@ -43,6 +43,7 @@ async function seed(
 ) {
   const response = await page.request.post('/api/data', {
     headers: {
+      'X-Vulpes-Data-Contract': '2',
       Authorization: `Bearer ${(accounts[0] as (typeof accounts)[number] & { token: string }).token}`,
     },
     data: {
@@ -52,7 +53,7 @@ async function seed(
       observation: {
         metric,
         value,
-        unit: metric === 'weight' ? 'kg' : 'index',
+        unit: metric === 'weight' || metric.includes('delta') ? 'kg' : 'index',
         observed_at: '2026-09-08T08:00:00Z',
         timezone: 'UTC',
         local_date: null,
@@ -152,7 +153,7 @@ test('M2 data journey imports, corrects, deletes, recalculates and downloads sur
     name: 'Confirm deletion',
     exact: true,
   });
-  await expect(deletion).toContainText('frozen historical decisions');
+  await expect(deletion).toContainText('Approved targets and states remain');
   await expect(deletion).toContainText('retained exact request');
   await expect(
     page.getByRole('button', {
@@ -170,7 +171,7 @@ test('M2 data journey imports, corrects, deletes, recalculates and downloads sur
     .getByRole('button', { name: 'Export selected measurements', exact: true })
     .click();
   const download = await downloading;
-  expect(download.suggestedFilename()).toBe('vulpes-measurements-v1.csv');
+  expect(download.suggestedFilename()).toBe('vulpes-measurements-v2.csv');
   await download.saveAs(info.outputPath('surviving-synthetic.csv'));
   const records = parse(
     readFileSync(info.outputPath('surviving-synthetic.csv')),
@@ -180,7 +181,7 @@ test('M2 data journey imports, corrects, deletes, recalculates and downloads sur
   expect(
     records.some((r) => r.observed_at === '2026-09-08T08:00:00+00:00'),
   ).toBe(false);
-  expect(records.every((r) => r.schema_version === '1')).toBe(true);
+  expect(records.every((r) => r.schema_version === '2')).toBe(true);
   expect(calls).toEqual([]);
   await page.screenshot({
     path: info.outputPath('m2-journey.png'),
@@ -195,6 +196,7 @@ test('a stale correction shows refresh/review instead of overwriting a concurren
   await page.getByLabel('Corrected value', { exact: true }).fill('69');
   const response = await page.request.post('/api/data', {
     headers: {
+      'X-Vulpes-Data-Contract': '2',
       Authorization: `Bearer ${(accounts[0] as (typeof accounts)[number] & { token: string }).token}`,
     },
     data: {
@@ -308,7 +310,7 @@ test('download preserves numeric negatives and protects formula text', async ({
   await seed(
     page,
     '-1.250000000000000001',
-    'renpho.visceral_fat_index',
+    'renpho.target_weight_delta',
     '=1+1',
   );
   await page.evaluate(() => {

@@ -1,3 +1,4 @@
+import { dataWireBody } from '../helpers/data-wire.js';
 import * as catalog from '../../server/config/models.js';
 import { composeEverydayProduction } from '../../server/ai/providers/openrouter-production.js';
 vi.mock(
@@ -56,7 +57,7 @@ import { addMeasurement } from '../../server/services/measurements.js';
 import { goalDraft } from '../fixtures/contracts.js';
 import { verificationFixtures } from '../../server/ai/verification-fixture.js';
 import { previewCsv, commitImport } from '../../server/services/imports.js';
-import { PreviewCsvSchema } from '../../shared/imports.js';
+import { PreviewCsvWireSchema as PreviewCsvSchema } from '../../shared/import-v2.js';
 import { DataSummarySchema } from '../../shared/data.js';
 
 let db: LocalSupabase;
@@ -174,9 +175,13 @@ async function withApi(
       fetch(`http://127.0.0.1:${address.port}${path}`, {
         ...(body === undefined
           ? {}
-          : { method: 'POST', body: JSON.stringify(body) }),
+          : {
+              method: 'POST',
+              body: JSON.stringify(dataWireBody(body)),
+            }),
         headers: {
           'Content-Type': 'application/json',
+          'X-Vulpes-Data-Contract': '2',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       }),
@@ -211,8 +216,9 @@ it('withholds a rolling scalar from a single-day provider result using real New 
     a,
     PreviewCsvSchema.parse({
       action: 'preview_csv',
+      schema_version: 2,
       client_request_id: randomUUID(),
-      csv: fixture.csv,
+      csv_base64: Buffer.from(fixture.csv).toString('base64'),
       source: {
         kind: 'new',
         label: fixture.displayLabel,
@@ -232,6 +238,7 @@ it('withholds a rolling scalar from a single-day provider result using real New 
   );
   await commitImport(a, {
     action: 'commit_import',
+    schema_version: 2,
     client_request_id: randomUUID(),
     batch_id: preview.batch_id,
     payload_hash: preview.payload_hash,
@@ -740,6 +747,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       await withApi(dependencies, async (api) => {
         const preview = await api('/api/data', {
           action: 'preview_csv',
+          schema_version: 2,
           client_request_id: randomUUID(),
           csv: readFileSync(
             'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
@@ -767,6 +775,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
           (
             await api('/api/data', {
               action: 'commit_import',
+              schema_version: 2,
               batch_id: p.batch_id,
               payload_hash: p.payload_hash,
               client_request_id: randomUUID(),
@@ -814,6 +823,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
     await withApi(syntheticChatDependencies(transport), async (api) => {
       const preview = await api('/api/data', {
         action: 'preview_csv',
+        schema_version: 2,
         client_request_id: randomUUID(),
         csv: readFileSync(
           'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
@@ -841,6 +851,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
         (
           await api('/api/data', {
             action: 'commit_import',
+            schema_version: 2,
             batch_id: p.batch_id,
             payload_hash: p.payload_hash,
             client_request_id: randomUUID(),
@@ -1123,6 +1134,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
     await withApi(syntheticChatDependencies(transport), async (api) => {
       const preview = await api('/api/data', {
         action: 'preview_csv',
+        schema_version: 2,
         client_request_id: randomUUID(),
         csv: readFileSync(
           'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
@@ -1150,6 +1162,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
         (
           await api('/api/data', {
             action: 'commit_import',
+            schema_version: 2,
             batch_id: p.batch_id,
             payload_hash: p.payload_hash,
             client_request_id: randomUUID(),

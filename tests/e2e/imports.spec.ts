@@ -13,6 +13,7 @@ async function clear() {
     for (const table of [
       'audit_events',
       'measurements',
+      'weigh_in_events',
       'import_batches',
       'private_payloads',
       'data_sources',
@@ -29,11 +30,99 @@ test.beforeEach(async ({ page }) => {
   ).toBeVisible();
 });
 test.afterEach(clear);
+test('full-panel CSV preserves all fields, unresolved raw values and inert annotations on mobile without inference', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls: string[] = [];
+  page.on('request', (r) => {
+    if (
+      r.method() === 'POST' &&
+      /\/api\/(chat|approvals|executions)/.test(r.url())
+    )
+      calls.push(r.url());
+  });
+  await choose(
+    page,
+    readFileSync('docs/spec/v0.2.0/fixtures/renpho-v1/full-panel.csv'),
+  );
+  await page
+    .getByLabel('Import timezone', { exact: true })
+    .fill('America/New_York');
+  await page
+    .getByLabel('I confirm the import timezone matches this RENPHO file', {
+      exact: true,
+    })
+    .check();
+  await preview(page);
+  await expect(
+    page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
+  ).toContainText('24 new');
+  await page
+    .getByRole('button', { name: 'Review all import details', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Import detail page', exact: true }),
+  ).toContainText('-3.401942775');
+  await confirm(page);
+  await page
+    .getByRole('region', { name: 'View imported readings', exact: true })
+    .getByRole('button', { name: /^Weight · device reported/ })
+    .click();
+  await page
+    .getByRole('button', { name: 'Inspect weigh-in', exact: true })
+    .click();
+  const detail = page.getByRole('region', {
+    name: 'Weigh-in detail',
+    exact: true,
+  });
+  await expect(detail.getByRole('table').getByRole('row')).toHaveCount(25);
+  await expect(detail).toContainText('30.617484975');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  await detail
+    .getByLabel('remarks', { exact: true })
+    .fill('=1+1\n<script>synthetic-inert</script>');
+  await detail
+    .getByRole('button', { name: 'Review annotations', exact: true })
+    .click();
+  await detail
+    .getByRole('button', { name: 'Confirm weigh-in change', exact: true })
+    .click();
+  await expect(detail).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Inspect weigh-in', exact: true })
+    .click();
+  await expect(detail.getByLabel('remarks', { exact: true })).toHaveValue(
+    '=1+1\n<script>synthetic-inert</script>',
+  );
+  expect(
+    await page.locator('script').filter({ hasText: 'synthetic-inert' }).count(),
+  ).toBe(0);
+  await detail
+    .getByRole('button', { name: 'Close weigh-in', exact: true })
+    .click();
+  await page.getByLabel('Metric', { exact: true }).selectOption('renpho.bmr');
+  await page
+    .getByLabel('Method', { exact: true })
+    .selectOption('device_estimate');
+  await expect(page.getByRole('table')).toContainText('1500.5 kcal');
+  await expect(page.getByText(/Raw values remain available/)).toBeVisible();
+  expect(calls).toEqual([]);
+  await page.screenshot({
+    path: info.outputPath('m1-raw-mobile.png'),
+    fullPage: true,
+  });
+});
 async function choose(page: Page, buffer = canonical) {
   const dialog = page.getByRole('dialog', { name: 'Import CSV', exact: true });
   if (!(await dialog.isVisible()))
     await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   const fileInput = page.getByLabel('CSV file', { exact: true });
+  await expect(fileInput).toBeEnabled();
   await fileInput.setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -60,6 +149,22 @@ async function preview(page: Page) {
   ).toBeVisible();
 }
 async function confirm(page: Page) {
+  for (const label of [
+    'Exclude invalid entries shown in the details',
+    'Exclude conflicts and preserve existing values',
+    'Acknowledge that populated unsupported columns will not be imported',
+  ]) {
+    const checkbox = page.getByLabel(label, { exact: true });
+    if ((await checkbox.isVisible()) && !(await checkbox.isChecked())) {
+      const response = page.waitForResponse(
+        (r) => r.url().endsWith('/api/data') && r.request().method() === 'POST',
+      );
+      await checkbox.check();
+      expect((await response).status()).toBe(200);
+      await expect(checkbox).toBeEnabled();
+    }
+  }
+
   const r = page.waitForResponse(
     (r) => r.url().endsWith('/api/data') && r.request().method() === 'POST',
   );
@@ -175,7 +280,9 @@ test('RENPHO CSV requires profile and timezone confirmation before preview, then
     page.getByLabel('Timestamp column', { exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByText('Imports only weight', { exact: false }),
+    page.getByText('Imports supported values and annotations', {
+      exact: false,
+    }),
   ).toBeVisible();
   await page
     .getByLabel('Import timezone', { exact: true })
@@ -203,9 +310,9 @@ test('RENPHO CSV requires profile and timezone confirmation before preview, then
     exact: true,
   });
   await expect(review).toContainText(
-    '4 new; 0 duplicates; 0 conflicts excluded; 0 invalid; 2 blank',
+    '7 new; 0 duplicates; 0 conflicts requiring review; 0 invalid; 65 blank',
   );
-  await expect(review).toContainText('Ignored columns: No., BMI');
+  await expect(review).toContainText('Ignored columns: None');
   await expect(review).toContainText('68.0388555 kg');
   await expect(review).toContainText('2026-09-01T12:00:00Z');
   await page.screenshot({
@@ -238,7 +345,7 @@ test('RENPHO CSV requires profile and timezone confirmation before preview, then
         'GET',
       )
     ).json(),
-  ).toHaveLength(4);
+  ).toHaveLength(7);
   await page
     .getByRole('region', { name: 'View imported readings', exact: true })
     .getByRole('button', { name: /^Body fat .*device estimate/ })
@@ -293,7 +400,7 @@ test('RENPHO CSV refuses nonempty trailing cells instead of discarding them', as
   await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
   expect((await response).status()).toBe(400);
   await expect(page.getByRole('alert')).toContainText(
-    'terminal-column cells must all be empty',
+    'terminal-column header and every value must be exactly empty',
   );
   await expect(
     page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
@@ -358,7 +465,7 @@ test('second-60 CSV rows are excluded visibly and the valid boundary row commits
     exact: true,
   });
   await expect(region).toContainText(
-    '1 new; 0 duplicates; 0 conflicts excluded; 1 invalid',
+    '1 new; 0 duplicates; 0 conflicts requiring review; 1 invalid',
   );
   await expect(region).toContainText('Row 2');
   await expect(region.getByRole('table')).toContainText(
@@ -413,7 +520,7 @@ test('profile exclusion, invalid rows and altered values remain explicit before 
     name: 'Confirm CSV import',
     exact: true,
   });
-  await expect(region).toContainText('2 conflicts excluded; 1 invalid');
+  await expect(region).toContainText('2 conflicts requiring review; 1 invalid');
   await expect(region).toContainText('1 profile-excluded rows');
   await confirm(page);
   await expect(
@@ -435,6 +542,12 @@ test('failed preview and expired commit show errors without inventing success', 
   await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await page.unroute('**/api/data');
+  await page
+    .getByRole('button', { name: 'Check import status', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Preview CSV', exact: true }),
+  ).toBeEnabled();
   await preview(page);
   const db = new LocalSupabase();
   await db.admin(
@@ -526,7 +639,12 @@ test('canonical CSV imports retry a lost preview reply without creating another 
   });
   await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
   await expect(page.getByRole('alert')).toBeVisible();
-  await preview(page);
+  await page
+    .getByRole('button', { name: 'Check import status', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
+  ).toBeVisible();
   await confirm(page);
   const db = new LocalSupabase();
   expect(
@@ -537,6 +655,56 @@ test('canonical CSV imports retry a lost preview reply without creating another 
       )
     ).json(),
   ).toHaveLength(1);
+});
+test('CSV lost commit reply reconciles the recorded result before retry or cancellation', async ({
+  page,
+}) => {
+  await choose(page);
+  await page
+    .getByLabel('CSV source label to include', { exact: true })
+    .fill('Synthetic Scale A');
+  await preview(page);
+  let lost = false;
+  await page.route('**/api/data', async (route) => {
+    if (!lost && route.request().postDataJSON()?.action === 'commit_import') {
+      lost = true;
+      expect((await route.fetch()).status()).toBe(200);
+      await route.abort();
+    } else await route.continue();
+  });
+  await page
+    .getByRole('button', { name: 'Confirm import', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Check import status', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', {
+      name: 'Discard preview and choose file',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole('heading', { name: 'Import recorded', exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Check import status', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Import recorded', exact: true }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole('region', { name: 'View imported readings', exact: true }),
+  ).toBeVisible();
+  const db = new LocalSupabase();
+  expect(
+    await (
+      await db.admin(
+        `/rest/v1/measurements?user_id=eq.${accounts[0]!.id}&select=id`,
+        'GET',
+      )
+    ).json(),
+  ).toHaveLength(28);
 });
 test('canonical CSV imports preserve source warning text as inert data', async ({
   page,

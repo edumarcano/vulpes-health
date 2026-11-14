@@ -1,3 +1,4 @@
+import { DATA_CONTRACT_VERSION } from '../../shared/import-v2';
 import { ErrorEnvelopeSchema } from '../../shared/api';
 import type { IdentityScope } from './auth/identity';
 
@@ -32,6 +33,9 @@ export async function ownedJson(
       headers: {
         ...init.headers,
         Authorization: `Bearer ${token}`,
+        ...(path.split('?')[0] === '/api/data'
+          ? { 'X-Vulpes-Data-Contract': DATA_CONTRACT_VERSION }
+          : {}),
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       },
     });
@@ -105,8 +109,8 @@ export async function ownedDownload(
     const link = document.createElement('a');
     link.href = url;
     link.download = accountRequest
-      ? 'vulpes-account-v1.json'
-      : 'vulpes-measurements-v1.csv';
+      ? 'vulpes-account-v2.json'
+      : 'vulpes-measurements-v2.csv';
     link.click();
   } finally {
     if (url) URL.revokeObjectURL(url);

@@ -3,6 +3,15 @@ import { z } from 'zod';
 // Shared schemas run under script-src 'self'. Disable eval probes before schema construction.
 z.config({ jitless: true });
 
+export function isPrivatePlainText(value: string): boolean {
+  return (
+    !value.includes('\0') &&
+    !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(
+      value,
+    )
+  );
+}
+
 export const UUIDSchema = z.uuid();
 export const ISOInstantSchema = z.iso.datetime({ offset: true });
 export const LocalDateSchema = z.iso.date();

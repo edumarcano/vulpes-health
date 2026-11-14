@@ -117,6 +117,7 @@ export const approval = {
   client_request_id: otherId,
 };
 export const importCommit = {
+  schema_version: 2,
   action: 'commit_import',
   batch_id: id,
   payload_hash: hash,

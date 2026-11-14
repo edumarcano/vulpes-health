@@ -97,7 +97,7 @@ export function MeasurementEditor({
       ).data;
       scope.commit(epoch, () =>
         onSaved(
-          `${result.outcome === 'deleted' ? 'Measurement deleted.' : 'Measurement corrected.'} ${result.baselinesMarked} goal baselines marked for review; ${result.previewsInvalidated} import previews invalidated.${result.outcome === 'deleted' ? ' Retained exact trace content was removed; safe accounting and approved goal snapshots remain.' : ''} Data refreshed.`,
+          `${result.outcome === 'deleted' ? 'Measurement deleted.' : 'Measurement corrected.'} ${result.baselinesMarked} goal baselines marked for review; ${result.previewsInvalidated} import previews invalidated.${result.outcome === 'deleted' ? ' Retained exact trace content was removed; safe accounting and approved targets remain.' : ''} Data refreshed.`,
         ),
       );
     } catch (e) {
@@ -160,10 +160,17 @@ export function MeasurementEditor({
             <input
               required
               maxLength={100}
+              disabled={!!reading.eventId}
               value={observed}
               onChange={(e) => setObserved(e.target.value)}
             />
           </label>
+          {reading.eventId && (
+            <p>
+              Use Inspect weigh-in to correct the time for all linked
+              observations together.
+            </p>
+          )}
           <p>
             Use an ISO date/time. Local times use the timezone below; ambiguous
             or nonexistent times require an explicit offset.
@@ -173,6 +180,7 @@ export function MeasurementEditor({
             <input
               required
               maxLength={100}
+              disabled={!!reading.eventId}
               value={zone}
               onChange={(e) => setZone(e.target.value)}
             />
@@ -210,8 +218,9 @@ export function MeasurementEditor({
               </p>
               <p>
                 This marks the observation as user-corrected and invalidates
-                pending import previews. Approved goal baselines remain frozen
-                and may need review.
+                pending import previews. Affected private baseline values and
+                retained conversation copies are removed; approved targets and
+                states remain.
               </p>
             </>
           ) : (
@@ -226,10 +235,10 @@ export function MeasurementEditor({
                 provider-state traces are removed. Safe accounting remains.
               </p>
               <p>
-                Approved goal baseline snapshots remain as frozen historical
-                decisions and are marked for review when potentially affected.
-                They are never silently recalculated. A fresh import can
-                recreate a deleted reading; replaying a committed batch cannot.
+                Affected private baseline values and retained conversation
+                copies are removed. Approved targets and states remain and are
+                marked for review. A fresh import can recreate a deleted
+                reading; replaying a committed batch cannot.
               </p>
             </>
           )}

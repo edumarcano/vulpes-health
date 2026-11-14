@@ -1,3 +1,4 @@
+import { dataWireBody } from '../helpers/data-wire.js';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
@@ -51,9 +52,14 @@ async function request(
     method,
     headers: {
       'Content-Type': 'application/json',
+      'X-Vulpes-Data-Contract': '2',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    ...(body ? { body: JSON.stringify(body) } : {}),
+    ...(body
+      ? {
+          body: JSON.stringify(dataWireBody(body)),
+        }
+      : {}),
   });
 }
 async function add(body: AddMeasurement, token = a.token) {
@@ -384,7 +390,7 @@ describe('real measurement HTTP/Auth/PostgREST workflow', () => {
   it('rejects whitespace-only source labels through direct RPC', async () => {
     for (const label of ['\t', '\uFEFF', '\u00A0']) {
       const response = await db.request(
-        '/rest/v1/rpc/add_measurement_v1',
+        '/rest/v1/rpc/add_measurement_v2',
         a.token,
         {
           method: 'POST',
@@ -524,7 +530,7 @@ describe('real measurement HTTP/Auth/PostgREST workflow', () => {
       },
     ]) {
       const response = await db.request(
-        '/rest/v1/rpc/add_measurement_v1',
+        '/rest/v1/rpc/add_measurement_v2',
         a.token,
         {
           method: 'POST',

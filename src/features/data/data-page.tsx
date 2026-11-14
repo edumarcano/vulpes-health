@@ -37,6 +37,7 @@ import type {
 } from '../../../shared/domain';
 import { ManualForm } from './manual-form';
 import { ImportForm } from './import-form';
+import { EventEditor } from './event-editor';
 import { MeasurementEditor } from './measurement-editor';
 import { DataChartView } from './data-chart-view';
 import { formatMeasurement as number } from './format';
@@ -59,6 +60,7 @@ export function DataPage() {
     reading: MeasurementDTO;
     mode: 'correct' | 'delete';
   } | null>(null);
+  const [eventId, setEventId] = useState<string | null>(null);
   const [download, setDownload] = useState<
     { kind: 'idle' | 'loading' | 'done' } | { kind: 'error'; message: string }
   >({ kind: 'idle' });
@@ -153,7 +155,11 @@ export function DataPage() {
   const selectionKey = selection ? JSON.stringify(selection) : null;
   const summary = useQuery({
     queryKey: [...root, 'summary', selectionKey],
-    enabled: !!session && !!chosenSource && !!selection,
+    enabled:
+      !!session &&
+      !!chosenSource &&
+      !!selection &&
+      measurementRegistry[metric].analyticsOperand,
     retry: false,
     refetchOnWindowFocus: false,
     queryFn: async ({ signal }) =>
@@ -168,14 +174,12 @@ export function DataPage() {
         ),
       ).data,
   });
+  const readRevision =
+    summary.data?.dataRevision ?? sources.data?.pages[0]?.dataRevision;
   const readings = useInfiniteQuery({
-    queryKey: [
-      ...root,
-      'measurements',
-      selectionKey,
-      summary.data?.dataRevision,
-    ],
-    enabled: !!session && !!chosenSource && !!selection && !!summary.data,
+    queryKey: [...root, 'measurements', selectionKey, readRevision],
+    enabled:
+      !!session && !!chosenSource && !!selection && readRevision !== undefined,
     initialPageParam: null as string | null,
     retry: false,
     refetchOnWindowFocus: false,
@@ -186,7 +190,7 @@ export function DataPage() {
             new URLSearchParams({
               view: 'measurements',
               ...selection!,
-              data_revision: String(summary.data!.dataRevision),
+              data_revision: String(readRevision),
               ...(pageParam ? { cursor: pageParam } : {}),
             }),
           session!.access_token,
@@ -231,7 +235,7 @@ export function DataPage() {
     tableHeading.current?.focus();
   }
   async function exportSelection() {
-    if (!session || !selection || !data) return;
+    if (!session || !selection || readRevision === undefined) return;
     setDownload({ kind: 'loading' });
     try {
       await ownedDownload(
@@ -239,7 +243,7 @@ export function DataPage() {
           new URLSearchParams({
             view: 'export',
             ...selection,
-            data_revision: String(data.dataRevision),
+            data_revision: String(readRevision),
           }),
         session.access_token,
         scope,
@@ -559,7 +563,8 @@ export function DataPage() {
                                 )}
                               </td>
                               <td>
-                                {number(item.value)} {item.unit}
+                                {item.canonicalValue ?? number(item.value)}{' '}
+                                {item.unit}
                               </td>
                               <td>
                                 {item.originalValue} {item.originalUnit}
@@ -580,6 +585,14 @@ export function DataPage() {
                               </td>
                               <td>
                                 <div className="data-actions">
+                                  {item.eventId && (
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setEventId(item.eventId!)}
+                                    >
+                                      Inspect weigh-in
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="outline"
                                     onClick={() =>
@@ -619,6 +632,26 @@ export function DataPage() {
                       </Button>
                     )}
                   </>
+                )}
+                {!measurementRegistry[metric].analyticsOperand && (
+                  <p role="status">
+                    {measurementRegistry[metric].limitation} Raw values remain
+                    available; summaries and goal operands are unavailable.
+                  </p>
+                )}
+                {eventId && (
+                  <EventEditor
+                    key={eventId}
+                    eventId={eventId}
+                    onClose={() => {
+                      setEventId(null);
+                      tableHeading.current?.focus();
+                    }}
+                    onSaved={(message) => {
+                      setNotice(message);
+                      refresh();
+                    }}
+                  />
                 )}
                 {editing && (
                   <MeasurementEditor
@@ -747,9 +780,10 @@ export function DataPage() {
               <Button
                 variant="outline"
                 disabled={
-                  !data ||
+                  readRevision === undefined ||
                   !selection ||
-                  summary.isError ||
+                  (measurementRegistry[metric].analyticsOperand &&
+                    summary.isError) ||
                   summary.isFetching ||
                   download.kind === 'loading'
                 }
@@ -773,7 +807,8 @@ export function DataPage() {
                   <h2>No measurements loaded</h2>
                   <p>Add a manual reading to create your first source.</p>
                 </section>
-              ) : !selection ? null : summary.isPending ? (
+              ) : !selection ? null : measurementRegistry[metric]
+                  .analyticsOperand && summary.isPending ? (
                 <p role="status">Calculating your selected data…</p>
               ) : summary.isError ? (
                 <p role="alert">

@@ -11,6 +11,10 @@ export default defineConfig({
   use: {
     baseURL: origin,
     browserName: 'chromium',
+    channel:
+      process.env.VULPES_TEST_BROWSER_CHANNEL === 'chrome'
+        ? 'chrome'
+        : undefined,
     trace: 'off',
     screenshot: 'off',
     video: 'off',

@@ -1,14 +1,24 @@
 import { GoalMutationSchema } from './goals.js';
 import { z } from 'zod';
 import { SettingsPatchSchema } from './auth.js';
-import { MetricKeySchema } from './domain.js';
+import { LegacyMetricKeySchema } from './metrics.js';
 import {
   AddMeasurementSchema,
   CorrectMeasurementSchema,
   DeleteMeasurementSchema,
   DataQuerySchema,
 } from './data.js';
-import { PreviewCsvSchema } from './imports.js';
+import {
+  PreviewCsvWireSchema,
+  ReviewImportSchema,
+  DiscardImportSchema,
+  ImportReadSchema,
+} from './import-v2.js';
+import {
+  EventReadSchema,
+  EventMutationSchema,
+  SourceDefaultsMutationSchema,
+} from './events.js';
 import {
   AnalysisDepthSchema,
   HashSchema,
@@ -50,7 +60,7 @@ export const ChatSendRequestSchema = z.strictObject({
   depth: AnalysisDepthSchema,
   context_selection: z
     .strictObject({
-      metric: MetricKeySchema,
+      metric: LegacyMetricKeySchema,
       source_id: UUIDSchema.nullable(),
       goal_id: UUIDSchema.nullable(),
       from: ISOInstantSchema,
@@ -72,6 +82,7 @@ export const ApprovalRequestSchema = z.strictObject({
   client_request_id: UUIDSchema,
 });
 export const ImportCommitRequestSchema = z.strictObject({
+  schema_version: z.literal(2),
   action: z.literal('commit_import'),
   batch_id: UUIDSchema,
   payload_hash: HashSchema,
@@ -116,6 +127,44 @@ export const apiOperations = {
     { method: 'POST', selector: 'action=cancel', owningPR: 9 },
   ],
   '/api/data': [
+    ...['import_status', 'import_items'].map((view) => ({
+      method: 'GET' as const,
+      selector: `view=${view}` as const,
+      owningPR: 6,
+      schema: ImportReadSchema.refine((value) => value.view === view),
+    })),
+    ...['event', 'events'].map((view) => ({
+      method: 'GET' as const,
+      selector: `view=${view}` as const,
+      owningPR: 7,
+      schema: EventReadSchema.refine((value) => value.view === view),
+    })),
+    {
+      method: 'POST',
+      selector: 'action=review_import',
+      owningPR: 6,
+      schema: ReviewImportSchema,
+    },
+    {
+      method: 'POST',
+      selector: 'action=discard_import',
+      owningPR: 6,
+      schema: DiscardImportSchema,
+    },
+    ...['correct_event_time', 'update_event_annotations', 'delete_event'].map(
+      (action) => ({
+        method: 'POST' as const,
+        selector: `action=${action}` as const,
+        owningPR: 7,
+        schema: EventMutationSchema.refine((value) => value.action === action),
+      }),
+    ),
+    {
+      method: 'POST',
+      selector: 'action=update_source_defaults',
+      owningPR: 6,
+      schema: SourceDefaultsMutationSchema,
+    },
     {
       method: 'GET',
       selector: 'view=sources',
@@ -144,7 +193,7 @@ export const apiOperations = {
       method: 'POST',
       selector: 'action=preview_csv',
       owningPR: 6,
-      schema: PreviewCsvSchema,
+      schema: PreviewCsvWireSchema,
     },
     {
       method: 'POST',

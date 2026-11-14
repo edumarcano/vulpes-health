@@ -19,7 +19,10 @@ export function importSelections(
 ): ImportSelection[] {
   const groups = new Map<string, ImportSelection>();
   rows.forEach((row, index) => {
-    if (!['new', 'duplicate'].includes(classifications[index] ?? '')) return;
+    if (
+      !['new', 'enrichment', 'duplicate'].includes(classifications[index] ?? '')
+    )
+      return;
     const date =
       row.granularity === 'daily_total' && row.local_date
         ? row.local_date

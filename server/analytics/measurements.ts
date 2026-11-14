@@ -1,5 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { Decimal } from 'decimal.js';
+import { metricRegistry, unitFactors } from '../../shared/metrics.js';
 import {
   ObservationInputSchema,
   measurementRegistry,
@@ -27,19 +28,10 @@ export function normalizeObservation(input: ObservationInput) {
   )
     throw new Error('Choose a supported unit for this metric.');
   const original = new Exact(value.value);
-  const factor =
-    value.unit === 'lb'
-      ? '0.45359237'
-      : value.unit === 'm'
-        ? '100'
-        : value.unit === 'in'
-          ? '2.54'
-          : value.unit === 'h'
-            ? '60'
-            : '1';
+  const factor = unitFactors[value.unit] ?? '1';
   const canonical = original.mul(factor);
   if (
-    value.metric === 'body_fat_percent' &&
+    metricRegistry[value.metric].representation === 'percentage' &&
     (canonical.lt(0) || canonical.gt(100))
   )
     throw new Error('Percentages must be between zero and 100.');
@@ -94,6 +86,12 @@ export function normalizeObservation(input: ObservationInput) {
     throw new Error(
       'Daily totals require the declared date in the selected timezone.',
     );
+  const representation = metricRegistry[value.metric].representation;
+  if (
+    (representation === 'positive' && canonical.lte(0)) ||
+    (representation === 'nonnegative' && canonical.lt(0))
+  )
+    throw new Error('The value is outside this metric representation.');
   const observedAt = zoned.toInstant().toString();
   const dto = MeasurementDTOSchema.parse({
     id: '00000000-0000-4000-8000-000000000000',
@@ -133,6 +131,7 @@ export type StoredObservation = NormalizedObservation & {
   source_id: string;
   external_record_id: string | null;
   version: number;
+  event_id?: string | null;
 };
 export function measurementDTO(row: StoredObservation): MeasurementDTO {
   return MeasurementDTOSchema.parse({
@@ -140,6 +139,8 @@ export function measurementDTO(row: StoredObservation): MeasurementDTO {
     sourceId: row.source_id,
     metric: row.metric_key,
     value: new Exact(row.canonical_value).toNumber(),
+    canonicalValue: row.canonical_value,
+    eventId: row.event_id ?? null,
     unit: row.canonical_unit,
     originalValue: row.original_value,
     originalUnit: row.original_unit,

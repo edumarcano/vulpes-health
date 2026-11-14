@@ -47,7 +47,7 @@ export async function exportAccount(
   const integrity: Record<string, { count: number; sha256: string }> = {};
   async function* records() {
     yield JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       ownerId: context.userId,
       captureStartedAt: startedAt,
       dataRevision: before.dataRevision,
