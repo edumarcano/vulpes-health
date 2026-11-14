@@ -133,12 +133,14 @@ export class LocalSupabase {
   async cleanup(): Promise<void> {
     const failures: string[] = [];
     for (const userId of this.users) {
+      let phase = 'goals';
       try {
         await this.admin(`/rest/v1/goals?user_id=eq.${userId}`, 'PATCH', {
           state: 'draft',
           current_revision_id: null,
         });
         for (const table of cleanupTables) {
+          phase = table;
           if (table === 'weigh_in_events') {
             const probe = await this.request(
               '/rest/v1/weigh_in_events?limit=0',
@@ -147,8 +149,34 @@ export class LocalSupabase {
             if (probe.status === 404) continue; // Historical upgrade fixtures predate this entity.
             assert(probe.ok, 'Event cleanup inventory could not be checked.');
           }
+          if (table === 'measurements') {
+            let previousFirst: string | undefined;
+            for (;;) {
+              const response = await this.admin(
+                `/rest/v1/measurements?user_id=eq.${userId}&select=id&order=id&limit=100`,
+                'GET',
+              );
+              const rows = (await response.json()) as { id: string }[];
+              assert(
+                rows.length <= 100,
+                'Synthetic cleanup batch exceeded its bound.',
+              );
+              if (rows.length === 0) break;
+              assert(
+                rows[0]!.id !== previousFirst,
+                'Synthetic measurement cleanup made no progress.',
+              );
+              previousFirst = rows[0]!.id;
+              await this.admin(
+                `/rest/v1/measurements?user_id=eq.${userId}&id=in.(${rows.map((row) => row.id).join(',')})`,
+                'DELETE',
+              );
+            }
+            continue;
+          }
           await this.admin(`/rest/v1/${table}?user_id=eq.${userId}`, 'DELETE');
         }
+        phase = 'Auth';
         const removed = await this.request(
           `/auth/v1/admin/users/${userId}`,
           'admin',
@@ -160,7 +188,7 @@ export class LocalSupabase {
         );
       } catch {
         failures.push(
-          'Synthetic user cleanup failed; inspect the disposable local database.',
+          `Synthetic user cleanup failed during ${phase}; inspect the disposable local database.`,
         );
       }
     }
