@@ -136,11 +136,11 @@ SQL lint, all 807 pgTAP assertions, generated-type consistency, populated/fresh 
 
 ## Import capacity follow-up (2026-11-14)
 
-At `5be4b25`, [main CI](https://github.com/edumarcano/vulpes-health/actions/runs/43624204684) returned `503 import_unavailable` for the initial 24,000-observation commit. All three required checks passed at `4159baf` in [CI run 43629544840](https://github.com/edumarcano/vulpes-health/actions/runs/43629544840). The cause of that earlier failure was not established.
+At `5be4b25`, [main CI](https://github.com/edumarcano/vulpes-health/actions/runs/43624204684) returned `503 import_unavailable` for the initial 24,000-observation commit; its cause was not established. At `12b11a0`, [CI run 43634635420](https://github.com/edumarcano/vulpes-health/actions/runs/43634635420) cancelled the changed-file reimport with PostgreSQL code `57014` after the initial import succeeded.
 
-At `2253b5c`, [CI run 43632623394](https://github.com/edumarcano/vulpes-health/actions/runs/43632623394) cancelled the changed-file reimport with PostgreSQL code `57014` after the initial import succeeded. Local rollback profiling measured 1.17 seconds in the event-processing loop. A partial owner/source/time index for `event_id is null` reduced that loop to 0.33 seconds by narrowing repeated unlinked-reading probes. These are local samples, not hosted guarantees; the eight-second SQL timeout and client deadline remain unchanged.
+Local rollback comparisons measured two lookup costs. A partial owner/source/time index for `event_id is null` reduced the event-processing loop from 1.17 to 0.33 seconds. Fresh-table plans repeatedly parsed input timestamps while filtering existing events; materializing the two typed times reduced classification from 1.76 to 0.58 seconds while preserving the original preview inspection. These are local samples, not hosted guarantees; the eight-second SQL timeout and client deadline remain unchanged.
 
-With the index, all 34 affected integration tests and 807 database assertions passed locally. The isolated upgrade rehearsal applies M1 and follow-up migrations in order and passed both populated forward upgrade and fresh replay with five migrations.
+With both lookup changes, all 34 affected integration tests and 807 database assertions passed locally. The isolated upgrade rehearsal applies M1 and follow-up migrations in order and passed both populated forward upgrade and fresh replay with five migrations.
 
 The authenticated HTTP test now reimports 1,000 events and 24,000 observations with changed file bytes, requiring a new preview batch, 24,000 duplicates, zero inserts and an unchanged data revision. Capacity-test diagnostics report only allowlisted SQL codes or request-error categories, without private payloads.
 
