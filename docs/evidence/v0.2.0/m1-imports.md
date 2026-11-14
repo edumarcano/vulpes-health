@@ -153,3 +153,11 @@ On merged `340395b`, [main CI](https://github.com/edumarcano/vulpes-health/actio
 The forward migration aggregates matching persisted observations by input ordinal before classification, replacing the correlated aggregate per observation. The existing capacity test then passed all three cases, including 24,000 duplicates with no inserts or revision changes. One local sample measured 6,656 ms preview and 7,758 ms total commit. These samples do not establish Linux or hosted latency; CI and hosted capacity remain release gates.
 
 All 34 affected HTTP integration tests, 807 database assertions, database lint, typecheck and the six-migration populated/fresh replay passed. Both Remora review axes found no blocker in the diff. No hosted migration or inference call was made for this repair.
+
+### Import deadline correction
+
+The merged `71994b1` candidate again failed the initial capacity commit with PostgreSQL `57014` in [main CI](https://github.com/edumarcano/vulpes-health/actions/runs/43648691562). A local rehearsal also returned 503 for the large-import path, while its full-panel/event/export checks and synthetic-account deletion passed. Lookup optimization alone did not make the default deadline reliable.
+
+An isolated experiment scoped 30-second SQL deadlines and 45-second transport deadlines to the four import RPCs. All three unchanged capacity tests passed; one commit took 11,774 ms including application checks and transport. The forward migration uses PostgREST's per-function timeout settings rather than changing role-wide defaults. The server selects the matching transport allowance by exact RPC path and retains caller cancellation. Import sizes, atomicity, ownership and other request deadlines are unchanged.
+
+The implemented change passed all 34 affected integration tests, 807 database assertions, database lint, typecheck and seven-migration populated/fresh replay. A complete local HTTP rehearsal passed full-panel exact-value import, event correction, both exports, event deletion, 1,000-event/24,000-observation import, duplicate-only changed-file reimport and account deletion with verified Auth/owned-data absence. A capacity run concurrent with other local checks measured a 27,087 ms total commit. These results establish bounded local operation, not hosted latency or a production release.

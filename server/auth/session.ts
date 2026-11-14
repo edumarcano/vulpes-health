@@ -20,6 +20,13 @@ export function serverAuthConfig(env: NodeJS.ProcessEnv = process.env) {
   }
   throw new HttpFailure(503, 'auth_unavailable', 'Sign-in is not configured.');
 }
+const importRpcPaths = new Set([
+  '/rest/v1/rpc/inspect_import_v2',
+  '/rest/v1/rpc/register_import_v2',
+  '/rest/v1/rpc/review_import_v2',
+  '/rest/v1/rpc/commit_import_v2',
+]);
+
 export const serverClientOptions = {
   auth: {
     persistSession: false,
@@ -27,15 +34,19 @@ export const serverClientOptions = {
     detectSessionInUrl: false,
   },
   global: {
-    fetch: (input: string | URL | Request, init?: RequestInit) =>
-      fetch(input, {
+    fetch: (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      return fetch(input, {
         ...init,
         redirect: 'error',
         signal: AbortSignal.any([
-          AbortSignal.timeout(10_000),
+          AbortSignal.timeout(
+            importRpcPaths.has(url.pathname) ? 45_000 : 10_000,
+          ),
           ...(init?.signal ? [init.signal] : []),
         ]),
-      }),
+      });
+    },
   },
 };
 // Only account status and deletion retry may use a verified identity without an active profile.

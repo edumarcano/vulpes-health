@@ -27,6 +27,8 @@ The static registry preserves all 24 supported vendor numeric fields, their exac
 | Source/mapping metadata | 64 KiB serialized JSON |
 | Preview HTTP JSON | 2 MiB |
 | Normalized plaintext staging | 4 MiB |
+| Inspect/register/review/commit RPC SQL | 30 seconds per request |
+| Server transport for those four RPCs | 45 seconds per request; caller cancellation still applies |
 | Preview retention | At most 24 hours, enforced on reads |
 
 The smallest reached bound controls acceptance. Oversize data is rejected without truncation. NUL and unpaired surrogate text are rejected. Other admitted text remains private, inert text; no formulas or scripts execute. The CSV export protects formula-sensitive text while preserving signed numeric meaning.
