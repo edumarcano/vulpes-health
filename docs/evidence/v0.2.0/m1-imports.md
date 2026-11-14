@@ -145,3 +145,11 @@ With both lookup changes, all 34 affected integration tests and 807 database ass
 The authenticated HTTP test now reimports 1,000 events and 24,000 observations with changed file bytes, requiring a new preview batch, 24,000 duplicates, zero inserts and an unchanged data revision. Capacity-test diagnostics report only allowlisted SQL codes or request-error categories, without private payloads.
 
 Vercel independently rejected the build with `hosted_schema_incompatible`. The exact hosted migration inventory was not inspected; hosted migration and capacity verification remain unperformed.
+
+### Merged-candidate regression
+
+On merged `340395b`, [main CI](https://github.com/edumarcano/vulpes-health/actions/runs/43644737539) failed the initial commit first with `TimeoutError`, then with PostgreSQL `57014` on the failed-job rerun. The unchanged local capacity test also returned 503 for changed-file overlap preview. Extending only the transport deadline in an isolated experiment did not resolve that preview failure; no deadline change was retained.
+
+The forward migration aggregates matching persisted observations by input ordinal before classification, replacing the correlated aggregate per observation. The existing capacity test then passed all three cases, including 24,000 duplicates with no inserts or revision changes. One local sample measured 6,656 ms preview and 7,758 ms total commit. These samples do not establish Linux or hosted latency; CI and hosted capacity remain release gates.
+
+All 34 affected HTTP integration tests, 807 database assertions, database lint, typecheck and the six-migration populated/fresh replay passed. Both Remora review axes found no blocker in the diff. No hosted migration or inference call was made for this repair.
