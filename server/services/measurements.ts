@@ -1,4 +1,5 @@
 import { Temporal } from '@js-temporal/polyfill';
+import { metricRegistry } from '../../shared/metrics.js';
 import { z } from 'zod';
 import {
   DataSummarySchema,
@@ -47,10 +48,17 @@ const snapshotSchema = z.object({
       quality_flags: z.array(z.string()),
       external_record_id: z.string().nullable(),
       version: z.number(),
+      event_id: UUIDSchema.nullable().optional(),
     }),
   ),
 });
 function databaseFailure(message: string): never {
+  if (message === 'event_time_review_required')
+    throw new HttpFailure(
+      409,
+      message,
+      'Change the time from the weigh-in event review so every linked metric moves together.',
+    );
   if (message === 'data_not_found')
     throw new HttpFailure(
       404,
@@ -105,8 +113,8 @@ export async function addMeasurement(
       ? request.observation.observed_at
       : request.observation.observed_at + offsetString,
   };
-  const { data, error } = await context.db.rpc('add_measurement_v1', {
-    p_request: { ...request, observation },
+  const { data, error } = await context.db.rpc('add_measurement_v2', {
+    p_request: { ...request, observation, schema_version: 2 },
   });
   if (error) databaseFailure(error.message);
   return MutationResultSchema.parse(data);
@@ -152,8 +160,8 @@ export async function mutateMeasurement(
       );
     }
   }
-  const { data, error } = await context.db.rpc('mutate_measurement_v1', {
-    p_request: input,
+  const { data, error } = await context.db.rpc('mutate_measurement_v2', {
+    p_request: { ...input, schema_version: 2 },
   });
   if (error) databaseFailure(error.message);
   return MeasurementMutationResultSchema.parse(data);
@@ -330,6 +338,12 @@ export async function readData(context: AuthContext, query: DataQuery) {
   }
   if (query.view === 'export') throw new Error('Use the CSV export service.');
   if (query.view === 'summary') {
+    if (!metricRegistry[query.metric].analyticsOperand)
+      throw new HttpFailure(
+        400,
+        'unresolved_semantics',
+        metricRegistry[query.metric].limitation,
+      );
     const chosen = selection(query);
     const windows = selectionWindows(chosen);
     const rows: StoredObservation[] = [];

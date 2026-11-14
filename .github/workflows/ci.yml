@@ -69,6 +69,8 @@ jobs:
         run: npm run db:reset:test
       - name: Populated lifecycle forward upgrade
         run: npm run test:lifecycle-upgrade -- --allow-disposable-reset
+      - name: Populated import forward upgrade and fresh replay
+        run: npm run test:import-upgrade -- --allow-disposable-reset
       - name: Database lint
         run: npm run db:lint
       - name: pgTAP tests

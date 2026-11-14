@@ -16,6 +16,22 @@ The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflic
 | Adopt no numeric reference rule from incomplete public evidence | M3 obtains one applicable versioned manufacturer rule and independent boundary cases; explicit unavailable states preserve usability |
 | Freeze 20-scenario comparison design before live results | Independent numeric oracles, hard critical gates and at least 90% ordinary completion. M4 final bindings; M5 current provider facts and separately approved live baseline/peer calls |
 
+## v0.2.0 M1 implementation (2026-11-13)
+
+| Decision | Reason and boundary |
+|---|---|
+| Four forward migrations; version 2 Data writers and exports | Extend existing history without fabricated event backfill. Old writer RPCs are revoked; HTTP mutations require the contract header before cleanup. Incompatible pending imports/proposals are invalidated; Auth, consent and accounting remain. Hosted cutover stays M6. |
+| Exact numeric strings plus owned event parents | Preserve all 24 vendor fields, imported interpretation and annotations; value corrections retain original provenance, and time corrections move an entire event. The static registry does not activate new goal/tool capabilities. |
+| Base64 CSV ingress and compact encrypted staging | Preserve file bytes and bound JSON escaping independently. Batch mapping occurs once; annotations/row labels use base64 inside staging to avoid control-character expansion. Limits remain 1 MiB / 10,000 rows / 25,000 valid numeric observations before deduplication. Normalized plaintext staging is capped at 4 MiB. |
+| Disable JIT only within the import commit RPC | Measured insert compilation/processing exceeded the eight-second authenticated timeout. Cached validation definitions and classification access reduce repeated work; function-local JIT disabling removes compilation overhead without widening deadlines or weakening atomicity. |
+| Carry resolved event parents by input ordinal during commit | A timestamp join chose a nested loop over 1,000 parents for 24,000 observations and exceeded the authenticated deadline in CI. A bounded UUID array reuses parents already resolved by the event loop, including repeated and excluded rows. Ownership, lineage and deferred event constraints still verify each persisted relationship. |
+| Bound review choices to a replacement payload hash | Invalid cells, conflicts and populated unsupported columns require explicit acknowledgements. Resealing preserves the original expiry. Owned status/discard reconcile uncertain responses and return committed receipts truthfully. |
+| Redact private baseline copies and broadly remove retained conversation/AI copies on correction/deletion | Flags alone leave private readings available. Each historical revision owns its baseline dependencies; a goal's current source/metric cannot identify earlier copies. Approved targets/states and financial holds remain; historical receipts never restore deleted data. |
+| Preserve raw access for unresolved semantics; pin current goal/tool schemas | BMR and three vendor target deltas remain readable/exportable but unavailable to summary/goal operands. M3/M4 own new analysis, explanations and capabilities. |
+| Rehearse upgrade in isolated local databases | The shared guarded stack retains deletion receipts. The rehearsal refuses remote Docker, creates only a generated disposable database, proves forward control preservation and fresh public-schema replay, then drops its own database. |
+
+See [M1 evidence](evidence/v0.2.0/m1-imports.md) for executed checks and boundaries. No hosted changes, provider calls or new model approval are part of this implementation.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.
@@ -56,8 +72,8 @@ The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflic
 ## Data and goals
 
 - **Measurements.** Exact decimal values, provenance, original units and timestamps are preserved. Leap-second timestamps are rejected before JavaScript and PostgreSQL can read them differently. Daily goal totals use local-day bounds. Direct and chat goals share explicit approval, revisions and deterministic progress.
-- **Measurement deletion.** Deleting a measurement also removes the owner's retained exact AI trace payloads. Conversations, accounting and frozen goal decisions keep their own contracts. The owner approved this for the documented synthetic cleanup only, not for future deletions in general.
-- **RENPHO import.** The adapter accepts the documented English 31-column layout, imports weight and body-fat percentage through the existing preview and commit flow, and requires profile and timezone confirmation. See the [synthetic evidence](evidence/renpho-import.md).
+- **Measurement lifecycle.** Correction/deletion removes affected private baseline values/references and retained owned conversation/AI copies. Approved targets/states and accounting remain. The current [import/lifecycle contract](operations/data-imports.md) owns event correction, last-child cleanup, historical replay and the distinction between local verification and approved operations.
+- **RENPHO import.** The versioned English lb adapter preserves all 24 supported numeric fields and three annotations, with explicit profile/timezone confirmation and reviewed atomic commits. See [M1 evidence](evidence/v0.2.0/m1-imports.md); the earlier [v0.1.0 evidence](evidence/renpho-import.md) records its narrower historical scope.
 - **Import navigation.** After an import, the user picks a series to open. The range comes from full-batch metadata and covers at most 366 local days ending at the latest imported observation. This avoids inferring the series from the truncated preview or changing filters before the user chooses.
 
 ## Retention and spending

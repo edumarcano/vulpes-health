@@ -1,13 +1,12 @@
-import { parse } from 'csv-parse/sync';
-import { z } from 'zod';
+import { readCsvRecords } from './csv-records.js';
 import {
   CSV_LIMIT_BYTES,
-  IMPORT_LIMIT,
-  isRenphoHeader,
+  IMPORT_OBSERVATION_LIMIT,
   ImportMappingSchema,
   type ImportMapping,
 } from '../../shared/imports.js';
 import { normalizeObservation } from '../analytics/measurements.js';
+import { isPrivatePlainText } from '../../shared/primitives.js';
 
 const required = [
   'observed_at',
@@ -25,8 +24,11 @@ const canonicalColumns = [
   'method',
   'quality_flags',
 ];
+
 export function parseCsv(csv: string, input: ImportMapping) {
   const mapping = ImportMappingSchema.parse(input);
+  if (mapping.format === 'renpho')
+    throw new Error('Use the versioned RENPHO adapter.');
   if (
     Buffer.byteLength(csv, 'utf8') > CSV_LIMIT_BYTES ||
     !Buffer.from(csv).toString('utf8').includes(csv)
@@ -34,52 +36,32 @@ export function parseCsv(csv: string, input: ImportMapping) {
     throw new Error('CSV must be valid UTF-8 text of at most 1 MiB.');
   let records: string[][];
   try {
-    records = z.array(z.array(z.string())).parse(
-      parse(csv, {
-        bom: true,
-        skip_empty_lines: true,
-        max_record_size: 65536,
-      }),
-    );
+    records = readCsvRecords(csv);
   } catch {
     throw new Error(
-      'CSV is malformed or a record exceeds 64 KiB. Use comma-separated fields with consistent columns and valid quotes.',
+      'CSV is malformed or a record exceeds 64 KiB. Check quotes and consistent row widths.',
     );
   }
   const headers = records.shift();
-  const renpho = mapping.format === 'renpho';
-  if (renpho && (!headers || !isRenphoHeader(headers)))
-    throw new Error(
-      'RENPHO requires the English 31-column Health export with one empty terminal header.',
-    );
-  if (renpho && records.some((values) => values.at(-1) !== ''))
-    throw new Error(
-      'RENPHO terminal-column cells must all be empty. Nothing was staged.',
-    );
   if (
     !headers ||
     headers.length > 100 ||
-    headers.some(
-      (h, index) =>
-        (!h && !(renpho && index === headers.length - 1)) || h.length > 200,
-    ) ||
+    headers.some((h) => !h || h.length > 200 || !isPrivatePlainText(h)) ||
     new Set(headers).size !== headers.length
   )
     throw new Error(
       'Use 1–100 unique, nonblank column names of at most 200 characters.',
     );
   if (records.length > 10000) throw new Error('CSV exceeds 10,000 data rows.');
-  const used =
+  const used: Array<string | null> =
     mapping.format === 'canonical'
       ? [...canonicalColumns]
-      : mapping.format === 'renpho'
-        ? ['Date', 'Time', 'Weight(lb)', 'Body Fat Percentage(%)']
-        : [
-            mapping.timestamp_column,
-            mapping.local_date_column,
-            mapping.external_id_column,
-            ...mapping.metrics.map((m) => m.column),
-          ];
+      : [
+          mapping.timestamp_column,
+          mapping.local_date_column,
+          mapping.external_id_column,
+          ...mapping.metrics.map((m) => m.column),
+        ];
   const needed =
     mapping.format === 'canonical'
       ? [...required]
@@ -108,8 +90,7 @@ export function parseCsv(csv: string, input: ImportMapping) {
     sourceExcluded: 0,
     blank: 0,
   };
-  const errors: Array<{ row: number; column: string; message: string }> = [];
-  let errorsOmitted = 0;
+  const allErrors: Array<{ row: number; column: string; message: string }> = [];
   const observations: Array<
     ReturnType<typeof normalizeObservation> & {
       external_record_id: string | null;
@@ -122,14 +103,9 @@ export function parseCsv(csv: string, input: ImportMapping) {
       };
     }
   > = [];
-  function invalid(row: number, column: string, message: string) {
-    counts.invalid++;
-    if (errors.length < 50) errors.push({ row, column, message });
-    else errorsOmitted++;
-  }
   for (const [index, values] of records.entries()) {
-    const row = index + 2;
-    const get = (key: string) => values[headers.indexOf(key)] ?? '';
+    const row = index + 2,
+      get = (key: string) => values[headers.indexOf(key)] ?? '';
     if (
       mapping.profile &&
       get(mapping.profile.column) !== mapping.profile.value
@@ -154,47 +130,19 @@ export function parseCsv(csv: string, input: ImportMapping) {
               method: get('method') || 'unknown',
             },
           ]
-        : mapping.format === 'renpho'
-          ? [
-              {
-                column: 'Weight(lb)',
-                metric: 'weight',
-                unit: 'lb',
-                method: 'device_reported',
-              },
-              {
-                column: 'Body Fat Percentage(%)',
-                metric: 'body_fat_percent',
-                unit: '%',
-                method: 'device_estimate',
-              },
-            ]
-          : mapping.metrics;
+        : mapping.metrics;
     for (const cell of cells) {
-      const value = get(cell.column).trim();
-      if (!value) {
+      const value = get(cell.column);
+      if (value === '' || value === '--') {
         counts.blank++;
         continue;
       }
-      if (++counts.observations > IMPORT_LIMIT)
-        throw new Error(
-          'CSV exceeds 5,000 normalized observations. Split the file; nothing was staged.',
-        );
       try {
-        if (
-          mapping.format === 'renpho' &&
-          (!/^\d{4}\.\d{2}\.\d{2}$/.test(get('Date').trim()) ||
-            !/^\d{2}:\d{2}:[0-5]\d$/.test(get('Time').trim()))
-        )
-          throw new Error();
-        const observed_at =
-          mapping.format === 'renpho'
-            ? `${get('Date').trim().replaceAll('.', '-')}T${get('Time').trim()}`
-            : get(
-                mapping.format === 'canonical'
-                  ? 'observed_at'
-                  : mapping.timestamp_column,
-              ).trim();
+        const observed_at = get(
+          mapping.format === 'canonical'
+            ? 'observed_at'
+            : mapping.timestamp_column,
+        ).trim();
         if (
           mapping.format === 'canonical' &&
           !/(?:Z|[+-]\d{2}:\d{2})$/.test(observed_at)
@@ -217,16 +165,12 @@ export function parseCsv(csv: string, input: ImportMapping) {
             get(
               mapping.format === 'canonical'
                 ? 'local_date'
-                : mapping.format === 'wide'
-                  ? (mapping.local_date_column ?? '')
-                  : '',
+                : (mapping.local_date_column ?? ''),
             ).trim() || null,
           granularity:
             mapping.format === 'canonical'
               ? get('granularity')
-              : mapping.format === 'renpho'
-                ? 'instant'
-                : mapping.granularity,
+              : mapping.granularity,
           method: cell.method,
           quality_flags: [
             ...new Set([
@@ -239,11 +183,13 @@ export function parseCsv(csv: string, input: ImportMapping) {
           get(
             mapping.format === 'canonical'
               ? 'external_record_id'
-              : mapping.format === 'wide'
-                ? (mapping.external_id_column ?? '')
-                : '',
+              : (mapping.external_id_column ?? ''),
           ).trim() || null;
-        if (external && external.length > 500) throw new Error();
+        if (
+          external &&
+          (external.length > 500 || !isPrivatePlainText(external))
+        )
+          throw new Error();
         observations.push({
           ...observation,
           external_record_id: external,
@@ -256,21 +202,32 @@ export function parseCsv(csv: string, input: ImportMapping) {
           },
         });
       } catch {
-        invalid(
+        counts.invalid++;
+        allErrors.push({
           row,
-          cell.column,
-          mapping.format === 'renpho'
-            ? 'Invalid weight, body fat or local Date/Time. Confirm the timezone; DST gaps and ambiguous times cannot be imported.'
-            : 'Invalid value, unit, method, granularity, flags or time. Check DST offsets and daily dates.',
-        );
+          column: cell.column,
+          message:
+            'Invalid value, unit, method, granularity, flags or time. Check DST offsets and daily dates.',
+        });
       }
+      if (observations.length > IMPORT_OBSERVATION_LIMIT)
+        throw new Error(
+          'CSV exceeds 25,000 normalized observations. Nothing was staged.',
+        );
     }
   }
+  counts.observations = observations.length;
+  const ignored = headers.filter((h) => !used.includes(h));
   return {
     observations,
     counts,
-    errors,
-    errors_omitted: errorsOmitted,
-    ignored_columns: headers.filter((h) => h !== '' && !used.includes(h)),
+    errors: allErrors.slice(0, 50),
+    errors_omitted: Math.max(0, allErrors.length - 50),
+    all_errors: allErrors,
+    source_rows: records.length,
+    ignored_columns: ignored,
+    populated_unknown_columns: ignored.filter((header) =>
+      records.some((values) => (values[headers.indexOf(header)] ?? '') !== ''),
+    ),
   };
 }

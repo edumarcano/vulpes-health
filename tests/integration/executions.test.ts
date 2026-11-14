@@ -752,9 +752,8 @@ describe('persistent run and accounting transactions', () => {
     expect(await rows('private_payloads', `user_id=eq.${a.userId}`)).toEqual(
       [],
     );
-    expect((await rows('messages', `id=eq.${message}`))[0]!.context_state).toBe(
-      'source_removed',
-    );
+    expect(await rows('messages', `id=eq.${message}`)).toEqual([]);
+    expect(await rows('conversations', `id=eq.${conversationA}`)).toEqual([]);
     await expect(
       ledger.checkpoint(step, Buffer.from('late private content')),
     ).rejects.toMatchObject({ code: 'run_not_writable' });

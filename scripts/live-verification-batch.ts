@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js';
 import { localStatus } from './local-database.js';
 import { LocalSupabase } from '../tests/helpers/local-supabase.js';
 import { UUIDSchema } from '../shared/primitives.js';
-import { PreviewCsvSchema } from '../shared/imports.js';
+import { PreviewCsvWireSchema as PreviewCsvSchema } from '../shared/imports.js';
 import { verifySession, type AuthContext } from '../server/auth/session.js';
 import { administrativeClient } from '../server/db/administrative.js';
 import { readEncryptionKeys } from '../server/security/encryption.js';
@@ -141,8 +141,9 @@ export async function prepareSyntheticBatch(
           context,
           PreviewCsvSchema.parse({
             action: 'preview_csv',
+            schema_version: 2,
             client_request_id: randomUUID(),
-            csv,
+            csv_base64: Buffer.from(csv).toString('base64'),
             source: {
               kind: 'new',
               label: displayName,
@@ -162,6 +163,7 @@ export async function prepareSyntheticBatch(
         );
         const imported = await commitImport(context, {
           action: 'commit_import',
+          schema_version: 2,
           client_request_id: randomUUID(),
           batch_id: preview.batch_id,
           payload_hash: preview.payload_hash,

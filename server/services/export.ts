@@ -40,12 +40,16 @@ const rowSchema = z.object({
   provenance: z.record(z.string(), z.unknown()),
   start_at: z.string().nullable(),
   end_at: z.string().nullable(),
+  event_id: z.string().uuid().nullable(),
+  event: z.record(z.string(), z.unknown()).nullable(),
   source: z.object({
     label: z.string(),
     kind: z.string(),
     namespace: z.string(),
     origin_app: z.string().nullable(),
     device_label: z.string().nullable(),
+    import_defaults: z.unknown(),
+    settings_version: z.number().int(),
   }),
 });
 const pageSchema = z.object({
@@ -81,6 +85,10 @@ const columns = [
   'provenance',
   'start_at',
   'end_at',
+  'event_id',
+  'event_context',
+  'source_import_defaults',
+  'source_settings_version',
 ];
 export async function exportMeasurements(
   context: AuthContext,
@@ -153,7 +161,7 @@ export async function exportMeasurements(
           csvText(r.timezone ?? ''),
           csvText(r.measurement_method),
           csvText(r.quality_flags.join(';')),
-          '1',
+          '2',
           csvText(r.id),
           String(r.version),
           String(revision),
@@ -172,6 +180,10 @@ export async function exportMeasurements(
           csvText(JSON.stringify(r.provenance)),
           csvText(r.start_at ?? ''),
           csvText(r.end_at ?? ''),
+          csvText(r.event_id ?? ''),
+          csvText(r.event ? JSON.stringify(r.event) : ''),
+          csvText(JSON.stringify(r.source.import_defaults)),
+          String(r.source.settings_version),
         ].join(',') + '\r\n';
       }
       after = page.rows.length === 200 ? page.rows.at(-1)!.id : undefined;

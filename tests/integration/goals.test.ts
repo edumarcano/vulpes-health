@@ -42,6 +42,7 @@ const post = (route: string, input: unknown, token = a.token) =>
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Vulpes-Data-Contract': '2',
     },
     body: JSON.stringify(input),
   });
@@ -231,7 +232,7 @@ it('expires draft contents and preserves a registered proposal receipt after dat
     canonical_payload: null,
   });
 });
-it('freezes exact daily baselines and requires approval to retain them after correction', async () => {
+it('freezes exact daily baselines, removes private values on correction and retains only the redacted baseline after review', async () => {
   let reading: { id: string; version: number } | undefined;
   for (let day = 1; day <= 7; day++) {
     const value = String(70 - (day - 1) / 10);
@@ -294,7 +295,7 @@ it('freezes exact daily baselines and requires approval to retain them after cor
   expect(goal).toMatchObject({
     review_status: 'needs_review',
     version: 2,
-    baseline_snapshot: { value: '69.7' },
+    baseline_snapshot: { value: null },
   });
   const review = await post('/api/goals', {
     action: 'propose_revision',
@@ -313,8 +314,9 @@ it('freezes exact daily baselines and requires approval to retain them after cor
   )[0];
   expect(retained).toMatchObject({
     review_status: 'clear',
+    state: 'needs_data',
     version: 3,
-    baseline_snapshot: { value: '69.7' },
+    baseline_snapshot: { value: null },
   });
 });
 it('treats differently cased request UUIDs as the same replay key', async () => {

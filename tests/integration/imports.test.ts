@@ -1,3 +1,7 @@
+import {
+  dataWireBody,
+  type CsvFixtureRequest as PreviewCsv,
+} from '../helpers/data-wire.js';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -7,10 +11,10 @@ import { LocalSupabase } from '../helpers/local-supabase.js';
 import { localStatus } from '../../scripts/local-database.js';
 import { localRouter } from '../../server/http/router.js';
 import {
-  ImportPreviewSchema,
   ImportResultSchema,
-  type PreviewCsv,
   type ImportPreview,
+  ImportPreviewV2Schema as ImportPreviewSchema,
+  type ImportBundle,
 } from '../../shared/imports.js';
 import { successEnvelopeSchema } from '../../shared/api.js';
 import {
@@ -52,9 +56,10 @@ async function post(body: unknown, token: string | null = a.token) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Vulpes-Data-Contract': '2',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(dataWireBody(body)),
   });
 }
 async function preview(
@@ -66,6 +71,7 @@ async function preview(
 }
 function commitBody(p: ImportPreview) {
   return {
+    schema_version: 2,
     action: 'commit_import',
     batch_id: p.batch_id,
     payload_hash: p.payload_hash,
@@ -73,6 +79,22 @@ function commitBody(p: ImportPreview) {
   };
 }
 async function commit(p: ImportPreview) {
+  const reviewed = await post({
+    action: 'review_import',
+    batch_id: p.batch_id,
+    payload_hash: p.payload_hash,
+    review: {
+      exclude_invalid: true,
+      exclude_conflicts: true,
+      acknowledge_unknown: true,
+    },
+  });
+  if (reviewed.ok)
+    Object.assign(
+      p,
+      successEnvelopeSchema(ImportPreviewSchema).parse(await reviewed.json())
+        .data,
+    );
   const r = await post(commitBody(p));
   expect(r.status).toBe(200);
   return successEnvelopeSchema(ImportResultSchema).parse(await r.json()).data;
@@ -307,10 +329,10 @@ describe('real encrypted CSV HTTP transactions', () => {
     };
     const p = await preview(request);
     expect(p.counts).toMatchObject({
-      new: 2,
+      new: 5,
       duplicate: 2,
       conflict: 0,
-      blank: 2,
+      blank: 65,
     });
     expect(await readings(p.source_id)).toHaveLength(2);
     const batches = (await (
@@ -333,35 +355,33 @@ describe('real encrypted CSV HTTP transactions', () => {
     expect(payload.state).toBe('available');
     if (payload.state !== 'available')
       throw new Error('Synthetic staging unavailable');
-    const bundle = JSON.parse(payload.bytes.toString()) as {
-      file_hash: string;
-      observations: Array<Record<string, unknown>>;
-    };
+    const bundle = JSON.parse(payload.bytes.toString()) as ImportBundle;
     expect(bundle.file_hash).toBe(batches[0]!.file_hash);
-    expect(bundle.observations[0]).toMatchObject({
-      external_record_id: null,
-      provenance: {
-        adapter: 'csv',
-        row: 2,
-        column: 'Weight(lb)',
-        mapping: request.mapping,
-      },
+    expect(bundle.events[0]).toMatchObject({
+      row: 2,
+      local: '2026-09-01T08:00:00',
+      values: expect.arrayContaining([['weight', '150.0', '68.0388555']]),
     });
-    expect(payload.bytes.toString()).not.toContain('Synthetic, ignored note');
-    expect((await commit(p)).inserted).toBe(2);
-    expect(await readings(p.source_id)).toHaveLength(4);
+    expect(
+      Buffer.from(
+        bundle.events[0]!.annotations_base64.remarks!,
+        'base64',
+      ).toString(),
+    ).toBe('Synthetic, ignored note');
+    expect((await commit(p)).inserted).toBe(5);
+    expect(await readings(p.source_id)).toHaveLength(7);
     const changed = await preview({
       ...request,
       client_request_id: randomUUID(),
       csv: original.replace('150.0', '151.0'),
     });
-    expect(changed.counts).toMatchObject({ new: 0, duplicate: 3, conflict: 1 });
+    expect(changed.counts).toMatchObject({ new: 0, duplicate: 6, conflict: 1 });
     expect(await commit(changed)).toMatchObject({
       inserted: 0,
-      duplicate: 3,
+      duplicate: 6,
       conflict: 1,
     });
-    expect(await readings(p.source_id)).toHaveLength(4);
+    expect(await readings(p.source_id)).toHaveLength(7);
     const invalid = await post({
       ...request,
       client_request_id: randomUUID(),
@@ -375,7 +395,7 @@ describe('real encrypted CSV HTTP transactions', () => {
         previewNew: p.counts.new,
         crossFormatDuplicate: p.counts.duplicate,
         changedConflict: changed.counts.conflict,
-        totalStored: 4,
+        totalStored: 7,
         fileHashVerified: true,
         adapter: 'csv',
       }),
@@ -428,7 +448,7 @@ describe('real encrypted CSV HTTP transactions', () => {
         })
       ).status,
     ).toBe(409);
-    const forged = await db.request('/rest/v1/rpc/commit_import_v1', a.token, {
+    const forged = await db.request('/rest/v1/rpc/commit_import_v2', a.token, {
       method: 'POST',
       body: JSON.stringify({ p_request: commitBody(p), p_bytes: '{}' }),
     });
@@ -511,7 +531,12 @@ describe('real encrypted CSV HTTP transactions', () => {
           'GET',
         )
       ).json(),
-    ).toEqual([{ status: 'failed', staging_payload_id: null }]);
+    ).toEqual([
+      { status: 'previewed', staging_payload_id: expect.any(String) },
+    ]);
+    expect(
+      (await post({ action: 'discard_import', batch_id: p.batch_id })).status,
+    ).toBe(200);
     const expired = await preview();
     await db.admin(
       `/rest/v1/import_batches?id=eq.${expired.batch_id}`,
@@ -553,7 +578,7 @@ describe('real encrypted CSV HTTP transactions', () => {
     const payload = await readPayload(context, id, 'import_staging');
     expect(payload.state).toBe('available');
     const repeated = await db.request(
-      '/rest/v1/rpc/register_import_v1',
+      '/rest/v1/rpc/register_import_v2',
       a.token,
       {
         method: 'POST',
@@ -569,7 +594,7 @@ describe('real encrypted CSV HTTP transactions', () => {
       'available',
     );
     const changed = await db.request(
-      '/rest/v1/rpc/register_import_v1',
+      '/rest/v1/rpc/register_import_v2',
       a.token,
       {
         method: 'POST',
@@ -578,7 +603,7 @@ describe('real encrypted CSV HTTP transactions', () => {
     );
     expect(changed.status).toBe(409);
     const foreign = await db.request(
-      '/rest/v1/rpc/register_import_v1',
+      '/rest/v1/rpc/register_import_v2',
       b.token,
       {
         method: 'POST',
@@ -640,7 +665,7 @@ describe('real encrypted CSV HTTP transactions', () => {
     );
     expect(count.headers.get('content-range')).toBe('0-0/5000');
   }, 60000);
-  it('rejects oversized normalized staging before storing any envelope and cleans failed registration', async () => {
+  it('keeps repeated wide mappings compact and cleans failed registration', async () => {
     const names = Array.from({ length: 8 }, (_, i) =>
       `Column${i}`.padEnd(200, 'x'),
     );
@@ -659,6 +684,12 @@ describe('real encrypted CSV HTTP transactions', () => {
     const r = await post({
       ...base,
       client_request_id: randomUUID(),
+      source: {
+        kind: 'new',
+        label: '\u0001'.repeat(200),
+        origin_app: '\u0001'.repeat(200),
+        device_label: '\u0001'.repeat(200),
+      },
       csv: text,
       mapping: {
         schema_version: 1,
@@ -679,10 +710,15 @@ describe('real encrypted CSV HTTP transactions', () => {
         })),
       },
     });
-    expect(r.status).toBe(413);
-    expect(await r.json()).toMatchObject({
-      error: { code: 'staging_too_large' },
-    });
+    expect(r.status).toBe(200);
+    const compact = successEnvelopeSchema(ImportPreviewSchema).parse(
+      await r.json(),
+    ).data;
+    expect(compact.counts.observations).toBe(5000);
+    expect(
+      (await post({ action: 'discard_import', batch_id: compact.batch_id }))
+        .status,
+    ).toBe(200);
     expect(
       await (
         await db.admin(
@@ -728,7 +764,7 @@ describe('real encrypted CSV HTTP transactions', () => {
     expect(await commit(replay)).toEqual(result);
     expect(await readings(p.source_id)).toHaveLength(27);
   });
-  it('rolls back every insert and the revision when a later staged row violates a database constraint', async () => {
+  it('rejects malformed staged decimals at direct registration without a write or revision change', async () => {
     const p = await preview();
     const context = await verifySession({
       headers: { authorization: `Bearer ${a.token}` },
@@ -750,15 +786,15 @@ describe('real encrypted CSV HTTP transactions', () => {
     // rollback boundary; ordinary clients cannot write encrypted envelopes.
     const bundle = JSON.parse(staged.bytes.toString()) as {
       client_request_id: string;
-      observations: Array<{ canonical_value: string; original_value: string }>;
+      observations: Array<Array<unknown>>;
     };
     bundle.client_request_id = randomUUID();
-    bundle.observations[1]!.canonical_value = '-1';
-    bundle.observations[1]!.original_value = '-1';
+    bundle.observations[1]![3] = '-1';
+    bundle.observations[1]![1] = '-1';
     const bytes = Buffer.from(JSON.stringify(bundle));
     const payload = await writePayload(context, 'import_staging', bytes);
     const registration = await db.request(
-      '/rest/v1/rpc/register_import_v1',
+      '/rest/v1/rpc/register_import_v2',
       a.token,
       {
         method: 'POST',
@@ -768,31 +804,8 @@ describe('real encrypted CSV HTTP transactions', () => {
         }),
       },
     );
-    expect(registration.status).toBe(200);
-    const registered = (await registration.json()) as {
-      id: string;
-      source_id: string;
-    };
-    const malformed = {
-      action: 'commit_import',
-      client_request_id: randomUUID(),
-      batch_id: registered.id,
-      payload_hash: createHash('sha256').update(bytes).digest('hex'),
-    };
-    expect((await post(malformed)).status).toBe(409);
-    const response = await db.request(
-      '/rest/v1/rpc/commit_import_v1',
-      a.token,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          p_request: malformed,
-          p_bytes: bytes.toString(),
-        }),
-      },
-    );
-    expect(response.status).toBe(400);
-    expect(await readings(registered.source_id)).toEqual([]);
+    expect(registration.status).toBe(400);
+    expect(await readings(p.source_id)).toEqual([]);
     const profile = await (
       await db.admin(
         `/rest/v1/profiles?user_id=eq.${a.id}&select=data_revision`,

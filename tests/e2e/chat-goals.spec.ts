@@ -6,7 +6,10 @@ import { LocalSupabase } from '../helpers/local-supabase';
 const account = JSON.parse(
   process.env.VULPES_TEST_ACCOUNTS_JSON ?? '[]',
 )[3] as { id: string; token: string };
-const headers = () => ({ Authorization: `Bearer ${account.token}` });
+const headers = () => ({
+  'X-Vulpes-Data-Contract': '2',
+  Authorization: `Bearer ${account.token}`,
+});
 const fixture = readFileSync(
   'docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
 );
@@ -14,6 +17,7 @@ async function scenario(page: Page, value: string) {
   await page.route('**/api/chat', (route) =>
     route.continue({
       headers: {
+        'X-Vulpes-Data-Contract': '2',
         ...route.request().headers(),
         'x-vulpes-test-scenario': value,
       },
@@ -31,9 +35,10 @@ async function imported(page: Page) {
   const preview = await page.request.post('/api/data', {
     headers: headers(),
     data: {
+      schema_version: 2,
       action: 'preview_csv',
       client_request_id: randomUUID(),
-      csv: fixture.toString(),
+      csv_base64: Buffer.from(fixture.toString()).toString('base64'),
       source: {
         kind: 'new',
         label: 'Synthetic M4 browser',
@@ -58,6 +63,7 @@ async function imported(page: Page) {
       await page.request.post('/api/data', {
         headers: headers(),
         data: {
+          schema_version: 2,
           action: 'commit_import',
           batch_id: p.batch_id,
           payload_hash: p.payload_hash,
@@ -339,9 +345,10 @@ test('Ask goal proposal journey imports, reviews, approves, calculates progress 
   const p = await page.request.post('/api/data', {
     headers: headers(),
     data: {
+      schema_version: 2,
       action: 'preview_csv',
       client_request_id: randomUUID(),
-      csv,
+      csv_base64: Buffer.from(csv).toString('base64'),
       source: { kind: 'existing', id: source },
       mapping: {
         schema_version: 1,
@@ -361,6 +368,7 @@ test('Ask goal proposal journey imports, reviews, approves, calculates progress 
       await page.request.post('/api/data', {
         headers: headers(),
         data: {
+          schema_version: 2,
           action: 'commit_import',
           batch_id: next.batch_id,
           payload_hash: next.payload_hash,

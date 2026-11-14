@@ -16,14 +16,14 @@ insert into public.measurements(id,user_id,source_id,metric_key,canonical_value,
 insert into auth.sessions(id,user_id) select owner_id,owner_id from timestamp_fixture;
 set local role authenticated;
 select set_config('request.jwt.claims',json_build_object('sub',(select owner_id from timestamp_fixture),'role','authenticated','session_id',(select owner_id from timestamp_fixture))::text,true);
-select throws_ok(format('select public.add_measurement_v1(%L::jsonb)',jsonb_build_object(
-  'action','add_measurement','client_request_id',gen_random_uuid(),
+select throws_ok(format('select public.add_measurement_v2(%L::jsonb)',jsonb_build_object(
+  'schema_version',2,'action','add_measurement','client_request_id',gen_random_uuid(),
   'source',jsonb_build_object('kind','new','label','Synthetic rejected source','origin_app',null,'device_label',null),
   'observation',jsonb_build_object('metric','weight','value','70','unit','kg','observed_at',bad_time,'timezone','UTC','local_date',null,'granularity','instant','method','device_reported','quality_flags','[]'::jsonb)
 )), '22023','invalid_measurement','direct entry rejects second 60: '||bad_time)
 from unnest(array['2026-09-01T23:59:60Z','2026-09-01T23:59:60.123456+00:00','2026-09-01T23:59:60-04:00']) bad_time;
-select throws_ok(format('select public.mutate_measurement_v1(%L::jsonb)',jsonb_build_object(
-  'action','correct_measurement','client_request_id',gen_random_uuid(),'measurement_id',reading_id,'expected_version',1,
+select throws_ok(format('select public.mutate_measurement_v2(%L::jsonb)',jsonb_build_object(
+  'schema_version',2,'action','correct_measurement','client_request_id',gen_random_uuid(),'measurement_id',reading_id,'expected_version',1,
   'changes',jsonb_build_object('value','69','unit','kg','observed_at',bad_time,'timezone','UTC','local_date',null)
 )), '22023','invalid_measurement','direct correction rejects second 60: '||bad_time)
 from timestamp_fixture cross join unnest(array['2026-09-01T23:59:60Z','2026-09-01T23:59:60.123456+00:00','2026-09-01T23:59:60-04:00']) bad_time;

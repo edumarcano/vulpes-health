@@ -78,9 +78,19 @@ export async function writePayload(
   context: AuthContext,
   purpose: 'import_staging',
   bytes: Uint8Array,
+  maximumExpiry?: string,
 ) {
   const checkedPurpose = PayloadPurposeSchema.parse(purpose);
-  const expiresAt = await payloadExpiry(checkedPurpose);
+  const allocatedExpiry = await payloadExpiry(checkedPurpose);
+  const expiresAt =
+    maximumExpiry === undefined
+      ? allocatedExpiry
+      : new Date(
+          Math.min(
+            Date.parse(ISOInstantSchema.parse(maximumExpiry)),
+            Date.parse(allocatedExpiry),
+          ),
+        ).toISOString();
   try {
     const envelope = encryptBytes(
       {

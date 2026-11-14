@@ -1,0 +1,15 @@
+{
+  "artifact": "m1_capacity",
+  "synthetic": true,
+  "fixtureSHA256": "a77a3666006703d1dd1d99e5beb851cdd8995f0345da5093c8fa9acb74e88965",
+  "events": 1000,
+  "observations": 24000,
+  "csvBytes": 266368,
+  "requestBytes": 355523,
+  "stagingBytes": 1499863,
+  "gzipBytes": 25112,
+  "ciphertextBytes": 25128,
+  "jsonbBytes": 1621935,
+  "previewMs": 8385,
+  "commitMs": 11642
+}

@@ -48,13 +48,13 @@ test('account lifecycle export downloads owned JSON with explicit sensitive-trac
   const pending = page.waitForEvent('download');
   await button.click();
   const download = await pending;
-  expect(download.suggestedFilename()).toBe('vulpes-account-v1.json');
+  expect(download.suggestedFilename()).toBe('vulpes-account-v2.json');
   const file = await download.path();
   if (!file) throw new Error('Missing synthetic download.');
   const value = JSON.parse(await readFile(file, 'utf8'));
-  expect(value.schemaVersion).toBe(1);
+  expect(value.schemaVersion).toBe(2);
   expect(value.ownerId).toBe(accounts[0]!.id);
-  expect(Object.keys(value.sections)).toHaveLength(18);
+  expect(Object.keys(value.sections)).toHaveLength(19);
   expect(value.sections.account_identity).toMatchObject([
     { id: accounts[0]!.id, email: accounts[0]!.email },
   ]);

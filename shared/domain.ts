@@ -1,5 +1,18 @@
 import { z } from 'zod';
 import {
+  metricUnits,
+  MetricKeySchema,
+  CanonicalUnitSchema,
+  LegacyMetricKeySchema,
+  LegacyCanonicalUnitSchema,
+  validMetricNumber,
+} from './metrics.js';
+export {
+  metricUnits,
+  MetricKeySchema,
+  CanonicalUnitSchema,
+} from './metrics.js';
+import {
   CountSchema,
   DecimalUSDSchema,
   FiniteNumberSchema,
@@ -11,31 +24,6 @@ import {
   VersionSchema,
 } from './primitives.js';
 
-export const metricUnits = {
-  weight: 'kg',
-  body_fat_percent: '%',
-  'renpho.visceral_fat_index': 'index',
-  heart_rate: 'bpm',
-  resting_heart_rate: 'bpm',
-  height: 'cm',
-  steps_daily: 'count',
-  sleep_duration: 'min',
-} as const;
-export const MetricKeySchema = z.enum(
-  Object.keys(metricUnits) as [
-    keyof typeof metricUnits,
-    ...(keyof typeof metricUnits)[],
-  ],
-);
-export const CanonicalUnitSchema = z.enum([
-  'kg',
-  '%',
-  'index',
-  'bpm',
-  'cm',
-  'count',
-  'min',
-]);
 export const GranularitySchema = z.enum([
   'instant',
   'daily_total',
@@ -65,13 +53,7 @@ function metricUnit(
 }
 
 function measurementValue(metric: MetricKey, value: number): boolean {
-  if (['weight', 'height', 'heart_rate', 'resting_heart_rate'].includes(metric))
-    return value > 0;
-  if (metric === 'body_fat_percent') return value >= 0 && value <= 100;
-  if (metric === 'steps_daily')
-    return Number.isSafeInteger(value) && value >= 0;
-  if (metric === 'sleep_duration') return value >= 0;
-  return true;
+  return validMetricNumber(metric, value);
 }
 
 export const MeasurementDTOSchema = z
@@ -80,6 +62,11 @@ export const MeasurementDTOSchema = z
     sourceId: UUIDSchema,
     metric: MetricKeySchema,
     value: FiniteNumberSchema,
+    canonicalValue: z
+      .string()
+      .regex(/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/)
+      .optional(),
+    eventId: UUIDSchema.nullable().optional(),
     unit: CanonicalUnitSchema,
     originalValue: z.string().regex(/\S/),
     originalUnit: z.string().regex(/\S/),
@@ -226,8 +213,8 @@ export const GoalDraftSchema = z
   .strictObject({
     schemaVersion: z.literal(1),
     title: z.string().min(1),
-    metric: MetricKeySchema,
-    unit: CanonicalUnitSchema,
+    metric: LegacyMetricKeySchema,
+    unit: LegacyCanonicalUnitSchema,
     sourceId: UUIDSchema,
     target: GoalTargetSchema,
     baselineMethod: z.enum([

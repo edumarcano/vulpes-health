@@ -263,7 +263,7 @@ it('keeps executed anonymous checks aligned with every generated public table', 
   const tables = [...text.matchAll(/(?:^\s*|\},)"([a-z_]+)": \{/gm)]
     .map((match) => match[1])
     .filter((name) => name !== 'public');
-  expect(tables).toHaveLength(19);
+  expect(tables).toHaveLength(20);
   const report = await verifyHostedSecurity(
     target,
     credentials,
@@ -319,7 +319,7 @@ it('executes the bounded preflight through real HTTP, preserving empty-table gap
       status: 'passed',
       sessionCleanupConfirmed: true,
       populatedIsolation: 'pending',
-      emptySamples: 20,
+      emptySamples: 22,
       providerRequests: 0,
       realDataAuthorized: false,
     });

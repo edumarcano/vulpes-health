@@ -121,10 +121,10 @@ describe('bounded CSV normalization', () => {
       parseCsv(
         fixture.split(/\r?\n/)[0] +
           '\n' +
-          (fixture.split(/\r?\n/)[1] + '\n').repeat(5001),
+          (fixture.split(/\r?\n/)[1] + '\n').repeat(10001),
         mapping,
       ),
-    ).toThrow('5,000');
+    ).toThrow('10,000');
     expect(
       parseCsv('Recorded At,Mass (lb),Fat (%)\n2026-11-01T01:30:00,150,20', {
         ...wide,

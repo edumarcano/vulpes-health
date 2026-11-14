@@ -1,3 +1,4 @@
+import { legacyMetricKeys } from '../../../shared/metrics';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Temporal } from '@js-temporal/polyfill';
@@ -497,7 +498,7 @@ function GoalForm({
             value={metric}
             onChange={(e) => setMetric(e.target.value as MetricKey)}
           >
-            {Object.keys(metricUnits).map((x) => (
+            {legacyMetricKeys.map((x) => (
               <option key={x} value={x}>
                 {x.replaceAll('_', ' ')}
               </option>

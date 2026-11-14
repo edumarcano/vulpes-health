@@ -86,7 +86,7 @@ export async function verifyCloseoutBrowser(input: {
         .getByRole('button', { name: 'Download account JSON', exact: true })
         .click();
       const artifact = await download;
-      expect(artifact.suggestedFilename()).toBe('vulpes-account-v1.json');
+      expect(artifact.suggestedFilename()).toBe('vulpes-account-v2.json');
       expect(await artifact.failure()).toBeNull();
       await artifact.delete();
       checks.push(step);

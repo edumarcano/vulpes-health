@@ -5,7 +5,7 @@ select no_plan();
 
 create temporary table expected_tables(name text primary key, readable boolean not null);
 insert into expected_tables values
-  ('profiles', true), ('data_sources', true), ('import_batches', true), ('measurements', true),
+  ('weigh_in_events', true), ('profiles', true), ('data_sources', true), ('import_batches', true), ('measurements', true),
   ('goals', true), ('goal_revisions', true), ('conversations', true), ('messages', true),
   ('action_proposals', true), ('ai_runs', true), ('ai_steps', true), ('private_payloads', false),
   ('usage_buckets', false), ('usage_reservations', false), ('audit_events', false);
@@ -32,24 +32,24 @@ select ok(not has_table_privilege(role_name, format('public.%I', name), privileg
 from expected_tables cross join (values ('anon'), ('authenticated')) roles(role_name)
 cross join (values ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')) privileges(privilege);
 select ok(not has_schema_privilege('authenticated', 'public', 'CREATE'), 'clients cannot create public objects');
-select is((select count(*) from pg_proc p join pg_namespace n on p.pronamespace = n.oid where n.nspname = 'public' and p.prosecdef and p.proname not in ('update_settings_v1','store_private_payload_v1','cleanup_private_payloads_v1','add_measurement_v1','classify_import_v1','inspect_import_v1','register_import_v1','commit_import_v1','discard_import_v1','mutate_measurement_v1','cleanup_data_v1','lock_run_v1','run_summary_v1','store_run_envelope_v1','admit_run_v1','prepare_step_v1','authorize_send_v1','heartbeat_run_v1','checkpoint_step_v1','settle_step_v1','cancel_run_v1','finish_run_v1','fence_removed_run_v1','fence_deleting_account_v1','reconcile_runs_v1','read_budget_v1','record_step_usage_v1','record_step_completion_v1','replay_chat_v1','admit_chat_v1','mutate_conversation_v1','save_chat_state_v1','baseline_chat_v1','checkpoint_message_v1','cancel_chat_v1','read_metric_inventory_v1','validate_live_verification_allocation_v1','enforce_live_verification_allocation_v1','record_route_cost_block_v1','enforce_route_cost_block_v1','expire_goal_proposals_v1','register_goal_proposal_v1','decide_goal_proposal_v1','invalidate_goal_drafts_v1','checkpoint_goal_proposal_v1','invalidate_message_proposals_v1','handoff_flash_v1','read_vertex_policy_v1','account_status_v1','begin_account_deletion_v1','continue_account_deletion_v1','finish_account_deletion_v1','account_export_rows_v1','read_account_export_v1','account_export_manifest_v1','cleanup_account_retention_v1','maintain_account_v1','pending_account_deletions_v1','owned_session_valid_v1','enforce_owned_session_v1','revoke_account_sessions_v1','schema_version_v1')), 0::bigint, 'only reviewed feature security-definer functions exist');
-select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature||' permits authenticated') from unnest(array['public.mutate_measurement_v1(jsonb)','public.read_export_v1(jsonb)']) signature;
-select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature||' denies '||role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.mutate_measurement_v1(jsonb)','public.read_export_v1(jsonb)']) signature;
+select is((select count(*) from pg_proc p join pg_namespace n on p.pronamespace = n.oid where n.nspname = 'public' and p.prosecdef and p.proname not in ('update_settings_v1','store_private_payload_v1','cleanup_private_payloads_v1','add_measurement_v1','classify_import_v1','inspect_import_v1','register_import_v1','commit_import_v1','discard_import_v1','mutate_measurement_v1','cleanup_data_v1','lock_run_v1','run_summary_v1','store_run_envelope_v1','admit_run_v1','prepare_step_v1','authorize_send_v1','heartbeat_run_v1','checkpoint_step_v1','settle_step_v1','cancel_run_v1','finish_run_v1','fence_removed_run_v1','fence_deleting_account_v1','reconcile_runs_v1','read_budget_v1','record_step_usage_v1','record_step_completion_v1','replay_chat_v1','admit_chat_v1','mutate_conversation_v1','save_chat_state_v1','baseline_chat_v1','checkpoint_message_v1','cancel_chat_v1','read_metric_inventory_v1','validate_live_verification_allocation_v1','enforce_live_verification_allocation_v1','record_route_cost_block_v1','enforce_route_cost_block_v1','expire_goal_proposals_v1','register_goal_proposal_v1','decide_goal_proposal_v1','invalidate_goal_drafts_v1','checkpoint_goal_proposal_v1','invalidate_message_proposals_v1','handoff_flash_v1','read_vertex_policy_v1','account_status_v1','begin_account_deletion_v1','continue_account_deletion_v1','finish_account_deletion_v1','account_export_rows_v1','read_account_export_v1','account_export_manifest_v1','cleanup_account_retention_v1','maintain_account_v1','pending_account_deletions_v1','owned_session_valid_v1','enforce_owned_session_v1','revoke_account_sessions_v1','schema_version_v1','check_event_link_v2','remove_empty_event_v2','classify_import_v2','inspect_import_v2','register_import_v2','review_import_v2','commit_import_v2','discard_import_v2','read_import_status_v2','invalidate_measurement_copies_v2','add_measurement_v2','mutate_measurement_v2','mutate_event_v2','update_source_defaults_v2')), 0::bigint, 'only reviewed feature security-definer functions exist');
+select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature||' permits authenticated') from unnest(array['public.mutate_measurement_v2(jsonb)','public.read_export_v1(jsonb)']) signature;
+select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature||' denies '||role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.mutate_measurement_v2(jsonb)','public.read_export_v1(jsonb)']) signature;
 select ok(not has_function_privilege(role_name,'public.cleanup_data_v1(uuid,integer)','EXECUTE'),'lifecycle cleanup denies '||role_name) from unnest(array['anon','authenticated']) role_name;
 select ok(has_function_privilege('service_role','public.cleanup_data_v1(uuid,integer)','EXECUTE'),'service role owns cleanup');
 select ok(has_function_privilege('service_role','public.maintain_account_v1(uuid,boolean,integer)','EXECUTE'),'service role owns scoped maintenance');
 select ok(not has_function_privilege(role_name,'public.maintain_account_v1(uuid,boolean,integer)','EXECUTE'),'scoped maintenance denies '||role_name) from unnest(array['anon','authenticated']) role_name;
 select is((select proconfig[1] from pg_proc where oid='public.maintain_account_v1(uuid,boolean,integer)'::regprocedure),'search_path=""','scoped maintenance pins empty search path');
-select is((select proconfig[1] from pg_proc where oid=signature::regprocedure),'search_path=""',signature||' pins empty search path') from unnest(array['public.mutate_measurement_v1(jsonb)','public.read_export_v1(jsonb)','public.cleanup_data_v1(uuid,integer)']) signature;
+select is((select proconfig[1] from pg_proc where oid=signature::regprocedure),'search_path=""',signature||' pins empty search path') from unnest(array['public.mutate_measurement_v2(jsonb)','public.read_export_v1(jsonb)','public.cleanup_data_v1(uuid,integer)']) signature;
 select ok(not (select prosecdef from pg_proc where oid='public.read_export_v1(jsonb)'::regprocedure),'CSV reads retain invoker RLS');
 select has_column('public','ai_runs','trace_content_removed_at','trace removal remains explicit in safe run metadata');
-select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature || ' permits authenticated users') from unnest(array['public.inspect_import_v1(jsonb,jsonb)','public.register_import_v1(uuid,text)','public.commit_import_v1(jsonb,text)','public.discard_import_v1(uuid)']) signature;
-select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature || ' denies ' || role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.inspect_import_v1(jsonb,jsonb)','public.register_import_v1(uuid,text)','public.commit_import_v1(jsonb,text)','public.discard_import_v1(uuid)']) signature;
+select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature || ' permits authenticated users') from unnest(array['public.inspect_import_v2(jsonb,jsonb)','public.register_import_v2(uuid,text)','public.commit_import_v2(jsonb,text)','public.discard_import_v2(uuid)']) signature;
+select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature || ' denies ' || role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.inspect_import_v2(jsonb,jsonb)','public.register_import_v2(uuid,text)','public.commit_import_v2(jsonb,text)','public.discard_import_v2(uuid)']) signature;
 select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature || ' private helper denies ' || role_name) from unnest(array['anon','authenticated','service_role']) role_name cross join unnest(array['public.import_equal_key_v1(jsonb)','public.classify_import_v1(uuid,uuid,jsonb)']) signature;
-select is((select proconfig[1] from pg_proc where oid=signature::regprocedure),'search_path=""',signature || ' pins empty search path') from unnest(array['public.inspect_import_v1(jsonb,jsonb)','public.register_import_v1(uuid,text)','public.commit_import_v1(jsonb,text)','public.discard_import_v1(uuid)']) signature;
-select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature || ' permits authenticated users') from unnest(array['public.add_measurement_v1(jsonb)','public.read_data_v1(jsonb)']) signature;
-select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature || ' denies ' || role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.add_measurement_v1(jsonb)','public.read_data_v1(jsonb)']) signature;
-select is((select proconfig[1] from pg_proc where oid='public.add_measurement_v1(jsonb)'::regprocedure),'search_path=""','measurement mutation pins empty search path');
+select is((select proconfig[1] from pg_proc where oid=signature::regprocedure),'search_path=""',signature || ' pins empty search path') from unnest(array['public.inspect_import_v2(jsonb,jsonb)','public.register_import_v2(uuid,text)','public.commit_import_v2(jsonb,text)','public.discard_import_v2(uuid)']) signature;
+select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature || ' permits authenticated users') from unnest(array['public.add_measurement_v2(jsonb)','public.read_data_v1(jsonb)']) signature;
+select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature || ' denies ' || role_name) from unnest(array['anon','service_role']) role_name cross join unnest(array['public.add_measurement_v2(jsonb)','public.read_data_v1(jsonb)']) signature;
+select is((select proconfig[1] from pg_proc where oid='public.add_measurement_v2(jsonb)'::regprocedure),'search_path=""','measurement mutation pins empty search path');
 select ok(not (select prosecdef from pg_proc where oid='public.read_data_v1(jsonb)'::regprocedure),'measurement reads retain invoker RLS');
 select ok(not has_function_privilege(role_name,signature,'EXECUTE'), signature || ' denies ' || role_name) from unnest(array['anon','authenticated']) role_name cross join unnest(array['public.store_private_payload_v1(jsonb)','public.cleanup_private_payloads_v1(uuid,integer)']) signature;
 select ok(has_function_privilege('service_role',signature,'EXECUTE'), signature || ' allows service role') from unnest(array['public.store_private_payload_v1(jsonb)','public.cleanup_private_payloads_v1(uuid,integer)']) signature;
@@ -60,6 +60,9 @@ select ok(not has_table_privilege('service_role', 'public.goal_revisions', 'UPDA
 
 create temporary table expected_links(child text, child_columns text[], parent text, parent_columns text[]);
 insert into expected_links values
+  ('weigh_in_events', array['user_id','import_batch_id','source_id'], 'import_batches', array['user_id','id','source_id']),
+  ('measurements', array['user_id','import_batch_id','source_id'], 'import_batches', array['user_id','id','source_id']),
+  ('measurements', array['user_id','event_id','source_id','observed_at'], 'weigh_in_events', array['user_id','id','source_id','observed_at']),
   ('import_batches', array['user_id','source_id'], 'data_sources', array['user_id','id']),
   ('import_batches', array['user_id','staging_payload_id'], 'private_payloads', array['user_id','id']),
   ('measurements', array['user_id','source_id'], 'data_sources', array['user_id','id']),
@@ -153,6 +156,11 @@ insert into public.usage_reservations(user_id, run_id, step_id, account_bucket_i
 select user_id, run_id, step_id, bucket_id, (select id from public.usage_buckets where scope = 'app' and period_start = '2026-10-01'), '2026-10-01', 0.1 from fixture_ids;
 insert into public.audit_events(user_id, event_type, object_id) select user_id, 'synthetic_fixture', measurement_id from fixture_ids;
 
+insert into public.weigh_in_events(id,user_id,source_id,import_batch_id,adapter_version,source_local_time,source_observed_at,source_timezone,source_offset_minutes,observed_at,timezone,offset_minutes,source_row)
+ select f.measurement_id,f.user_id,f.source_id,f.batch_id,'renpho-en-body-composition-v1',observed_at at time zone 'UTC',observed_at,'UTC',0,observed_at,'UTC',0,2 from fixture_ids f join public.measurements m using(user_id,source_id) where m.id=f.measurement_id;
+update public.measurements m set event_id=f.measurement_id,timezone='UTC',original_offset_minutes=0 from fixture_ids f where m.id=f.measurement_id;
+
+set constraints all immediate;
 -- Exercise the actual relational constraints as database owner, independently of RLS or grants.
 with foreign_keys as (
   select format('public.%I', child) as child, format('public.%I', parent) as parent,
@@ -162,6 +170,7 @@ with foreign_keys as (
 select throws_ok(format('update %s set %I = (select %I from %s where user_id = %L and %I is not null limit 1) where id = (select id from %s where user_id = %L and %I is not null limit 1)',
   child, child_key, parent_key, parent, b.user_id, parent_key, child, a.user_id, child_key), '23503', null, child || '.' || child_key || ' rejects foreign owner/scope')
 from foreign_keys cross join fixture_ids a cross join fixture_ids b where a.label = 'A' and b.label = 'B';
+set constraints measurement_event_parent_v2,measurement_event_link_v2,event_nonempty_v2 deferred;
 
 select throws_ok(format('update public.measurements set canonical_value = %L where user_id = %L', invalid, user_id), '23514', null, 'rejects nonfinite/invalid weight ' || invalid)
 from fixture_ids cross join (values ('NaN'), ('Infinity'), ('-Infinity'), ('0'), ('-1')) values_to_reject(invalid) where label = 'A';
@@ -227,5 +236,8 @@ select is((select proconfig[1] from pg_proc where oid=signature::regprocedure),'
 select ok(has_function_privilege('authenticated','public.read_metric_inventory_v1()','EXECUTE'),'inventory permits authenticated owner');
 select ok(not has_function_privilege(role_name,'public.read_metric_inventory_v1()','EXECUTE'),'inventory denies '||role_name) from unnest(array['anon','service_role']) role_name;
 
+select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature||' incompatible writer denies '||role_name) from unnest(array['anon','authenticated','service_role']) role_name cross join unnest(array['public.add_measurement_v1(jsonb)','public.mutate_measurement_v1(jsonb)','public.inspect_import_v1(jsonb,jsonb)','public.register_import_v1(uuid,text)','public.commit_import_v1(jsonb,text)','public.discard_import_v1(uuid)']) signature;
+select ok(has_function_privilege('authenticated',signature,'EXECUTE'),signature||' owned v2 access') from unnest(array['public.review_import_v2(uuid,text,uuid,text)','public.read_import_status_v2(uuid,uuid)','public.mutate_event_v2(jsonb)','public.update_source_defaults_v2(jsonb)','public.read_event_v2(uuid)','public.read_events_v2(uuid,timestamptz,timestamptz,integer,uuid,bigint)']) signature;
+select ok(not has_function_privilege(role_name,signature,'EXECUTE'),signature||' internal denies '||role_name) from unnest(array['anon','authenticated','service_role']) role_name cross join unnest(array['public.classify_import_v2(uuid,uuid,jsonb)','public.validate_import_bundle_v2(jsonb)','public.invalidate_measurement_copies_v2(uuid,uuid,text)','public.normalize_value_v2(text,text,text)']) signature;
 select * from finish();
 rollback;

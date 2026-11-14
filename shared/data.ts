@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { metricRegistry, InputUnitSchema } from './metrics.js';
 import {
   AnalysisMetadataSchema,
   AnalysisResultSchema,
@@ -17,22 +18,7 @@ import {
   VersionSchema,
 } from './primitives.js';
 
-export const measurementRegistry = {
-  weight: { label: 'Weight', units: ['kg', 'lb'] },
-  body_fat_percent: { label: 'Body fat (device estimate)', units: ['%'] },
-  'renpho.visceral_fat_index': {
-    label: 'RENPHO visceral fat index (device estimate)',
-    units: ['index'],
-  },
-  heart_rate: { label: 'Observed heart rate', units: ['bpm'] },
-  resting_heart_rate: {
-    label: 'Explicitly resting heart rate',
-    units: ['bpm'],
-  },
-  height: { label: 'Height', units: ['cm', 'm', 'in'] },
-  steps_daily: { label: 'Daily steps', units: ['count'] },
-  sleep_duration: { label: 'Sleep duration', units: ['min', 'h'] },
-} as const;
+export const measurementRegistry = metricRegistry;
 export const DecimalInputSchema = z
   .string()
   .max(1024)
@@ -43,19 +29,7 @@ export const DecimalInputSchema = z
 export const ObservationInputSchema = z.strictObject({
   metric: MetricKeySchema,
   value: DecimalInputSchema,
-  unit: z.enum([
-    'kg',
-    'lb',
-    '%',
-    'index',
-    'bpm',
-    'cm',
-    'm',
-    'in',
-    'count',
-    'min',
-    'h',
-  ]),
+  unit: InputUnitSchema,
   observed_at: z.string().min(1).max(100),
   timezone: IanaTimezoneSchema,
   local_date: LocalDateSchema.nullable(),
@@ -124,6 +98,8 @@ export const SourceSchema = z.strictObject({
   originApp: z.string().nullable(),
   deviceLabel: z.string().nullable(),
   method: MeasurementMethodSchema,
+  importDefaults: z.record(z.string(), z.unknown()).nullable().optional(),
+  settingsVersion: VersionSchema.optional(),
 });
 export const MutationResultSchema = z.strictObject({
   id: UUIDSchema,

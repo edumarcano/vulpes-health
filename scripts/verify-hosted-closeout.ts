@@ -53,6 +53,9 @@ export async function verifyHostedCloseout(
       signal: AbortSignal.timeout(25000),
       headers: {
         Authorization: 'Bearer ' + actor.token,
+        ...(!direct && path.split('?')[0] === '/api/data'
+          ? { 'X-Vulpes-Data-Contract': '2' }
+          : {}),
         Origin: target.appOrigin,
         ...(direct ? { apikey: input.publishableKey } : {}),
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),

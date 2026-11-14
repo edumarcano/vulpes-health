@@ -18,12 +18,17 @@ import { recoveryTargetHash } from '../../scripts/recovery-target.js';
 
 it('encrypts a real complete database archive and restores it only into an isolated stopped container through the CLI', async () => {
   await withRecoverySource(
-    async ({ root, image, keys, target, run, source }) => {
+    async ({ root, image, keys, target, run, source, sql }) => {
       let destination: ReturnType<typeof fencedRecoveryDestination> | undefined,
         cliDestination: string | undefined;
       try {
         const before = await source.snapshot(),
           captured = await captureDatabase(target, source, keys);
+        expect(
+          sql(
+            "select count(*) from public.weigh_in_events e join public.measurements m on m.user_id=e.user_id and m.event_id=e.id where e.annotations->>'remarks'='Synthetic restored event' and e.source_timezone='America/New_York' and m.original_value='150.0' and m.canonical_value=68.0388555;",
+          ),
+        ).toBe('2');
         expect(await source.snapshot()).toEqual(before);
         expect(captured.report.traceKeyVersions).toBe(2);
         destination = fencedRecoveryDestination(

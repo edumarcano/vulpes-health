@@ -1,3 +1,4 @@
+import { dataWireBody } from '../helpers/data-wire.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -172,8 +173,14 @@ async function withApi(
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'X-Vulpes-Data-Contract': '2',
         },
-        ...(body ? { method: 'POST', body: JSON.stringify(body) } : {}),
+        ...(body
+          ? {
+              method: 'POST',
+              body: JSON.stringify(dataWireBody(body)),
+            }
+          : {}),
       }),
     );
   } finally {

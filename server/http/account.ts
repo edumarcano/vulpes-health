@@ -77,7 +77,7 @@ export async function handleAccount(
         response.setHeader('X-Content-Type-Options', 'nosniff');
         response.setHeader(
           'Content-Disposition',
-          'attachment; filename="vulpes-account-v1.json"',
+          'attachment; filename="vulpes-account-v2.json"',
         );
         const stream = result.open();
         await pipeline(stream.ciphertext, stream.decipher, response, {

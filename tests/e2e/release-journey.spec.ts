@@ -14,7 +14,10 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   await restrictNetwork(page);
   const account = accounts[6]!;
   const db = new LocalSupabase();
-  const headers = { Authorization: `Bearer ${tokens[6]!.token}` };
+  const headers = {
+    'X-Vulpes-Data-Contract': '2',
+    Authorization: `Bearer ${tokens[6]!.token}`,
+  };
   let sends = 0;
   page.on('request', (r) => {
     if (r.url().endsWith('/api/chat') && r.postDataJSON()?.action === 'send')
@@ -112,6 +115,7 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   await page.route('**/api/chat', (route) =>
     route.continue({
       headers: {
+        'X-Vulpes-Data-Contract': '2',
         ...route.request().headers(),
         'x-vulpes-test-scenario': 'goal_create',
       },
@@ -152,9 +156,10 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   const preview = await page.request.post('/api/data', {
     headers,
     data: {
+      schema_version: 2,
       action: 'preview_csv',
       client_request_id: randomUUID(),
-      csv,
+      csv_base64: Buffer.from(csv).toString('base64'),
       source: { kind: 'existing', id: source },
       mapping: {
         schema_version: 1,
@@ -174,6 +179,7 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
       await page.request.post('/api/data', {
         headers,
         data: {
+          schema_version: 2,
           action: 'commit_import',
           batch_id: p.batch_id,
           payload_hash: p.payload_hash,
@@ -201,7 +207,7 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   const file = await (await download).path();
   expect(file).toBeTruthy();
   const exported = JSON.parse(readFileSync(file!, 'utf8'));
-  expect(Object.keys(exported.sections)).toHaveLength(18);
+  expect(Object.keys(exported.sections)).toHaveLength(19);
   expect(exported.sections.measurements.length).toBeGreaterThan(14);
   expect(exported.sections.goals).toHaveLength(1);
   expect(exported.sections.conversations).toHaveLength(1);

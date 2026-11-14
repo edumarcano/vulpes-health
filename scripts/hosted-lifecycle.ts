@@ -15,7 +15,10 @@ import {
   DataSummarySchema,
   MeasurementsPageSchema,
 } from '../shared/data.js';
-import { ImportPreviewSchema, ImportResultSchema } from '../shared/imports.js';
+import {
+  ImportResultSchema,
+  ImportPreviewV2Schema as ImportPreviewSchema,
+} from '../shared/imports.js';
 import {
   GoalDefinitionSchema,
   GoalRevisionPayloadSchema,
@@ -289,6 +292,9 @@ export async function hostedLifecycle(
       method: body === undefined ? 'GET' : 'POST',
       headers: {
         Authorization: 'Bearer ' + token,
+        ...(path.split('?')[0] === '/api/data'
+          ? { 'X-Vulpes-Data-Contract': '2' }
+          : {}),
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -314,7 +320,7 @@ export async function hostedLifecycle(
     ) {
       ensure(
         response.headers.get('content-disposition') ===
-          'attachment; filename="vulpes-account-v1.json"',
+          'attachment; filename="vulpes-account-v2.json"',
         'export_attachment',
       );
       return value;
@@ -525,9 +531,10 @@ export async function hostedLifecycle(
             async () => {
               const preview = ImportPreviewSchema.parse(
                 await api('/api/data', token, {
+                  schema_version: 2,
                   action: 'preview_csv',
                   client_request_id: requestId(),
-                  csv: input.csv,
+                  csv_base64: Buffer.from(input.csv).toString('base64'),
                   source: {
                     kind: 'new',
                     label: 'Synthetic 3D ' + (i ? 'B' : 'A') + ' CSV',
@@ -552,6 +559,7 @@ export async function hostedLifecycle(
               csvSource = preview.source_id;
               batch = preview.batch_id;
               const body = {
+                schema_version: 2,
                 action: 'commit_import',
                 batch_id: batch,
                 payload_hash: preview.payload_hash,
@@ -642,9 +650,12 @@ export async function hostedLifecycle(
               dbCheck(title.error, 'conversation_label');
               const preview = ImportPreviewSchema.parse(
                 await api('/api/data', token, {
+                  schema_version: 2,
                   action: 'preview_csv',
                   client_request_id: requestId(),
-                  csv: input.csv.replace('70.0', '70.1'),
+                  csv_base64: Buffer.from(
+                    input.csv.replace('70.0', '70.1'),
+                  ).toString('base64'),
                   source: {
                     kind: 'new',
                     label: 'Synthetic 3D ' + (i ? 'B' : 'A') + ' staging',

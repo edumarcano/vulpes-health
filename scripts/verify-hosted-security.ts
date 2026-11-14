@@ -23,6 +23,7 @@ const readableTables = [
   'data_sources',
   'import_batches',
   'measurements',
+  'weigh_in_events',
   'conversations',
   'ai_runs',
   'messages',

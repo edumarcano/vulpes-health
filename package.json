@@ -61,7 +61,8 @@
     "db:types:check": "tsx scripts/database.ts types-check",
     "test:db": "tsx scripts/database.ts test",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:vertex-upgrade": "tsx scripts/verify-vertex-upgrade.ts"
+    "test:vertex-upgrade": "tsx scripts/verify-vertex-upgrade.ts",
+    "test:import-upgrade": "tsx scripts/verify-import-upgrade.ts"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.31",

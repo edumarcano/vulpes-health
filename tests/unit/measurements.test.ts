@@ -87,8 +87,8 @@ describe('normalization and replacement boundaries', () => {
     {
       metric: 'renpho.visceral_fat_index',
       unit: 'index',
-      value: '-1',
-      expected: '-1',
+      value: '8.5',
+      expected: '8.5',
     },
     { metric: 'height', unit: 'm', value: '1.8', expected: '180' },
     {
@@ -109,6 +109,7 @@ describe('normalization and replacement boundaries', () => {
   );
   it.each([
     { value: '' },
+    { metric: 'renpho.visceral_fat_index', unit: 'index', value: '-1' },
     { value: 'NaN' },
     { value: 'Infinity' },
     { value: '0' },

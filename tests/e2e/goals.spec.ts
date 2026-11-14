@@ -169,7 +169,10 @@ test('direct Goals latest daily progress includes today without inference', asyn
   const token = (
     JSON.parse(process.env.VULPES_TEST_ACCOUNTS_JSON!)[0] as { token: string }
   ).token;
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = {
+    'X-Vulpes-Data-Contract': '2',
+    Authorization: `Bearer ${token}`,
+  };
   const timezone = 'Pacific/Honolulu';
   const today = Temporal.Now.instant()
     .toZonedDateTimeISO(timezone)

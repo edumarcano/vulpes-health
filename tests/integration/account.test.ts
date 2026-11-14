@@ -305,7 +305,7 @@ it('exports more than the API row limit with exact decimals, complete inventory 
   expect(response.status).toBe(200);
   expect(response.headers.get('cache-control')).toBe('no-store');
   expect(response.headers.get('content-disposition')).toContain(
-    'vulpes-account-v1.json',
+    'vulpes-account-v2.json',
   );
   const document = await response.json();
   expect(document.ownerId).toBe(a.id);
@@ -320,7 +320,7 @@ it('exports more than the API row limit with exact decimals, complete inventory 
         row.canonical_value === '70.12345678901234567890123456789',
     ),
   ).toHaveLength(1005);
-  expect(Object.keys(document.sections)).toHaveLength(18);
+  expect(Object.keys(document.sections)).toHaveLength(19);
   expect(
     document.sections.staging.find(
       (row: { id: string }) => row.id === staged.id,

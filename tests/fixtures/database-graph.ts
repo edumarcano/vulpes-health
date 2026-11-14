@@ -175,7 +175,7 @@ export function databaseGraph(
 
 export type DatabaseGraph = ReturnType<typeof databaseGraph>;
 
-export const cleanupTables: readonly DatabaseTable[] = [
+export const cleanupTables: readonly (DatabaseTable | 'weigh_in_events')[] = [
   'usage_reservations',
   'audit_events',
   'messages',
@@ -186,6 +186,7 @@ export const cleanupTables: readonly DatabaseTable[] = [
   'ai_runs',
   'conversations',
   'measurements',
+  'weigh_in_events',
   'import_batches',
   'private_payloads',
   'data_sources',

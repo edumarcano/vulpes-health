@@ -7,13 +7,18 @@ import { measurementRegistry, type Source } from '../../../shared/data';
 import {
   CSV_LIMIT_BYTES,
   isRenphoHeader,
-  ImportPreviewSchema,
   ImportResultSchema,
-  PreviewCsvSchema,
-  type ImportPreview,
   type ImportResult,
   type ImportSelection,
+  ImportPreviewV2Schema,
+  ImportStatusSchema,
+  ImportItemsSchema,
+  PreviewCsvWireSchema,
+  type ImportPreviewV2 as ImportPreview,
+  type ImportReview,
 } from '../../../shared/imports';
+import { z } from 'zod';
+import { SourceImportDefaults } from './source-import-defaults';
 import type {
   MetricKey,
   Granularity,
@@ -23,7 +28,13 @@ import type {
 type Stage =
   | { kind: 'editing' }
   | { kind: 'previewing' }
+  | { kind: 'uncertain_preview'; requestId: string }
   | { kind: 'review'; preview: ImportPreview; requestId: string }
+  | {
+      kind: 'reviewing' | 'discarding' | 'uncertain';
+      preview: ImportPreview;
+      requestId: string;
+    }
   | { kind: 'stale'; preview: ImportPreview; requestId: string }
   | { kind: 'committing'; preview: ImportPreview; requestId: string }
   | { kind: 'done'; result: ImportResult; selections: ImportSelection[] };
@@ -72,9 +83,13 @@ export function ImportForm({
   const [columns, setColumns] = useState<Record<string, ColumnMapping>>({});
   const [stage, setStage] = useState<Stage>({ kind: 'editing' });
   const [error, setError] = useState('');
+  const [details, setDetails] = useState<z.infer<
+    typeof ImportItemsSchema
+  > | null>(null);
   const confirm = useRef<HTMLButtonElement>(null);
   const previewButton = useRef<HTMLButtonElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
   const previous = useRef(stage.kind);
   const fileSequence = useRef(0);
   const previewIdentity = useRef<{ hash: string; requestId: string } | null>(
@@ -82,12 +97,14 @@ export function ImportForm({
   );
   const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (stage.kind === 'review') confirm.current?.focus();
-    else if (stage.kind === 'done') resultHeading.current?.focus();
+    if (stage.kind === 'review') {
+      if (stage.preview.ready_to_commit) confirm.current?.focus();
+      else reviewHeading.current?.focus();
+    } else if (stage.kind === 'done') resultHeading.current?.focus();
     else if (stage.kind === 'editing' && previous.current === 'review')
       previewButton.current?.focus();
     previous.current = stage.kind;
-  }, [stage.kind]);
+  }, [stage]);
   async function loadFile(file: File | undefined) {
     if (!file) return;
     const sequence = ++fileSequence.current;
@@ -125,7 +142,13 @@ export function ImportForm({
       if (sequence === fileSequence.current)
         scope.commit(epoch, () => {
           // Keep RENPHO file bytes for hashing without changing generic CSV identities.
-          setCsv(isRenphoHeader(found) ? text : text.replace(/^\uFEFF/, ''));
+          setCsv(
+            btoa(
+              Array.from(new Uint8Array(bytes), (byte) =>
+                String.fromCharCode(byte),
+              ).join(''),
+            ),
+          );
           setHeaders(found.filter(Boolean));
           setZoneConfirmed(false);
           setFileName(file.name);
@@ -194,10 +217,11 @@ export function ImportForm({
                 ...v,
               })),
             };
-    const request = PreviewCsvSchema.safeParse({
+    const request = PreviewCsvWireSchema.safeParse({
+      schema_version: 2,
       action: 'preview_csv',
       client_request_id: crypto.randomUUID(),
-      csv,
+      csv_base64: csv,
       source:
         source === 'new'
           ? {
@@ -217,13 +241,14 @@ export function ImportForm({
       );
       return;
     }
+    setDetails(null);
     setStage({ kind: 'previewing' });
     try {
       const digest = await crypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(
           JSON.stringify([
-            request.data.csv,
+            request.data.csv_base64,
             request.data.source,
             request.data.mapping,
           ]),
@@ -238,7 +263,7 @@ export function ImportForm({
           requestId: request.data.client_request_id,
         };
       request.data.client_request_id = previewIdentity.current.requestId;
-      const p = successEnvelopeSchema(ImportPreviewSchema).parse(
+      const p = successEnvelopeSchema(ImportPreviewV2Schema).parse(
         await ownedJson('/api/data', session.access_token, scope, epoch, {
           method: 'POST',
           body: JSON.stringify(request.data),
@@ -262,7 +287,14 @@ export function ImportForm({
       });
     } catch (e) {
       scope.commit(epoch, () => {
-        setStage({ kind: 'editing' });
+        setStage(
+          e instanceof ApiError && [400, 413].includes(e.status)
+            ? { kind: 'editing' }
+            : {
+                kind: 'uncertain_preview',
+                requestId: previewIdentity.current!.requestId,
+              },
+        );
         setError(
           e instanceof Error
             ? e.message
@@ -286,6 +318,7 @@ export function ImportForm({
         await ownedJson('/api/data', session.access_token, scope, epoch, {
           method: 'POST',
           body: JSON.stringify({
+            schema_version: 2,
             action: 'commit_import',
             batch_id: pending.preview.batch_id,
             payload_hash: pending.preview.payload_hash,
@@ -309,7 +342,7 @@ export function ImportForm({
           setStage({ ...pending, kind: 'stale' });
           setError(e.message);
         } else {
-          setStage(pending);
+          setStage({ ...pending, kind: 'uncertain' });
           setError(
             e instanceof Error
               ? e.message
@@ -317,6 +350,158 @@ export function ImportForm({
           );
         }
       });
+    }
+  }
+  async function reconcile(batchId: string | null, requestId: string) {
+    if (!session) return;
+    setError('');
+    try {
+      const status = successEnvelopeSchema(ImportStatusSchema).parse(
+        await ownedJson(
+          '/api/data?' +
+            new URLSearchParams({
+              view: 'import_status',
+              ...(batchId
+                ? { batch_id: batchId }
+                : { client_request_id: requestId }),
+            }),
+          session.access_token,
+          scope,
+          epoch,
+        ),
+      ).data;
+      scope.commit(epoch, () => {
+        if (status.status === 'committed' && status.result) {
+          setStage({
+            kind: 'done',
+            result: status.result,
+            selections:
+              'preview' in stage
+                ? stage.preview.selections
+                : (status.preview?.selections ?? []),
+          });
+          onSaved(status.result);
+        } else if (status.preview)
+          setStage({
+            kind: 'review',
+            preview: status.preview,
+            requestId: batchId ? requestId : crypto.randomUUID(),
+          });
+        else {
+          setStage({ kind: 'editing' });
+          setError(
+            'The server reports this import as ' +
+              status.status +
+              '. Choose a file for a new preview.',
+          );
+        }
+      });
+    } catch (e) {
+      scope.commit(epoch, () => {
+        if (e instanceof ApiError && e.status === 404) {
+          setStage({ kind: 'editing' });
+          setError(
+            'No saved preview was found. Choose the file and preview again.',
+          );
+        } else
+          setError(
+            'Import status is unavailable. Check status again before retrying or discarding.',
+          );
+      });
+    }
+  }
+  async function discard() {
+    if (!session || !('preview' in stage)) return;
+    const pending = stage;
+    setStage({ ...pending, kind: 'discarding' });
+    try {
+      const status = successEnvelopeSchema(ImportStatusSchema).parse(
+        await ownedJson('/api/data', session.access_token, scope, epoch, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'discard_import',
+            batch_id: pending.preview.batch_id,
+          }),
+        }),
+      ).data;
+      scope.commit(epoch, () => {
+        if (status.status === 'committed' && status.result) {
+          setStage({
+            kind: 'done',
+            result: status.result,
+            selections: pending.preview.selections,
+          });
+          onSaved(status.result);
+        } else {
+          setStage({ kind: 'editing' });
+          setCsv('');
+          setFileName('');
+          setError('Server confirmed preview ' + status.status + '.');
+        }
+      });
+    } catch {
+      scope.commit(epoch, () => {
+        setStage({ ...pending, kind: 'uncertain' });
+        setError('Discard was not confirmed. Check server status.');
+      });
+    }
+  }
+  async function reviewExclusions(review: ImportReview) {
+    if (!session || stage.kind !== 'review') return;
+    const pending = stage;
+    setStage({
+      ...pending,
+      kind: 'reviewing',
+      preview: { ...pending.preview, review },
+    });
+    try {
+      const preview = successEnvelopeSchema(ImportPreviewV2Schema).parse(
+        await ownedJson('/api/data', session.access_token, scope, epoch, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'review_import',
+            batch_id: pending.preview.batch_id,
+            payload_hash: pending.preview.payload_hash,
+            review,
+          }),
+        }),
+      ).data;
+      scope.commit(epoch, () => {
+        setStage({ ...pending, preview });
+        setDetails(null);
+      });
+    } catch {
+      scope.commit(epoch, () => {
+        setStage({ ...pending, kind: 'uncertain' });
+        setError(
+          'Review was not confirmed. Check server status before continuing.',
+        );
+      });
+    }
+  }
+  async function loadDetails(offset: number) {
+    if (!session || !('preview' in stage)) return;
+    try {
+      const page = successEnvelopeSchema(ImportItemsSchema).parse(
+        await ownedJson(
+          '/api/data?' +
+            new URLSearchParams({
+              view: 'import_items',
+              batch_id: stage.preview.batch_id,
+              payload_hash: stage.preview.payload_hash,
+              offset: String(offset),
+              limit: '100',
+            }),
+          session.access_token,
+          scope,
+          epoch,
+        ),
+      ).data;
+      scope.commit(epoch, () => setDetails(page));
+    } catch (e) {
+      scope.commit(epoch, () =>
+        setError(e instanceof Error ? e.message : 'Details unavailable.'),
+      );
     }
   }
   function columnSelect(
@@ -338,19 +523,14 @@ export function ImportForm({
     );
   }
   const locked = stage.kind !== 'editing';
-  const p =
-    stage.kind === 'review' ||
-    stage.kind === 'committing' ||
-    stage.kind === 'stale'
-      ? stage.preview
-      : null;
+  const p = 'preview' in stage ? stage.preview : null;
   return (
     <section className="data-panel" aria-label="CSV import">
       <h2>Import CSV</h2>
       <p>
         Import a canonical CSV, a mapped wide-column CSV, or the supported
-        English RENPHO Health CSV layout in lb. RENPHO imports include weight
-        and body-fat percentage only. Importing does not use AI.
+        English RENPHO Health CSV layout in lb. RENPHO imports preserve all
+        supported numeric fields and annotations. Importing does not use AI.
       </p>
       <p>
         Vulpes is independent and is not affiliated with, sponsored by, or
@@ -371,7 +551,7 @@ export function ImportForm({
           <p>
             {fileName
               ? `Selected: ${fileName}`
-              : 'Maximum 1 MiB UTF-8; 5,000 observations.'}
+              : 'Maximum 1 MiB UTF-8; 10,000 rows; 25,000 observations.'}
           </p>
           <label>
             Import source
@@ -411,6 +591,12 @@ export function ImportForm({
                 />
               </label>
             </>
+          )}
+          {source !== 'new' && sources.find((s) => s.id === source) && (
+            <SourceImportDefaults
+              key={`${source}:${sources.find((s) => s.id === source)?.settingsVersion}`}
+              source={sources.find((s) => s.id === source)!}
+            />
           )}
           <label>
             CSV format
@@ -555,12 +741,11 @@ export function ImportForm({
           {format === 'renpho' && (
             <>
               <p>
-                Imports only weight (device reported) and body fat percentage
-                (device estimate). Other named columns are ignored. Date and
-                Time use the selected import timezone; ambiguous or missing DST
-                times are invalid. No. is not a record ID. Select the same
-                import source used for earlier converted files to detect
-                duplicates.
+                Imports supported values and annotations as linked weigh-ins.
+                Estimates are manufacturer-reported. Date and Time use the
+                confirmed timezone; ambiguous or missing DST times are invalid.
+                No. is provenance, not identity. Select the same source for
+                overlapping exports.
               </p>
               <label className="data-checkbox">
                 <input
@@ -616,17 +801,36 @@ export function ImportForm({
           Validating and encrypting the preview. No measurements saved.
         </p>
       )}
+      {(stage.kind === 'uncertain_preview' || stage.kind === 'uncertain') && (
+        <section role="status">
+          <p>
+            The response is uncertain. Check the server before another action.
+          </p>
+          <Button
+            onClick={() =>
+              void reconcile(
+                'preview' in stage ? stage.preview.batch_id : null,
+                stage.requestId,
+              )
+            }
+          >
+            Check import status
+          </Button>
+        </section>
+      )}
       {p && (
         <section aria-label="Confirm CSV import">
-          <h3>Review import preview</h3>
+          <h3 ref={reviewHeading} tabIndex={-1}>
+            Review import preview
+          </h3>
           <p>
             Source: {sources.find((s) => s.id === p.source_id)?.label ?? label}{' '}
             · {p.source_id}
           </p>
           <p>
             {p.counts.new} new; {p.counts.duplicate} duplicates;{' '}
-            {p.counts.conflict} conflicts excluded; {p.counts.invalid} invalid;{' '}
-            {p.counts.blank} blank cells skipped.
+            {p.counts.conflict} conflicts requiring review; {p.counts.invalid}{' '}
+            invalid; {p.counts.blank} blank cells skipped.
           </p>
           <p>
             {p.counts.profileExcluded} profile-excluded rows;{' '}
@@ -636,6 +840,81 @@ export function ImportForm({
             Ignored columns: {p.ignored_columns.join(', ') || 'None'}. Expires{' '}
             {p.expires_at}. Revision {p.dataRevision}.
           </p>
+          <p>
+            {p.source_rows} source rows; {p.events.total} weigh-ins;{' '}
+            {p.enrichment_count} missing metrics added; {p.annotation_additions}{' '}
+            annotation additions; {p.annotation_conflicts} annotation conflicts.{' '}
+            {p.unavailable_cells} unavailable cells; {p.empty_events} rows
+            without readings. Range: {p.observed_from ?? 'none'} to{' '}
+            {p.observed_to ?? 'none'}.
+          </p>
+          <p>
+            Absent supported columns: {p.absent_columns.join(', ') || 'None'}.
+            Populated unsupported columns:{' '}
+            {p.populated_unknown_columns.join(', ') || 'None'}.
+          </p>
+          <fieldset disabled={stage.kind !== 'review'}>
+            <legend>Review exclusions</legend>
+            {(
+              [
+                'exclude_invalid',
+                'exclude_conflicts',
+                'acknowledge_unknown',
+              ] as const
+            ).map((key) => (
+              <label className="data-checkbox" key={key}>
+                <input
+                  type="checkbox"
+                  checked={p.review[key]}
+                  onChange={(e) =>
+                    void reviewExclusions({
+                      ...p.review,
+                      [key]: e.target.checked,
+                    })
+                  }
+                />
+                {key === 'exclude_invalid'
+                  ? 'Exclude invalid entries shown in the details'
+                  : key === 'exclude_conflicts'
+                    ? 'Exclude conflicts and preserve existing values'
+                    : 'Acknowledge that populated unsupported columns will not be imported'}
+              </label>
+            ))}
+          </fieldset>
+          <Button variant="outline" onClick={() => void loadDetails(0)}>
+            Review all import details
+          </Button>
+          {details && (
+            <section aria-label="Import detail page">
+              <p>
+                {details.total} total detail items; showing{' '}
+                {details.items.length}.
+              </p>
+              <ul>
+                {details.items.map((item, i) => (
+                  <li key={i}>
+                    Row {item.row}, {item.column}:{' '}
+                    {item.message ??
+                      (item.original_value
+                        ? item.original_value + ' ' + item.original_unit + ' ? '
+                        : '') +
+                        (item.value ?? '') +
+                        ' ' +
+                        (item.unit ?? '') +
+                        ' ' +
+                        (item.classification ?? '') +
+                        ' ' +
+                        (item.observed_at ?? '')}
+                  </li>
+                ))}
+              </ul>
+              {details.next_offset !== null && (
+                <Button onClick={() => void loadDetails(details.next_offset!)}>
+                  Next import details
+                </Button>
+              )}
+            </section>
+          )}
           <ul>
             {p.errors.map((e, i) => (
               <li key={i}>
@@ -645,7 +924,8 @@ export function ImportForm({
           </ul>
           {p.errors_omitted > 0 && (
             <p>
-              {p.errors_omitted} more errors omitted from this bounded display.
+              {p.errors_omitted} more errors available through Review all import
+              details.
             </p>
           )}
           <p>First {p.preview.length} normalized observations (maximum 20):</p>
@@ -682,9 +962,9 @@ export function ImportForm({
             </table>
           </div>
           <p>
-            Only observations marked new will be inserted. Conflicts and invalid
-            rows remain excluded. A change to your data requires a fresh
-            preview.
+            New observations and missing metrics are inserted; reviewed
+            annotation additions are retained. Existing values are preserved. A
+            change to your data requires a fresh preview.
           </p>
           {stage.kind === 'stale' ? (
             <p role="alert">
@@ -700,8 +980,8 @@ export function ImportForm({
           <Button
             ref={confirm}
             disabled={
-              stage.kind === 'committing' ||
-              stage.kind === 'stale' ||
+              stage.kind !== 'review' ||
+              !p.ready_to_commit ||
               p.dataRevision !== dataRevision
             }
             onClick={() => void commit()}
@@ -710,12 +990,8 @@ export function ImportForm({
           </Button>
           <Button
             variant="outline"
-            disabled={stage.kind === 'committing'}
-            onClick={() => {
-              setStage({ kind: 'editing' });
-              setError('');
-              setFileName('');
-            }}
+            disabled={stage.kind !== 'review' && stage.kind !== 'stale'}
+            onClick={() => void discard()}
           >
             Discard preview and choose file
           </Button>

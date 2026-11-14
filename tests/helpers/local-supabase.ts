@@ -138,8 +138,17 @@ export class LocalSupabase {
           state: 'draft',
           current_revision_id: null,
         });
-        for (const table of cleanupTables)
+        for (const table of cleanupTables) {
+          if (table === 'weigh_in_events') {
+            const probe = await this.request(
+              '/rest/v1/weigh_in_events?limit=0',
+              'admin',
+            );
+            if (probe.status === 404) continue; // Historical upgrade fixtures predate this entity.
+            assert(probe.ok, 'Event cleanup inventory could not be checked.');
+          }
           await this.admin(`/rest/v1/${table}?user_id=eq.${userId}`, 'DELETE');
+        }
         const removed = await this.request(
           `/auth/v1/admin/users/${userId}`,
           'admin',

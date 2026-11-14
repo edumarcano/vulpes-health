@@ -1,3 +1,7 @@
+import {
+  dataWireBody,
+  type CsvFixtureRequest as PreviewCsv,
+} from '../helpers/data-wire.js';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -24,7 +28,7 @@ import {
 } from '../../server/security/encryption.js';
 import { exportMeasurements } from '../../server/services/export.js';
 import type { AddMeasurement, MeasurementMutation } from '../../shared/data.js';
-import type { ImportPreview, PreviewCsv } from '../../shared/imports.js';
+import type { ImportPreview } from '../../shared/imports.js';
 let db: LocalSupabase;
 let a: { id: string; token: string };
 let b: { id: string; token: string };
@@ -75,9 +79,10 @@ async function http(body: unknown, token: string | null = a.token) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Vulpes-Data-Contract': '2',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(dataWireBody(body)),
   });
 }
 async function success<T>(response: Response): Promise<T> {
@@ -197,6 +202,166 @@ afterAll(async () => {
   }
 });
 describe('real M2 correction/deletion/export transactions', () => {
+  it.each([
+    ['source', 'correct'],
+    ['source', 'delete'],
+    ['metric', 'correct'],
+    ['metric', 'delete'],
+  ] as const)(
+    'purges historical baselines after a %s change and measurement %s',
+    async (change, operation) => {
+      const reading = await add({
+        observation: { ...base.observation, value: '70.123' },
+      });
+      const replacement = await add({
+        ...(change === 'metric'
+          ? { source: { kind: 'existing' as const, id: reading.sourceId } }
+          : {}),
+        observation: {
+          ...base.observation,
+          metric: change === 'metric' ? 'heart_rate' : 'weight',
+          value: '80',
+          unit: change === 'metric' ? 'bpm' : 'kg',
+        },
+      });
+      async function goalPost(route: string, body: unknown) {
+        return success<Record<string, unknown>>(
+          await fetch(origin + route, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${a.token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          }),
+        );
+      }
+      async function approve(request: unknown) {
+        const proposal = await goalPost('/api/goals', request);
+        return goalPost('/api/approvals', {
+          action: 'approve',
+          proposal_id: proposal.id,
+          payload_hash: proposal.payload_hash,
+          expected_version: proposal.target_version,
+          client_request_id: randomUUID(),
+        });
+      }
+      const definition = {
+        schemaVersion: 1,
+        title: 'Synthetic historical baseline',
+        metric: 'weight',
+        unit: 'kg',
+        sourceId: reading.sourceId,
+        target: { direction: 'decrease_to', value: 68 },
+        baselineMethod: 'latest_value',
+        reportedBaseline: null,
+        baselineFrom: '2026-09-01T00:00:00Z',
+        baselineTo: '2026-09-15T00:00:00Z',
+        currentMethod: 'latest_value',
+        method: 'device_reported',
+        granularity: 'instant',
+        timezone: 'UTC',
+        targetDate: null,
+        constraints: [],
+        proposedStrategy: null,
+      };
+      const created = await approve({
+        action: 'propose_create',
+        client_request_id: randomUUID(),
+        definition,
+      });
+      const goalId = created.goalId;
+      const original = (
+        await rows('goal_revisions', `goal_id=eq.${goalId}`)
+      )[0]!;
+      expect(original.payload).toMatchObject({
+        baseline: {
+          value: '70.123',
+          references: [{ id: reading.id, version: 1 }],
+        },
+      });
+      await approve({
+        action: 'propose_revision',
+        client_request_id: randomUUID(),
+        goal_id: goalId,
+        expected_version: 1,
+        baseline_resolution: 'replace',
+        definition: {
+          ...definition,
+          sourceId: replacement.sourceId,
+          metric: change === 'metric' ? 'heart_rate' : 'weight',
+          unit: change === 'metric' ? 'bpm' : 'kg',
+        },
+      });
+      const current = (
+        await rows(
+          'goal_revisions',
+          `goal_id=eq.${goalId}&revision_number=eq.2`,
+        )
+      )[0]!;
+      const currentGoal = await rows('goals', `id=eq.${goalId}`);
+      const currentProposal = await rows(
+        'action_proposals',
+        `id=eq.${current.approved_proposal_id}`,
+      );
+      await success(
+        await http(
+          operation === 'correct' ? correction(reading) : deletion(reading),
+        ),
+      );
+      const cleared = (
+        await rows('goal_revisions', `id=eq.${original.id}`)
+      )[0]!;
+      expect(cleared.private_content_removed_at).toEqual(expect.any(String));
+      expect(cleared.payload).toMatchObject({
+        baseline: { value: null, references: [] },
+      });
+      const proposal = (
+        await rows('action_proposals', `id=eq.${original.approved_proposal_id}`)
+      )[0]!;
+      expect(proposal.private_content_removed_at).toEqual(expect.any(String));
+      expect(proposal.canonical_payload).toMatchObject({
+        baseline: { value: null, references: [] },
+      });
+      expect(await rows('goal_revisions', `id=eq.${current.id}`)).toEqual([
+        current,
+      ]);
+      expect(await rows('goals', `id=eq.${goalId}`)).toEqual(currentGoal);
+      expect(
+        await rows('action_proposals', `id=eq.${current.approved_proposal_id}`),
+      ).toEqual(currentProposal);
+      const exported = await fetch(origin + '/api/account', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${a.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'export',
+          trace_parts: [],
+          sensitive_content_acknowledged: false,
+        }),
+      });
+      expect(exported.status).toBe(200);
+      const document = await exported.json();
+      expect(document.sections.goal_revisions).toContainEqual(
+        expect.objectContaining({
+          id: original.id,
+          payload: expect.objectContaining({
+            baseline: expect.objectContaining({ value: null, references: [] }),
+          }),
+        }),
+      );
+      expect(document.sections.action_proposals).toContainEqual(
+        expect.objectContaining({
+          id: proposal.id,
+          canonical_payload: expect.objectContaining({
+            baseline: expect.objectContaining({ value: null, references: [] }),
+          }),
+        }),
+      );
+    },
+  );
   it('rejects second-60 entry and correction through HTTP and direct RPC without changing persisted state', async () => {
     const reading = await add();
     const before = await rows('measurements', `id=eq.${reading.id}`);
@@ -226,8 +391,8 @@ describe('real M2 correction/deletion/export transactions', () => {
         },
       };
       for (const [operation, request] of [
-        ['add_measurement_v1', entry],
-        ['mutate_measurement_v1', change],
+        ['add_measurement_v2', entry],
+        ['mutate_measurement_v2', change],
       ] as const) {
         const response = await http(request);
         expect(response.status).toBe(400);
@@ -236,7 +401,9 @@ describe('real M2 correction/deletion/export transactions', () => {
         });
         const direct = await db.request(`/rest/v1/rpc/${operation}`, a.token, {
           method: 'POST',
-          body: JSON.stringify({ p_request: request }),
+          body: JSON.stringify({
+            p_request: { ...request, schema_version: 2 },
+          }),
         });
         expect(direct.status).toBe(400);
         expect(await direct.json()).toMatchObject({
@@ -338,6 +505,10 @@ describe('real M2 correction/deletion/export transactions', () => {
     expect(current.provenance).toEqual({
       ...(imported.provenance as object),
       user_corrected: true,
+      original_import: expect.objectContaining({
+        value: imported.original_value,
+        unit: imported.original_unit,
+      }),
     });
     expect(current.quality_flags).toEqual(['user_corrected']);
     const after = await success<{ analysis: { value: number } }>(
@@ -381,7 +552,7 @@ describe('real M2 correction/deletion/export transactions', () => {
     expect(
       records.every(
         (r) =>
-          r.schema_version === '1' &&
+          r.schema_version === '2' &&
           r.source_id === p.source_id &&
           r.measurement_id !== imported.id,
       ),
@@ -486,7 +657,7 @@ describe('real M2 correction/deletion/export transactions', () => {
       { ...request.changes, local_date: '2026-02-31' },
     ]) {
       const response = await db.request(
-        '/rest/v1/rpc/mutate_measurement_v1',
+        '/rest/v1/rpc/mutate_measurement_v2',
         a.token,
         {
           method: 'POST',
@@ -524,6 +695,11 @@ describe('real M2 correction/deletion/export transactions', () => {
     const after = (await rows('goals', `id=eq.${goal}`))[0]!;
     expect(after).toEqual({
       ...before,
+      baseline_snapshot: expect.objectContaining({
+        value: null,
+        references: [],
+        contentRemoved: true,
+      }),
       review_status: 'needs_review',
       version: 2,
       updated_at: after.updated_at,
@@ -652,13 +828,22 @@ describe('real M2 correction/deletion/export transactions', () => {
     const goal = (await rows('goals', `id=eq.${g.ids.goals}`))[0]!;
     expect(goal).toEqual({
       ...before,
+      baseline_snapshot: expect.objectContaining({
+        value: null,
+        references: [],
+        contentRemoved: true,
+      }),
       review_status: 'needs_review',
       version: 2,
       updated_at: goal.updated_at,
     });
-    expect(await rows('goal_revisions', `goal_id=eq.${g.ids.goals}`)).toEqual(
-      approved,
-    );
+    const revisions = await rows('goal_revisions', `goal_id=eq.${g.ids.goals}`);
+    expect(revisions).toHaveLength(approved.length);
+    expect(revisions[0]).toMatchObject({
+      id: approved[0]!.id,
+      private_content_removed_at: expect.any(String),
+    });
+    expect(revisions[0]!.payload).toEqual(approved[0]!.payload);
     expect(await rows('private_payloads', `user_id=eq.${u.id}`)).toEqual([]);
     expect((await rows('ai_steps', `user_id=eq.${u.id}`))[0]).toMatchObject({
       input_payload_id: null,
@@ -724,14 +909,14 @@ describe('real M2 correction/deletion/export transactions', () => {
       },
       observation: {
         ...base.observation,
-        metric: 'renpho.visceral_fat_index',
-        unit: 'index',
+        metric: 'renpho.target_weight_delta',
+        unit: 'kg',
         value: '-1.250000000000000001',
         quality_flags: ['review_requested'],
       },
     });
     const response = await get(
-      query(r.sourceId, 'export', { metric: 'renpho.visceral_fat_index' }),
+      query(r.sourceId, 'export', { metric: 'renpho.target_weight_delta' }),
     );
     expect(response.status).toBe(200);
     const exported = parse(await response.text(), { columns: true }) as Array<
@@ -746,7 +931,7 @@ describe('real M2 correction/deletion/export transactions', () => {
       device_label: "'-device",
       measurement_id: r.id,
       source_id: r.sourceId,
-      schema_version: '1',
+      schema_version: '2',
     });
     expect(JSON.parse(exported[0]!.provenance!)).toMatchObject({
       adapter: 'manual',
@@ -816,7 +1001,7 @@ describe('real M2 correction/deletion/export transactions', () => {
       ).status,
     ).toBe(403);
     for (const rpc of [
-      'mutate_measurement_v1',
+      'mutate_measurement_v2',
       'read_export_v1',
       'cleanup_data_v1',
     ])
@@ -825,7 +1010,7 @@ describe('real M2 correction/deletion/export transactions', () => {
           await db.request('/rest/v1/rpc/' + rpc, 'anon', {
             method: 'POST',
             body: JSON.stringify(
-              rpc === 'mutate_measurement_v1'
+              rpc === 'mutate_measurement_v2'
                 ? { p_request: deletion(foreign) }
                 : rpc === 'read_export_v1'
                   ? { p_query: {} }

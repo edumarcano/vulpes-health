@@ -4,13 +4,13 @@ The account workflow uses the existing PostgreSQL transactions and execution led
 
 ## Export
 
-Settings downloads `vulpes-account-v1.json` through authenticated `POST /api/account`. Trace inclusion requires a sensitive-content acknowledgement. Opaque provider continuation state, credentials, executor authority and shared operator configuration are excluded.
+Settings downloads `vulpes-account-v2.json` through authenticated `POST /api/account`. Trace inclusion requires a sensitive-content acknowledgement. Opaque provider continuation state, credentials, executor authority and shared operator configuration are excluded.
 
 | Inventory | Export behavior |
 |---|---|
 | Safe Auth identity | Owned email/phone and creation/update/confirmation timestamps; excludes passwords, tokens, sessions and operator Auth metadata |
 | Profile, preferences and consent | Owned values, excluding the internal settings write receipt |
-| Sources, measurements and imports | Exact decimal strings, provenance, timestamps, source IDs, versions and import results |
+| Sources, weigh-in events, measurements and imports | Exact decimal strings, original/effective times, linked observations, annotations/provenance, versioned source defaults and import receipts |
 | Goals, revisions and proposals | Owned history and currently retained draft bodies |
 | Conversations and messages | Retained owned content and request receipts |
 | Runs, steps and accounting/audit projections | Owned metadata/account allocations; excludes shared app balance and executor hash |
@@ -22,6 +22,12 @@ Pages contain at most 200 rows. Section fingerprints and data revision are check
 
 Responses are `no-store`. Account changes abort/discard browser downloads and revoke their object URLs. The request signal reaches Auth verification, owned page/staging reads and inspector/ledger reads. Server capture uses an encrypted spool and a request-only random key. The file name and empty temporary directory are removed before consuming private export records; only an open descriptor remains. Completion/error/cancellation closes it and zeros the key; process exit releases the unlinked file. Platforms unable to unlink an open file fail before capturing private bytes. The legacy 24-hour artifact cleaner remains for older named files; existing deployed instances require separate retirement/verification. Downloaded plaintext needs private storage controls.
 
+## Measurement correction and deletion
+
+Observation corrections preserve original import provenance. Linked observation time changes require explicit whole-event correction. Event deletion removes every child; deleting the last observation removes its parent. Source defaults never reinterpret recorded instants.
+
+Correction/deletion removes affected private baseline values/references from goal snapshots, historical revisions and approved proposal copies. Historical dependencies come from each revision's frozen selection (or its older source/metric fields), including after a goal changes source or metric. Matching current goals are marked for review; approved targets, states and financial records are preserved. Where precise dependency removal is unavailable, retained owned conversations and exact AI payloads are removed broadly. Annotation changes remove these conversation/payload copies too. A genuinely new import can recreate deleted readings; replay of a committed batch returns its original receipt without reinsertion. See [data imports](data-imports.md).
+
 ## Deletion and interruption
 
 Initiation requires `DELETE MY VULPES ACCOUNT` and password authentication within five minutes. The server checks the authenticated password AMR timestamp; token refresh does not establish fresh password authentication. Settings performs a new password sign-in before initiation.
@@ -29,7 +35,7 @@ Initiation requires `DELETE MY VULPES ACCOUNT` and password authentication withi
 | Durable phase | Meaning |
 |---|---|
 | `fenced` | Account is deleting. Admission, new domain/content writes and cancellation receipts are denied. Continue bounded private purges. |
-| `private_content_purged` | Private payloads, transcripts, goals/revisions/drafts, measurements/imports/sources, conversations and owned audit content removed; profile personal fields cleared. |
+| `private_content_purged` | Private payloads, transcripts, goals/revisions/drafts, measurements/events/imports/sources, conversations and owned audit content removed; profile personal fields cleared. |
 | `awaiting_settlement` | Minimal lifecycle/accounting remains. Unsent requests release their hold; uncertain sent requests retain it for 24 hours. |
 | `app_data_purged` | Reservations settled and remaining owned accounting/allocation/run rows removed. Shared app charges and route-cost blocks remain. |
 | `auth_removal_pending` | Profile removed. Retry and independently verify Auth removal. |
@@ -69,7 +75,7 @@ For named invited accounts, use the [invited-account recovery manifest](hosted-r
 
 | Store | Retention/cleanup |
 |---|---|
-| Measurements, goals/revisions, approved proposals, conversations and message receipts | Explicit product/account deletion; execution expiry preserves transcript history |
+| Measurements/events/annotations, goals/revisions, approved proposals, conversations and message receipts | Explicit product/account deletion; execution expiry preserves transcript history |
 | Uncommitted staging | 24-hour read-time expiry and bounded physical cleanup |
 | Pending proposals | 24-hour expiry; draft bodies removed, lifecycle receipts/approved history preserved |
 | Encrypted request/response/tool/context/usage/continuation payloads | Seven-day read-time expiry and bounded physical cleanup |
