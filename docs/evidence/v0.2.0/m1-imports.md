@@ -132,4 +132,16 @@ SQL lint, all 807 pgTAP assertions, generated-type consistency, populated/fresh 
 | Physical Android/MIME/sharing and worker update recovery | M2 obligations; not run by M1 |
 | Manufacturer numeric reference/classification | M3 evidence gate; no rule inferred from preserved vendor annotations |
 | Live inference/model approval/spend | Unchanged and unverified; no live call is needed for M1 |
-| Hosted cutover/restore access | M6/operator approval; an old application build alone is not a coherent rollback |
+| Hosted cutover/restore access | Not run; requires operator approval and recovery of both schema and application. See [schema upgrades](../../operations/owner-pilot-data.md#import-schema-upgrades) |
+
+## Import capacity follow-up (2026-11-14)
+
+At `5be4b25`, [main CI](https://github.com/edumarcano/vulpes-health/actions/runs/43624204684) returned `503 import_unavailable` for the initial 24,000-observation commit. All three required checks passed at `4159baf` in [CI run 43629544840](https://github.com/edumarcano/vulpes-health/actions/runs/43629544840). The cause of that earlier failure was not established.
+
+At `2253b5c`, [CI run 43632623394](https://github.com/edumarcano/vulpes-health/actions/runs/43632623394) cancelled the changed-file reimport with PostgreSQL code `57014` after the initial import succeeded. Local rollback profiling measured 1.17 seconds in the event-processing loop. A partial owner/source/time index for `event_id is null` reduced that loop to 0.33 seconds by narrowing repeated unlinked-reading probes. These are local samples, not hosted guarantees; the eight-second SQL timeout and client deadline remain unchanged.
+
+With the index, all 34 affected integration tests and 807 database assertions passed locally. The isolated upgrade rehearsal applies M1 and follow-up migrations in order and passed both populated forward upgrade and fresh replay with five migrations.
+
+The authenticated HTTP test now reimports 1,000 events and 24,000 observations with changed file bytes, requiring a new preview batch, 24,000 duplicates, zero inserts and an unchanged data revision. Capacity-test diagnostics report only allowlisted SQL codes or request-error categories, without private payloads.
+
+Vercel independently rejected the build with `hosted_schema_incompatible`. The exact hosted migration inventory was not inspected; hosted migration and capacity verification remain unperformed.
