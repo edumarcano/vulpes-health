@@ -60,6 +60,14 @@ Repository changes alone do not prove that Vercel enforces these settings. Verce
 
 After a deployment, check `/api/status`, sign-in, routing and the affected feature. Keep the previous immutable deployment available for rollback. Local checks do not prove Vercel packaging or production behavior.
 
+### Import schema upgrades
+
+The build compares every repository migration version with the hosted `schema_version_v1` inventory. `hosted_schema_incompatible` rejects missing versions or duplicate inventory entries. Passing CI does not establish hosted schema compatibility.
+
+An upgrade requires compatible retained data and a fresh encrypted backup with its keys and independent copy. Recovery must cover both schema and application: an old application cannot undo revoked writer grants. During authorized maintenance, stop writes and AI dispatch and reconcile in-flight work before applying missing forward migrations without a database reset. Verify the complete inventory, then retry the same validated main commit with a passing `Main / Release gate`. See [import constraints](data-imports.md) and [hosted recovery](hosted-recovery.md).
+
+Hosted checks confirm sign-in, retained records and approved goals. A synthetic account exercises full-panel and large imports, overlap without duplicates, event inspection/correction/deletion and both exports. Reopening the installed app verifies the client update. These checks require no paid inference; [M1 evidence](../evidence/v0.2.0/m1-imports.md) records the verified boundary.
+
 For separately authorized manual or synthetic hosting, `npm run hosting:prepare -- --plan`, `npm run hosting:probe -- --plan` and `npm run hosting:security -- --plan` describe the guarded tooling. Generated overlays keep Git deployments disabled and inference off by default.
 
 The owner reported a Galaxy S23 conversation, install and offline check. TalkBack and broader device acceptance are unverified. See [release readiness](release-readiness.md) before widening use or adding accounts.

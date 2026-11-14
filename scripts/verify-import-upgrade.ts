@@ -81,8 +81,8 @@ function insert(table: string, row: Record<string, unknown>) {
 const names = readdirSync(join(projectRoot, 'supabase/migrations'))
   .filter((name) => name.endsWith('.sql'))
   .sort();
-const m1 = names.filter((name) => name.startsWith('20261113'));
-assert.equal(m1.length, 4);
+const m1 = names.filter((name) => name >= '20261113000100_');
+assert(m1.length >= 4);
 const auth = run([
   'exec',
   container,
