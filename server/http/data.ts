@@ -24,6 +24,8 @@ import {
   InventoryQuerySchema,
 } from '../../shared/analysis.js';
 import { readAnalysis, readMetricInventory } from '../services/analysis.js';
+import { ReferenceQuerySchema } from '../../shared/references.js';
+import { readMetricReference } from '../services/references.js';
 import {
   readEvents,
   mutateEvent,
@@ -100,6 +102,19 @@ export async function handleData(
           input[key] = /^\d+$/.test(String(input[key]))
             ? Number(input[key])
             : NaN;
+      if (input.view === 'reference') {
+        const parsed = ReferenceQuerySchema.safeParse(input);
+        if (!parsed.success)
+          throw new HttpFailure(
+            400,
+            'invalid_input',
+            'Choose valid reference filters.',
+          );
+        sendJson(response, 200, {
+          data: await readMetricReference(context, parsed.data),
+        });
+        return;
+      }
       if (input.view === 'inventory') {
         const parsed = InventoryQuerySchema.safeParse(input);
         if (!parsed.success)

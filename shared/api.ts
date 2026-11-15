@@ -28,6 +28,8 @@ import {
   VersionSchema,
 } from './primitives.js';
 import { InspectionQuerySchema } from './inspection.js';
+import { AnalysisReadRequestSchema, InventoryQuerySchema } from './analysis.js';
+import { ReferenceQuerySchema } from './references.js';
 
 export const API_JSON_LIMIT_BYTES = 2 * 1024 * 1024;
 export function successEnvelopeSchema<T extends z.ZodType>(data: T) {
@@ -171,6 +173,26 @@ export const apiOperations = {
       owningPR: 5,
       schema: DataQuerySchema.options[0],
     },
+    {
+      method: 'GET',
+      selector: 'view=inventory',
+      owningPR: 5,
+      schema: InventoryQuerySchema,
+    },
+    {
+      method: 'GET',
+      selector: 'view=reference',
+      owningPR: 5,
+      schema: ReferenceQuerySchema,
+    },
+    ...['analyze', 'resolve_analysis'].map((action) => ({
+      method: 'POST' as const,
+      selector: `action=${action}` as const,
+      owningPR: 5,
+      schema: AnalysisReadRequestSchema.refine(
+        (value) => value.action === action,
+      ),
+    })),
     {
       method: 'GET',
       selector: 'view=measurements',

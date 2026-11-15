@@ -44,6 +44,12 @@ See [M1 evidence](evidence/v0.2.0/m1-imports.md) for executed checks and boundar
 
 See [M3 analysis evidence](evidence/v0.2.0/m3-analysis.md) for executed checks and remaining acceptance. This does not authorize deployment, model activation or manufacturer classification.
 
+## v0.2.0 metric content and references (2026-11-15)
+
+- **Separate content from ingestion.** Original explanations and display groups use `metric-explanations-v1`; their addition does not reinterpret stored observations or change the import registry version. Resolved tracking eligibility covers 25 metrics; BMR and three unresolved deltas stay raw-only. Goal mutation expansion remains P4.
+- **Unavailable is a production state.** The verified range registry is empty because complete manufacturer applicability, endpoints and reuse evidence are unresolved. The deterministic resolver's injected synthetic tests prove mechanics only. No age, demographic or mode settings are collected speculatively. See the [coverage and reuse record](evidence/v0.2.0/metric-reference-coverage.md).
+- **Bind reference evidence separately.** Owned reference results include the original numerical result ID and bind content/registry/resolver versions plus the stated profile basis. Content changes invalidate reference evidence without relabelling the underlying numerical result. Source labels and scale outputs do not establish manufacturer applicability or chronological age.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.
