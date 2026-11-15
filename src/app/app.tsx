@@ -12,6 +12,16 @@ import { useAuth } from '@/lib/auth/auth-context';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeletionPage } from '@/features/settings/deletion-page';
+import { PwaUpdateNotice } from '@/components/pwa-update-notice';
+import {
+  importReturnPath,
+  handoffReference,
+} from '../../shared/import-handoff';
+const ImportPage = lazy(() =>
+  import('@/features/data/import-page').then((m) => ({
+    default: m.ImportPage,
+  })),
+);
 const AskPage = lazy(() =>
   import('@/features/ask/ask-page').then((m) => ({ default: m.AskPage })),
 );
@@ -78,7 +88,7 @@ function Protected({
   focus: boolean;
 }) {
   const { state, scope } = useAuth();
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   if (state.kind === 'restoring' || state.kind === 'checking_account')
     return <p role="status">Verifying your account…</p>;
   if (
@@ -90,7 +100,7 @@ function Protected({
   if (state.kind !== 'signed_in')
     return (
       <Navigate
-        to={`/login?returnTo=${encodeURIComponent(pathname)}`}
+        to={`/login?returnTo=${encodeURIComponent(importReturnPath(pathname))}${pathname === '/data/import' && handoffReference(hash) ? hash : ''}`}
         replace
       />
     );
@@ -136,7 +146,11 @@ export function App() {
       pathname === '/ask'
         ? 'Ask Vulpes'
         : (destinations.find((item) => item.to === pathname)?.label ??
-          (pathname === '/login' ? 'Sign in' : 'Page not found'));
+          (pathname === '/login'
+            ? 'Sign in'
+            : pathname === '/data/import'
+              ? 'Import CSV'
+              : 'Page not found'));
     document.title = `${title} · Vulpes`;
     if (previousPath.current !== pathname) {
       heading?.focus();
@@ -188,7 +202,16 @@ export function App() {
         tabIndex={-1}
         className={`main-content${pathname === '/ask' ? ' main-ask' : ''}`}
       >
+        <PwaUpdateNotice />
         <Routes>
+          <Route
+            path="/data/import"
+            element={
+              <Protected focus={initialLocationKey !== locationKey}>
+                <ImportPage />
+              </Protected>
+            }
+          />
           <Route path="/" element={<Navigate to="/ask" replace />} />
           <Route
             path="/ask"

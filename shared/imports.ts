@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { CSV_LIMIT_BYTES } from './import-limits.js';
+export { CSV_LIMIT_BYTES } from './import-limits.js';
 import { CanonicalUnitSchema } from './metrics.js';
 import { ObservationInputSchema, SourceSelectionSchema } from './data.js';
 import {
@@ -56,7 +58,6 @@ export function isRenphoHeader(headers: readonly string[]): boolean {
   );
 }
 
-export const CSV_LIMIT_BYTES = 1024 * 1024;
 export const DATA_CONTRACT_VERSION = '2';
 export const IMPORT_OBSERVATION_LIMIT = 25_000;
 export const IMPORT_ROW_LIMIT = 10_000;
@@ -175,6 +176,17 @@ export const ImportPreviewSchema = z.strictObject({
   selections: z.array(ImportSelectionSchema).max(96).default([]),
 });
 export type ImportMapping = z.infer<typeof ImportMappingSchema>;
+export const SavedImportDefaultsSchema = z
+  .strictObject({
+    schema_version: z.literal(2),
+    adapter_version: z.enum(['renpho-en-body-composition-v1', 'csv-v2']),
+    mapping: ImportMappingSchema,
+  })
+  .refine(
+    (v) =>
+      (v.mapping.format === 'renpho') ===
+      (v.adapter_version === 'renpho-en-body-composition-v1'),
+  );
 export type ImportPreview = z.infer<typeof ImportPreviewSchema>;
 export type ImportResult = z.infer<typeof ImportResultSchema>;
 
@@ -260,6 +272,7 @@ export type ParsedRenpho = {
 };
 
 export const ImportPreviewV2Schema = ImportPreviewSchema.safeExtend({
+  confirmed_mapping: ImportMappingSchema.optional(),
   schema_version: z.literal(2),
   adapter_version: z.string(),
   registry_version: z.string(),

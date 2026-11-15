@@ -8,9 +8,13 @@
   "outputDirectory": "dist",
   "functions": { "api/*.ts": { "maxDuration": 240 } },
   "rewrites": [
+    { "source": "/api/share-target", "destination": "/api/share-target" },
     { "source": "/api/status", "destination": "/api/status" },
     { "source": "/api/settings", "destination": "/api/settings" },
-    { "source": "/api/account", "destination": "/api/settings?__vulpes_account=1" },
+    {
+      "source": "/api/account",
+      "destination": "/api/settings?__vulpes_account=1"
+    },
     { "source": "/api/data", "destination": "/api/data" },
     { "source": "/api/goals", "destination": "/api/goals" },
     { "source": "/api/approvals", "destination": "/api/approvals" },
@@ -18,7 +22,10 @@
     { "source": "/api/conversations", "destination": "/api/conversations" },
     { "source": "/api/executions", "destination": "/api/executions" },
     { "source": "/api", "destination": "/api/status?__vulpes_unmatched=1" },
-    { "source": "/api/:path*", "destination": "/api/status?__vulpes_unmatched=1" },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/status?__vulpes_unmatched=1"
+    },
     { "source": "/ask/:path*", "destination": "/index.html" },
     { "source": "/goals/:path*", "destination": "/index.html" },
     { "source": "/data/:path*", "destination": "/index.html" },
@@ -30,12 +37,18 @@
     {
       "source": "/:path*",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://vatwmqzjymbhaodwatyn.supabase.co; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://vatwmqzjymbhaodwatyn.supabase.co; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "no-referrer" },
         { "key": "X-Frame-Options", "value": "DENY" }
       ]
     },
-    { "source": "/api/:path*", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+    {
+      "source": "/api/:path*",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
   ]
 }

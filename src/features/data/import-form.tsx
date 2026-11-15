@@ -1,4 +1,18 @@
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
+import {
+  completeImport,
+  consumeShare,
+  pendingImport,
+  saveImportRecovery,
+  checkShareClaim,
+  ImportStorageError,
+  type ImportRecovery,
+} from '@/lib/import-handoff';
+import {
+  HANDOFF_PROTOCOL,
+  RECOVERY_LIFETIME,
+} from '../../../shared/import-handoff';
+import { savedMapping } from './import-settings';
 import { Button } from '@/components/ui/button';
 import { ApiError, ownedJson } from '@/lib/api';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -16,6 +30,8 @@ import {
   PreviewCsvWireSchema,
   type ImportPreviewV2 as ImportPreview,
   type ImportReview,
+  type ImportMapping,
+  type PreviewCsvWire,
 } from '../../../shared/imports';
 import { z } from 'zod';
 import { SourceImportDefaults } from './source-import-defaults';
@@ -26,6 +42,8 @@ import type {
 } from '../../../shared/domain';
 
 type Stage =
+  | { kind: 'restoring' }
+  | { kind: 'clearing_recovery' }
   | { kind: 'editing' }
   | { kind: 'previewing' }
   | { kind: 'uncertain_preview'; requestId: string }
@@ -37,7 +55,12 @@ type Stage =
     }
   | { kind: 'stale'; preview: ImportPreview; requestId: string }
   | { kind: 'committing'; preview: ImportPreview; requestId: string }
-  | { kind: 'done'; result: ImportResult; selections: ImportSelection[] };
+  | {
+      kind: 'done';
+      result: ImportResult;
+      selections: ImportSelection[];
+      historical?: boolean;
+    };
 type ColumnMapping = {
   metric: MetricKey;
   unit: string;
@@ -49,15 +72,26 @@ export function ImportForm({
   dataRevision,
   onSaved,
   onView,
+  sharedFile,
+  onSharedConsumed,
 }: {
   sources: Source[];
   timezone: string;
   dataRevision: number;
   onSaved: (result: ImportResult) => void;
   onView: (sourceId: string, selection: ImportSelection) => void;
+  sharedFile?: {
+    file: File;
+    ref: string;
+    consumer: string;
+    generation: number;
+    previewId: string;
+  } | null;
+  onSharedConsumed?: () => void;
 }) {
   const { state, scope } = useAuth();
   const session = state.kind === 'signed_in' ? state.session : null;
+  const userId = session?.user.id ?? null;
   const epoch = scope.epoch;
   const [csv, setCsv] = useState('');
   const [headers, setHeaders] = useState<string[]>([]);
@@ -81,7 +115,15 @@ export function ImportForm({
   const [flag, setFlag] = useState(false);
   const [granularity, setGranularity] = useState<Granularity>('instant');
   const [columns, setColumns] = useState<Record<string, ColumnMapping>>({});
-  const [stage, setStage] = useState<Stage>({ kind: 'editing' });
+  const [stage, setStage] = useState<Stage>({ kind: 'restoring' });
+  const [usingSaved, setUsingSaved] = useState(false);
+  const [settingsMode, setSettingsMode] = useState<'saved' | 'confirm'>(
+    'saved',
+  );
+  const recovery = useRef<ImportRecovery | null>(null);
+  const identityGeneration = useRef(0);
+  const incoming = useRef<File | null>(null);
+  const sourceChosen = useRef(false);
   const [error, setError] = useState('');
   const [details, setDetails] = useState<z.infer<
     typeof ImportItemsSchema
@@ -96,6 +138,172 @@ export function ImportForm({
     null,
   );
   const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let active = true;
+    if (!userId) return;
+    void pendingImport(userId)
+      .then(({ operation, generation }) => {
+        if (!active) return;
+        recovery.current = operation;
+        identityGeneration.current = generation ?? 0;
+        setStage(
+          operation
+            ? { kind: 'uncertain_preview', requestId: operation.previewId }
+            : { kind: 'editing' },
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setStage({ kind: 'editing' });
+          setError(
+            'Temporary recovery storage is unavailable. Reopening this import will require selecting the file again.',
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [userId, epoch]);
+  useEffect(() => {
+    if (
+      stage.kind === 'editing' &&
+      sharedFile &&
+      incoming.current !== sharedFile.file
+    ) {
+      incoming.current = sharedFile.file;
+      void loadFile(sharedFile.file);
+    }
+  });
+  useEffect(() => {
+    if (!sharedFile || !userId) return;
+    const timer = window.setInterval(() => {
+      void checkShareClaim(
+        sharedFile.ref,
+        userId,
+        sharedFile.consumer,
+        sharedFile.generation,
+      ).catch(() => {
+        scope.commit(epoch, () => {
+          setCsv('');
+          setError(
+            'The shared file expired or another window took over. Share it again.',
+          );
+          onSharedConsumed?.();
+        });
+      });
+    }, 10_000);
+    return () => window.clearInterval(timer);
+  }, [sharedFile, userId, scope, epoch, onSharedConsumed]);
+  useEffect(() => {
+    if (
+      stage.kind === 'editing' ||
+      stage.kind === 'done' ||
+      stage.kind === 'restoring'
+    )
+      return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [stage.kind]);
+  function applyMapping(mapping: ImportMapping) {
+    setFormat(mapping.format);
+    setZone(mapping.timezone);
+    setSingle(mapping.single_profile);
+    setProfileColumn(mapping.profile?.column ?? '');
+    setProfileValue(mapping.profile?.value ?? '');
+    setFlag(mapping.review_requested);
+    setZoneConfirmed(mapping.format === 'renpho');
+    if (mapping.format === 'canonical') setSourceLabel(mapping.source_label);
+    if (mapping.format === 'wide') {
+      setTimestamp(mapping.timestamp_column);
+      setLocalDate(mapping.local_date_column ?? '');
+      setExternalId(mapping.external_id_column ?? '');
+      setGranularity(mapping.granularity);
+      setColumns(
+        Object.fromEntries(
+          mapping.metrics.map(({ column, ...value }) => [column, value]),
+        ),
+      );
+    }
+    setUsingSaved(true);
+  }
+  async function remember(
+    phase: ImportRecovery['phase'],
+    previewId: string,
+    commitId: string,
+    p?: ImportPreview,
+  ) {
+    if (!session || scope.epoch !== epoch)
+      throw new Error('The account changed.');
+    const operation: ImportRecovery = {
+      protocol: HANDOFF_PROTOCOL,
+      owner: session.user.id,
+      generation: sharedFile?.generation ?? identityGeneration.current,
+      previewId,
+      commitId,
+      phase,
+      sourceId: p?.source_id ?? (source === 'new' ? null : source),
+      settingsVersion:
+        sources.find((s) => s.id === source)?.settingsVersion ?? null,
+      ...(recovery.current?.requestHash
+        ? { requestHash: recovery.current.requestHash }
+        : {}),
+      expiresAt: Math.min(
+        recovery.current?.expiresAt ?? Date.now() + RECOVERY_LIFETIME,
+        p ? Date.parse(p.expires_at) : Infinity,
+      ),
+      ...(p ? { batchId: p.batch_id, hash: p.payload_hash } : {}),
+    };
+    try {
+      await saveImportRecovery(operation);
+    } catch (error) {
+      if (sharedFile || !(error instanceof ImportStorageError)) throw error;
+      setError(
+        'Reload recovery is unavailable in this browser. Keep this page open until the import outcome is confirmed.',
+      );
+    }
+    recovery.current = operation;
+  }
+  async function finished() {
+    if (session && recovery.current)
+      await completeImport(session.user.id, recovery.current.previewId).catch(
+        (error) => {
+          if (!(error instanceof ImportStorageError)) throw error;
+        },
+      );
+    recovery.current = null;
+    onSharedConsumed?.();
+  }
+  async function clearRecovery() {
+    if (!session || !recovery.current) return;
+    setStage({ kind: 'clearing_recovery' });
+    try {
+      await completeImport(session.user.id, recovery.current.previewId);
+      scope.commit(epoch, () => {
+        recovery.current = null;
+        previewIdentity.current = null;
+        fileSequence.current++;
+        setCsv('');
+        setHeaders([]);
+        setFileName('');
+        setSettingsMode('confirm');
+        onSharedConsumed?.();
+        setStage({ kind: 'editing' });
+        setError(
+          'Local recovery was cleared. Check Data for any server result before starting another import.',
+        );
+      });
+    } catch {
+      scope.commit(epoch, () => {
+        setStage({ kind: 'editing' });
+        setError(
+          'Local recovery could not be cleared. Retry before starting another import.',
+        );
+      });
+    }
+  }
   useEffect(() => {
     if (stage.kind === 'review') {
       if (stage.preview.ready_to_commit) confirm.current?.focus();
@@ -139,37 +347,67 @@ export function ImportForm({
       )
         throw new Error('Use unique, nonblank CSV column names (maximum 100).');
       const found = first[0] as string[];
+      const detected = isRenphoHeader(found)
+        ? 'renpho'
+        : [
+              'observed_at',
+              'metric',
+              'value',
+              'unit',
+              'source',
+              'granularity',
+            ].every((h) => found.includes(h))
+          ? 'canonical'
+          : 'wide';
+      const encoded = btoa(
+        Array.from(new Uint8Array(bytes), (byte) =>
+          String.fromCharCode(byte),
+        ).join(''),
+      );
+      const matches = sources.filter((s) => savedMapping(s, detected, found));
+      const selected =
+        sources.find((s) => s.id === source) ??
+        (source === 'new' && !sourceChosen.current && matches.length === 1
+          ? matches[0]
+          : undefined);
+      const saved = savedMapping(selected, detected, found);
       if (sequence === fileSequence.current)
         scope.commit(epoch, () => {
           // Keep RENPHO file bytes for hashing without changing generic CSV identities.
-          setCsv(
-            btoa(
-              Array.from(new Uint8Array(bytes), (byte) =>
-                String.fromCharCode(byte),
-              ).join(''),
-            ),
-          );
+          setCsv(encoded);
           setHeaders(found.filter(Boolean));
           setZoneConfirmed(false);
           setFileName(file.name);
-          setFormat(
-            isRenphoHeader(found)
-              ? 'renpho'
-              : [
-                    'observed_at',
-                    'metric',
-                    'value',
-                    'unit',
-                    'source',
-                    'granularity',
-                  ].every((h) => found.includes(h))
-                ? 'canonical'
-                : 'wide',
-          );
+          setFormat(detected);
           setTimestamp(found[0] ?? '');
           setColumns({});
           setProfileColumn('');
           setSingle(false);
+          setUsingSaved(false);
+          if (saved && selected) {
+            setSource(selected.id);
+            applyMapping(saved);
+            if (settingsMode === 'confirm') {
+              setUsingSaved(false);
+              setSingle(false);
+              setZoneConfirmed(false);
+            }
+          }
+        });
+      if (
+        sequence === fileSequence.current &&
+        owner.current() &&
+        settingsMode === 'saved' &&
+        saved &&
+        selected
+      )
+        await sendPreview({
+          schema_version: 2,
+          action: 'preview_csv',
+          client_request_id: sharedFile?.previewId ?? crypto.randomUUID(),
+          csv_base64: encoded,
+          source: { kind: 'existing', id: selected.id },
+          mapping: saved,
         });
     } catch (e) {
       if (sequence === fileSequence.current)
@@ -241,40 +479,80 @@ export function ImportForm({
       );
       return;
     }
+    await sendPreview(request.data);
+  }
+  async function sendPreview(request: PreviewCsvWire) {
+    if (!session || scope.epoch !== epoch) return;
     setDetails(null);
     setStage({ kind: 'previewing' });
+    let sent = false;
     try {
       const digest = await crypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(
-          JSON.stringify([
-            request.data.csv_base64,
-            request.data.source,
-            request.data.mapping,
-          ]),
+          JSON.stringify([request.csv_base64, request.source, request.mapping]),
         ),
       );
       const hash = Array.from(new Uint8Array(digest), (b) =>
         b.toString(16).padStart(2, '0'),
       ).join('');
+      if (recovery.current) {
+        if (recovery.current.requestHash !== hash)
+          throw new Error(
+            'The previous preview is still unresolved. Recover its status before changing the file or settings.',
+          );
+        request.client_request_id = recovery.current.previewId;
+      }
       if (previewIdentity.current?.hash !== hash)
         previewIdentity.current = {
           hash,
-          requestId: request.data.client_request_id,
+          requestId: sharedFile?.previewId ?? request.client_request_id,
         };
-      request.data.client_request_id = previewIdentity.current.requestId;
+      request.client_request_id = previewIdentity.current.requestId;
+      if (!recovery.current)
+        recovery.current = {
+          protocol: HANDOFF_PROTOCOL,
+          owner: session.user.id,
+          generation: sharedFile?.generation ?? identityGeneration.current,
+          previewId: request.client_request_id,
+          commitId: crypto.randomUUID(),
+          phase: 'previewing',
+          expiresAt: Date.now() + RECOVERY_LIFETIME,
+          sourceId:
+            request.source.kind === 'existing' ? request.source.id : null,
+          settingsVersion: null,
+          requestHash: hash,
+        };
+      const commitId = crypto.randomUUID();
+      await remember('previewing', request.client_request_id, commitId);
+      if (sharedFile)
+        await checkShareClaim(
+          sharedFile.ref,
+          session.user.id,
+          sharedFile.consumer,
+          sharedFile.generation,
+        );
+      sent = true;
       const p = successEnvelopeSchema(ImportPreviewV2Schema).parse(
         await ownedJson('/api/data', session.access_token, scope, epoch, {
           method: 'POST',
-          body: JSON.stringify(request.data),
+          body: JSON.stringify(request),
         }),
       ).data;
+      if (scope.epoch !== epoch) return;
+      if (sharedFile) {
+        await consumeShare(sharedFile.ref, session.user.id);
+        onSharedConsumed?.();
+      }
+      await remember('review', request.client_request_id, commitId, p);
+      if (p.historical_result) await finished();
       scope.commit(epoch, () => {
         setCsv('');
         if (p.historical_result) {
           setStage({
             kind: 'done',
             result: p.historical_result,
+            historical: true,
             selections: p.selections,
           });
           onSaved(p.historical_result);
@@ -282,17 +560,21 @@ export function ImportForm({
           setStage({
             kind: 'review',
             preview: p,
-            requestId: crypto.randomUUID(),
+            requestId: commitId,
           });
       });
     } catch (e) {
+      if (sent && e instanceof ApiError && [400, 413].includes(e.status))
+        await finished();
       scope.commit(epoch, () => {
         setStage(
-          e instanceof ApiError && [400, 413].includes(e.status)
+          !sent || (e instanceof ApiError && [400, 413].includes(e.status))
             ? { kind: 'editing' }
             : {
                 kind: 'uncertain_preview',
-                requestId: previewIdentity.current!.requestId,
+                requestId:
+                  previewIdentity.current?.requestId ??
+                  request.client_request_id,
               },
         );
         setError(
@@ -314,6 +596,12 @@ export function ImportForm({
     setError('');
     setStage({ ...pending, kind: 'committing' });
     try {
+      await remember(
+        'committing',
+        recovery.current!.previewId,
+        pending.requestId,
+        pending.preview,
+      );
       const r = successEnvelopeSchema(ImportResultSchema).parse(
         await ownedJson('/api/data', session.access_token, scope, epoch, {
           method: 'POST',
@@ -326,6 +614,8 @@ export function ImportForm({
           }),
         }),
       ).data;
+      if (scope.epoch !== epoch) return;
+      await finished();
       scope.commit(epoch, () => {
         setStage({
           kind: 'done',
@@ -370,6 +660,23 @@ export function ImportForm({
           epoch,
         ),
       ).data;
+      if (scope.epoch !== epoch) return;
+      if (status.status === 'committed' || !status.preview) await finished();
+      else {
+        if (status.preview.confirmed_mapping)
+          applyMapping(status.preview.confirmed_mapping);
+        const commitId = recovery.current?.commitId ?? crypto.randomUUID();
+        await remember(
+          'review',
+          recovery.current?.previewId ?? requestId,
+          commitId,
+          status.preview,
+        );
+        if (sharedFile) {
+          await consumeShare(sharedFile.ref, session.user.id);
+          onSharedConsumed?.();
+        }
+      }
       scope.commit(epoch, () => {
         if (status.status === 'committed' && status.result) {
           setStage({
@@ -385,7 +692,9 @@ export function ImportForm({
           setStage({
             kind: 'review',
             preview: status.preview,
-            requestId: batchId ? requestId : crypto.randomUUID(),
+            requestId:
+              recovery.current?.commitId ??
+              (batchId ? requestId : crypto.randomUUID()),
           });
         else {
           setStage({ kind: 'editing' });
@@ -401,7 +710,7 @@ export function ImportForm({
         if (e instanceof ApiError && e.status === 404) {
           setStage({ kind: 'editing' });
           setError(
-            'No saved preview was found. Choose the file and preview again.',
+            'The server has no saved preview for this request yet. Retry the same file and settings, or clear local recovery after checking Data.',
           );
         } else
           setError(
@@ -424,6 +733,8 @@ export function ImportForm({
           }),
         }),
       ).data;
+      if (scope.epoch !== epoch) return;
+      await finished();
       scope.commit(epoch, () => {
         if (status.status === 'committed' && status.result) {
           setStage({
@@ -436,6 +747,7 @@ export function ImportForm({
           setStage({ kind: 'editing' });
           setCsv('');
           setFileName('');
+          setSettingsMode('confirm');
           setError('Server confirmed preview ' + status.status + '.');
         }
       });
@@ -536,266 +848,375 @@ export function ImportForm({
         Vulpes is independent and is not affiliated with, sponsored by, or
         endorsed by RENPHO.
       </p>
-      <form className="settings-form data-form" onSubmit={preview}>
-        <fieldset className="settings-form" disabled={locked}>
-          <legend>File, source and mapping</legend>
-          <label>
-            CSV file
-            <input
-              ref={fileInput}
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => void loadFile(e.target.files?.[0])}
-            />
-          </label>
-          <p>
-            {fileName
-              ? `Selected: ${fileName}`
-              : 'Maximum 1 MiB UTF-8; 10,000 rows; 25,000 observations.'}
-          </p>
-          <label>
-            Import source
-            <select value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="new">New CSV source</option>
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label} · {s.id.slice(0, 8)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {source === 'new' && (
-            <>
-              <label>
-                Import source label
-                <input
-                  value={label}
-                  maxLength={200}
-                  onChange={(e) => setLabel(e.target.value)}
-                />
-              </label>
-              <label>
-                Import origin app
-                <input
-                  value={app}
-                  maxLength={200}
-                  onChange={(e) => setApp(e.target.value)}
-                />
-              </label>
-              <label>
-                Import device label
-                <input
-                  value={device}
-                  maxLength={200}
-                  onChange={(e) => setDevice(e.target.value)}
-                />
-              </label>
-            </>
-          )}
-          {source !== 'new' && sources.find((s) => s.id === source) && (
-            <SourceImportDefaults
-              key={`${source}:${sources.find((s) => s.id === source)?.settingsVersion}`}
-              source={sources.find((s) => s.id === source)!}
-            />
-          )}
-          <label>
-            CSV format
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as typeof format)}
-            >
-              <option value="canonical">Canonical long form</option>
-              <option value="wide">Mapped wide columns</option>
-              <option value="renpho">RENPHO Health (English, lb)</option>
-            </select>
-          </label>
-          <label>
-            Import timezone
-            <input
-              value={zone}
-              onChange={(e) => {
-                setZone(e.target.value);
-                setZoneConfirmed(false);
-              }}
-            />
-          </label>
-          {format === 'canonical' ? (
+      {stage.kind === 'restoring' && (
+        <p role="status">Checking for a pending import…</p>
+      )}
+      {stage.kind === 'clearing_recovery' && (
+        <p role="status">Clearing local recovery…</p>
+      )}
+      <details open={stage.kind === 'editing'}>
+        <summary>File and source settings</summary>
+        <form className="settings-form data-form" onSubmit={preview}>
+          <fieldset className="settings-form" disabled={locked}>
+            <legend>File, source and mapping</legend>
             <label>
-              CSV source label to include
-              <input
-                aria-label="CSV source label to include"
-                aria-describedby="csv-source-hint"
-                value={sourceLabel}
-                maxLength={200}
-                onChange={(e) => setSourceLabel(e.target.value)}
-              />
-              <span id="csv-source-hint">
-                Exact value in the source column; other sources are excluded.
-              </span>
+              Preview settings
+              <select
+                value={settingsMode}
+                onChange={(e) =>
+                  setSettingsMode(e.target.value as typeof settingsMode)
+                }
+              >
+                <option value="saved">Use compatible saved settings</option>
+                <option value="confirm">Review settings before preview</option>
+              </select>
             </label>
-          ) : format === 'wide' ? (
-            <>
-              {columnSelect('Timestamp column', timestamp, setTimestamp, false)}
-              {columnSelect('Local date column', localDate, setLocalDate)}
-              {columnSelect(
-                'External record ID column',
-                externalId,
-                setExternalId,
-              )}
-              <label>
-                Import granularity
-                <select
-                  value={granularity}
-                  onChange={(e) =>
-                    setGranularity(e.target.value as Granularity)
+            <label>
+              CSV file
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => void loadFile(e.target.files?.[0])}
+              />
+            </label>
+            <p>
+              {fileName
+                ? `Selected: ${fileName}`
+                : 'Maximum 1 MiB UTF-8; 10,000 rows; 25,000 observations.'}
+            </p>
+            <label>
+              Import source
+              <select
+                value={source}
+                onChange={(e) => {
+                  sourceChosen.current = true;
+                  setSettingsMode('confirm');
+                  setSource(e.target.value);
+                  setUsingSaved(false);
+                  setSingle(false);
+                  setZoneConfirmed(false);
+                  const saved = savedMapping(
+                    sources.find((s) => s.id === e.target.value),
+                    format,
+                    headers,
+                  );
+                  if (saved) {
+                    applyMapping(saved);
+                    setUsingSaved(false);
+                    setSingle(false);
+                    setZoneConfirmed(false);
                   }
-                >
-                  <option value="instant">Instant</option>
-                  <option value="daily_total">Daily total</option>
-                  <option value="session_total">Session total</option>
-                </select>
+                }}
+              >
+                <option value="new">New CSV source</option>
+                {sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label} · {s.id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {source === 'new' && (
+              <>
+                <label>
+                  Import source label
+                  <input
+                    value={label}
+                    maxLength={200}
+                    onChange={(e) => setLabel(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Import origin app
+                  <input
+                    value={app}
+                    maxLength={200}
+                    onChange={(e) => setApp(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Import device label
+                  <input
+                    value={device}
+                    maxLength={200}
+                    onChange={(e) => setDevice(e.target.value)}
+                  />
+                </label>
+              </>
+            )}
+            {source !== 'new' && sources.find((s) => s.id === source) && (
+              <SourceImportDefaults
+                key={`${source}:${sources.find((s) => s.id === source)?.settingsVersion}`}
+                source={sources.find((s) => s.id === source)!}
+                onSaved={(mapping) => {
+                  setSettingsMode('confirm');
+                  applyMapping(mapping);
+                  setUsingSaved(false);
+                  setSingle(false);
+                  setZoneConfirmed(false);
+                }}
+              />
+            )}
+            <label>
+              CSV format
+              <select
+                value={format}
+                onChange={(e) => {
+                  setFormat(e.target.value as typeof format);
+                  setUsingSaved(false);
+                  setSingle(false);
+                  setZoneConfirmed(false);
+                }}
+              >
+                <option value="canonical">Canonical long form</option>
+                <option value="wide">Mapped wide columns</option>
+                <option value="renpho">RENPHO Health (English, lb)</option>
+              </select>
+            </label>
+            <label>
+              Import timezone
+              <input
+                value={zone}
+                onChange={(e) => {
+                  setZone(e.target.value);
+                  setZoneConfirmed(false);
+                  setUsingSaved(false);
+                }}
+              />
+            </label>
+            {format === 'canonical' ? (
+              <label>
+                CSV source label to include
+                <input
+                  aria-label="CSV source label to include"
+                  aria-describedby="csv-source-hint"
+                  value={sourceLabel}
+                  maxLength={200}
+                  onChange={(e) => setSourceLabel(e.target.value)}
+                />
+                <span id="csv-source-hint">
+                  Exact value in the source column; other sources are excluded.
+                </span>
               </label>
-              {headers.map((column) => (
-                <fieldset key={column}>
-                  <legend>{column}</legend>
-                  <label>
-                    Metric for {column}
-                    <select
-                      value={columns[column]?.metric ?? ''}
-                      onChange={(e) => {
-                        const metric = e.target.value as MetricKey | '';
-                        setColumns((current) => {
-                          const next = { ...current };
-                          if (!metric) delete next[column];
-                          else
-                            next[column] = {
-                              metric,
-                              unit: measurementRegistry[metric].units[0],
-                              method: 'unknown',
-                            };
-                          return next;
-                        });
-                      }}
-                    >
-                      <option value="">Ignore</option>
-                      {Object.entries(measurementRegistry).map(([key, v]) => (
-                        <option key={key} value={key}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {columns[column] && (
-                    <>
-                      <label>
-                        Unit for {column}
-                        <select
-                          value={columns[column].unit}
-                          onChange={(e) =>
-                            setColumns({
-                              ...columns,
-                              [column]: {
-                                ...columns[column]!,
-                                unit: e.target.value,
-                              },
-                            })
-                          }
-                        >
-                          {measurementRegistry[
-                            columns[column].metric
-                          ].units.map((unit) => (
-                            <option key={unit}>{unit}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Method for {column}
-                        <select
-                          value={columns[column].method}
-                          onChange={(e) =>
-                            setColumns({
-                              ...columns,
-                              [column]: {
-                                ...columns[column]!,
-                                method: e.target.value as MeasurementMethod,
-                              },
-                            })
-                          }
-                        >
-                          {[
-                            'unknown',
-                            'device_reported',
-                            'device_estimate',
-                            'user_reported',
-                          ].map((method) => (
-                            <option key={method}>{method}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </>
-                  )}
-                </fieldset>
-              ))}
-            </>
-          ) : null}
-          {format === 'renpho' && (
-            <>
-              <p>
-                Imports supported values and annotations as linked weigh-ins.
-                Estimates are manufacturer-reported. Date and Time use the
-                confirmed timezone; ambiguous or missing DST times are invalid.
-                No. is provenance, not identity. Select the same source for
-                overlapping exports.
+            ) : format === 'wide' ? (
+              <>
+                {columnSelect(
+                  'Timestamp column',
+                  timestamp,
+                  setTimestamp,
+                  false,
+                )}
+                {columnSelect('Local date column', localDate, setLocalDate)}
+                {columnSelect(
+                  'External record ID column',
+                  externalId,
+                  setExternalId,
+                )}
+                <label>
+                  Import granularity
+                  <select
+                    value={granularity}
+                    onChange={(e) =>
+                      setGranularity(e.target.value as Granularity)
+                    }
+                  >
+                    <option value="instant">Instant</option>
+                    <option value="daily_total">Daily total</option>
+                    <option value="session_total">Session total</option>
+                  </select>
+                </label>
+                {headers.map((column) => (
+                  <fieldset key={column}>
+                    <legend>{column}</legend>
+                    <label>
+                      Metric for {column}
+                      <select
+                        value={columns[column]?.metric ?? ''}
+                        onChange={(e) => {
+                          const metric = e.target.value as MetricKey | '';
+                          setColumns((current) => {
+                            const next = { ...current };
+                            if (!metric) delete next[column];
+                            else
+                              next[column] = {
+                                metric,
+                                unit: measurementRegistry[metric].units[0],
+                                method: 'unknown',
+                              };
+                            return next;
+                          });
+                        }}
+                      >
+                        <option value="">Ignore</option>
+                        {Object.entries(measurementRegistry).map(([key, v]) => (
+                          <option key={key} value={key}>
+                            {v.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {columns[column] && (
+                      <>
+                        <label>
+                          Unit for {column}
+                          <select
+                            value={columns[column].unit}
+                            onChange={(e) =>
+                              setColumns({
+                                ...columns,
+                                [column]: {
+                                  ...columns[column]!,
+                                  unit: e.target.value,
+                                },
+                              })
+                            }
+                          >
+                            {measurementRegistry[
+                              columns[column].metric
+                            ].units.map((unit) => (
+                              <option key={unit}>{unit}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Method for {column}
+                          <select
+                            value={columns[column].method}
+                            onChange={(e) =>
+                              setColumns({
+                                ...columns,
+                                [column]: {
+                                  ...columns[column]!,
+                                  method: e.target.value as MeasurementMethod,
+                                },
+                              })
+                            }
+                          >
+                            {[
+                              'unknown',
+                              'device_reported',
+                              'device_estimate',
+                              'user_reported',
+                            ].map((method) => (
+                              <option key={method}>{method}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    )}
+                  </fieldset>
+                ))}
+              </>
+            ) : null}
+            {usingSaved && (
+              <p role="status">
+                Using saved source settings: {zone}.{' '}
+                {single
+                  ? 'Confirmed single-profile history.'
+                  : `Exact profile: ${profileValue}.`}{' '}
+                Change the source or settings if this file belongs to a
+                different context.
               </p>
+            )}
+            {format === 'renpho' && !usingSaved && (
+              <>
+                <p>
+                  Imports supported values and annotations as linked weigh-ins.
+                  Estimates are manufacturer-reported. Date and Time use the
+                  confirmed timezone; ambiguous or missing DST times are
+                  invalid. No. is provenance, not identity. Select the same
+                  source for overlapping exports.
+                </p>
+                <label className="data-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={zoneConfirmed}
+                    onChange={(e) => setZoneConfirmed(e.target.checked)}
+                  />
+                  I confirm the import timezone matches this RENPHO file
+                </label>
+              </>
+            )}
+            {format !== 'renpho' &&
+              columnSelect('Profile column', profileColumn, setProfileColumn)}
+            {format !== 'renpho' && profileColumn ? (
+              <label>
+                Profile value to include
+                <input
+                  aria-label="Profile value to include"
+                  aria-describedby="csv-profile-hint"
+                  value={profileValue}
+                  maxLength={200}
+                  onChange={(e) => setProfileValue(e.target.value)}
+                />
+                <span id="csv-profile-hint">
+                  Exact match. Other profiles are counted separately.
+                </span>
+              </label>
+            ) : !usingSaved ? (
               <label className="data-checkbox">
                 <input
                   type="checkbox"
-                  checked={zoneConfirmed}
-                  onChange={(e) => setZoneConfirmed(e.target.checked)}
+                  checked={single}
+                  onChange={(e) => setSingle(e.target.checked)}
                 />
-                I confirm the import timezone matches this RENPHO file
+                I confirm this file contains one profile
               </label>
-            </>
-          )}
-          {format !== 'renpho' &&
-            columnSelect('Profile column', profileColumn, setProfileColumn)}
-          {format !== 'renpho' && profileColumn ? (
-            <label>
-              Profile value to include
-              <input
-                aria-label="Profile value to include"
-                aria-describedby="csv-profile-hint"
-                value={profileValue}
-                maxLength={200}
-                onChange={(e) => setProfileValue(e.target.value)}
-              />
-              <span id="csv-profile-hint">
-                Exact match. Other profiles are counted separately.
-              </span>
-            </label>
-          ) : (
+            ) : null}
             <label className="data-checkbox">
               <input
                 type="checkbox"
-                checked={single}
-                onChange={(e) => setSingle(e.target.checked)}
+                checked={flag}
+                onChange={(e) => setFlag(e.target.checked)}
               />
-              I confirm this file contains one profile
+              Flag imported readings for review
             </label>
-          )}
-          <label className="data-checkbox">
-            <input
-              type="checkbox"
-              checked={flag}
-              onChange={(e) => setFlag(e.target.checked)}
-            />
-            Flag imported readings for review
-          </label>
-          <Button ref={previewButton} type="submit" disabled={!csv}>
-            Preview CSV
+            <Button ref={previewButton} type="submit" disabled={!csv}>
+              Preview CSV
+            </Button>
+          </fieldset>
+        </form>
+      </details>
+      {stage.kind === 'editing' && recovery.current && (
+        <section aria-label="Unresolved local recovery">
+          <p>
+            Clearing local recovery does not cancel a server request that may
+            still finish. Check Data for an existing result before starting
+            another import.
+          </p>
+          <Button variant="outline" onClick={() => void clearRecovery()}>
+            Clear local recovery
           </Button>
-        </fieldset>
-      </form>
+        </section>
+      )}
+      {stage.kind === 'editing' && sharedFile && (
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (!session) return;
+            void consumeShare(sharedFile.ref, session.user.id)
+              .then(() => {
+                scope.commit(epoch, () => {
+                  setCsv('');
+                  setFileName('');
+                  setHeaders([]);
+                  onSharedConsumed?.();
+                  setError(
+                    'The local file was discarded. Choose a file or share again.',
+                  );
+                });
+              })
+              .catch(() =>
+                setError(
+                  'Discard could not be confirmed. Retry or close Vulpes.',
+                ),
+              );
+          }}
+        >
+          Discard received file
+        </Button>
+      )}
       {stage.kind === 'previewing' && (
         <p role="status">
           Validating and encrypting the preview. No measurements saved.
@@ -827,6 +1248,14 @@ export function ImportForm({
             Source: {sources.find((s) => s.id === p.source_id)?.label ?? label}{' '}
             · {p.source_id}
           </p>
+          {p.confirmed_mapping && (
+            <p>
+              Import timezone: {p.confirmed_mapping.timezone}.{' '}
+              {p.confirmed_mapping.single_profile
+                ? 'Confirmed single-profile history.'
+                : `Exact profile: ${p.confirmed_mapping.profile?.value}.`}
+            </p>
+          )}
           <p>
             {p.counts.new} new; {p.counts.duplicate} duplicates;{' '}
             {p.counts.conflict} conflicts requiring review; {p.counts.invalid}{' '}
@@ -842,8 +1271,9 @@ export function ImportForm({
           </p>
           <p>
             {p.source_rows} source rows; {p.events.total} weigh-ins;{' '}
-            {p.enrichment_count} missing metrics added; {p.annotation_additions}{' '}
-            annotation additions; {p.annotation_conflicts} annotation conflicts.{' '}
+            {p.counts.observations} numeric observations; {p.enrichment_count}{' '}
+            missing metrics added; {p.annotation_additions} annotation
+            additions; {p.annotation_conflicts} annotation conflicts.{' '}
             {p.unavailable_cells} unavailable cells; {p.empty_events} rows
             without readings. Range: {p.observed_from ?? 'none'} to{' '}
             {p.observed_to ?? 'none'}.
@@ -966,6 +1396,11 @@ export function ImportForm({
             annotation additions are retained. Existing values are preserved. A
             change to your data requires a fresh preview.
           </p>
+          <p>
+            To change the mapping or timezone, discard this preview and select
+            the file again. The next selection will wait for your settings
+            review.
+          </p>
           {stage.kind === 'stale' ? (
             <p role="alert">
               {error ||
@@ -982,6 +1417,7 @@ export function ImportForm({
             disabled={
               stage.kind !== 'review' ||
               !p.ready_to_commit ||
+              Date.parse(p.expires_at) <= Date.now() ||
               p.dataRevision !== dataRevision
             }
             onClick={() => void commit()}
@@ -1002,6 +1438,9 @@ export function ImportForm({
           <h3 ref={resultHeading} tabIndex={-1}>
             Import recorded
           </h3>
+          {stage.historical && (
+            <p>Already recorded. No new readings were added.</p>
+          )}
           <p role="status">
             Historical batch outcome: {stage.result.inserted} inserted,{' '}
             {stage.result.duplicate} duplicates, {stage.result.conflict}{' '}
@@ -1034,6 +1473,7 @@ export function ImportForm({
               setStage({ kind: 'editing' });
               setError('');
               setFileName('');
+              setSettingsMode('saved');
             }}
           >
             Import another file

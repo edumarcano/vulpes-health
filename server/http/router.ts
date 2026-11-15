@@ -7,6 +7,7 @@ import chat from '../../api/chat.js';
 import conversations from '../../api/conversations.js';
 import executions from '../../api/executions.js';
 import { sendError } from './responses.js';
+import { shareTargetFallback } from './share-target.js';
 
 export function localRouter(
   request: IncomingMessage,
@@ -14,6 +15,10 @@ export function localRouter(
 ): void {
   try {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
+    if (path === '/api/share-target') {
+      shareTargetFallback(request, response);
+      return;
+    }
     if (path === '/api/account') {
       void settings(request, response);
       return;

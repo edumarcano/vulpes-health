@@ -15,7 +15,7 @@ test('built worker caches only public assets and gives private routes a data-fre
   await page.goto('/offline.html');
   await page.evaluate(async () => {
     await caches.open('vulpes-static-obsolete');
-    await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.register('/sw.js', { type: 'module' });
     await navigator.serviceWorker.ready;
   });
   await page.reload();
@@ -58,7 +58,7 @@ test('built worker caches only public assets and gives private routes a data-fre
       const url = new URL(value);
       return (
         !url.search &&
-        /^(?:\/assets\/[\w.-]+\.(?:js|css)|\/offline\.(?:html|css)|\/manifest.webmanifest|\/(?:brand|icons)\/[\w.-]+\.png)$/.test(
+        /^(?:\/assets\/[\w.-]+\.(?:js|css)|\/(?:share-)?offline\.(?:html|css)|\/manifest.webmanifest|\/(?:brand|icons)\/[\w.-]+\.png)$/.test(
           url.pathname,
         )
       );

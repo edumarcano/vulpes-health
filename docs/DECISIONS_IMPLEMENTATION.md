@@ -88,3 +88,10 @@ See [M1 evidence](evidence/v0.2.0/m1-imports.md) for executed checks and boundar
 - **Deferred features.** Protected pages and assistant Markdown load on demand, and React has one shared chunk. The service worker precaches public and offline shell assets only and leaves application JavaScript and CSS to browser caching. This avoids downloading unused features at install time and keeps the offline page free of data.
 - **Bundle limits.** Bundle checks cap JavaScript chunks at 500 kB. Production browser checks cap initial sign-in JavaScript at 750 kB (220 kB gzipped).
 - **Build scripts.** npm approval covers only the locked esbuild 0.28.2 install script.
+
+## M2 ingestion (2026-11-15)
+
+- **One review path.** Picker and installed-PWA files use `/data/import` and the existing version 2 APIs. Compatible saved mappings can create a preview directly; a share first requires explicit account confirmation. Owned preview/status responses return the batch's confirmed mapping to keep recovery independent of newer defaults.
+- **Bounded local exception.** A module service worker receives exactly one CSV without a server upload. A dedicated IndexedDB transaction owns the file, owner/generation fence and consumer lease. Raw bytes expire 15 minutes after receipt and are removed when preview is confirmed. Public caching remains limited to enumerated shell assets.
+- **Recovery metadata.** A separate single-operation locator is saved before network dispatch and expires within 24 hours or the earlier server preview expiry. It carries IDs/hashes and phase, never file bytes, values, a full mapping or credentials. This permits status-first recovery after reload or a lost reply without extending raw-file retention. Clearing local recovery does not cancel a possibly running server request.
+- **Worker lifecycle.** Workers wait for existing windows; no forced activation or automatic retry/commit. The manifest accepts `.csv` and `text/csv`, with the file picker as the platform fallback. [Import operations](operations/data-imports.md) owns the intake and recovery contract.

@@ -210,7 +210,7 @@ test('chat stays disabled and navigation stores only the auth session', async ({
   );
   expect(
     cached.every((path) =>
-      /^(?:\/assets\/|\/brand\/|\/icons\/|\/offline\.(?:html|css)$|\/manifest.webmanifest$)/.test(
+      /^(?:\/assets\/|\/brand\/|\/icons\/|\/(?:share-)?offline\.(?:html|css)$|\/manifest.webmanifest$)/.test(
         path,
       ),
     ),

@@ -5,11 +5,20 @@ import { Button } from '@/components/ui/button';
 import { ownedJson } from '@/lib/api';
 import { useAuth } from '@/lib/auth/auth-context';
 import { successEnvelopeSchema } from '../../../shared/api';
-import { ImportMappingSchema } from '../../../shared/imports';
+import {
+  ImportMappingSchema,
+  type ImportMapping,
+} from '../../../shared/imports';
 import { SourceDefaultsMutationSchema } from '../../../shared/events';
 import type { Source } from '../../../shared/data';
 
-export function SourceImportDefaults({ source }: { source: Source }) {
+export function SourceImportDefaults({
+  source,
+  onSaved,
+}: {
+  source: Source;
+  onSaved?: (mapping: ImportMapping) => void;
+}) {
   const { state, scope } = useAuth(),
     client = useQueryClient();
   const epoch = scope.epoch;
@@ -55,6 +64,7 @@ export function SourceImportDefaults({ source }: { source: Source }) {
         setMessage(
           'Source defaults saved. Existing instants are unchanged; pending previews were invalidated.',
         );
+        onSaved?.(request.data.mapping);
         void client.invalidateQueries({
           queryKey: ['data', state.session.user.id, epoch],
         });

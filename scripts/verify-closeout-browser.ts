@@ -199,7 +199,7 @@ export async function verifyCloseoutBrowser(input: {
     await offline.goto(input.appOrigin + '/offline.html');
     await offline.evaluate(async () => {
       await caches.open('vulpes-static-obsolete');
-      await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.register('/sw.js', { type: 'module' });
       await navigator.serviceWorker.ready;
     });
     await offline.reload();
@@ -234,7 +234,7 @@ export async function verifyCloseoutBrowser(input: {
         const u = new URL(value);
         return (
           !u.search &&
-          /^(?:\/assets\/[\w.-]+\.(?:js|css)|\/offline\.(?:html|css)|\/manifest.webmanifest|\/(?:brand|icons)\/[\w.-]+\.png)$/.test(
+          /^(?:\/assets\/[\w.-]+\.(?:js|css)|\/(?:share-)?offline\.(?:html|css)|\/manifest.webmanifest|\/(?:brand|icons)\/[\w.-]+\.png)$/.test(
             u.pathname,
           )
         );

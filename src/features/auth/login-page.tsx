@@ -1,5 +1,6 @@
 import { useState, type SubmitEvent } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, useLocation } from 'react-router-dom';
+import { importReturnPath } from '../../../shared/import-handoff';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -7,20 +8,12 @@ import { useAuth } from '@/lib/auth/auth-context';
 export function LoginPage() {
   const { state, signIn } = useAuth();
   const [search] = useSearchParams();
+  const { hash } = useLocation();
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   if (state.kind === 'signed_in')
     return (
-      <Navigate
-        to={
-          ['/ask', '/goals', '/data', '/settings'].includes(
-            search.get('returnTo') ?? '',
-          )
-            ? search.get('returnTo')!
-            : '/ask'
-        }
-        replace
-      />
+      <Navigate to={importReturnPath(search.get('returnTo'), hash)} replace />
     );
   if (
     state.kind === 'deleting' ||

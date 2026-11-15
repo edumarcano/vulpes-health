@@ -118,11 +118,13 @@ test('full-panel CSV preserves all fields, unresolved raw values and inert annot
   });
 });
 async function choose(page: Page, buffer = canonical) {
-  const dialog = page.getByRole('dialog', { name: 'Import CSV', exact: true });
-  if (!(await dialog.isVisible()))
+  if (new URL(page.url()).pathname !== '/data/import')
     await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   const fileInput = page.getByLabel('CSV file', { exact: true });
   await expect(fileInput).toBeEnabled();
+  await page
+    .getByRole('combobox', { name: 'Import source', exact: true })
+    .selectOption('new');
   await fileInput.setInputFiles({
     name: 'synthetic.csv',
     mimeType: 'text/csv',
@@ -238,19 +240,6 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
     mimeType: 'text/csv',
     buffer: canonical,
   });
-  await expect(
-    page.getByText('Selected: synthetic.csv', { exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole('combobox', { name: 'Import source', exact: true })
-    .selectOption(source);
-  await page
-    .getByLabel('CSV source label to include', { exact: true })
-    .fill('Synthetic Scale A');
-  await page
-    .getByLabel('I confirm this file contains one profile', { exact: true })
-    .check();
-  await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Import recorded', exact: true }),
   ).toBeVisible();
@@ -476,7 +465,7 @@ test('second-60 CSV rows are excluded visibly and the valid boundary row commits
     fullPage: true,
   });
   const source = await confirm(page);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to Data', exact: true }).click();
   await page
     .getByLabel('Method', { exact: true })
     .selectOption('device_reported');
@@ -566,6 +555,138 @@ test('failed preview and expired commit show errors without inventing success', 
     page.getByRole('heading', { name: 'Import recorded', exact: true }),
   ).toHaveCount(0);
 });
+test('saved mappings remain editable after discarding an automatic preview', async ({
+  page,
+}) => {
+  await choose(page);
+  await page
+    .getByLabel('CSV source label to include', { exact: true })
+    .fill('Synthetic Scale A');
+  await preview(page);
+  await confirm(page);
+  await page
+    .getByRole('button', { name: 'Import another file', exact: true })
+    .click();
+  const next = Buffer.from(canonical.toString().replace('70.0', '71.0'));
+  await page.getByLabel('CSV file', { exact: true }).setInputFiles({
+    name: 'synthetic-next.csv',
+    mimeType: 'text/csv',
+    buffer: next,
+  });
+  await expect(
+    page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', {
+      name: 'Discard preview and choose file',
+      exact: true,
+    })
+    .click();
+  await expect(page.getByLabel('CSV file', { exact: true })).toBeEnabled();
+  await page.getByLabel('CSV file', { exact: true }).setInputFiles({
+    name: 'synthetic-next.csv',
+    mimeType: 'text/csv',
+    buffer: next,
+  });
+  await expect(
+    page.getByText('Selected: synthetic-next.csv', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel('Import timezone', { exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel('Import timezone', { exact: true })
+    .fill('America/New_York');
+  await page
+    .getByLabel('I confirm this file contains one profile', { exact: true })
+    .check();
+  await preview(page);
+  await expect(
+    page.getByRole('region', { name: 'Confirm CSV import', exact: true }),
+  ).toContainText('America/New_York');
+});
+
+test('changed saved source settings refresh the open import form before its next preview', async ({
+  page,
+}) => {
+  await choose(page);
+  await page
+    .getByLabel('CSV source label to include', { exact: true })
+    .fill('Synthetic Scale A');
+  await preview(page);
+  const sourceId = await confirm(page);
+  await page
+    .getByRole('button', { name: 'Import another file', exact: true })
+    .click();
+  await page
+    .getByRole('combobox', { name: 'Import source', exact: true })
+    .selectOption(sourceId);
+  await page
+    .getByLabel('Default import timezone', { exact: true })
+    .fill('America/Los_Angeles');
+  await page
+    .getByLabel(
+      'I confirm this timezone is the source default for future previews',
+      { exact: true },
+    )
+    .check();
+  await page
+    .getByRole('button', { name: 'Save source import settings', exact: true })
+    .click();
+  await expect(page.getByLabel('Import timezone', { exact: true })).toHaveValue(
+    'America/Los_Angeles',
+  );
+  expect(
+    await page
+      .getByLabel('I confirm this file contains one profile', { exact: true })
+      .isChecked(),
+  ).toBe(false);
+});
+
+test('a missing preview can release local recovery without claiming server cancellation', async ({
+  page,
+}) => {
+  await choose(page);
+  await page
+    .getByLabel('CSV source label to include', { exact: true })
+    .fill('Synthetic Scale A');
+  await page.route('**/api/data', (route) =>
+    route.request().postDataJSON()?.action === 'preview_csv'
+      ? route.abort()
+      : route.continue(),
+  );
+  await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Check import status', exact: true }),
+  ).toBeVisible();
+  await page.unroute('**/api/data');
+  await page
+    .getByRole('button', { name: 'Check import status', exact: true })
+    .click();
+  await choose(page, Buffer.from(canonical.toString().replace('70.0', '71.0')));
+  await page
+    .getByLabel('CSV source label to include', { exact: true })
+    .fill('Synthetic Scale A');
+  await page.getByRole('button', { name: 'Preview CSV', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'previous preview is still unresolved',
+  );
+  await expect(
+    page.getByText(/Clearing local recovery does not cancel/),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Clear local recovery', exact: true })
+    .click();
+  await choose(page, Buffer.from(canonical.toString().replace('70.0', '71.0')));
+  await page
+    .getByLabel('CSV source label to include', { exact: true })
+    .fill('Synthetic Scale A');
+  await preview(page);
+  await confirm(page);
+});
 test('canonical CSV imports can create a fresh preview after discarding an expired one', async ({
   page,
 }) => {
@@ -605,7 +726,7 @@ test('account switch discards the file and pending preview', async ({
     .getByLabel('CSV source label to include', { exact: true })
     .fill('Synthetic Scale A');
   await preview(page);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to Data', exact: true }).click();
   await page
     .getByRole('navigation')
     .getByRole('link', { name: 'Settings', exact: true })
@@ -724,7 +845,7 @@ test('canonical CSV imports preserve source warning text as inert data', async (
     .fill('Synthetic Scale A');
   await preview(page);
   await confirm(page);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('link', { name: 'Back to Data', exact: true }).click();
   await page
     .getByLabel('Method', { exact: true })
     .selectOption('device_reported');
@@ -782,7 +903,9 @@ for (const action of ['preview_csv', 'commit_import'])
         })
         .click();
       await started;
-      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await page
+        .getByRole('link', { name: 'Back to Data', exact: true })
+        .click();
       await page
         .getByRole('navigation')
         .getByRole('link', { name: 'Settings', exact: true })

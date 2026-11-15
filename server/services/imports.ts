@@ -333,6 +333,7 @@ function previewResult(batch: Batch, bundle: ImportBundle) {
     .sort((a, b) => Temporal.Instant.compare(a, b));
   const historical = batch.status === 'committed';
   return ImportPreviewV2Schema.parse({
+    confirmed_mapping: bundle.mapping,
     schema_version: 2,
     adapter_version: bundle.adapter_version,
     registry_version: bundle.registry_version,
