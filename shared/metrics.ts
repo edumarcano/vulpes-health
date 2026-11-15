@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const METRIC_REGISTRY_VERSION = 'body-composition-v1';
 export const RENPHO_ADAPTER_VERSION = 'renpho-en-body-composition-v1';
+export const METRIC_CONTENT_VERSION = 'metric-explanations-v1';
 
 export const metricRegistry = {
   weight: {
@@ -388,6 +389,207 @@ export const metricRegistry = {
 } as const;
 
 export type RegistryMetric = keyof typeof metricRegistry;
+export const metricDisplayGroups = {
+  weight_size: 'Weight and body size',
+  fat: 'Fat',
+  muscle: 'Muscle',
+  water: 'Water',
+  bone_protein: 'Bone and protein',
+  estimates: 'Other estimates and references',
+  other: 'Other measurements',
+} as const;
+
+// Product explanations are versioned separately from import representation.
+export const metricContent = {
+  weight: {
+    displayGroup: 'weight_size',
+    definition: 'The body mass recorded by the source at a particular time.',
+    goalEligible: true,
+  },
+  'renpho.bmi': {
+    displayGroup: 'weight_size',
+    definition:
+      "The source's body mass index, relating body mass to height. Vulpes preserves this exported value rather than recalculating it.",
+    goalEligible: true,
+  },
+  body_fat_percent: {
+    displayGroup: 'fat',
+    definition:
+      'The estimated share of body mass represented by fat. This percentage is distinct from the mass of fat.',
+    goalEligible: true,
+  },
+  'renpho.body_fat_mass': {
+    displayGroup: 'fat',
+    definition:
+      "The source's estimated mass of body fat. It is a mass value, not a percentage.",
+    goalEligible: true,
+  },
+  'renpho.muscle_percent': {
+    displayGroup: 'muscle',
+    definition:
+      "The share of body mass assigned to muscle by the vendor's estimation method. Its definition differs from skeletal muscle percentage.",
+    goalEligible: true,
+  },
+  'renpho.muscle_mass': {
+    displayGroup: 'muscle',
+    definition:
+      "The mass assigned to muscle by the vendor's estimation method. It is distinct from skeletal muscle mass and fat-free mass.",
+    goalEligible: true,
+  },
+  'renpho.skeletal_muscle_percent': {
+    displayGroup: 'muscle',
+    definition:
+      "The vendor's estimated share of body mass associated with skeletal muscle, the muscles that move the skeleton.",
+    goalEligible: true,
+  },
+  'renpho.skeletal_muscle_mass': {
+    displayGroup: 'muscle',
+    definition:
+      "The vendor's estimated mass of skeletal muscle. Do not substitute total muscle mass for this value.",
+    goalEligible: true,
+  },
+  'renpho.bone_percent': {
+    displayGroup: 'bone_protein',
+    definition:
+      "The share of body mass assigned to bone by the vendor's estimate. It does not measure bone density.",
+    goalEligible: true,
+  },
+  'renpho.bone_mass': {
+    displayGroup: 'bone_protein',
+    definition:
+      "The vendor's estimated bone mass. This scale output is not a bone mineral density examination.",
+    goalEligible: true,
+  },
+  'renpho.protein_percent': {
+    displayGroup: 'bone_protein',
+    definition:
+      "The share of body mass assigned to protein by the vendor's estimate. It is not the percentage of protein in the diet.",
+    goalEligible: true,
+  },
+  'renpho.protein_mass': {
+    displayGroup: 'bone_protein',
+    definition:
+      "The vendor's estimate of protein mass in the body. It does not describe dietary protein intake.",
+    goalEligible: true,
+  },
+  'renpho.body_water_percent': {
+    displayGroup: 'water',
+    definition:
+      "The vendor's estimated share of body mass represented by water. A single value cannot diagnose hydration status.",
+    goalEligible: true,
+  },
+  'renpho.body_water_mass': {
+    displayGroup: 'water',
+    definition:
+      "The vendor's estimated mass of water in the body, preserved separately from water percentage.",
+    goalEligible: true,
+  },
+  'renpho.fat_free_mass': {
+    displayGroup: 'fat',
+    definition:
+      "The vendor's estimated body mass excluding fat. It includes more than muscle and must not be treated as muscle mass.",
+    goalEligible: true,
+  },
+  'renpho.subcutaneous_fat_percent': {
+    displayGroup: 'fat',
+    definition:
+      "The vendor's estimate associated with fat beneath the skin. Its scope is distinct from total body fat and visceral fat.",
+    goalEligible: true,
+  },
+  'renpho.visceral_fat_index': {
+    displayGroup: 'estimates',
+    definition:
+      'A proprietary vendor index estimating fat around abdominal organs. It is not a mass, percentage or score comparable across manufacturers.',
+    goalEligible: true,
+  },
+  'renpho.bmr': {
+    displayGroup: 'estimates',
+    definition:
+      "The exported basal-metabolism estimate in kcal. This export's time basis is unverified, so Vulpes preserves it as a raw value only.",
+    goalEligible: false,
+  },
+  'renpho.metabolic_age': {
+    displayGroup: 'estimates',
+    definition:
+      "An age-like vendor estimate derived from its body-composition model. It is not the person's chronological age or a diagnosis.",
+    goalEligible: true,
+  },
+  'renpho.waist_hip_ratio': {
+    displayGroup: 'estimates',
+    definition:
+      "The source's waist-to-hip ratio value. Vulpes does not infer actual waist or hip measurements from this output.",
+    goalEligible: true,
+  },
+  'renpho.optimal_weight': {
+    displayGroup: 'estimates',
+    definition:
+      'A weight reference produced by the vendor. Its name does not make it a Vulpes recommendation or an approved personal goal.',
+    goalEligible: true,
+  },
+  'renpho.target_weight_delta': {
+    displayGroup: 'estimates',
+    definition:
+      'The exported signed weight delta. Its direction relative to the vendor reference is unverified; Vulpes does not interpret the sign as an instruction.',
+    goalEligible: false,
+  },
+  'renpho.target_muscle_delta': {
+    displayGroup: 'estimates',
+    definition:
+      'The exported signed muscle-mass delta. Its direction relative to the vendor reference is unverified, so it remains a raw value.',
+    goalEligible: false,
+  },
+  'renpho.target_fat_delta': {
+    displayGroup: 'estimates',
+    definition:
+      'The exported signed fat-mass delta. Its direction relative to the vendor reference is unverified, so it remains a raw value.',
+    goalEligible: false,
+  },
+  heart_rate: {
+    displayGroup: 'other',
+    definition:
+      'The recorded heart rate at observation time. A resting state is not assumed unless the source explicitly identifies it.',
+    goalEligible: true,
+  },
+  resting_heart_rate: {
+    displayGroup: 'other',
+    definition:
+      'A heart-rate reading explicitly identified by its source as resting, rather than an arbitrary observed pulse.',
+    goalEligible: true,
+  },
+  height: {
+    displayGroup: 'weight_size',
+    definition:
+      'The stature recorded by the source, with its original unit retained.',
+    goalEligible: true,
+  },
+  steps_daily: {
+    displayGroup: 'other',
+    definition:
+      'The number of steps recorded for one local calendar day. Daily totals remain separate from instantaneous readings.',
+    goalEligible: true,
+  },
+  sleep_duration: {
+    displayGroup: 'other',
+    definition:
+      'The duration of recorded sleep. Session totals and daily totals retain their separate meanings.',
+    goalEligible: true,
+  },
+} as const satisfies Record<
+  RegistryMetric,
+  {
+    displayGroup: keyof typeof metricDisplayGroups;
+    definition: string;
+    goalEligible: boolean;
+  }
+>;
+
+export const goalEligibleMetricKeys = (
+  Object.keys(metricContent) as RegistryMetric[]
+).filter((metric) => metricContent[metric].goalEligible);
+export const metricEstimateCaution =
+  'Device estimates may overlap and are not independent corroborating measurements. Do not add components together or infer physiological change from one estimate.';
+export const metricGoalCaution =
+  'Eligibility for tracking does not mean that increasing or decreasing this value is advisable. Manufacturer references do not set personal goals.';
 export const legacyMetricKeys = [
   'weight',
   'body_fat_percent',

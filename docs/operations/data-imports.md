@@ -48,6 +48,12 @@ The smallest reached bound controls acceptance. Oversize data is rejected withou
 
 Latest-event reads contain only that event. Latest-per-metric readings retain their individual dates. Last import time never substitutes for measurement time. Unresolved vendor semantics remain ineligible for analytical calculations. [M3 evidence](../evidence/v0.2.0/m3-analysis.md) records the local proof and later UI/tool gates.
 
+## Metric explanations and guidance
+
+The versioned metric content provides original definitions, display categories and source-specific cautions for all 29 metrics. `GET /api/data?view=reference` requires an owned source/series selection and returns its definition, current numerical evidence when eligible, and an explicit reference state. Four unresolved fields still provide definitions with no derived numerical result. No manufacturer classification is enabled: the current verified range registry is empty. Exported labels remain original event annotations, separate from Vulpes guidance or goals.
+
+Reference evidence binds content and applicability versions as well as the data revision. Resolving an older result returns unavailable when those inputs change. No new personal profile attributes are collected. The [per-metric coverage and reuse audit](../evidence/v0.2.0/metric-reference-coverage.md) records the missing evidence required before a manufacturer rule can ship.
+
 ## Preview and transaction lifecycle
 
 Mutation `POST /api/data` calls require `X-Vulpes-Data-Contract: 2`. Old clients receive `409 client_upgrade_required` before maintenance or mutations. Preview uses `schema_version: 2`, `csv_base64`, an idempotency UUID, source and versioned mapping; raw CSV is never archived. Compact normalized staging is encrypted. The response includes observation/event counts, enrichment, annotations, missingness, range, errors and unsupported columns. `import_items` pages the full private detail list, beyond the bounded response samples.
