@@ -789,6 +789,9 @@ isOneToOne: false
 "read_account_export_v1":
 { Args: { "p_after"?: string,"p_owner": string,"p_section": string }; Returns: Json
                            },
+"read_analysis_v1":
+{ Args: { "p_queries": Json }; Returns: Json
+                           },
 "read_budget_v1":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -809,6 +812,9 @@ isOneToOne: false
                            },
 "read_metric_inventory_v1":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"read_metric_inventory_v2":
+{ Args: { "p_after"?: Json,"p_limit"?: number,"p_revision"?: number }; Returns: Json
                            },
 "read_vertex_policy_v1":
 { Args: { "p_location": string,"p_project": string }; Returns: Json

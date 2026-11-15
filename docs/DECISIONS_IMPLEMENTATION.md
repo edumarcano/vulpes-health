@@ -34,6 +34,16 @@ The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflic
 
 See [M1 evidence](evidence/v0.2.0/m1-imports.md) for executed checks and boundaries. No hosted changes, provider calls or new model approval are part of this implementation.
 
+## v0.2.0 M3 analysis (2026-11-15)
+
+| Decision | Reason and boundary |
+|---|---|
+| Explicit operations share one deterministic service | Data and conversation tools consume the same exact values, windows, coverage and result IDs. A selected-period mean weights observed daily medians equally; rolling values require three observed days. Legacy summary reads remain available while callers move to the explicit contract. |
+| Owner-scoped result hashes, without a result table | Bind selection, operation, algorithm/registry versions and data revision. Current evidence is resolved only against its expected revision; changed data makes it unavailable. Evaluation time and import time remain separate from measurement dates. |
+| Bounded database snapshots and indexed latest reads | Limit a batch to 24 unique series, each window to 366 local days and total analytical reads to 25,000 observations. Reject excess rather than calculate partial statistics. Inventory discovers all stored registry metrics; unresolved fields remain raw-only. |
+
+See [M3 analysis evidence](evidence/v0.2.0/m3-analysis.md) for executed checks and remaining acceptance. This does not authorize deployment, model activation or manufacturer classification.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.
