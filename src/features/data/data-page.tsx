@@ -1,4 +1,7 @@
 import { useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { z } from 'zod';
+import { ImportSelectionSchema } from '../../../shared/imports';
 import { Temporal } from '@js-temporal/polyfill';
 import {
   useInfiniteQuery,
@@ -36,7 +39,6 @@ import type {
   MeasurementDTO,
 } from '../../../shared/domain';
 import { ManualForm } from './manual-form';
-import { ImportForm } from './import-form';
 import { EventEditor } from './event-editor';
 import { MeasurementEditor } from './measurement-editor';
 import { DataChartView } from './data-chart-view';
@@ -44,17 +46,38 @@ import { formatMeasurement as number } from './format';
 
 export function DataPage() {
   const { state, scope } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const imported = z
+    .object({
+      ownerId: z.uuid(),
+      sourceId: z.uuid(),
+      selection: ImportSelectionSchema,
+    })
+    .safeParse(location.state);
+  const initial =
+    imported.success && imported.data.ownerId === scope.userId
+      ? imported.data
+      : null;
   const session = state.kind === 'signed_in' ? state.session : null;
   const epoch = scope.epoch;
   const client = useQueryClient();
   const root = ['data', session?.user.id, epoch];
-  const [source, setSource] = useState('');
-  const [metric, setMetric] = useState<MetricKey>('weight');
-  const [method, setMethod] = useState<MeasurementMethod>('user_reported');
-  const [granularity, setGranularity] = useState<Granularity>('instant');
-  const [zone, setZone] = useState<string | null>(null);
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [source, setSource] = useState(initial?.sourceId ?? '');
+  const [metric, setMetric] = useState<MetricKey>(
+    initial?.selection.metric ?? 'weight',
+  );
+  const [method, setMethod] = useState<MeasurementMethod>(
+    initial?.selection.method ?? 'user_reported',
+  );
+  const [granularity, setGranularity] = useState<Granularity>(
+    initial?.selection.granularity ?? 'instant',
+  );
+  const [zone, setZone] = useState<string | null>(
+    initial?.selection.timezone ?? null,
+  );
+  const [from, setFrom] = useState(initial?.selection.from ?? '');
+  const [to, setTo] = useState(initial?.selection.to ?? '');
   const [notice, setNotice] = useState('');
   const [editing, setEditing] = useState<{
     reading: MeasurementDTO;
@@ -65,7 +88,6 @@ export function DataPage() {
     { kind: 'idle' | 'loading' | 'done' } | { kind: 'error'; message: string }
   >({ kind: 'idle' });
   const [manualOpen, setManualOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const tableHeading = useRef<HTMLHeadingElement>(null);
   const manualTrigger = useRef<HTMLButtonElement>(null);
   const importTrigger = useRef<HTMLButtonElement>(null);
@@ -277,7 +299,7 @@ export function DataPage() {
             variant="outline"
             onClick={() => {
               importTrigger.current?.focus();
-              setImportOpen(true);
+              navigate('/data/import');
               setManualOpen(false);
             }}
           >
@@ -289,7 +311,6 @@ export function DataPage() {
             onClick={() => {
               manualTrigger.current?.focus();
               setManualOpen(true);
-              setImportOpen(false);
             }}
           >
             <Plus className="h-4 w-4 mr-1.5" />
@@ -864,44 +885,6 @@ export function DataPage() {
             }}
           />
           {notice && <p role="status">{notice}</p>}
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={importOpen} onOpenChange={setImportOpen}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-md md:max-w-2xl overflow-y-auto"
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            importTrigger.current?.focus();
-          }}
-        >
-          <SheetHeader>
-            <SheetTitle>Import CSV</SheetTitle>
-            <SheetDescription>
-              Preview, map columns, and confirm batch records
-            </SheetDescription>
-          </SheetHeader>
-          <ImportForm
-            sources={allSources}
-            timezone={timezone}
-            dataRevision={sources.data?.pages[0]?.dataRevision ?? 0}
-            onView={(sourceId, selection) => {
-              setSource(sourceId);
-              setMetric(selection.metric);
-              setMethod(selection.method);
-              setGranularity(selection.granularity);
-              setZone(selection.timezone);
-              setFrom(selection.from);
-              setTo(selection.to);
-              setImportOpen(false);
-              setNotice('Showing the selected imported series.');
-            }}
-            onSaved={(result) => {
-              setSource(result.source_id);
-              void client.invalidateQueries({ queryKey: root });
-            }}
-          />
         </SheetContent>
       </Sheet>
     </>

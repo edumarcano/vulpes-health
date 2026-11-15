@@ -8,9 +8,11 @@ import './index.css';
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Installation is optional; online workflows remain available.
-    });
+    void navigator.serviceWorker
+      .register('/sw.js', { type: 'module' })
+      .catch(() => {
+        // Installation is optional; online workflows remain available.
+      });
   });
 }
 

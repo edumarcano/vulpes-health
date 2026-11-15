@@ -48,7 +48,27 @@ All `POST /api/data` calls require `X-Vulpes-Data-Contract: 2`. Old clients rece
 
 Owner + source + exact interpreted instant identifies a weigh-in, with a source-local collision guard. Exact canonical equality preserves existing originals and correction flags. Missing metrics may enrich an event; new annotations are shown for review and can enrich an existing event even when all incoming numeric values are excluded as conflicts. Without an existing parent or an eligible numeric observation, annotations are excluded as conflicts too. Changed nonempty values/annotations conflict and never overwrite. Missing later values do not delete records. Different minutes/seconds remain separate events. Indistinguishable incompatible same-time rows are excluded together; equivalent rows collapse with explicit duplicate counts. `No.`, row order and raw file hash do not define logical identity.
 
-After an uncertain response, use status before retrying or claiming cancellation. A lost preview reply is discoverable by its request UUID. Replaying a committed batch returns its historical receipt and never reinserts deleted records. Data/source changes require a fresh preview. Source defaults are versioned and visible; changing them never moves existing instants. Streamlined default reuse and authenticated sharing remain M2 work.
+After an uncertain response, use status before retrying or claiming cancellation. A lost preview reply is discoverable by its request UUID. Replaying a committed batch returns its historical receipt and never reinserts deleted records. Data/source changes require a fresh preview. Source defaults are versioned and visible; changing them never moves existing instants. Preview and status responses include the batch's confirmed mapping so reload recovery does not substitute newer source defaults.
+
+## Picker and installed-PWA intake
+
+Data opens the common `/data/import` page for selected and shared files. A single compatible owned CSV source can supply its saved mapping, timezone and person assumption directly to preview. Multiple compatible sources require selection. First imports, source changes and incompatible settings require explicit confirmation. Choose Review settings before preview to edit saved choices. Discarding a preview selects that mode for the next file selection, because raw bytes were already consumed. Review shows the server's source, timezone, person assumption, range, counts and exclusions before the separate Confirm import action.
+
+The manifest registers one `.csv` / `text/csv` attachment at `/api/share-target`. The production module worker handles the multipart POST locally, then redirects with an opaque fragment. Receipt and sign-in do not upload. The active account must be verified and the user must choose it before the common preview flow can send bytes. The receiver also accepts a `.csv` with an empty MIME; other MIME types are rejected. File selection remains available when sharing is unsupported.
+
+| Browser state | Retention and recovery |
+|---|---|
+| Received file | One file in the isolated `vulpes-import-handoff` IndexedDB database; expires 15 minutes after receipt, without renewal. Multipart bytes are bounded to 1 MiB + 64 KiB before parsing; the file itself remains limited to 1 MiB. |
+| Account and consumer | Explicit owner binding, an atomic single-consumer claim and a 30-second lease renewed every 10 seconds. The tab keeps its consumer UUID in session storage across reload. Every upload checks the persisted identity generation and claim. |
+| Active operation | One metadata-only locator written before preview/commit: owner, request/batch IDs, hashes, source/version, phase and expiry. No file, readings, mapping, filename, token or result body. Expires within 24 hours of initiation or at the earlier preview expiry. |
+| Preview received | Raw bytes are removed. The server's encrypted normalized staging owns review; browser recovery uses owned status and the original request IDs. |
+| Completion or confirmed discard | Remove the operation locator and any matching raw file. Logout, account change and deletion restriction fence old consumers and clear bound state. Explicit logout also clears an unbound share. |
+| Offline or storage failure | No background upload/commit. A cold import navigation shows a data-free recovery page. Storage failures block shared intake; the picker explains when reload recovery is unavailable. |
+| Worker update | Wait for existing windows to close; the notice explains how to reopen. No forced activation/reload. Compatible metadata supports status recovery; incompatible raw files require resharing. |
+
+Temporary browser storage is not end-to-end encryption. Expiry is enforced on access, with cleanup on access and activation; a closed browser cannot guarantee physical deletion at an exact instant. Private files and API responses never enter the public Cache Storage allowlist. The network fallback returns fixed no-store guidance without reading, echoing or saving the multipart body.
+
+Reopening an interrupted import offers Check import status. A missing status does not establish cancellation; retry the identical preview identity or deliberately clear local recovery after checking Data. A lost commit reply must be reconciled before any further commit. New preview settings may require selecting or sharing the file again because browser raw bytes are not retained for the server staging lifetime.
 
 ## Read, correction, export and recovery
 

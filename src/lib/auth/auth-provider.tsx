@@ -17,6 +17,7 @@ import {
 } from '../../../shared/account';
 import { successEnvelopeSchema } from '../../../shared/api';
 import { ownedJson } from '../api';
+import { syncImportIdentity, type ImportIdentity } from '../import-handoff';
 
 export const SESSION_STORAGE_KEY = 'vulpes.auth.session.v1';
 function createBrowserAuth() {
@@ -40,8 +41,14 @@ function createBrowserAuth() {
   }
 }
 const client = createBrowserAuth();
-async function forgetDeviceSession() {
+async function forgetDeviceSession(fence: ImportIdentity | null) {
   let message: string | undefined;
+  const clearing = syncImportIdentity(null, true, fence ?? undefined)
+    .then(() => undefined)
+    .catch(
+      () =>
+        'Temporary import storage could not be cleared. Close Vulpes before another account uses this browser.',
+    );
   try {
     const result = await client?.auth.signOut({ scope: 'local' });
     if (result?.error)
@@ -57,7 +64,7 @@ async function forgetDeviceSession() {
     message =
       'Local session storage could not be cleared. Close this browser before another account uses this device.';
   }
-  return message;
+  return (await clearing) || message;
 }
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -72,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     kind: client ? 'restoring' : 'unconfigured',
   });
   const operation = useRef<'idle' | 'signing_in' | 'signing_out'>('idle');
+  const importFence = useRef<ImportIdentity | null>(null);
   const checkSequence = useRef(0);
   const knownAccount = useRef<{
     userId: string;
@@ -85,6 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
         return;
       scope.transition(owner, true);
+      void syncImportIdentity(
+        null,
+        true,
+        importFence.current ?? undefined,
+      ).catch(() => undefined);
       knownAccount.current = { userId: owner, mode: 'deleting' };
     },
     [scope],
@@ -96,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       knownAccount.current = null;
       scope.transition(null, true);
       try {
-        const message = await forgetDeviceSession();
+        const message = await forgetDeviceSession(importFence.current);
         setState({
           kind: 'deletion_completed',
           receiptId,
@@ -125,6 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const status = successEnvelopeSchema(AccountStatusSchema).parse(
           await ownedJson('/api/account', session.access_token, scope, epoch),
         ).data;
+        if (status.state === 'active') {
+          const fence = await syncImportIdentity(session.user.id).catch(
+            () => null,
+          );
+          if (scope.epoch === epoch && checkSequence.current === sequence)
+            importFence.current = fence;
+        }
         if (status.state === 'deleting' && status.phase === 'completed') {
           if (scope.epoch === epoch && checkSequence.current === sequence)
             await completeDeletion(status.receiptId);
@@ -173,6 +193,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         knownAccount.current = null;
         scope.transition(null);
+        if (importFence.current)
+          void syncImportIdentity(null, false, importFence.current).catch(
+            () => undefined,
+          );
+        importFence.current = null;
         setState({ kind: 'signed_out' });
       }
     });
@@ -217,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     scope.transition(null, true);
     setState({ kind: 'signing_out' });
     try {
-      const message = await forgetDeviceSession();
+      const message = await forgetDeviceSession(importFence.current);
       setState({ kind: 'signed_out', ...(message ? { message } : {}) });
     } finally {
       operation.current = 'idle';

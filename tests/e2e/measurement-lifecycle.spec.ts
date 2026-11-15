@@ -106,7 +106,10 @@ async function importFixture(page: Page) {
   await expect(
     page.getByRole('heading', { name: 'Import recorded', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page
+    .getByRole('region', { name: 'View imported readings', exact: true })
+    .getByRole('button', { name: /^Weight · device reported/ })
+    .click();
   await range(page);
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
 }

@@ -22,6 +22,8 @@ Data and Goals work with the AI switched off. The repository and CI default to n
 
 The v0.2.0 RENPHO adapter preserves 24 supported numeric fields and three annotations from the evidenced English lb header family. Date, Time and Weight(lb) headers are required; optional fields and one wholly empty terminal column may be absent. Imports are bounded to 1 MiB UTF-8, 10,000 rows and 25,000 observations, with explicit review before commit. Other languages and kg/st vendor headers remain unverified. See [import contracts](docs/operations/data-imports.md) and [M1 verification](docs/evidence/v0.2.0/m1-imports.md); synthetic input does not establish device/app-version compatibility.
 
+The common import page reuses compatible saved source settings. Supported installed PWAs receive CSV shares through a temporary local handoff and explicit account confirmation before the same reviewed import. The file picker remains available on other platforms.
+
 ## Design choices
 
 - **Deterministic first.** Trends, goal progress and unit conversions use exact decimal math. The model explains results; it does not produce them.
