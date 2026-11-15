@@ -38,6 +38,9 @@ test('mobile date presets describe their bounded range and reflect custom dates'
 async function range(page: Page) {
   await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
   await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
+  await page
+    .getByLabel('Calculation', { exact: true })
+    .selectOption('rolling_7d');
 }
 async function entry(page: Page, value: string, day: string, source?: string) {
   await page.getByRole('button', { name: 'Log Reading', exact: true }).click();
@@ -91,8 +94,10 @@ test('manual entry persists, calculates exact summary, reloads, and never calls 
   await entry(page, '68', '10', source);
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
   const summary = page.getByRole('region', { name: 'Deterministic summary' });
-  await expect(summary).toContainText('Seven-day Mean');
-  await expect(summary).toContainText('Latest in selection: 68 kg');
+  await expect(summary).toContainText('Seven-day mean');
+  await expect(
+    page.getByRole('region', { name: 'Latest per metric', exact: true }),
+  ).toContainText('68 kg');
   await expect(summary).toContainText('Comparison unavailable');
   await expect(summary).not.toContainText('Stable');
   await expect(page.getByRole('table')).toContainText('70 kg');

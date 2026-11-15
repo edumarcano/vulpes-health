@@ -48,6 +48,10 @@ The smallest reached bound controls acceptance. Oversize data is rejected withou
 
 Latest-event reads contain only that event. Latest-per-metric readings retain their individual dates. Last import time never substitutes for measurement time. Unresolved vendor semantics remain ineligible for analytical calculations. [M3 evidence](../evidence/v0.2.0/m3-analysis.md) records the local proof and later UI/tool gates.
 
+Data starts with a compact dated overview and a selected-period mean. Choose a metric category, source, method and date range to inspect another series. The separate calculation control selects a seven-day headline; its effective interval and coverage are displayed explicitly. Compare with the previous equal period, the actual previous calendar month (when a whole month is selected), or custom dates. Raw points reflect loaded table pages; missing days remain gaps.
+
+Open result evidence to verify the same selection and revision. An unavailable result never silently becomes a default chart; Request current data is a separate action. Import, correction, deletion and source-default changes invalidate the owned Data, Goals, conversation and inspector caches. Server revision checks remain authoritative after navigation, focus or reload.
+
 ## Metric explanations and guidance
 
 The versioned metric content provides original definitions, display categories and source-specific cautions for all 29 metrics. `GET /api/data?view=reference` requires an owned source/series selection and returns its definition, current numerical evidence when eligible, and an explicit reference state. Four unresolved fields still provide definitions with no derived numerical result. No manufacturer classification is enabled: the current verified range registry is empty. Exported labels remain original event annotations, separate from Vulpes guidance or goals.

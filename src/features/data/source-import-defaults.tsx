@@ -65,9 +65,10 @@ export function SourceImportDefaults({
           'Source defaults saved. Existing instants are unchanged; pending previews were invalidated.',
         );
         onSaved?.(request.data.mapping);
-        void client.invalidateQueries({
-          queryKey: ['data', state.session.user.id, epoch],
-        });
+        for (const domain of ['data', 'goals', 'conversations', 'inspection'])
+          void client.invalidateQueries({
+            queryKey: [domain, state.session.user.id, epoch],
+          });
       });
     } catch (e) {
       scope.commit(epoch, () => {

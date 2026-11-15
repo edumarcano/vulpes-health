@@ -50,6 +50,12 @@ See [M3 analysis evidence](evidence/v0.2.0/m3-analysis.md) for executed checks a
 - **Unavailable is a production state.** The verified range registry is empty because complete manufacturer applicability, endpoints and reuse evidence are unresolved. The deterministic resolver's injected synthetic tests prove mechanics only. No age, demographic or mode settings are collected speculatively. See the [coverage and reuse record](evidence/v0.2.0/metric-reference-coverage.md).
 - **Bind reference evidence separately.** Owned reference results include the original numerical result ID and bind content/registry/resolver versions plus the stated profile basis. Content changes invalidate reference evidence without relabelling the underlying numerical result. Source labels and scale outputs do not establish manufacturer applicability or chronological age.
 
+## v0.2.0 Data presentation (2026-11-15)
+
+- **Name the selected operation.** Data defaults to the selected-period observed-day mean, with separate rolling and comparison controls. The chart retains the selected interval even when a rolling headline uses seven days: a second bounded server operation supplies the plot and must match the headline revision. No UI arithmetic reconstructs that statistic.
+- **Verify evidence on navigation.** Data accepts the owned operation descriptor and expected result ID, then resolves them on the server. Missing descriptors, stale revisions and method changes show unavailable; requesting current data is deliberate. Account/epoch remounts and cache identities prevent retained results from flashing during account changes.
+- **Invalidate owned views together.** Data mutations and source changes invalidate Data, Goals, conversation and inspection queries. Reads recheck server revisions; no realtime service or persistent analytical cache is introduced.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.

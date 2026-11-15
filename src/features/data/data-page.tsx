@@ -24,7 +24,6 @@ import { ownedJson, ownedDownload } from '@/lib/api';
 import { useAuth } from '@/lib/auth/auth-context';
 import { successEnvelopeSchema } from '../../../shared/api';
 import {
-  DataSummarySchema,
   MeasurementsPageSchema,
   MutationResultSchema,
   SourcesPageSchema,
@@ -43,8 +42,33 @@ import { EventEditor } from './event-editor';
 import { MeasurementEditor } from './measurement-editor';
 import { DataChartView } from './data-chart-view';
 import { formatMeasurement as number } from './format';
+import {
+  AnalysisBatchSchema,
+  ANALYSIS_VERSION,
+  type AnalysisOperation,
+} from '../../../shared/analysis';
+import {
+  metricContent,
+  metricDisplayGroups,
+  METRIC_CONTENT_VERSION,
+} from '../../../shared/metrics';
+import { AnalysisResultView } from './analysis-result-view';
+import { AnalysisEvidence } from './analysis-evidence';
+import { DataOverview } from './data-overview';
+import { MetricGuidance } from './metric-guidance';
 
 export function DataPage() {
+  const { scope } = useAuth();
+  const location = useLocation();
+  return new URLSearchParams(location.search).has('evidence') ? (
+    <AnalysisEvidence
+      key={`evidence:${scope.userId}:${scope.epoch}:${location.key}`}
+    />
+  ) : (
+    <OwnedDataPage key={`data:${scope.userId}:${scope.epoch}`} />
+  );
+}
+function OwnedDataPage() {
   const { state, scope } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,6 +103,14 @@ export function DataPage() {
   const [from, setFrom] = useState(initial?.selection.from ?? '');
   const [to, setTo] = useState(initial?.selection.to ?? '');
   const [notice, setNotice] = useState('');
+  const [calculation, setCalculation] = useState<
+    'observed_day_mean' | 'rolling_7d'
+  >('observed_day_mean');
+  const [comparison, setComparison] = useState<
+    'none' | 'previous_period' | 'previous_month' | 'custom'
+  >('none');
+  const [previousFrom, setPreviousFrom] = useState('');
+  const [previousThrough, setPreviousThrough] = useState('');
   const [editing, setEditing] = useState<{
     reading: MeasurementDTO;
     mode: 'correct' | 'delete';
@@ -107,7 +139,7 @@ export function DataPage() {
     enabled: !!session,
     initialPageParam: null as string | null,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     queryFn: async ({ signal, pageParam }) =>
       successEnvelopeSchema(SourcesPageSchema).parse(
         await ownedJson(
@@ -175,26 +207,103 @@ export function DataPage() {
     }
   }
   const selectionKey = selection ? JSON.stringify(selection) : null;
+  let operation: AnalysisOperation | null = null;
+  let comparisonError = '';
+  if (selection) {
+    try {
+      const series = {
+        metric: selection.metric,
+        source_id: selection.source_id,
+        method: selection.method,
+        granularity: selection.granularity,
+      };
+      const window = { from: selection.from, to: selection.to };
+      if (comparison === 'none')
+        operation =
+          calculation === 'observed_day_mean'
+            ? {
+                operation: calculation,
+                series,
+                timezone,
+                window,
+                includeSampleMean: false,
+              }
+            : { operation: calculation, series, timezone, window };
+      else {
+        let comparisonWindow;
+        if (comparison === 'previous_month') {
+          const start = Temporal.PlainDate.from(displayFrom).with({ day: 1 });
+          if (
+            displayFrom !== start.toString() ||
+            Temporal.PlainDate.from(displayTo).add({ days: 1 }).toString() !==
+              start.add({ months: 1 }).toString()
+          )
+            throw new Error(
+              'Select one complete calendar month to compare with its previous month.',
+            );
+          comparisonWindow = {
+            from: start
+              .subtract({ months: 1 })
+              .toZonedDateTime(timezone)
+              .toInstant()
+              .toString(),
+            to: start.toZonedDateTime(timezone).toInstant().toString(),
+          };
+        } else if (comparison === 'custom') {
+          const a = Temporal.PlainDate.from(previousFrom),
+            b = Temporal.PlainDate.from(previousThrough).add({ days: 1 });
+          const days = a.until(b).days;
+          if (days < 1 || days > 366)
+            throw new Error('Choose 1–366 local days for the comparison.');
+          comparisonWindow = {
+            from: a.toZonedDateTime(timezone).toInstant().toString(),
+            to: b.toZonedDateTime(timezone).toInstant().toString(),
+          };
+        }
+        operation = {
+          operation: 'period_comparison',
+          series,
+          timezone,
+          window,
+          comparisonMethod: calculation,
+          ...(comparisonWindow ? { comparisonWindow } : {}),
+        };
+      }
+    } catch (error) {
+      comparisonError =
+        error instanceof Error
+          ? error.message
+          : 'Choose valid comparison dates.';
+    }
+  }
   const summary = useQuery({
-    queryKey: [...root, 'summary', selectionKey],
+    queryKey: [
+      ...root,
+      'explicit-analysis',
+      sources.data?.pages[0]?.dataRevision,
+      operation,
+      ANALYSIS_VERSION,
+      METRIC_CONTENT_VERSION,
+    ],
     enabled:
       !!session &&
       !!chosenSource &&
-      !!selection &&
+      !!operation &&
       measurementRegistry[metric].analyticsOperand,
     retry: false,
-    refetchOnWindowFocus: false,
-    queryFn: async ({ signal }) =>
-      successEnvelopeSchema(DataSummarySchema).parse(
-        await ownedJson(
-          '/api/data?' +
-            new URLSearchParams({ view: 'summary', ...selection! }),
-          session!.access_token,
-          scope,
-          epoch,
-          { signal },
-        ),
-      ).data,
+    refetchOnWindowFocus: true,
+    queryFn: async ({ signal }) => {
+      const result = successEnvelopeSchema(AnalysisBatchSchema).parse(
+        await ownedJson('/api/data', session!.access_token, scope, epoch, {
+          method: 'POST',
+          signal,
+          body: JSON.stringify({ action: 'analyze', operations: [operation!] }),
+        }),
+      ).data.results[0]!;
+      if (result.kind !== 'series_analysis')
+        throw new Error('Expected a metric result.');
+      return result;
+    },
   });
   const readRevision =
     summary.data?.dataRevision ?? sources.data?.pages[0]?.dataRevision;
@@ -244,13 +353,91 @@ export function DataPage() {
             : 'This reading already exists; no duplicate was saved.',
         );
         void client.invalidateQueries({ queryKey: root });
+        void client.invalidateQueries({
+          queryKey: ['goals', session?.user.id, epoch],
+        });
+        void client.invalidateQueries({
+          queryKey: ['conversations', session?.user.id, epoch],
+        });
+        void client.invalidateQueries({
+          queryKey: ['inspection', session?.user.id, epoch],
+        });
       });
     },
   });
-  const data = summary.data;
+  const data = summary.isError || comparisonError ? undefined : summary.data;
   const items = readings.data?.pages.flatMap((page) => page.items) ?? [];
+  const needsSelectedPlot =
+    !!data &&
+    !!selection &&
+    !!data.effectiveWindow &&
+    (data.effectiveWindow.from !== selection.from ||
+      data.effectiveWindow.to !== selection.to);
+  const plotOperation: AnalysisOperation | null =
+    needsSelectedPlot && selection
+      ? {
+          operation: 'observed_day_mean',
+          series: {
+            metric: selection.metric,
+            source_id: selection.source_id,
+            method: selection.method,
+            granularity: selection.granularity,
+          },
+          timezone: selection.timezone,
+          window: { from: selection.from, to: selection.to },
+          includeSampleMean: false,
+        }
+      : null;
+  const selectedPlot = useQuery({
+    queryKey: [
+      ...root,
+      'selected-plot',
+      plotOperation,
+      data?.dataRevision,
+      ANALYSIS_VERSION,
+    ],
+    enabled: !!session && !!plotOperation,
+    retry: false,
+    refetchOnWindowFocus: true,
+    queryFn: async ({ signal }) => {
+      const result = successEnvelopeSchema(AnalysisBatchSchema).parse(
+        await ownedJson('/api/data', session!.access_token, scope, epoch, {
+          method: 'POST',
+          signal,
+          body: JSON.stringify({
+            action: 'analyze',
+            operations: [plotOperation!],
+          }),
+        }),
+      ).data.results[0]!;
+      if (
+        result.kind !== 'series_analysis' ||
+        result.dataRevision !== data?.dataRevision
+      )
+        throw new Error(
+          'The chart and summary data revisions differ. Refresh data to retry.',
+        );
+      return result;
+    },
+  });
+  const plot = needsSelectedPlot
+    ? !selectedPlot.isError &&
+      !selectedPlot.isFetching &&
+      selectedPlot.data?.dataRevision === data?.dataRevision
+      ? selectedPlot.data
+      : undefined
+    : data;
   function refresh() {
     void client.invalidateQueries({ queryKey: root });
+    void client.invalidateQueries({
+      queryKey: ['goals', session?.user.id, epoch],
+    });
+    void client.invalidateQueries({
+      queryKey: ['conversations', session?.user.id, epoch],
+    });
+    void client.invalidateQueries({
+      queryKey: ['inspection', session?.user.id, epoch],
+    });
   }
   function closeEditor() {
     setEditing(null);
@@ -319,31 +506,52 @@ export function DataPage() {
         </div>
       </header>
 
-      {/* Metric Selector Horizontal Pills */}
-      <nav className="metric-pills-bar" aria-label="Select metric">
-        {Object.entries(measurementRegistry).map(([key, item]) => (
-          <button
-            key={key}
-            type="button"
-            className={cn(
-              'metric-pill',
-              metric === key && 'metric-pill-active',
-            )}
-            onClick={() => {
-              const next = key as MetricKey;
-              setMetric(next);
-              setGranularity(
-                next === 'steps_daily'
-                  ? 'daily_total'
-                  : next === 'sleep_duration'
-                    ? 'session_total'
-                    : 'instant',
-              );
-            }}
-          >
-            <span>{item.label}</span>
-          </button>
-        ))}
+      <nav aria-label="Select metric" className="space-y-2">
+        <p className="text-sm">
+          Choose a category and metric to explore. Every supported series
+          remains available.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {Object.entries(metricDisplayGroups).map(([group, label]) => (
+            <details key={group} className="min-w-0">
+              <summary className="cursor-pointer rounded-md border px-3 py-2 text-sm">
+                {label}
+              </summary>
+              <div className="flex flex-wrap gap-2 py-2">
+                {Object.entries(measurementRegistry)
+                  .filter(
+                    ([key]) =>
+                      metricContent[key as MetricKey].displayGroup === group,
+                  )
+                  .map(([key, item]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={cn(
+                        'metric-pill',
+                        metric === key && 'metric-pill-active',
+                      )}
+                      aria-pressed={metric === key}
+                      onClick={() => {
+                        const next = key as MetricKey;
+                        setMetric(next);
+                        setMethod(measurementRegistry[next].method);
+                        setGranularity(
+                          next === 'steps_daily'
+                            ? 'daily_total'
+                            : next === 'sleep_duration'
+                              ? 'session_total'
+                              : 'instant',
+                        );
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+              </div>
+            </details>
+          ))}
+        </div>
       </nav>
 
       {/* Quick Time Ranges & Interval Bar */}
@@ -375,161 +583,106 @@ export function DataPage() {
           </Card>
         ) : (
           <>
-            {/* Deterministic Summary Grid */}
-            {data && (
-              <section
-                aria-label="Deterministic summary"
-                className="summary-grid"
-              >
-                <Card className="summary-card">
-                  <span className="text-xs text-muted-foreground uppercase font-semibold">
-                    {data.analysis.statistic === 'daily_median_mean_7d'
-                      ? 'Seven-day Mean'
-                      : data.analysis.statistic === 'observed_samples'
-                        ? 'Observed Median'
-                        : data.analysis.statistic === 'daily_totals'
-                          ? 'Daily Totals'
-                          : 'Session Observations'}
-                  </span>
-                  {data.analysis.coverageStatus === 'insufficient_data' ? (
-                    <span className="text-sm font-medium">
-                      {data.analysis.statistic === 'daily_median_mean_7d'
-                        ? 'Insufficient data. A seven-day mean requires at least three valid days.'
-                        : 'Insufficient data. No observations are available for this selection.'}
-                    </span>
-                  ) : data.analysis.value === null ? (
-                    <span className="text-sm font-medium">
-                      Totals and sessions are not combined into a headline mean.
-                    </span>
-                  ) : (
-                    <strong
-                      data-testid="headline-value"
-                      className="text-2xl font-bold"
-                    >
-                      {number(data.analysis.value)} {data.analysis.unit}
-                    </strong>
-                  )}
-                  {data.latest ? (
-                    <span className="text-xs text-muted-foreground">
-                      Latest in selection: {number(data.latest.value)}{' '}
-                      {data.latest.unit} at {data.latest.observedAt}.
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      No readings in this selection.
-                    </span>
-                  )}
-                </Card>
-
-                <Card className="summary-card">
-                  <span className="text-xs text-muted-foreground uppercase font-semibold">
-                    Period Trend
-                  </span>
-                  <span className="text-lg font-semibold">
-                    {data.analysis.absoluteChange !== null ? (
-                      <>
-                        {number(data.analysis.absoluteChange)}{' '}
-                        {metric === 'body_fat_percent'
-                          ? 'percentage points'
-                          : data.analysis.unit}
-                        {data.analysis.relativeChangePercent !== null && (
-                          <> ({number(data.analysis.relativeChangePercent)}%)</>
-                        )}
-                      </>
-                    ) : data.analysis.statistic !== 'daily_median_mean_7d' ? (
-                      'Not calculated for this measurement type'
-                    ) : data.analysis.previousWindow.validDays < 3 ? (
-                      'Comparison unavailable: insufficient prior data'
-                    ) : (
-                      'Comparison unavailable'
-                    )}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Across {data.analysis.validDays} valid days
-                  </span>
-                  {data.analysis.previousValue !== null && (
-                    <span className="text-xs text-muted-foreground">
-                      Previous seven days: {number(data.analysis.previousValue)}{' '}
-                      {data.analysis.unit}.
-                    </span>
-                  )}
-                </Card>
-
-                <Card className="summary-card">
-                  <span className="text-xs text-muted-foreground uppercase font-semibold">
-                    Observations
-                  </span>
-                  <span className="text-lg font-semibold">
-                    {data.analysis.observationCount} observations
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {data.analysis.validDays} valid days
-                  </span>
-                  {data.analysis.statistics && (
-                    <span className="text-xs text-muted-foreground">
-                      Observed median {number(data.analysis.statistics.median)}{' '}
-                      bpm (range {number(data.analysis.statistics.min)}–
-                      {number(data.analysis.statistics.max)} bpm).
-                    </span>
-                  )}
-                </Card>
-
-                <Card className="summary-card">
-                  <span className="text-xs text-muted-foreground uppercase font-semibold">
-                    Data Revision
-                  </span>
-                  <span className="text-lg font-semibold font-mono text-sm">
-                    revision {data.dataRevision}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Algorithm {data.analysis.algorithmVersion}
-                  </span>
-                </Card>
-
-                <div className="col-span-full sm:col-span-2 md:col-span-4 text-xs text-muted-foreground space-y-1">
-                  <h3>
-                    {data.analysis.statistic === 'daily_median_mean_7d'
-                      ? 'Seven-day mean of daily medians'
-                      : data.analysis.statistic === 'observed_samples'
-                        ? 'Observed sample distribution'
-                        : 'Uncombined observations'}
-                  </h3>
-                  {summary.isFetching && (
-                    <p role="status">
-                      Refreshing data. The displayed result may be stale.
-                    </p>
-                  )}
-                  <p>
-                    Source:{' '}
-                    {allSources.find((item) => item.id === chosenSource)?.label}{' '}
-                    · {method} · {granularity}
-                  </p>
-                  <p>
-                    Analysis interval: {data.analysis.from} to{' '}
-                    {data.analysis.to} (end excluded), {timezone}.
-                  </p>
-                  <p>
-                    {data.analysis.observationCount} observations;{' '}
-                    {data.analysis.validDays} valid days. Algorithm{' '}
-                    {data.analysis.algorithmVersion}; data revision{' '}
-                    {data.dataRevision}.
-                  </p>
-                  {data.analysis.exclusions.length > 0 && (
-                    <p role="status">
-                      {data.analysis.exclusions.length} conflicting daily
-                      observations excluded from the chart. Review the table.
-                    </p>
-                  )}
-                </div>
-              </section>
+            {chosenSource && (
+              <DataOverview
+                sourceId={chosenSource}
+                timezone={timezone}
+                revision={readRevision}
+                inspectEvent={setEventId}
+                exploreSeries={(series) => {
+                  setMetric(series.metric);
+                  setMethod(series.method);
+                  setGranularity(series.granularity);
+                }}
+              />
             )}
-
-            {/* Interactive Trend Chart */}
-            {data && (
-              <section className="chart-card-container">
-                <DataChartView data={data} />
-              </section>
-            )}
+            <Card className="p-4 space-y-3 min-w-0">
+              <h2>Selected-period analysis</h2>
+              <div className="settings-form data-filters">
+                <label htmlFor="analysis-calculation">Calculation</label>
+                <select
+                  id="analysis-calculation"
+                  value={calculation}
+                  onChange={(event) =>
+                    setCalculation(event.target.value as typeof calculation)
+                  }
+                >
+                  <option value="observed_day_mean">
+                    Selected-period mean
+                  </option>
+                  <option value="rolling_7d">Seven-day rolling mean</option>
+                </select>
+                <label htmlFor="analysis-comparison">Compare with</label>
+                <select
+                  id="analysis-comparison"
+                  value={comparison}
+                  onChange={(event) =>
+                    setComparison(event.target.value as typeof comparison)
+                  }
+                >
+                  <option value="none">No comparison</option>
+                  <option value="previous_period">
+                    Previous equal-length period
+                  </option>
+                  <option value="previous_month">
+                    Previous calendar month
+                  </option>
+                  <option value="custom">Custom period</option>
+                </select>
+                {comparison === 'custom' && (
+                  <>
+                    <label>
+                      Comparison from date
+                      <input
+                        type="date"
+                        value={previousFrom}
+                        onChange={(event) =>
+                          setPreviousFrom(event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      Comparison through date
+                      <input
+                        type="date"
+                        value={previousThrough}
+                        onChange={(event) =>
+                          setPreviousThrough(event.target.value)
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+              {comparisonError && <p role="alert">{comparisonError}</p>}
+              {summary.isFetching && (
+                <p role="status">
+                  Refreshing data. The displayed result is being checked.
+                </p>
+              )}
+              {data && (
+                <AnalysisResultView
+                  result={data}
+                  sourceLabel={
+                    allSources.find((item) => item.id === chosenSource)?.label
+                  }
+                />
+              )}
+              {needsSelectedPlot && selectedPlot.isFetching && (
+                <p role="status">Checking the full selected-period chart…</p>
+              )}
+              {needsSelectedPlot && selectedPlot.isError && (
+                <p role="alert">
+                  The selected-period chart could not be verified at the summary
+                  revision. Refresh data to retry; the seven-day points have not
+                  been substituted.
+                </p>
+              )}
+              {plot && <DataChartView analysis={plot} readings={items} />}
+              {selection && chosenSource && (
+                <MetricGuidance selection={selection} revision={readRevision} />
+              )}
+            </Card>
 
             {/* Observation Ledger Table */}
             {chosenSource && selection && (
@@ -852,8 +1005,8 @@ export function DataPage() {
         )}
         <p className="detail-note">
           Manual measurements, CSV import, correction, deletion and
-          selected-data export are available. Android Health Connect is planned
-          for a later release. Calculations are not medical diagnoses.
+          selected-data export are available. Native health-platform
+          integrations are deferred. Calculations are not medical diagnoses.
         </p>
       </div>
 

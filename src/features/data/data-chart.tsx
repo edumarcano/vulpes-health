@@ -7,10 +7,33 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { DataSummary } from '../../../shared/data';
+import { useState } from 'react';
+import { Temporal } from '@js-temporal/polyfill';
+import type { Granularity, MeasurementDTO } from '../../../shared/domain';
 
-export default function DataChart({ data }: { data: DataSummary }) {
-  if (data.selection.granularity === 'session_total')
+export default function DataChart({
+  data,
+}: {
+  data: {
+    unit: string;
+    granularity: Granularity;
+    timezone: string;
+    series: Array<{ localDate: string; value: number | null }>;
+    readings: MeasurementDTO[];
+  };
+}) {
+  const [connect, setConnect] = useState(true);
+  const [raw, setRaw] = useState(true);
+  const rawPoints = data.readings.map((reading) => ({
+    localDate:
+      reading.localDate ??
+      Temporal.Instant.from(reading.observedAt)
+        .toZonedDateTimeISO(data.timezone)
+        .toPlainDate()
+        .toString(),
+    value: Number(reading.canonicalValue ?? reading.value),
+  }));
+  if (data.granularity === 'session_total')
     return (
       <p>
         Session observations are listed individually in the table. They are not
@@ -20,12 +43,39 @@ export default function DataChart({ data }: { data: DataSummary }) {
   return (
     <figure className="data-chart">
       <figcaption id="chart-caption">
-        {data.selection.granularity === 'daily_total'
+        {data.granularity === 'daily_total'
           ? 'Selected daily totals'
           : 'Daily medians of observed readings'}{' '}
-        ({data.analysis.unit}). Gaps represent missing or conflicting data. The
+        ({data.unit}). Gaps represent missing or conflicting data. The
         measurement table provides individual readings.
       </figcaption>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label>
+          <input
+            type="checkbox"
+            checked={connect}
+            onChange={(event) => setConnect(event.target.checked)}
+          />{' '}
+          Connect daily points
+        </label>
+        {rawPoints.length > 0 && (
+          <label>
+            <input
+              type="checkbox"
+              checked={raw}
+              onChange={(event) => setRaw(event.target.checked)}
+            />{' '}
+            Show loaded raw readings
+          </label>
+        )}
+      </div>
+      {rawPoints.length > 0 && (
+        <p className="text-xs">
+          Raw points show the loaded measurement-table pages; load more readings
+          to inspect additional points. The daily calculation covers the full
+          selected interval.
+        </p>
+      )}
       <div
         role="img"
         aria-labelledby="chart-caption"
@@ -40,6 +90,7 @@ export default function DataChart({ data }: { data: DataSummary }) {
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="localDate"
+              allowDuplicatedCategory={false}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
               minTickGap={30}
             />
@@ -58,12 +109,22 @@ export default function DataChart({ data }: { data: DataSummary }) {
             <Line
               type="linear"
               dataKey="value"
-              stroke="var(--accent-foreground)"
+              stroke={connect ? 'var(--accent-foreground)' : 'none'}
               strokeWidth={2}
               dot={{ r: 3 }}
               connectNulls={false}
               isAnimationActive={false}
             />
+            {raw && rawPoints.length > 0 && (
+              <Line
+                name="Raw reading"
+                data={rawPoints}
+                dataKey="value"
+                stroke="none"
+                dot={{ r: 2, fill: 'var(--muted-foreground)' }}
+                isAnimationActive={false}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
