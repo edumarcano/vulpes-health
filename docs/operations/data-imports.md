@@ -33,9 +33,24 @@ The static registry preserves all 24 supported vendor numeric fields, their exac
 
 The smallest reached bound controls acceptance. Oversize data is rejected without truncation. NUL and unpaired surrogate text are rejected. Other admitted text remains private, inert text; no formulas or scripts execute. The CSV export protects formula-sensitive text while preserving signed numeric meaning.
 
+## Deterministic analysis reads
+
+`GET /api/data?view=inventory` returns the complete 29-metric registry and owned available series with revision-bound pagination. `POST /api/data` read actions `analyze` and `resolve_analysis` use the strict operation contracts in `shared/analysis.ts`; they do not start inference or cleanup. Current mutation calls still require the version 2 contract header.
+
+| Limit or behavior | Contract |
+|---|---|
+| Selection | Explicit owned source, metric, method, granularity and timezone; no source blending |
+| Window / batch / work | 366 complete local days per window; 24 unique series; 25,000 observations across the entire request |
+| Response | At most 2 MiB serialized JSON; excess fails without partial statistics |
+| Means and comparisons | Exact daily medians and equal-day weighting, actual requested/effective windows, separate coverage per side; rolling requires three observed days |
+| Other semantics | Observed heart-rate sample statistics; uncombined daily/session totals; percentage-point absolute changes and separately labelled relative changes |
+| Evidence | Owner/selection/version/revision-bound result ID; stale resolution returns `410 result_unavailable` and requires a separate current request |
+
+Latest-event reads contain only that event. Latest-per-metric readings retain their individual dates. Last import time never substitutes for measurement time. Unresolved vendor semantics remain ineligible for analytical calculations. [M3 evidence](../evidence/v0.2.0/m3-analysis.md) records the local proof and later UI/tool gates.
+
 ## Preview and transaction lifecycle
 
-All `POST /api/data` calls require `X-Vulpes-Data-Contract: 2`. Old clients receive `409 client_upgrade_required` before maintenance or mutations. Preview uses `schema_version: 2`, `csv_base64`, an idempotency UUID, source and versioned mapping; raw CSV is never archived. Compact normalized staging is encrypted. The response includes observation/event counts, enrichment, annotations, missingness, range, errors and unsupported columns. `import_items` pages the full private detail list, beyond the bounded response samples.
+Mutation `POST /api/data` calls require `X-Vulpes-Data-Contract: 2`. Old clients receive `409 client_upgrade_required` before maintenance or mutations. Preview uses `schema_version: 2`, `csv_base64`, an idempotency UUID, source and versioned mapping; raw CSV is never archived. Compact normalized staging is encrypted. The response includes observation/event counts, enrichment, annotations, missingness, range, errors and unsupported columns. `import_items` pages the full private detail list, beyond the bounded response samples.
 
 | Operation | Behavior |
 |---|---|

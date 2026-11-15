@@ -20,6 +20,11 @@ import {
 } from '../../shared/events.js';
 import { z } from 'zod';
 import {
+  AnalysisReadRequestSchema,
+  InventoryQuerySchema,
+} from '../../shared/analysis.js';
+import { readAnalysis, readMetricInventory } from '../services/analysis.js';
+import {
   readEvents,
   mutateEvent,
   updateSourceDefaults,
@@ -50,7 +55,28 @@ export async function handleData(
   try {
     checkOrigin(request);
     const context = await verifySession(request);
+    let postInput: unknown;
     if (request.method === 'POST') {
+      postInput = await readJson(request);
+      if (
+        postInput &&
+        typeof postInput === 'object' &&
+        'action' in postInput &&
+        (postInput.action === 'analyze' ||
+          postInput.action === 'resolve_analysis')
+      ) {
+        const parsed = AnalysisReadRequestSchema.safeParse(postInput);
+        if (!parsed.success)
+          throw new HttpFailure(
+            400,
+            'invalid_input',
+            'Choose valid analysis operations and selections.',
+          );
+        sendJson(response, 200, {
+          data: await readAnalysis(context, parsed.data),
+        });
+        return;
+      }
       if (request.headers['x-vulpes-data-contract'] !== DATA_CONTRACT_VERSION)
         throw new HttpFailure(
           409,
@@ -74,6 +100,19 @@ export async function handleData(
           input[key] = /^\d+$/.test(String(input[key]))
             ? Number(input[key])
             : NaN;
+      if (input.view === 'inventory') {
+        const parsed = InventoryQuerySchema.safeParse(input);
+        if (!parsed.success)
+          throw new HttpFailure(
+            400,
+            'invalid_input',
+            'Choose valid inventory filters.',
+          );
+        sendJson(response, 200, {
+          data: await readMetricInventory(context, parsed.data),
+        });
+        return;
+      }
       if (input.view === 'import_status' || input.view === 'import_items') {
         const parsed = ImportReadSchema.safeParse(input);
         if (!parsed.success)
@@ -146,7 +185,7 @@ export async function handleData(
       return;
     }
     if (request.method === 'POST') {
-      const input = await readJson(request);
+      const input = postInput;
       const parsed = z
         .union([
           PreviewCsvWireSchema,

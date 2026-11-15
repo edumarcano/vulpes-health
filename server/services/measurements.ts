@@ -360,6 +360,12 @@ export async function readData(context: AuthContext, query: DataQuery) {
       checkRevision(result.revision, revision);
       revision = result.revision;
       rows.push(...(result.rows as StoredObservation[]));
+      if (rows.length > 25_000)
+        throw new HttpFailure(
+          422,
+          'analysis_limit',
+          'This analysis exceeds 25,000 observations. Narrow the selection; no partial statistic was returned.',
+        );
       after = result.rows.length === 200 ? result.rows.at(-1)!.id : undefined;
     } while (after);
     const end = await snapshot(context, { view: 'sources', limit: 1 });
