@@ -213,7 +213,7 @@ try {
   if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm, 'run', 'build']);
   const filter = analysisProof
-    ? 'data-analysis.spec|manual entry persists|chart loading failure|mobile date|measurement-lifecycle'
+    ? 'data-analysis.spec|manual entry persists|second-60 manual|chart loading failure|mobile date|measurement-lifecycle'
     : ingestionProof
       ? 'imports.spec|share-import.spec'
       : measurementProof

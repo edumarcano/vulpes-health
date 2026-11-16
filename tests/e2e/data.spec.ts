@@ -64,7 +64,8 @@ async function entry(page: Page, value: string, day: string, source?: string) {
   const response = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/data') &&
-      response.request().method() === 'POST',
+      response.request().method() === 'POST' &&
+      response.request().postDataJSON()?.action === 'add_measurement',
   );
   await page
     .getByRole('button', { name: 'Confirm and save', exact: true })
@@ -135,7 +136,10 @@ test('second-60 manual entry and correction show validation errors without movin
     .getByRole('button', { name: 'Review measurement', exact: true })
     .click();
   const rejectedEntry = page.waitForResponse(
-    (r) => r.url().endsWith('/api/data') && r.request().method() === 'POST',
+    (r) =>
+      r.url().endsWith('/api/data') &&
+      r.request().method() === 'POST' &&
+      r.request().postDataJSON()?.action === 'add_measurement',
   );
   await page
     .getByRole('button', { name: 'Confirm and save', exact: true })
@@ -155,7 +159,10 @@ test('second-60 manual entry and correction show validation errors without movin
     .getByRole('button', { name: 'Review correction', exact: true })
     .click();
   const rejectedCorrection = page.waitForResponse(
-    (r) => r.url().endsWith('/api/data') && r.request().method() === 'POST',
+    (r) =>
+      r.url().endsWith('/api/data') &&
+      r.request().method() === 'POST' &&
+      r.request().postDataJSON()?.action === 'correct_measurement',
   );
   await page
     .getByRole('button', { name: 'Confirm correction', exact: true })
