@@ -3,7 +3,12 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../server/db/database.types.js';
 import { recoverAccount } from '../server/security/account-recovery.js';
-import { AccountStatusSchema } from '../shared/account.js';
+import {
+  AccountStatusSchema,
+  accountExportFilename,
+  accountExportSchemaVersion,
+  accountExportSections,
+} from '../shared/account.js';
 import {
   AuthenticatedStatusSchema,
   SettingsSchema,
@@ -74,6 +79,8 @@ const tables = [
   'goals',
   'action_proposals',
   'goal_revisions',
+  'goal_groups',
+  'goal_group_members',
   'private_payloads',
   'ai_runs',
   'ai_steps',
@@ -320,7 +327,7 @@ export async function hostedLifecycle(
     ) {
       ensure(
         response.headers.get('content-disposition') ===
-          'attachment; filename="vulpes-account-v2.json"',
+          `attachment; filename="${accountExportFilename}"`,
         'export_attachment',
       );
       return value;
@@ -882,6 +889,7 @@ export async function hostedLifecycle(
             });
             const doc = z
               .object({
+                schemaVersion: z.literal(accountExportSchemaVersion),
                 ownerId: z.uuid(),
                 sections: z.record(z.string(), jsonRows),
                 integrity: z.record(
@@ -892,6 +900,8 @@ export async function hostedLifecycle(
               .parse(raw);
             ensure(
               doc.ownerId === u.id &&
+                JSON.stringify(Object.keys(doc.sections).sort()) ===
+                  JSON.stringify([...accountExportSections].sort()) &&
                 doc.sections.measurements?.length === 30 &&
                 doc.sections.messages?.length === 1,
               'export_inventory',
