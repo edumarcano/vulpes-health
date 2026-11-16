@@ -32,6 +32,9 @@ async function range(page: Page) {
   await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
   await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
   await page
+    .getByLabel('Calculation', { exact: true })
+    .selectOption('rolling_7d');
+  await page
     .getByLabel('Method', { exact: true })
     .selectOption('device_reported');
 }

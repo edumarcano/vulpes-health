@@ -12,6 +12,7 @@ try {
   const devProof = args.includes('--dev-proof');
   const importProof = args.includes('--imports-proof');
   const ingestionProof = args.includes('--ingestion-proof');
+  const analysisProof = args.includes('--analysis-proof');
   const measurementProof = args.includes('--measurement-proof');
   const releaseProof = args.includes('--release-proof');
   const systemChrome = args.includes('--system-chrome');
@@ -33,6 +34,7 @@ try {
           '--clock-proof',
           '--imports-proof',
           '--ingestion-proof',
+          '--analysis-proof',
           '--measurement-proof',
           '--release-proof',
           '--system-chrome',
@@ -210,23 +212,25 @@ try {
   const npm = process.env.npm_execpath;
   if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm, 'run', 'build']);
-  const filter = ingestionProof
-    ? 'imports.spec|share-import.spec'
-    : measurementProof
-      ? 'measurement-lifecycle.spec|release journey'
-      : releaseProof
-        ? 'release journey'
-        : importProof
-          ? 'imports.spec|share-import.spec|measurement-lifecycle.spec|manual entry persists|direct Goals|keyboard confirmation|chart loading failure|Ask synthetic imported-data journey|Ask goal proposal journey|release journey|account lifecycle export'
-          : lifecycleProof
-            ? 'account lifecycle|saves profile|personal spending limit|stale settings|dark navigation'
-            : mobileProof
-              ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
-              : goalsProof
-                ? 'Ask goal proposal|direct Goals'
-                : devProof
-                  ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
-                  : null;
+  const filter = analysisProof
+    ? 'data-analysis.spec|manual entry persists|second-60 manual|chart loading failure|mobile date|measurement-lifecycle'
+    : ingestionProof
+      ? 'imports.spec|share-import.spec'
+      : measurementProof
+        ? 'measurement-lifecycle.spec|release journey'
+        : releaseProof
+          ? 'release journey'
+          : importProof
+            ? 'imports.spec|share-import.spec|measurement-lifecycle.spec|manual entry persists|direct Goals|keyboard confirmation|chart loading failure|Ask synthetic imported-data journey|Ask goal proposal journey|release journey|account lifecycle export'
+            : lifecycleProof
+              ? 'account lifecycle|saves profile|personal spending limit|stale settings|dark navigation'
+              : mobileProof
+                ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
+                : goalsProof
+                  ? 'Ask goal proposal|direct Goals'
+                  : devProof
+                    ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
+                    : null;
   await run([
     require.resolve('@playwright/test/cli'),
     'test',

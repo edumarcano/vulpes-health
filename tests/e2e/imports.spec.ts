@@ -226,6 +226,9 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
   await expect(page.getByLabel('Through date', { exact: true })).toHaveValue(
     '2026-09-14',
   );
+  await page
+    .getByLabel('Calculation', { exact: true })
+    .selectOption('rolling_7d');
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
   await page.reload();
   await page
@@ -233,6 +236,9 @@ test('canonical CSV imports exactly 28 and reimport returns the historical outco
     .selectOption('device_reported');
   await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
   await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
+  await page
+    .getByLabel('Calculation', { exact: true })
+    .selectOption('rolling_7d');
   await expect(page.getByTestId('headline-value')).toHaveText('69 kg');
   await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({

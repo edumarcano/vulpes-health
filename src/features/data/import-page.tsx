@@ -238,9 +238,15 @@ export function ImportPage() {
           sharedFile={sharedFile}
           onSharedConsumed={() => setSharedFile(null)}
           onSaved={() => {
-            void client.invalidateQueries({
-              queryKey: ['data', session?.user.id, epoch],
-            });
+            for (const domain of [
+              'data',
+              'goals',
+              'conversations',
+              'inspection',
+            ])
+              void client.invalidateQueries({
+                queryKey: [domain, session?.user.id, epoch],
+              });
           }}
           onView={(sourceId, selection) =>
             navigate('/data', {
