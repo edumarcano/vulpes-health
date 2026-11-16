@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
   toolArguments,
   readToolDefinitions,
@@ -134,7 +135,9 @@ describe('chat proposal authority and bounded catalogue', () => {
             type: 'tool_call',
             callId: 'proposal',
             name: 'propose_goal',
-            arguments: toolArguments.propose_goal.parse({ definition }),
+            arguments: z
+              .json()
+              .parse(toolArguments.propose_goal.parse({ definition })),
           },
           {
             type: 'tool_result',

@@ -27,7 +27,7 @@ export function analysisWindow(window: AnalysisWindow, timezone: string) {
     !from.equals(from.startOfDay()) ||
     !to.equals(to.startOfDay())
   )
-    throw new Error('Select 1–366 complete local calendar days.');
+    throw new Error('Select 1-366 complete local calendar days.');
   return {
     from,
     to,
@@ -39,6 +39,20 @@ export function analysisWindow(window: AnalysisWindow, timezone: string) {
   };
 }
 export function operationWindows(operation: AnalysisOperation) {
+  if (
+    (operation.operation === 'latest_per_metric' ||
+      operation.operation === 'rolling_7d') &&
+    operation.before
+  ) {
+    const cutoff = Temporal.Instant.from(operation.before).toZonedDateTimeISO(
+      operation.timezone,
+    );
+    if (
+      operation.series.granularity === 'daily_total' &&
+      !cutoff.equals(cutoff.startOfDay())
+    )
+      throw new Error('Daily latest cutoffs require exclusive local midnight.');
+  }
   const requested =
     'window' in operation && operation.window
       ? analysisWindow(operation.window, operation.timezone)
@@ -102,6 +116,11 @@ export function analysisResultId(
 ) {
   const normalized = {
     ...operation,
+    ...((operation.operation === 'latest_per_metric' ||
+      operation.operation === 'rolling_7d') &&
+    operation.before
+      ? { before: Temporal.Instant.from(operation.before).toString() }
+      : {}),
     ...('window' in operation && operation.window
       ? { window: analysisWindow(operation.window, operation.timezone).window }
       : {}),
@@ -208,7 +227,20 @@ export function calculateAnalysis(
       row.source_id === operation.series.source_id &&
       row.metric_key === operation.series.metric &&
       row.measurement_method === operation.series.method &&
-      row.granularity === operation.series.granularity,
+      row.granularity === operation.series.granularity &&
+      ((operation.operation !== 'latest_per_metric' &&
+        operation.operation !== 'rolling_7d') ||
+        !operation.before ||
+        (row.granularity === 'daily_total'
+          ? row.local_date! <
+            Temporal.Instant.from(operation.before)
+              .toZonedDateTimeISO(operation.timezone)
+              .toPlainDate()
+              .toString()
+          : Temporal.Instant.compare(
+              Temporal.Instant.from(row.observed_at),
+              Temporal.Instant.from(operation.before),
+            ) < 0)),
   );
   const selected = (window: AnalysisWindow | null) =>
     window
@@ -250,6 +282,19 @@ export function calculateAnalysis(
         date,
         medianExact(group.map((row) => new Exact(row.canonical_value))),
       );
+    }
+    if (
+      statistic === 'latest_value' &&
+      new Set(records.map((row) => new Exact(row.canonical_value).toFixed()))
+        .size > 1
+    ) {
+      values.clear();
+      for (const row of records)
+        exclusions.set(row.id, {
+          referenceId: row.id,
+          reason:
+            'Conflicting latest readings; review the tied source records.',
+        });
     }
     const contributes = records.filter((row) =>
       values.has(localDate(row, operation.timezone)),
@@ -347,16 +392,30 @@ export function calculateAnalysis(
   let previousRecords: StoredObservation[] = previous
     ? selected(previous.window)
     : [];
-  if (operation.operation === 'latest_per_metric')
-    currentRecords = [...currentRecords]
-      .sort(
-        (a, b) =>
-          Temporal.Instant.compare(
-            Temporal.Instant.from(a.observed_at),
-            Temporal.Instant.from(b.observed_at),
-          ) || a.id.localeCompare(b.id),
-      )
-      .slice(-1);
+  if (operation.operation === 'latest_per_metric') {
+    const ordered = [...currentRecords].sort(
+      (a, b) =>
+        (operation.series.granularity === 'daily_total'
+          ? a.local_date!.localeCompare(b.local_date!)
+          : 0) ||
+        Temporal.Instant.compare(
+          Temporal.Instant.from(a.observed_at),
+          Temporal.Instant.from(b.observed_at),
+        ) ||
+        a.id.localeCompare(b.id),
+    );
+    const last = ordered.at(-1);
+    currentRecords = last
+      ? ordered.filter((row) =>
+          operation.series.granularity === 'daily_total'
+            ? row.local_date === last.local_date
+            : Temporal.Instant.compare(
+                Temporal.Instant.from(row.observed_at),
+                Temporal.Instant.from(last.observed_at),
+              ) === 0,
+        )
+      : [];
+  }
   if (operation.operation === 'endpoint_difference') {
     previousRecords = eligible.filter(
       (row) => row.id === operation.endpointIds[0],
@@ -441,7 +500,7 @@ export function calculateAnalysis(
       operation.operation === 'endpoint_difference'
         ? [...previousRecords, ...currentRecords].map(measurementDTO)
         : operation.operation === 'latest_per_metric'
-          ? currentRecords.map(measurementDTO)
+          ? currentRecords.slice(-1).map(measurementDTO)
           : [],
     points,
     references: used.slice(0, 200).map((row) => ({

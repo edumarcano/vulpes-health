@@ -1,6 +1,38 @@
 import { z } from 'zod';
 import { DataSelectionSchema, DataSummarySchema } from './data.js';
-import { CountSchema, UUIDSchema, VersionSchema } from './primitives.js';
+import {
+  CountSchema,
+  UUIDSchema,
+  VersionSchema,
+  ISOInstantSchema,
+} from './primitives.js';
+
+export const GoalFreshnessSchema = z.strictObject({
+  policyVersion: z.literal('elapsed_measurement_age_v1'),
+  status: z.enum(['dated', 'fresh', 'stale', 'unavailable']),
+  maxEvidenceAgeDays: z.number().int().min(1).max(3660).nullable(),
+  evaluatedAt: ISOInstantSchema,
+  oldestContributingAt: ISOInstantSchema.nullable(),
+  ageDays: z.number().finite().nonnegative().nullable(),
+});
+export const GoalBaselineEvidenceSchema = z.strictObject({
+  provenance: z.enum(['calculated', 'user_reported']),
+  algorithmVersion: z.string(),
+  dataRevision: CountSchema,
+  firstMeasuredAt: ISOInstantSchema.nullable(),
+  lastMeasuredAt: ISOInstantSchema.nullable(),
+});
+export const GoalCurrentEvidenceSchema = z.strictObject({
+  algorithmVersion: z.string(),
+  dataRevision: CountSchema,
+  firstMeasuredAt: ISOInstantSchema.nullable(),
+  lastMeasuredAt: ISOInstantSchema.nullable(),
+  oldestContributingAt: ISOInstantSchema.nullable(),
+  observationCount: CountSchema,
+  observedDays: CountSchema,
+  calendarDays: CountSchema.nullable(),
+  resultId: z.string(),
+});
 
 export const GoalCalculationSchema = z.discriminatedUnion('kind', [
   z.strictObject({
@@ -40,5 +72,12 @@ export const GoalProgressResultSchema = z.discriminatedUnion('kind', [
     selection: DataSelectionSchema.optional(),
     dataRevision: CountSchema.optional(),
     result: GoalCalculationSchema,
+    actualChange: z.string().optional(),
+    absoluteChangeUnit: z.string().optional(),
+    relativeChangePercent: z.string().nullable().optional(),
+    conditionMet: z.boolean().optional(),
+    freshness: GoalFreshnessSchema.optional(),
+    baselineEvidence: GoalBaselineEvidenceSchema.optional(),
+    currentEvidence: GoalCurrentEvidenceSchema.optional(),
   }),
 ]);

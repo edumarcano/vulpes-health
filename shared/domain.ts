@@ -3,8 +3,7 @@ import {
   metricUnits,
   MetricKeySchema,
   CanonicalUnitSchema,
-  LegacyMetricKeySchema,
-  LegacyCanonicalUnitSchema,
+  metricContent,
   validMetricNumber,
 } from './metrics.js';
 export {
@@ -213,8 +212,8 @@ export const GoalDraftSchema = z
   .strictObject({
     schemaVersion: z.literal(1),
     title: z.string().min(1),
-    metric: LegacyMetricKeySchema,
-    unit: LegacyCanonicalUnitSchema,
+    metric: MetricKeySchema,
+    unit: CanonicalUnitSchema,
     sourceId: UUIDSchema,
     target: GoalTargetSchema,
     baselineMethod: z.enum([
@@ -232,6 +231,12 @@ export const GoalDraftSchema = z
   })
   .superRefine((value, ctx) => {
     metricUnit(value, ctx);
+    if (!metricContent[value.metric].goalEligible)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['metric'],
+        message: 'This metric has unresolved semantics and cannot be a goal.',
+      });
     const targets =
       value.target.direction === 'maintain_range'
         ? [value.target.lower, value.target.upper]

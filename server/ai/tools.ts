@@ -1,4 +1,7 @@
-import { LegacyMetricKeySchema } from '../../shared/metrics.js';
+import {
+  LegacyMetricKeySchema,
+  LegacyCanonicalUnitSchema,
+} from '../../shared/metrics.js';
 import { EscalationRequestSchema } from './routing.js';
 import { GoalService } from '../services/goals.js';
 import {
@@ -129,6 +132,25 @@ const selection = z.strictObject({
   method: MeasurementMethodSchema.optional(),
   granularity: GranularitySchema.optional(),
 });
+// Keep the bounded legacy goal argument scope while direct numeric goals expand.
+// P7 owns the full multi-metric tool and prompt contract.
+const toolGoalDefinitionSchema = z
+  .strictObject({
+    ...GoalDefinitionSchema.shape,
+    metric: LegacyMetricKeySchema,
+    unit: LegacyCanonicalUnitSchema,
+  })
+  .omit({ maxEvidenceAgeDays: true })
+  .superRefine((definition, ctx) => {
+    const parsed = GoalDefinitionSchema.safeParse(definition);
+    if (!parsed.success)
+      for (const issue of parsed.error.issues)
+        ctx.addIssue({
+          code: 'custom',
+          path: issue.path,
+          message: issue.message,
+        });
+  });
 export const toolArguments = {
   request_escalation: EscalationRequestSchema,
   list_metrics: z.strictObject({}),
@@ -140,11 +162,11 @@ export const toolArguments = {
     status: GoalStateSchema.exclude(['draft']).optional(),
   }),
   get_goal_progress: z.strictObject({ goal_id: UUIDSchema }),
-  propose_goal: z.strictObject({ definition: GoalDefinitionSchema }),
+  propose_goal: z.strictObject({ definition: toolGoalDefinitionSchema }),
   propose_goal_revision: z.strictObject({
     goal_id: UUIDSchema,
     expected_version: z.number().int().positive(),
-    changes: z.strictObject(GoalDefinitionSchema.shape).partial(),
+    changes: z.strictObject(toolGoalDefinitionSchema.shape).partial(),
     baseline_resolution: z.enum(['retain', 'replace']),
     rationale: z.string().trim().min(1).max(1000),
   }),

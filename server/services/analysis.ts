@@ -124,6 +124,11 @@ function readQuery(operation: AnalysisOperation) {
         }
       : {}),
     timezone: operation.timezone,
+    ...((operation.operation === 'latest_per_metric' ||
+      operation.operation === 'rolling_7d') &&
+    operation.before
+      ? { before: operation.before }
+      : {}),
     windows: [windows.effective?.window, windows.previous?.window].filter(
       (item) => item !== undefined,
     ),
@@ -148,7 +153,7 @@ export async function readAnalysis(
     throw new HttpFailure(
       400,
       'invalid_interval',
-      'Select 1–366 complete local calendar days with explicit timezone boundaries.',
+      'Select 1-366 complete local calendar days with explicit timezone boundaries.',
     );
   }
   const snapshot = await context.db.rpc('read_analysis_v1', {

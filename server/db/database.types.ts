@@ -671,6 +671,15 @@ isOneToOne: false
 "finish_run_v1":
 { Args: { "p_executor": string,"p_owner": string,"p_run": string,"p_status": string }; Returns: Json
                            },
+"goal_definition_valid_v2":
+{ Args: { "d": Json }; Returns: boolean
+                           },
+"goal_metric_value_valid_v2":
+{ Args: { "p_metric": string,"p_unit": string,"p_value": number }; Returns: boolean
+                           },
+"goal_payload_valid_v2":
+{ Args: { "p": Json,"p_owner": string }; Returns: boolean
+                           },
 "handoff_flash_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_reason": string,"p_run": string,"p_step": string }; Returns: Json
                            },

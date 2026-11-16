@@ -11,6 +11,7 @@ import {
   UUIDSchema,
   VersionSchema,
   HashSchema,
+  ISOInstantSchema,
 } from './primitives.js';
 
 export const GoalDefinitionSchema = GoalDraftSchema.safeExtend({
@@ -20,6 +21,7 @@ export const GoalDefinitionSchema = GoalDraftSchema.safeExtend({
   currentMethod: z.enum(['daily_median_mean_7d', 'latest_value']),
   constraints: z.array(z.string().max(1000)).max(20),
   proposedStrategy: z.string().max(4000).nullable(),
+  maxEvidenceAgeDays: z.number().int().min(1).max(3660).nullable().optional(),
 }).superRefine((v, c) => {
   if (v.metric === 'steps_daily' && v.granularity !== 'daily_total')
     c.addIssue({ code: 'custom', message: 'Steps require daily totals.' });
@@ -61,7 +63,11 @@ export const FrozenBaselineSchema = z.strictObject({
   algorithmVersion: z.string(),
   provenance: z.enum(['calculated', 'user_reported']),
   references: z.array(
-    z.strictObject({ id: UUIDSchema, version: VersionSchema }),
+    z.strictObject({
+      id: UUIDSchema,
+      version: VersionSchema,
+      observedAt: ISOInstantSchema.optional(),
+    }),
   ),
 });
 export const GoalRevisionPayloadSchema = z.strictObject({

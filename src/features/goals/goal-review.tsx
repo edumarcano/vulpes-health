@@ -4,6 +4,11 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { ownedJson } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { GoalRevisionPayloadSchema } from '../../../shared/goals';
+import {
+  metricContent,
+  metricGoalCaution,
+  metricRegistry,
+} from '../../../shared/metrics';
 import { SourcesPageSchema } from '../../../shared/data';
 import { successEnvelopeSchema } from '../../../shared/api';
 import {
@@ -34,8 +39,17 @@ export function GoalDefinitionView({
         ).data,
   });
   const source = sources.data?.items.find((x) => x.id === d.sourceId);
+  const evidenceDates = value.baseline.references
+    .flatMap((reference) =>
+      reference.observedAt ? [reference.observedAt] : [],
+    )
+    .sort((a, b) => Date.parse(a) - Date.parse(b));
   return (
     <dl style={{ overflowWrap: 'anywhere' }}>
+      <dt>Metric</dt>
+      <dd>
+        {metricRegistry[d.metric].label} · {metricContent[d.metric].definition}
+      </dd>
       <dt>Target</dt>
       <dd>
         {d.target.direction === 'maintain_range'
@@ -56,8 +70,28 @@ export function GoalDefinitionView({
         {value.baseline.value ?? 'Insufficient data'} · {d.baselineMethod} ·{' '}
         {d.baselineFrom} to {d.baselineTo} · {value.baseline.provenance}
       </dd>
+      <dt>Baseline evidence</dt>
+      <dd>
+        {value.baseline.provenance === 'user_reported'
+          ? 'User-reported baseline; no measurement date is claimed.'
+          : evidenceDates.length
+            ? `Measured ${evidenceDates[0]} to ${evidenceDates.at(-1)}`
+            : 'Measurement dates unavailable in this retained baseline.'}{' '}
+        · Algorithm: {value.baseline.algorithmVersion} · Data revision:{' '}
+        {value.baseline.dataRevision}
+      </dd>
       <dt>Current method</dt>
       <dd>{d.currentMethod.replaceAll('_', ' ')}</dd>
+      <dt>Evidence age policy</dt>
+      <dd>
+        {d.maxEvidenceAgeDays == null
+          ? 'No age cutoff; current evidence remains dated.'
+          : `At most ${d.maxEvidenceAgeDays} elapsed days, using the oldest contributing reading. Stale evidence cannot establish a current condition.`}
+      </dd>
+      <dt>Tracking cautions</dt>
+      <dd>
+        {metricRegistry[d.metric].limitation} {metricGoalCaution}
+      </dd>
       <dt>Target date</dt>
       <dd>{d.targetDate ?? 'None'}</dd>
       <dt>Constraints and strategy</dt>

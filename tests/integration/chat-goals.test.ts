@@ -365,7 +365,7 @@ it('completes import → Ask → inspect → propose → approve → additional 
     const today = new Date().toISOString().slice(0, 10);
     const csv =
       'observed_at,metric,value,unit,source,granularity,external_record_id,local_date,timezone,method\n' +
-      [2, 1, 0]
+      [3, 2, 1]
         .map(
           (offset, index) =>
             `${new Date(Date.parse(today) - offset * 86400000).toISOString().slice(0, 10)}T08:00:00Z,weight,${['68.9', '68.8', '68.7'][index]},kg,Synthetic Scale A,instant,synthetic-m4-${index},,UTC,device_reported`,
