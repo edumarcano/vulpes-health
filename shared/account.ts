@@ -1,5 +1,31 @@
 import { z } from 'zod';
 
+export const accountExportSchemaVersion = 3;
+export const accountExportFilename = `vulpes-account-v${accountExportSchemaVersion}.json`;
+export const accountExportSections = [
+  'account_identity',
+  'profiles',
+  'data_sources',
+  'weigh_in_events',
+  'measurements',
+  'import_batches',
+  'goals',
+  'goal_revisions',
+  'goal_groups',
+  'goal_group_members',
+  'action_proposals',
+  'conversations',
+  'messages',
+  'ai_runs',
+  'ai_steps',
+  'usage_buckets',
+  'usage_reservations',
+  'audit_events',
+  'live_verification_allocations',
+  'staging',
+  'trace_inventory',
+] as const;
+
 export const DeletionPhaseSchema = z.enum([
   'fenced',
   'private_content_purged',

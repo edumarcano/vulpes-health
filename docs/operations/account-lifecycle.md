@@ -4,14 +4,14 @@ The account workflow uses the existing PostgreSQL transactions and execution led
 
 ## Export
 
-Settings downloads `vulpes-account-v2.json` through authenticated `POST /api/account`. Trace inclusion requires a sensitive-content acknowledgement. Opaque provider continuation state, credentials, executor authority and shared operator configuration are excluded.
+Settings downloads `vulpes-account-v3.json` through authenticated `POST /api/account`. It includes owned goal groups and their reviewed membership alongside individual goals and revisions. Trace inclusion requires a sensitive-content acknowledgement. Opaque provider continuation state, credentials, executor authority and shared operator configuration are excluded.
 
 | Inventory | Export behavior |
 |---|---|
 | Safe Auth identity | Owned email/phone and creation/update/confirmation timestamps; excludes passwords, tokens, sessions and operator Auth metadata |
 | Profile, preferences and consent | Owned values, excluding the internal settings write receipt |
 | Sources, weigh-in events, measurements and imports | Exact decimal strings, original/effective times, linked observations, annotations/provenance, versioned source defaults and import receipts |
-| Goals, revisions and proposals | Owned history and currently retained draft bodies |
+| Goals, revisions, groups, members and proposals | Owned history, reviewed membership and currently retained draft bodies |
 | Conversations and messages | Retained owned content and request receipts |
 | Runs, steps and accounting/audit projections | Owned metadata/account allocations; excludes shared app balance and executor hash |
 | Staging | Available uncommitted normalized bytes in base64; explicit expired/unavailable states |
@@ -26,7 +26,7 @@ Responses are `no-store`. Account changes abort/discard browser downloads and re
 
 Observation corrections preserve original import provenance. Linked observation time changes require explicit whole-event correction. Event deletion removes every child; deleting the last observation removes its parent. Source defaults never reinterpret recorded instants.
 
-Correction/deletion removes affected private baseline values/references from goal snapshots, historical revisions and approved proposal copies. Historical dependencies come from each revision's frozen selection (or its older source/metric fields), including after a goal changes source or metric. Matching current goals are marked for review; approved targets, states and financial records are preserved. Where precise dependency removal is unavailable, retained owned conversations and exact AI payloads are removed broadly. Annotation changes remove these conversation/payload copies too. A genuinely new import can recreate deleted readings; replay of a committed batch returns its original receipt without reinsertion. See [data imports](data-imports.md).
+Correction/deletion removes affected private baseline values/references from goal snapshots, historical revisions and approved proposal copies. Historical dependencies come from each revision's frozen selection (or its older source/metric fields), including after a goal changes source or metric. Every approved group parent is checked using each copied member's frozen source/metric; affected nested baseline values and dated references are removed while other members remain intact. Matching current goals and groups are marked for review; approved targets, states, original approval hashes and financial records are preserved. Where precise dependency removal is unavailable, retained owned conversations and exact AI payloads are removed broadly. Annotation changes remove these conversation/payload copies too. A genuinely new import can recreate deleted readings; replay of a committed batch returns its original receipt without reinsertion. See [data imports](data-imports.md).
 
 ## Deletion and interruption
 
@@ -35,13 +35,13 @@ Initiation requires `DELETE MY VULPES ACCOUNT` and password authentication withi
 | Durable phase | Meaning |
 |---|---|
 | `fenced` | Account is deleting. Admission, new domain/content writes and cancellation receipts are denied. Continue bounded private purges. |
-| `private_content_purged` | Private payloads, transcripts, goals/revisions/drafts, measurements/events/imports/sources, conversations and owned audit content removed; profile personal fields cleared. |
+| `private_content_purged` | Private payloads, transcripts, goals/revisions/groups/members/drafts, measurements/events/imports/sources, conversations and owned audit content removed; profile personal fields cleared. |
 | `awaiting_settlement` | Minimal lifecycle/accounting remains. Unsent requests release their hold; uncertain sent requests retain it for 24 hours. |
 | `app_data_purged` | Reservations settled and remaining owned accounting/allocation/run rows removed. Shared app charges and route-cost blocks remain. |
 | `auth_removal_pending` | Profile removed. Retry and independently verify Auth removal. |
 | `completed` | Application data and Auth absence confirmed. |
 
-The journal has no profile/Auth foreign keys and contains only identifiers, timestamps, phases and safe outcomes. It prevents profile recreation/reactivation while retained. Continuations purge bounded groups and follow profile-before-journal and existing execution/bucket lock ordering. Goal revision leaves precede their proposals/goals; transcript references precede run detachment. No lock spans provider HTTP.
+The journal has no profile/Auth foreign keys and contains only identifiers, timestamps, phases and safe outcomes. It prevents profile recreation/reactivation while retained. Continuations purge bounded batches and follow profile-before-journal and existing execution/bucket lock ordering. Goal groups are archived and their current approval pointers cleared before removing memberships and revision leaves; proposals then precede groups/goals. Transcript references precede run detachment. No lock spans provider HTTP.
 
 Use **Continue account deletion** or maintenance to resume. Status and continuation verify identity without requiring an active profile; ordinary APIs still require an active account and a live owned Auth session. The UI clears private queries/streams and shows restricted status. A submitted initiation with a lost/error response clears private state and rechecks account status; a failed recheck stays restricted and unconfirmed. Save the receipt ID. A lost final response or failed sign-in is **unconfirmed**; after identity removal, the operator must check the authoritative journal and Auth absence.
 

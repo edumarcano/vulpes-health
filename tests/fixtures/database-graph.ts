@@ -12,12 +12,21 @@ export const databaseTables = [
   'goals',
   'action_proposals',
   'goal_revisions',
+  'goal_groups',
+  'goal_group_members',
   'ai_steps',
   'usage_buckets',
   'usage_reservations',
   'audit_events',
 ] as const;
 export type DatabaseTable = (typeof databaseTables)[number];
+export const groupDatabaseTables = [
+  'goal_groups',
+  'goal_group_members',
+] as const;
+export const preGroupDatabaseTables = databaseTables.filter(
+  (table) => !groupDatabaseTables.some((groupTable) => groupTable === table),
+);
 export const protectedTables: readonly DatabaseTable[] = [
   'private_payloads',
   'usage_buckets',
@@ -135,6 +144,18 @@ export function databaseGraph(
       approved_proposal_id: ids.action_proposals,
       payload,
     },
+    goal_groups: {
+      name: 'Synthetic retained goal group',
+      state: 'archived',
+      current_approval_id: null,
+    },
+    goal_group_members: {
+      group_id: ids.goal_groups,
+      goal_id: ids.goals,
+      position: 1,
+      reviewed_goal_version: 1,
+      reviewed_revision_id: ids.goal_revisions,
+    },
     ai_steps: {
       run_id: ids.ai_runs,
       sequence: 1,
@@ -180,8 +201,10 @@ export const cleanupTables: readonly (DatabaseTable | 'weigh_in_events')[] = [
   'audit_events',
   'messages',
   'ai_steps',
+  'goal_group_members',
   'goal_revisions',
   'action_proposals',
+  'goal_groups',
   'goals',
   'ai_runs',
   'conversations',

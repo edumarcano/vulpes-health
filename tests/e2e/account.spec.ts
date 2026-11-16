@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { accountExportSections } from '../../shared/account';
 import { accounts, signIn, restrictNetwork } from './auth-helpers';
 const sessionTokens = JSON.parse(
   process.env.VULPES_TEST_ACCOUNTS_JSON ?? '[]',
@@ -48,13 +49,15 @@ test('account lifecycle export downloads owned JSON with explicit sensitive-trac
   const pending = page.waitForEvent('download');
   await button.click();
   const download = await pending;
-  expect(download.suggestedFilename()).toBe('vulpes-account-v2.json');
+  expect(download.suggestedFilename()).toBe('vulpes-account-v3.json');
   const file = await download.path();
   if (!file) throw new Error('Missing synthetic download.');
   const value = JSON.parse(await readFile(file, 'utf8'));
-  expect(value.schemaVersion).toBe(2);
+  expect(value.schemaVersion).toBe(3);
   expect(value.ownerId).toBe(accounts[0]!.id);
-  expect(Object.keys(value.sections)).toHaveLength(19);
+  expect(Object.keys(value.sections).sort()).toEqual(
+    [...accountExportSections].sort(),
+  );
   expect(value.sections.account_identity).toMatchObject([
     { id: accounts[0]!.id, email: accounts[0]!.email },
   ]);

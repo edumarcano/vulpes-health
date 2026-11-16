@@ -7,6 +7,7 @@ import { assertImportUpgradePreserved } from '../tests/helpers/import-upgrade.js
 import {
   databaseGraph,
   databaseTables,
+  preGroupDatabaseTables,
 } from '../tests/fixtures/database-graph.js';
 import {
   assertLocalStack,
@@ -129,7 +130,7 @@ try {
     allocated_ceiling_usd: '20',
     reserved_usd: '0.1',
   });
-  for (const table of databaseTables) insert(table, graph.rows[table]);
+  for (const table of preGroupDatabaseTables) insert(table, graph.rows[table]);
   const staging = randomUUID();
   insert('private_payloads', {
     ...graph.rows.private_payloads,
@@ -150,15 +151,19 @@ try {
     Object.fromEntries(
       databaseTables.map((table) => [
         table,
-        JSON.parse(
-          sql(
-            'select coalesce(jsonb_agg(to_jsonb(t) order by ' +
-              (table === 'profiles' ? 'user_id' : 'id') +
-              "),'[]'::jsonb)::text from public." +
-              table +
-              ' t;',
-          ),
-        ) as Array<Record<string, unknown>>,
+        sql(
+          'select to_regclass(' + literal('public.' + table) + ') is not null;',
+        ) === 'f'
+          ? []
+          : (JSON.parse(
+              sql(
+                'select coalesce(jsonb_agg(to_jsonb(t) order by ' +
+                  (table === 'profiles' ? 'user_id' : 'id') +
+                  "),'[]'::jsonb)::text from public." +
+                  table +
+                  ' t;',
+              ),
+            ) as Array<Record<string, unknown>>),
       ]),
     );
   const productBefore = snapshot();

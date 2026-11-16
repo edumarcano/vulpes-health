@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { accountExportSections } from '../../shared/account';
 import { accounts, signIn, restrictNetwork } from './auth-helpers';
 import { LocalSupabase } from '../helpers/local-supabase';
 const tokens = JSON.parse(
@@ -207,7 +208,9 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   const file = await (await download).path();
   expect(file).toBeTruthy();
   const exported = JSON.parse(readFileSync(file!, 'utf8'));
-  expect(Object.keys(exported.sections)).toHaveLength(19);
+  expect(Object.keys(exported.sections).sort()).toEqual(
+    [...accountExportSections].sort(),
+  );
   expect(exported.sections.measurements.length).toBeGreaterThan(14);
   expect(exported.sections.goals).toHaveLength(1);
   expect(exported.sections.conversations).toHaveLength(1);

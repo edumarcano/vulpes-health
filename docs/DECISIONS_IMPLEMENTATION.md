@@ -65,6 +65,15 @@ See [M3 analysis evidence](evidence/v0.2.0/m3-analysis.md) for executed checks a
 
 See [M4 evidence](evidence/v0.2.0/m4-goals.md) for executed results and later group/conversation gates.
 
+## v0.2.0 atomic goal groups (2026-11-15)
+
+- **Approve one reviewed parent.** A group has one to four ordered required members, each linked to an approved revision, created or revised through the existing goal preparation service. One account-serialized transaction validates the parent and every reviewed child version before applying child changes and membership. The shared internal application helper leaves receipt ownership with the approving parent; no child proposals or partial activation are introduced.
+- **Keep explicit relationships.** Group proposals use a separate group-target foreign key. Membership binds owner, goal and reviewed revision through composite keys; required goals cannot be hard-deleted. Deferred cardinality protects active groups during atomic membership replacement. Ordinary goal readers verify composite parent receipts without rehashing redacted private bodies.
+- **Derive current conditions independently.** One fixed clock and data revision govern a group read. Every member retains its own units, evidence, freshness and calculation. Independent child changes require group review; missing, archived, invalid or stale members prevent an all-members claim. Administrative group archival retains the approved snapshots and changes no child.
+- **Own new private copies immediately.** Correction scrubs matching nested baseline copies in all historical approved parents and preserves the original approval hash with a removal marker. Account deletion archives groups, clears approval pointers and removes memberships before revisions. Export schema 3, fixture cleanup, recovery and hosted security inventories include both group tables.
+
+See [M4 group evidence](evidence/v0.2.0/m4-goals.md#atomic-groups-p5) for the server gate and subsequent UI/conversation boundaries.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.

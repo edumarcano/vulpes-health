@@ -10,6 +10,7 @@ import {
   type GoalRevisionPayload,
 } from '../../shared/goals.js';
 import { GoalDraftSchema } from '../../shared/domain.js';
+import { GoalGroupDecisionSchema } from '../../shared/goal-groups.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
 import {
   type AnalysisOperation,
@@ -30,6 +31,29 @@ import {
   goalConditionMet,
   goalFreshness,
 } from '../analytics/goals.js';
+
+export function goalApprovalBindsRevision(
+  approval: { state: string; kind: string; result: unknown } | null,
+  goalId: string,
+  revisionId: string,
+): boolean {
+  if (approval?.state !== 'approved') return false;
+  if (
+    approval.kind === 'goal_group.create' ||
+    approval.kind === 'goal_group.revise'
+  ) {
+    const receipt = GoalGroupDecisionSchema.safeParse(approval.result);
+    return (
+      receipt.success &&
+      receipt.data.outcome === 'approved' &&
+      receipt.data.members.some(
+        (member) =>
+          member.goalId === goalId && member.revisionId === revisionId,
+      )
+    );
+  }
+  return ['goal.create', 'goal.revise', 'goal.state'].includes(approval.kind);
+}
 
 export class GoalService {
   constructor(
@@ -88,12 +112,13 @@ export class GoalService {
     if (!data) this.fail('goal_not_found');
     const approval = await this.context.db
       .from('action_proposals')
-      .select('state')
+      .select('state,kind,result')
       .eq('user_id', this.context.userId)
       .eq('id', data.approved_proposal_id)
       .maybeSingle();
     if (approval.error) this.fail(approval.error.message);
-    if (approval.data?.state !== 'approved') this.fail('goal_not_found');
+    if (!goalApprovalBindsRevision(approval.data, goal.id, data.id))
+      this.fail('goal_not_found');
     return { goal, revision: data };
   }
   async proposal(id: string) {

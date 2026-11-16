@@ -1,4 +1,5 @@
 import { GoalMutationSchema } from './goals.js';
+import { GoalGroupMutationSchema } from './goal-groups.js';
 import { z } from 'zod';
 import { SettingsPatchSchema } from './auth.js';
 import { LegacyMetricKeySchema } from './metrics.js';
@@ -244,6 +245,27 @@ export const apiOperations = {
   ],
   '/api/goals': [
     { method: 'GET', selector: 'default', owningPR: 11 },
+    ...[
+      'groups',
+      'group_detail',
+      'group_progress',
+      'group_proposals',
+      'group_proposal',
+    ].map((view) => ({
+      method: 'GET' as const,
+      selector: `view=${view}` as const,
+      owningPR: 5,
+    })),
+    ...[
+      'propose_group_create',
+      'propose_group_revision',
+      'propose_group_state',
+    ].map((action) => ({
+      method: 'POST' as const,
+      selector: `action=${action}` as const,
+      owningPR: 5,
+      schema: GoalGroupMutationSchema,
+    })),
     ...['propose_create', 'propose_revision', 'propose_state'].map(
       (action) => ({
         method: 'POST' as const,

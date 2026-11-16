@@ -8,7 +8,10 @@ import { localStatus } from '../../scripts/local-database.js';
 import { localRouter } from '../../server/http/router.js';
 import { verifyIdentity, verifySession } from '../../server/auth/session.js';
 import { exportAccount } from '../../server/services/account-export.js';
-import { AccountStatusSchema } from '../../shared/account.js';
+import {
+  AccountStatusSchema,
+  accountExportSections,
+} from '../../shared/account.js';
 import {
   ExecutionService,
   requestHash,
@@ -305,9 +308,10 @@ it('exports more than the API row limit with exact decimals, complete inventory 
   expect(response.status).toBe(200);
   expect(response.headers.get('cache-control')).toBe('no-store');
   expect(response.headers.get('content-disposition')).toContain(
-    'vulpes-account-v2.json',
+    'vulpes-account-v3.json',
   );
   const document = await response.json();
+  expect(document.schemaVersion).toBe(3);
   expect(document.ownerId).toBe(a.id);
   expect(document.sections.measurements).toHaveLength(1006);
   expect(document.inventory.measurements.count).toBe(1006);
@@ -320,7 +324,16 @@ it('exports more than the API row limit with exact decimals, complete inventory 
         row.canonical_value === '70.12345678901234567890123456789',
     ),
   ).toHaveLength(1005);
-  expect(Object.keys(document.sections)).toHaveLength(19);
+  expect(Object.keys(document.sections).sort()).toEqual(
+    [...accountExportSections].sort(),
+  );
+  expect(document.sections.goal_groups).toMatchObject([
+    { name: 'Synthetic retained goal group', state: 'archived' },
+  ]);
+  expect(document.sections.goal_group_members).toHaveLength(1);
+  expect(document.sections.goal_group_members[0].group_id).toBe(
+    document.sections.goal_groups[0].id,
+  );
   expect(
     document.sections.staging.find(
       (row: { id: string }) => row.id === staged.id,
@@ -473,7 +486,75 @@ it('propagates export cancellation to an in-flight inspector database read', asy
 });
 
 it('resumes bounded private purges across repeated/concurrent requests and survives Auth failure after profile removal', async () => {
+  for (const user of [a, b]) {
+    const sourceId = (await rows('data_sources', user.id))[0]!.id;
+    const headers = {
+      Authorization: `Bearer ${user.token}`,
+      'Content-Type': 'application/json',
+    };
+    const proposed = await fetch(origin + '/api/goals', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action: 'propose_group_create',
+        client_request_id: randomUUID(),
+        name: 'Synthetic active deletion group',
+        members: [
+          {
+            kind: 'create',
+            definition: {
+              schemaVersion: 1,
+              title: 'Synthetic deletion member',
+              metric: 'weight',
+              unit: 'kg',
+              sourceId,
+              target: { direction: 'decrease_to', value: 69 },
+              baselineMethod: 'user_reported',
+              reportedBaseline: 70,
+              baselineFrom: null,
+              baselineTo: null,
+              currentMethod: 'latest_value',
+              method: 'user_reported',
+              granularity: 'instant',
+              timezone: 'UTC',
+              targetDate: null,
+              constraints: [],
+              proposedStrategy: null,
+            },
+          },
+        ],
+      }),
+    });
+    const proposal = await proposed.json();
+    expect(proposed.status, JSON.stringify(proposal)).toBe(200);
+    const decision = await fetch(origin + '/api/approvals', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action: 'approve',
+        proposal_id: proposal.data.id,
+        payload_hash: proposal.data.payload_hash,
+        expected_version: null,
+        client_request_id: randomUUID(),
+      }),
+    });
+    const receipt = await decision.json();
+    expect(decision.status, JSON.stringify(receipt)).toBe(200);
+    expect(receipt.data).toMatchObject({ outcome: 'approved', version: 1 });
+    expect(
+      (await rows('goal_groups', user.id)).find(
+        (group) => group.id === receipt.data.groupId,
+      ),
+    ).toMatchObject({ state: 'active', current_approval_id: proposal.data.id });
+    expect(
+      (await rows('goal_group_members', user.id)).filter(
+        (member) => member.group_id === receipt.data.groupId,
+      ),
+    ).toHaveLength(1);
+  }
   const beforeForeign = await rows('measurements', b.id);
+  const beforeForeignGroups = await rows('goal_groups', b.id);
+  const beforeForeignMembers = await rows('goal_group_members', b.id);
   const confirmation = {
     action: 'delete',
     confirmation: 'DELETE MY VULPES ACCOUNT',
@@ -563,6 +644,8 @@ it('resumes bounded private purges across repeated/concurrent requests and survi
     expect(await rows('private_payloads', a.id)).toEqual([]);
     expect(await rows('measurements', a.id)).toEqual([]);
     expect(await rows('messages', a.id)).toEqual([]);
+    expect(await rows('goal_groups', a.id)).toEqual([]);
+    expect(await rows('goal_group_members', a.id)).toEqual([]);
   } finally {
     blocked.mockRestore();
   }
@@ -574,6 +657,8 @@ it('resumes bounded private purges across repeated/concurrent requests and survi
   });
   expect((await request(a)).status).toBe(401);
   expect(await rows('measurements', b.id)).toEqual(beforeForeign);
+  expect(await rows('goal_groups', b.id)).toEqual(beforeForeignGroups);
+  expect(await rows('goal_group_members', b.id)).toEqual(beforeForeignMembers);
   const receipts = await rows('account_deletion_receipts', a.id);
   expect(receipts).toHaveLength(1);
   expect(Object.keys(receipts[0]!).sort()).toEqual([

@@ -5,6 +5,7 @@ import {
   cleanupTables,
   databaseGraph,
   databaseTables,
+  groupDatabaseTables,
 } from '../fixtures/database-graph.js';
 import type { DatabaseGraph } from '../fixtures/database-graph.js';
 
@@ -118,8 +119,14 @@ export class LocalSupabase {
       delete reservation.account_bucket_id;
       delete reservation.app_bucket_id;
     }
-    for (const table of databaseTables)
+    for (const table of databaseTables) {
+      if (groupDatabaseTables.some((groupTable) => groupTable === table)) {
+        const probe = await this.request(`/rest/v1/${table}?limit=0`, 'admin');
+        if (probe.status === 404) continue; // Historical upgrade fixtures predate groups.
+        assert(probe.ok, 'Group fixture inventory could not be checked.');
+      }
       await this.admin(`/rest/v1/${table}`, 'POST', graph.rows[table]);
+    }
     this.seededReservations++;
     await this.admin(`/rest/v1/usage_buckets?id=eq.${this.appId}`, 'PATCH', {
       reserved_usd: (this.seededReservations / 10).toFixed(2),
@@ -135,19 +142,37 @@ export class LocalSupabase {
     for (const userId of this.users) {
       let phase = 'goals';
       try {
+        const groups = await this.request(
+          `/rest/v1/goal_groups?user_id=eq.${userId}`,
+          'admin',
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              state: 'archived',
+              current_approval_id: null,
+            }),
+          },
+        );
+        assert(
+          groups.ok || groups.status === 404,
+          'Group cleanup fence failed.',
+        );
         await this.admin(`/rest/v1/goals?user_id=eq.${userId}`, 'PATCH', {
           state: 'draft',
           current_revision_id: null,
         });
         for (const table of cleanupTables) {
           phase = table;
-          if (table === 'weigh_in_events') {
+          if (
+            table === 'weigh_in_events' ||
+            groupDatabaseTables.some((groupTable) => groupTable === table)
+          ) {
             const probe = await this.request(
-              '/rest/v1/weigh_in_events?limit=0',
+              `/rest/v1/${table}?limit=0`,
               'admin',
             );
             if (probe.status === 404) continue; // Historical upgrade fixtures predate this entity.
-            assert(probe.ok, 'Event cleanup inventory could not be checked.');
+            assert(probe.ok, 'Cleanup inventory could not be checked.');
           }
           if (table === 'measurements') {
             let previousFirst: string | undefined;

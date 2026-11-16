@@ -29,6 +29,11 @@ it('encrypts a real complete database archive and restores it only into an isola
             "select count(*) from public.weigh_in_events e join public.measurements m on m.user_id=e.user_id and m.event_id=e.id where e.annotations->>'remarks'='Synthetic restored event' and e.source_timezone='America/New_York' and m.original_value='150.0' and m.canonical_value=68.0388555;",
           ),
         ).toBe('2');
+        expect(
+          sql(
+            "select count(*) from public.goal_groups gg join public.goal_group_members gm on gm.user_id=gg.user_id and gm.group_id=gg.id join public.goal_revisions gr on gr.user_id=gm.user_id and gr.goal_id=gm.goal_id and gr.id=gm.reviewed_revision_id where gg.name='Synthetic restored group' and gr.payload#>>'{baseline,value}'='68.0388555';",
+          ),
+        ).toBe('2');
         expect(await source.snapshot()).toEqual(before);
         expect(captured.report.traceKeyVersions).toBe(2);
         destination = fencedRecoveryDestination(

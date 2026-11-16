@@ -30,6 +30,8 @@ const readableTables = [
   'goals',
   'action_proposals',
   'goal_revisions',
+  'goal_groups',
+  'goal_group_members',
   'ai_steps',
 ] as const satisfies readonly (keyof Database['public']['Tables'])[];
 const protectedTables = [
