@@ -17,8 +17,10 @@ import {
 } from '../../../shared/goal-views';
 export function GoalDefinitionView({
   value,
+  historical = false,
 }: {
   value: z.infer<typeof GoalRevisionPayloadSchema>;
+  historical?: boolean;
 }) {
   const d = value.definition;
   const { state, scope } = useAuth();
@@ -98,7 +100,7 @@ export function GoalDefinitionView({
       <dd>
         {d.constraints.join('; ')} · {d.proposedStrategy ?? 'None'}
       </dd>
-      <dt>Resulting state</dt>
+      <dt>{historical ? 'Reviewed historical state' : 'Resulting state'}</dt>
       <dd>
         {value.state} · Baseline: {value.baselineResolution}
       </dd>

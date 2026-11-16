@@ -14,7 +14,7 @@ Both screenshots come from a local build with synthetic data.
 
 - **Ask:** Chat with an assistant that reads your data through server-side tools. Each answer shows the calculation behind it.
 - **Data:** Enter measurements by hand or import a CSV, including supported RENPHO Health exports. The app previews the import, flags duplicates, and keeps original units and timestamps.
-- **Goals:** Set a target such as "reach 68 kg". The assistant can propose a goal, but nothing becomes active until you approve it. Progress is calculated, never written by the model.
+- **Goals:** Create numeric targets or ranges directly, or review a pending assistant proposal. Group up to four related goals under one explicit approval; each retains its own progress and dated evidence. Progress is calculated, never written by the model.
 - **Inspector:** Open any answer to see the exact request sent to the model, the tool results, the token counts and the cost.
 - **Settings:** Choose units and timezone, consent to AI use, cap AI spending, export your data as JSON, or delete your account.
 
