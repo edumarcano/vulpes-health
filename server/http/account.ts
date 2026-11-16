@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { pipeline } from 'node:stream/promises';
-import { AccountRequestSchema } from '../../shared/account.js';
+import {
+  AccountRequestSchema,
+  accountExportFilename,
+} from '../../shared/account.js';
 import { verifyIdentity, verifySession } from '../auth/session.js';
 import {
   accountStatus,
@@ -77,7 +80,7 @@ export async function handleAccount(
         response.setHeader('X-Content-Type-Options', 'nosniff');
         response.setHeader(
           'Content-Disposition',
-          'attachment; filename="vulpes-account-v2.json"',
+          `attachment; filename="${accountExportFilename}"`,
         );
         const stream = result.open();
         await pipeline(stream.ciphertext, stream.decipher, response, {

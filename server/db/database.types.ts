@@ -21,14 +21,14 @@ export type Database = {
                   ]
                 },"action_proposals": {
                   Row: {
-                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"private_content_removed_at": string | null,"result": Json | null,"source_message_id": string | null,"source_run_id": string | null,"source_step_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
+                    "canonical_payload": Json | null,"created_at": string,"expires_at": string,"group_target_id": string | null,"id": string,"kind": string,"payload_hash": string,"payload_version": number,"private_content_removed_at": string | null,"result": Json | null,"source_message_id": string | null,"source_run_id": string | null,"source_step_id": string | null,"state": string,"summary": string,"target_id": string | null,"target_version": number | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"private_content_removed_at"?: string | null,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at": string,"group_target_id"?: string | null,"id"?: string,"kind": string,"payload_hash": string,"payload_version"?: number,"private_content_removed_at"?: string | null,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary": string,"target_id"?: string | null,"target_version"?: number | null,"user_id": string
                   }
                   Update: {
-                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"private_content_removed_at"?: string | null,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
+                    "canonical_payload"?: Json | null,"created_at"?: string,"expires_at"?: string,"group_target_id"?: string | null,"id"?: string,"kind"?: string,"payload_hash"?: string,"payload_version"?: number,"private_content_removed_at"?: string | null,"result"?: Json | null,"source_message_id"?: string | null,"source_run_id"?: string | null,"source_step_id"?: string | null,"state"?: string,"summary"?: string,"target_id"?: string | null,"target_version"?: number | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -48,6 +48,12 @@ isOneToOne: false
       columns: ["user_id","target_id"]
 isOneToOne: false
       referencedRelation: "goals"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "proposal_group_target"
+      columns: ["user_id","group_target_id"]
+isOneToOne: false
+      referencedRelation: "goal_groups"
       referencedColumns: ["user_id","id"]
     },{
       foreignKeyName: "proposal_source_message"
@@ -219,6 +225,70 @@ isOneToOne: false
       referencedColumns: ["user_id"]
     }
                   ]
+                },"goal_group_members": {
+                  Row: {
+                    "goal_id": string,"group_id": string,"id": string,"position": number,"reviewed_goal_version": number,"reviewed_revision_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "goal_id": string,"group_id": string,"id"?: string,"position": number,"reviewed_goal_version": number,"reviewed_revision_id": string,"user_id": string
+                  }
+                  Update: {
+                    "goal_id"?: string,"group_id"?: string,"id"?: string,"position"?: number,"reviewed_goal_version"?: number,"reviewed_revision_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "goal_group_members_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    },{
+      foreignKeyName: "goal_group_members_user_id_goal_id_fkey"
+      columns: ["user_id","goal_id"]
+isOneToOne: false
+      referencedRelation: "goals"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "goal_group_members_user_id_group_id_fkey"
+      columns: ["user_id","group_id"]
+isOneToOne: false
+      referencedRelation: "goal_groups"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "goal_group_members_user_id_reviewed_revision_id_goal_id_fkey"
+      columns: ["user_id","reviewed_revision_id","goal_id"]
+isOneToOne: false
+      referencedRelation: "goal_revisions"
+      referencedColumns: ["user_id","id","goal_id"]
+    }
+                  ]
+                },"goal_groups": {
+                  Row: {
+                    "created_at": string,"current_approval_id": string | null,"id": string,"name": string,"review_status": string,"state": string,"updated_at": string,"user_id": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"current_approval_id"?: string | null,"id"?: string,"name": string,"review_status"?: string,"state": string,"updated_at"?: string,"user_id": string,"version"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"current_approval_id"?: string | null,"id"?: string,"name"?: string,"review_status"?: string,"state"?: string,"updated_at"?: string,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "goal_groups_user_id_current_approval_id_fkey"
+      columns: ["user_id","current_approval_id"]
+isOneToOne: false
+      referencedRelation: "action_proposals"
+      referencedColumns: ["user_id","id"]
+    },{
+      foreignKeyName: "goal_groups_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"goal_revisions": {
                   Row: {
                     "approved_at": string,"approved_proposal_id": string,"goal_id": string,"id": string,"payload": NonNullable<Json>,"payload_version": number,"previous_revision_id": string | null,"private_content_removed_at": string | null,"revision_number": number,"user_id": string
@@ -234,7 +304,7 @@ isOneToOne: false
                     {
       foreignKeyName: "goal_revisions_user_id_approved_proposal_id_fkey"
       columns: ["user_id","approved_proposal_id"]
-isOneToOne: true
+isOneToOne: false
       referencedRelation: "action_proposals"
       referencedColumns: ["user_id","id"]
     },{
@@ -602,6 +672,9 @@ isOneToOne: false
 "admit_run_v1":
 { Args: { "p_executor": string,"p_owner": string,"p_request": Json }; Returns: Json
                            },
+"apply_goal_payload_v2":
+{ Args: { "p_expected_version": number,"p_goal": string,"p_kind": string,"p_owner": string,"p_payload": Json,"p_proposal": string }; Returns: Json
+                           },
 "authorize_send_v1":
 { Args: { "p_body_hash": string,"p_executor": string,"p_fence": number,"p_owner": string,"p_run": string,"p_step": string }; Returns: boolean
                            },
@@ -616,6 +689,9 @@ isOneToOne: false
                            },
 "cancel_run_v1":
 { Args: { "p_owner": string,"p_run": string }; Returns: Json
+                           },
+"check_goal_group_members_v1":
+{ Args: { "p": Json,"p_owner": string }; Returns: undefined
                            },
 "checkpoint_goal_proposal_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_output": Json,"p_owner": string,"p_payload": Json,"p_request": Json,"p_run": string,"p_step": string }; Returns: Json
@@ -650,6 +726,9 @@ isOneToOne: false
 "continue_account_deletion_v1":
 { Args: { "p_batch_size"?: number,"p_owner": string }; Returns: Json
                            },
+"decide_goal_group_proposal_v1":
+{ Args: { "p_owner": string,"p_request": Json }; Returns: Json
+                           },
 "decide_goal_proposal_v1":
 { Args: { "p_owner": string,"p_request": Json }; Returns: Json
                            },
@@ -673,6 +752,9 @@ isOneToOne: false
                            },
 "goal_definition_valid_v2":
 { Args: { "d": Json }; Returns: boolean
+                           },
+"goal_group_payload_valid_v1":
+{ Args: { "p": Json,"p_owner": string }; Returns: boolean
                            },
 "goal_metric_value_valid_v2":
 { Args: { "p_metric": string,"p_unit": string,"p_value": number }; Returns: boolean
@@ -836,6 +918,9 @@ isOneToOne: false
                            },
 "record_step_usage_v1":
 { Args: { "p_executor": string,"p_fence": number,"p_owner": string,"p_payload": Json,"p_run": string,"p_step": string,"p_usage": Json }; Returns: string
+                           },
+"register_goal_group_proposal_v1":
+{ Args: { "p_owner": string,"p_payload": Json,"p_request": Json }; Returns: string
                            },
 "register_goal_proposal_v1":
 { Args: { "p_owner": string,"p_payload": Json,"p_request": Json }; Returns: string

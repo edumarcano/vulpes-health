@@ -32,6 +32,8 @@ export const recoveryRequiredPublicTables = [
   'goals',
   'action_proposals',
   'goal_revisions',
+  'goal_groups',
+  'goal_group_members',
   'ai_steps',
   'private_payloads',
   'usage_buckets',

@@ -1,9 +1,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
 import { GoalMutationSchema } from '../../shared/goals.js';
+import { GoalGroupMutationSchema } from '../../shared/goal-groups.js';
 import { ApprovalRequestSchema } from '../../shared/api.js';
 import { UUIDSchema } from '../../shared/primitives.js';
 import { GoalService } from '../services/goals.js';
+import { GoalGroupService } from '../services/goal-groups.js';
 import { verifySession } from '../auth/session.js';
 import { checkOrigin, readJson } from './request.js';
 import { HttpFailure, respondFailure } from './failure.js';
@@ -17,13 +19,16 @@ export async function handleGoals(
     checkOrigin(request);
     const context = await verifySession(request);
     const service = new GoalService(context);
+    const groups = new GoalGroupService(context);
     const approval =
       new URL(request.url ?? '/', 'http://localhost').pathname ===
       '/api/approvals';
     if (request.method === 'POST') {
       const body = await readJson(request);
       const parsed = (
-        approval ? ApprovalRequestSchema : GoalMutationSchema
+        approval
+          ? ApprovalRequestSchema
+          : z.union([GoalMutationSchema, GoalGroupMutationSchema])
       ).safeParse(body);
       if (!parsed.success)
         throw new HttpFailure(
@@ -31,10 +36,18 @@ export async function handleGoals(
           'invalid_input',
           'Check the goal fields and expected version.',
         );
-      const result =
-        parsed.data.action === 'approve' || parsed.data.action === 'reject'
-          ? await service.decide(parsed.data)
-          : await service.propose(GoalMutationSchema.parse(parsed.data));
+      let result;
+      if (parsed.data.action === 'approve' || parsed.data.action === 'reject') {
+        const proposal = await service.proposal(parsed.data.proposal_id);
+        result = proposal.kind.startsWith('goal_group.')
+          ? await groups.decide(parsed.data)
+          : await service.decide(parsed.data);
+      } else if (parsed.data.action.startsWith('propose_group_')) {
+        result = await groups.propose(
+          GoalGroupMutationSchema.parse(parsed.data),
+        );
+      } else
+        result = await service.propose(GoalMutationSchema.parse(parsed.data));
       sendJson(response, 200, { data: result });
       return;
     }
@@ -61,6 +74,11 @@ export async function handleGoals(
             'proposals',
             'proposal',
             'revisions',
+            'groups',
+            'group_detail',
+            'group_progress',
+            'group_proposals',
+            'group_proposal',
           ])
           .default('list'),
         id: UUIDSchema.optional(),
@@ -69,10 +87,44 @@ export async function handleGoals(
       })
       .parse(Object.fromEntries(params));
     await service.expire();
+    if (q.view === 'groups' || q.view === 'group_proposals') {
+      const page = { page_size: q.page_size, cursor: q.cursor };
+      sendJson(response, 200, {
+        data:
+          q.view === 'groups'
+            ? await groups.list(page)
+            : await groups.proposals(page),
+      });
+      return;
+    }
+    if (q.view.startsWith('group_')) {
+      if (!q.id)
+        throw new HttpFailure(
+          400,
+          'invalid_input',
+          'Choose a group or proposal.',
+        );
+      sendJson(response, 200, {
+        data:
+          q.view === 'group_detail'
+            ? await groups.detail(q.id)
+            : q.view === 'group_progress'
+              ? await groups.progress(q.id)
+              : await groups.proposal(q.id),
+      });
+      return;
+    }
     if (q.view === 'proposal') {
       if (!q.id)
         throw new HttpFailure(400, 'invalid_input', 'Choose a proposal.');
-      sendJson(response, 200, { data: await service.proposal(q.id) });
+      const proposal = await service.proposal(q.id);
+      if (!proposal.kind.startsWith('goal.'))
+        throw new HttpFailure(
+          404,
+          'goal_not_found',
+          'This goal proposal is unavailable.',
+        );
+      sendJson(response, 200, { data: proposal });
       return;
     }
     if (q.view === 'progress') {
@@ -104,6 +156,7 @@ export async function handleGoals(
       .order('id')
       .limit(q.page_size);
     if (table === 'goals') query = query.filter('state', 'neq', 'draft');
+    if (table === 'action_proposals') query = query.like('kind', 'goal.%');
     if (q.view === 'revisions') {
       if (!q.id) throw new HttpFailure(400, 'invalid_input', 'Choose a goal.');
       await service.owned(q.id);

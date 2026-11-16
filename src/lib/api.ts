@@ -1,4 +1,5 @@
 import { DATA_CONTRACT_VERSION } from '../../shared/imports';
+import { accountExportFilename } from '../../shared/account';
 import { ErrorEnvelopeSchema } from '../../shared/api';
 import type { IdentityScope } from './auth/identity';
 
@@ -109,7 +110,7 @@ export async function ownedDownload(
     const link = document.createElement('a');
     link.href = url;
     link.download = accountRequest
-      ? 'vulpes-account-v2.json'
+      ? accountExportFilename
       : 'vulpes-measurements-v2.csv';
     link.click();
   } finally {

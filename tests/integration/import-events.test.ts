@@ -611,7 +611,7 @@ describe('M1 owned event HTTP transactions', () => {
     });
     expect(account.status).toBe(200);
     const document = await account.json();
-    expect(document.schemaVersion).toBe(2);
+    expect(document.schemaVersion).toBe(3);
     expect(document.sections.weigh_in_events).toContainEqual(
       expect.objectContaining({
         id: event.id,

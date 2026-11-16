@@ -202,6 +202,31 @@ async function createFixture(amount: number) {
           select '${owner}',source_id,import_batch_id,id,'weight',68.0388555,'kg','150.0','lb','2026-09-01 12:00:00Z',-240,'America/New_York','instant','device_reported',repeat('d',64) from event;
       `,
       );
+      adminSql(
+        database,
+        `
+        do $fixture$
+        declare source uuid; reading public.measurements; goal uuid:=gen_random_uuid(); revision uuid:=gen_random_uuid(); proposal uuid:=gen_random_uuid(); grp uuid:=gen_random_uuid(); d jsonb; p jsonb;
+        begin
+          select * into reading from public.measurements where user_id='${owner}' order by id limit 1;
+          source:=reading.source_id;
+          d:=jsonb_build_object('schemaVersion',1,'title','Synthetic recovery target','metric','weight','unit','kg','sourceId',source,
+            'target',jsonb_build_object('direction','decrease_to','value',67),'baselineMethod','latest_value','baselineFrom','2026-09-01T00:00:00Z','baselineTo','2026-09-08T00:00:00Z',
+            'reportedBaseline',null,'timezone','UTC','targetDate',null,'constraints','[]'::jsonb,'proposedStrategy',null,'method','device_reported','granularity','instant','currentMethod','latest_value');
+          p:=jsonb_build_object('schemaVersion',2,'definition',d,'state','active','baselineResolution','replace','reviewedDataRevision',0,
+            'baseline',jsonb_build_object('schemaVersion',2,'selection',jsonb_build_object('metric','weight','source_id',source,'method','device_reported','granularity','instant','timezone','UTC','from','2026-09-01T00:00:00Z','to','2026-09-08T00:00:00Z'),
+              'value',reading.canonical_value::text,'dataRevision',0,'algorithmVersion','latest_value_v1','provenance','calculated','references',jsonb_build_array(jsonb_build_object('id',reading.id,'version',reading.version,'observedAt',reading.observed_at))));
+          insert into public.goals(id,user_id,title,metric_key,canonical_unit,direction,target_value,source_id) values(goal,'${owner}','Synthetic recovery target','weight','kg','decrease_to',67,source);
+          insert into public.action_proposals(id,user_id,kind,payload_version,canonical_payload,payload_hash,summary,state,expires_at,result)
+            values(proposal,'${owner}','goal.create',2,p,encode(sha256(convert_to(p::text,'UTF8')),'hex'),'Synthetic recovery target','approved',clock_timestamp()+interval'1 day',jsonb_build_object('goalId',goal,'revisionId',revision,'version',1));
+          insert into public.goal_revisions(id,user_id,goal_id,revision_number,approved_proposal_id,payload_version,payload) values(revision,'${owner}',goal,1,proposal,2,p);
+          update public.goals set state='active',current_revision_id=revision,baseline_snapshot=p->'baseline' where id=goal;
+          insert into public.goal_groups(id,user_id,name,state) values(grp,'${owner}','Synthetic restored group','archived');
+          insert into public.goal_group_members(user_id,group_id,goal_id,position,reviewed_goal_version,reviewed_revision_id) values('${owner}',grp,goal,1,1,revision);
+        end;
+        $fixture$;
+      `,
+      );
       users.push({ id: owner, session });
     }
     const target = {

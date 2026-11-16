@@ -9,7 +9,10 @@ import {
 import { join } from 'node:path';
 import { LocalSupabase } from '../tests/helpers/local-supabase.js';
 import { localStatus, projectRoot, runSupabase } from './local-database.js';
-import { databaseTables } from '../tests/fixtures/database-graph.js';
+import {
+  databaseTables,
+  groupDatabaseTables,
+} from '../tests/fixtures/database-graph.js';
 import {
   assertImportUpgradePreserved,
   type ProductSnapshot,
@@ -106,13 +109,19 @@ try {
   await populated.seed(b.id);
   async function snapshot() {
     const result: ProductSnapshot = {};
-    for (const table of databaseTables)
-      result[table] = await (
-        await populated!.admin(
-          `/rest/v1/${table}?order=${table === 'profiles' ? 'user_id' : 'id'}`,
-          'GET',
-        )
-      ).json();
+    for (const table of databaseTables) {
+      const response = await populated!.request(
+        `/rest/v1/${table}?order=${table === 'profiles' ? 'user_id' : 'id'}`,
+        'admin',
+      );
+      assert(
+        response.ok ||
+          (response.status === 404 &&
+            groupDatabaseTables.some((groupTable) => groupTable === table)),
+        'Fixture snapshot inventory failed.',
+      );
+      result[table] = response.status === 404 ? [] : await response.json();
+    }
     return result;
   }
   phase = 'snapshot before upgrade';

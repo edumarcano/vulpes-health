@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { stageExport } from '../security/export-spool.js';
 import { z } from 'zod';
 import type { AccountRequest } from '../../shared/account.js';
+import {
+  accountExportSchemaVersion,
+  accountExportSections,
+} from '../../shared/account.js';
 import type { AuthContext } from '../auth/session.js';
 import { administrativeClient } from '../db/administrative.js';
 import { HttpFailure } from '../http/failure.js';
@@ -11,7 +15,7 @@ import { InspectionService } from './inspection.js';
 const ManifestSchema = z.strictObject({
   dataRevision: z.string(),
   sections: z.record(
-    z.string(),
+    z.enum(accountExportSections),
     z.strictObject({
       count: z.number().int().nonnegative(),
       fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
@@ -47,14 +51,14 @@ export async function exportAccount(
   const integrity: Record<string, { count: number; sha256: string }> = {};
   async function* records() {
     yield JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: accountExportSchemaVersion,
       ownerId: context.userId,
       captureStartedAt: startedAt,
       dataRevision: before.dataRevision,
       traceParts: request.trace_parts,
     }).slice(0, -1) + ',"sections":{';
     let firstSection = true;
-    for (const section of Object.keys(before.sections)) {
+    for (const section of accountExportSections) {
       signal.throwIfAborted();
       yield (firstSection ? '' : ',') + JSON.stringify(section) + ':[';
       firstSection = false;

@@ -42,6 +42,7 @@ export function assertImportUpgradePreserved(
   expected.action_proposals = expected.action_proposals!.map((row) => ({
     ...row,
     private_content_removed_at: null,
+    group_target_id: null,
     ...(row.state === 'pending'
       ? { state: 'conflicted', canonical_payload: null }
       : {}),

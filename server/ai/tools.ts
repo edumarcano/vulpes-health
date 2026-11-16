@@ -3,7 +3,7 @@ import {
   LegacyCanonicalUnitSchema,
 } from '../../shared/metrics.js';
 import { EscalationRequestSchema } from './routing.js';
-import { GoalService } from '../services/goals.js';
+import { GoalService, goalApprovalBindsRevision } from '../services/goals.js';
 import {
   GoalDefinitionSchema,
   GoalRevisionPayloadSchema,
@@ -449,7 +449,7 @@ async function approvedGoals(
     if (!revision.data) continue;
     const approval = await context.db
       .from('action_proposals')
-      .select('state')
+      .select('state,kind,result')
       .eq('user_id', context.userId)
       .eq('id', revision.data.approved_proposal_id)
       .maybeSingle();
@@ -459,7 +459,7 @@ async function approvedGoals(
         'goals_unavailable',
         'Goal approval could not be checked.',
       );
-    if (approval.data?.state === 'approved')
+    if (goalApprovalBindsRevision(approval.data, goal.id, revision.data.id))
       result.push({ ...goal, revision: revision.data });
   }
   return result;
