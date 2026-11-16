@@ -10,20 +10,33 @@ import {
   type GoalRevisionPayload,
 } from '../../shared/goals.js';
 import { GoalDraftSchema } from '../../shared/domain.js';
+import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
+import {
+  type AnalysisOperation,
+  type SeriesAnalysisResult,
+} from '../../shared/analysis.js';
+import { metricRegistry } from '../../shared/metrics.js';
 import type { ApprovalRequest } from '../../shared/api.js';
 import type { AuthContext } from '../auth/session.js';
 import { administrativeClient } from '../db/administrative.js';
 import { HttpFailure } from '../http/failure.js';
 import { goalPolicyAllows } from '../security/goal-policy.js';
-import { goalObservations, readData } from './measurements.js';
+import { readData } from './measurements.js';
+import { readAnalysis } from './analysis.js';
+import { analysisWindow } from '../analytics/analysis.js';
+import { Exact } from '../analytics/measurements.js';
 import {
-  selectionWindows,
-  summarizeMeasurementsExact,
-} from '../analytics/summary.js';
-import { goalProgress } from '../analytics/goals.js';
+  goalProgress,
+  goalConditionMet,
+  goalFreshness,
+} from '../analytics/goals.js';
 
 export class GoalService {
-  constructor(private readonly context: AuthContext) {}
+  constructor(
+    private readonly context: AuthContext,
+    private readonly clock: () => Temporal.Instant = () =>
+      Temporal.Now.instant(),
+  ) {}
   private fail(message: string): never {
     const status =
       message === 'goal_not_found'
@@ -95,27 +108,104 @@ export class GoalService {
     if (!data) this.fail('goal_not_found');
     return data;
   }
+  private async valueAnalysis(
+    d: GoalDefinition,
+    method: 'latest_value' | 'daily_median_mean_7d',
+    current: boolean,
+    now: Temporal.Instant,
+  ): Promise<SeriesAnalysisResult> {
+    const series = {
+      metric: d.metric,
+      source_id: d.sourceId,
+      method: d.method,
+      granularity: d.granularity,
+    };
+    const end = now
+      .toZonedDateTimeISO(d.timezone)
+      .startOfDay()
+      .add({ days: 1 });
+    let operation: AnalysisOperation;
+    if (current && method === 'latest_value') {
+      operation = {
+        operation: 'latest_per_metric',
+        series,
+        timezone: d.timezone,
+        before:
+          d.granularity === 'daily_total'
+            ? end.toInstant().toString()
+            : now.toString(),
+      };
+    } else {
+      const from = current
+        ? end.subtract({ days: 7 }).toInstant().toString()
+        : d.baselineFrom;
+      const to = current ? end.toInstant().toString() : d.baselineTo;
+      if (!from || !to)
+        throw new HttpFailure(
+          400,
+          'invalid_interval',
+          'Choose a complete bounded baseline interval.',
+        );
+      let window;
+      try {
+        window = analysisWindow({ from, to }, d.timezone);
+        if (method === 'daily_median_mean_7d' && window.days !== 7)
+          throw new Error();
+      } catch {
+        throw new HttpFailure(
+          400,
+          'invalid_interval',
+          method === 'daily_median_mean_7d'
+            ? 'Choose exactly seven complete local calendar days.'
+            : 'Choose 1-366 complete local calendar days for the baseline.',
+        );
+      }
+      operation =
+        method === 'latest_value'
+          ? {
+              operation: 'latest_per_metric',
+              series,
+              timezone: d.timezone,
+              window: window.window,
+            }
+          : {
+              operation: 'rolling_7d',
+              series,
+              timezone: d.timezone,
+              window: window.window,
+              ...(current ? { before: now.toString() } : {}),
+            };
+    }
+    const batch = await readAnalysis(
+      this.context,
+      { action: 'analyze', operations: [operation] },
+      now.toString(),
+    );
+    const result = batch.results[0]!;
+    if (result.kind !== 'series_analysis')
+      throw new Error('Invalid goal analysis result.');
+    return result;
+  }
   private async baseline(d: GoalDefinition): Promise<FrozenBaseline> {
-    const from = d.baselineFrom ?? Temporal.Now.instant().toString();
-    const to =
-      d.baselineTo ?? Temporal.Now.instant().add({ seconds: 1 }).toString();
+    const now = this.clock();
     const selection = {
       metric: d.metric,
       source_id: d.sourceId,
       method: d.method,
       granularity: d.granularity,
       timezone: d.timezone,
-      from,
-      to,
+      from: d.baselineFrom ?? now.toString(),
+      to: d.baselineTo ?? now.add({ seconds: 1 }).toString(),
     };
-    const profile = await this.context.db
-      .from('profiles')
-      .select('data_revision')
-      .eq('user_id', this.context.userId)
-      .single();
-    if (profile.error) this.fail(profile.error.message);
-    if (d.baselineMethod === 'user_reported')
-      return {
+    let baseline: FrozenBaseline;
+    if (d.baselineMethod === 'user_reported') {
+      const profile = await this.context.db
+        .from('profiles')
+        .select('data_revision')
+        .eq('user_id', this.context.userId)
+        .single();
+      if (profile.error) this.fail(profile.error.message);
+      baseline = {
         schemaVersion: 2,
         selection,
         value: String(d.reportedBaseline),
@@ -124,66 +214,43 @@ export class GoalService {
         provenance: 'user_reported',
         references: [],
       };
-    if (d.baselineMethod === 'daily_median_mean_7d') {
-      const a = Temporal.Instant.from(from).toZonedDateTimeISO(d.timezone);
-      const b = Temporal.Instant.from(to).toZonedDateTimeISO(d.timezone);
-      if (!a.equals(b.subtract({ days: 7 })))
-        throw new HttpFailure(
-          400,
-          'invalid_interval',
-          'Choose exactly seven local calendar days.',
-        );
-      try {
-        selectionWindows(selection);
-      } catch {
-        throw new HttpFailure(
-          400,
-          'invalid_interval',
-          'Choose seven complete local calendar days.',
-        );
-      }
-      const data = await goalObservations(this.context, selection);
-      const calculation = summarizeMeasurementsExact(
-        data.rows,
-        selection,
-        data.revision,
+    } else {
+      const analysis = await this.valueAnalysis(
+        d,
+        d.baselineMethod,
+        false,
+        now,
       );
-      return {
+      if (analysis.hasMoreReferences)
+        throw new HttpFailure(
+          422,
+          'baseline_limit',
+          'This baseline has more evidence than can be frozen completely. Narrow its interval before proposing a goal.',
+        );
+      baseline = {
         schemaVersion: 2,
         selection,
-        value: calculation.exactValue,
-        dataRevision: data.revision,
-        algorithmVersion: 'daily_median_mean_7d_v1',
+        value: analysis.current.value,
+        dataRevision: analysis.dataRevision,
+        algorithmVersion:
+          d.baselineMethod === 'latest_value'
+            ? 'latest_value_v2'
+            : 'daily_median_mean_7d_v1',
         provenance: 'calculated',
-        references: data.rows.map((x) => ({ id: x.id, version: x.version })),
+        references: analysis.references.map(({ id, version, observedAt }) => ({
+          id,
+          version,
+          observedAt,
+        })),
       };
     }
-    const data = await goalObservations(this.context, selection);
-    const items = data.rows.sort((a, b) =>
-      d.granularity === 'daily_total'
-        ? (b.local_date ?? '').localeCompare(a.local_date ?? '')
-        : b.observed_at.localeCompare(a.observed_at),
-    );
-    const first = items[0];
-    const tied = first
-      ? items.filter((x) =>
-          d.granularity === 'daily_total'
-            ? x.local_date === first.local_date
-            : x.observed_at === first.observed_at,
-        )
-      : [];
-    return {
-      schemaVersion: 2,
-      selection,
-      value:
-        first && new Set(tied.map((x) => x.canonical_value)).size === 1
-          ? first.canonical_value
-          : null,
-      dataRevision: data.revision,
-      algorithmVersion: 'latest_value_v1',
-      provenance: 'calculated',
-      references: tied.map((x) => ({ id: x.id, version: x.version })),
-    };
+    if (Buffer.byteLength(JSON.stringify(baseline)) > 65_536)
+      throw new HttpFailure(
+        422,
+        'baseline_limit',
+        'The complete baseline exceeds its evidence bound. Narrow the interval before proposing a goal.',
+      );
+    return baseline;
   }
   async propose(request: GoalMutation) {
     const receipt = await administrativeClient()
@@ -278,6 +345,7 @@ export class GoalService {
             targetDate: null,
             constraints: [],
             proposedStrategy: null,
+            maxEvidenceAgeDays: null,
           }) !==
             JSON.stringify({
               ...previous.data.definition,
@@ -286,6 +354,7 @@ export class GoalService {
               targetDate: null,
               constraints: [],
               proposedStrategy: null,
+              maxEvidenceAgeDays: null,
             })
         )
           throw new HttpFailure(
@@ -297,6 +366,11 @@ export class GoalService {
           request.baseline_resolution === 'retain'
             ? previous.data.baseline
             : await this.baseline(definition);
+        if (
+          request.baseline_resolution === 'replace' &&
+          baseline.dataRevision !== profile.data.data_revision
+        )
+          this.fail('goal_conflict');
         payload = {
           schemaVersion: 2,
           definition,
@@ -312,6 +386,14 @@ export class GoalService {
         };
       }
     }
+    const finalProfile = await this.context.db
+      .from('profiles')
+      .select('data_revision')
+      .eq('user_id', this.context.userId)
+      .single();
+    if (finalProfile.error) this.fail(finalProfile.error.message);
+    if (finalProfile.data.data_revision !== payload.reviewedDataRevision)
+      this.fail('goal_conflict');
     if (!goalPolicyAllows(payload.definition))
       throw new HttpFailure(
         403,
@@ -365,56 +447,111 @@ export class GoalService {
       }),
     };
   }
-  async progress(id: string) {
+  async progress(
+    id: string,
+  ): Promise<z.infer<typeof GoalProgressResultSchema>> {
     const { goal, revision } = await this.revision(id);
     if (goal.review_status !== 'clear')
       return { kind: 'unavailable', reason: 'needs_review' };
     const parsed = GoalRevisionPayloadSchema.safeParse(revision.payload);
-    if (!parsed.success) {
-      if (GoalDraftSchema.safeParse(revision.payload).success)
-        return { kind: 'unavailable', reason: 'unsupported_baseline' };
-      return { kind: 'unavailable', reason: 'unsupported_revision' };
-    }
+    if (!parsed.success)
+      return {
+        kind: 'unavailable',
+        reason: GoalDraftSchema.safeParse(revision.payload).success
+          ? 'unsupported_baseline'
+          : 'unsupported_revision',
+      };
     const p = parsed.data;
     if (p.baseline.value === null) return { kind: 'insufficient_data' };
-    const now = Temporal.Now.instant();
-    const end = now
-      .toZonedDateTimeISO(p.definition.timezone)
-      .startOfDay()
-      .add({ days: 1 });
-    // Daily totals use an exclusive local-date bound; timestamped readings stop at now.
-    const to =
-      p.definition.currentMethod === 'latest_value' &&
-      p.definition.granularity !== 'daily_total'
-        ? now.toString()
-        : end.toInstant().toString();
-    const current = await this.baseline({
-      ...p.definition,
-      baselineMethod: p.definition.currentMethod,
-      baselineFrom:
-        p.definition.currentMethod === 'latest_value'
-          ? '0001-01-01T00:00:00Z'
-          : end.subtract({ days: 7 }).toInstant().toString(),
-      baselineTo: to,
-    });
+    const now = this.clock();
+    const analysis = await this.valueAnalysis(
+      p.definition,
+      p.definition.currentMethod,
+      true,
+      now,
+    );
     const fresh = await this.owned(id);
-    if (fresh.version !== goal.version || fresh.review_status !== 'clear')
+    if (
+      fresh.version !== goal.version ||
+      fresh.review_status !== 'clear' ||
+      fresh.current_revision_id !== goal.current_revision_id
+    )
       return { kind: 'unavailable', reason: 'needs_review' };
-    if (current.value === null) return { kind: 'insufficient_data' };
-    return {
+    const profile = await this.context.db
+      .from('profiles')
+      .select('data_revision')
+      .eq('user_id', this.context.userId)
+      .single();
+    if (profile.error) this.fail(profile.error.message);
+    if (profile.data.data_revision !== analysis.dataRevision)
+      throw new HttpFailure(
+        409,
+        'data_changed',
+        'Your measurements changed. Refresh goal progress.',
+      );
+    if (analysis.current.value === null) return { kind: 'insufficient_data' };
+    const baselineDates = p.baseline.references
+      .flatMap((reference) =>
+        reference.observedAt ? [reference.observedAt] : [],
+      )
+      .sort((a, b) =>
+        Temporal.Instant.compare(
+          Temporal.Instant.from(a),
+          Temporal.Instant.from(b),
+        ),
+      );
+    const freshness = goalFreshness(
+      analysis.current.oldestContributingAt,
+      p.definition.maxEvidenceAgeDays,
+      now.toString(),
+    );
+    const actualChange = new Exact(analysis.current.value).minus(
+      p.baseline.value,
+    );
+    return GoalProgressResultSchema.parse({
       kind: 'progress',
       goalId: goal.id,
       goalVersion: goal.version,
       revision: revision.revision_number,
       baseline: p.baseline.value,
-      current: current.value,
+      current: analysis.current.value,
+      dataRevision: analysis.dataRevision,
       result: goalProgress(
         p.baseline.value,
-        current.value,
+        analysis.current.value,
         p.definition.target,
       ),
-      selection: current.selection,
-      dataRevision: current.dataRevision,
-    };
+      actualChange: actualChange.toFixed(),
+      absoluteChangeUnit:
+        metricRegistry[p.definition.metric].representation === 'percentage'
+          ? 'percentage_points'
+          : p.definition.unit,
+      relativeChangePercent: new Exact(p.baseline.value).isZero()
+        ? null
+        : actualChange.div(p.baseline.value).mul(100).toFixed(),
+      conditionMet:
+        freshness.status !== 'stale' &&
+        freshness.status !== 'unavailable' &&
+        goalConditionMet(analysis.current.value, p.definition.target),
+      freshness,
+      baselineEvidence: {
+        provenance: p.baseline.provenance,
+        algorithmVersion: p.baseline.algorithmVersion,
+        dataRevision: p.baseline.dataRevision,
+        firstMeasuredAt: baselineDates[0] ?? null,
+        lastMeasuredAt: baselineDates.at(-1) ?? null,
+      },
+      currentEvidence: {
+        algorithmVersion: analysis.algorithmVersion,
+        dataRevision: analysis.dataRevision,
+        firstMeasuredAt: analysis.current.firstMeasuredAt,
+        lastMeasuredAt: analysis.current.lastMeasuredAt,
+        oldestContributingAt: analysis.current.oldestContributingAt,
+        observationCount: analysis.current.observationCount,
+        observedDays: analysis.current.observedDays,
+        calendarDays: analysis.current.calendarDays,
+        resultId: analysis.id,
+      },
+    });
   }
 }

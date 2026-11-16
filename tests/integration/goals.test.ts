@@ -466,8 +466,17 @@ it.each([
       expect(progress).toMatchObject({
         kind: 'progress',
         current: '8000',
-        selection: { to: today.add({ days: 1 }).toInstant().toString() },
+        freshness: { evaluatedAt: now.toString() },
+        currentEvidence: {
+          observationCount: 1,
+        },
       });
+      expect(
+        Temporal.Instant.compare(
+          Temporal.Instant.from(progress.currentEvidence.lastMeasuredAt),
+          today.toInstant(),
+        ),
+      ).toBe(0);
       expect(progress.result.rawPercent).toBeCloseTo(200 / 3, 10);
     } finally {
       clock.mockRestore();
@@ -529,12 +538,22 @@ it('latest timestamped progress excludes later readings on the same local day', 
       { headers: { Authorization: `Bearer ${a.token}` } },
     );
     expect(response.status).toBe(200);
-    expect((await response.json()).data).toMatchObject({
+    const progress = (await response.json()).data;
+    expect(progress).toMatchObject({
       kind: 'progress',
       current: '69',
-      selection: { to: now.toString() },
+      freshness: { evaluatedAt: now.toString() },
+      currentEvidence: {
+        observationCount: 1,
+      },
       result: { rawPercent: 50 },
     });
+    expect(
+      Temporal.Instant.compare(
+        Temporal.Instant.from(progress.currentEvidence.lastMeasuredAt),
+        now.subtract({ seconds: 1 }),
+      ),
+    ).toBe(0);
   } finally {
     clock.mockRestore();
   }

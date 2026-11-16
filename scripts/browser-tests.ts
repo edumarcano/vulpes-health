@@ -227,7 +227,7 @@ try {
               : mobileProof
                 ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
                 : goalsProof
-                  ? 'Ask goal proposal|direct Goals'
+                  ? 'numeric-goals.spec|Ask goal proposal|direct Goals'
                   : devProof
                     ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
                     : null;

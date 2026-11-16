@@ -2,6 +2,8 @@
 
 This document explains how to reproduce the local evidence and lists what a broader release still needs. The personal-owner handoff is complete. Release to other accounts is a separate decision with its own gates.
 
+The v0.2.0 implementation candidate has changed goal/tool evidence and uses template `vulpes-everyday-v11`. Historical v10 approval does not authorize it: live availability and owner-pilot hosted builds fail closed pending fresh verification and selection. The already serving artifact has not been changed by the open PR stack. See [M4 evidence](../evidence/v0.2.0/m4-goals.md); the v0.2.0 acceptance/evidence assembler is prepared in M6 rather than relabelling the historical report below.
+
 ## What is already recorded
 
 | Record | What it covers |

@@ -336,6 +336,111 @@ describe('explicit deterministic analysis', () => {
 });
 
 describe('analysis bounds and identities', () => {
+  it('withholds conflicting latest ties and orders daily values by their declared date', () => {
+    const a = row('70', '2026-09-01T08:00:00Z');
+    const b = row('72', '2026-09-01T08:00:00Z');
+    expect(
+      calculation({ operation: 'latest_per_metric', series, timezone: 'UTC' }, [
+        a,
+        b,
+      ]).current.value,
+    ).toBeNull();
+    const newerDay = row('200', '2026-09-01T12:00:00Z', {
+      metric: 'steps_daily',
+      unit: 'count',
+      granularity: 'daily_total',
+      local_date: '2026-09-02',
+      timezone: 'Pacific/Kiritimati',
+    });
+    const olderDay = row('100', '2026-09-01T22:00:00Z', {
+      metric: 'steps_daily',
+      unit: 'count',
+      granularity: 'daily_total',
+      local_date: '2026-09-01',
+    });
+    expect(
+      calculation(
+        {
+          operation: 'latest_per_metric',
+          series: {
+            ...series,
+            metric: 'steps_daily',
+            granularity: 'daily_total',
+          },
+          timezone: 'UTC',
+        },
+        [olderDay, newerDay],
+      ).current.value,
+    ).toBe('200');
+  });
+  it('binds explicit current cutoffs and excludes later instants or declared local days', () => {
+    const past = row('70', '2026-09-01T08:00:00Z');
+    const future = row('80', '2026-09-01T10:00:00Z');
+    const op: AnalysisOperation = {
+      operation: 'latest_per_metric',
+      series,
+      timezone: 'UTC',
+      before: '2026-09-01T09:00:00Z',
+    };
+    expect(calculation(op, [past, future]).current.value).toBe('70');
+    expect(analysisResultId(owner, op, 7)).not.toBe(
+      analysisResultId(owner, { ...op, before: '2026-09-01T11:00:00Z' }, 7),
+    );
+    const daily = row('100', '2026-09-01T12:00:00Z', {
+      metric: 'steps_daily',
+      unit: 'count',
+      granularity: 'daily_total',
+      local_date: '2026-09-02',
+      timezone: 'Pacific/Kiritimati',
+    });
+    expect(
+      calculation(
+        {
+          operation: 'latest_per_metric',
+          series: {
+            ...series,
+            metric: 'steps_daily',
+            granularity: 'daily_total',
+          },
+          timezone: 'UTC',
+          before: '2026-09-02T00:00:00Z',
+        },
+        [daily],
+      ).current.value,
+    ).toBeNull();
+    expect(() =>
+      operationWindows({
+        operation: 'latest_per_metric',
+        series: {
+          ...series,
+          metric: 'steps_daily',
+          granularity: 'daily_total',
+        },
+        timezone: 'UTC',
+        before: '2026-09-02T12:00:00Z',
+      }),
+    ).toThrow();
+    const rolled = calculation(
+      {
+        operation: 'rolling_7d',
+        series,
+        timezone: 'UTC',
+        window: { from: '2026-09-01T00:00:00Z', to: '2026-09-08T00:00:00Z' },
+        before: '2026-09-03T12:00:00Z',
+      },
+      [
+        past,
+        row('72', '2026-09-02T08:00:00Z'),
+        row('74', '2026-09-03T08:00:00Z'),
+        row('90', '2026-09-04T08:00:00Z'),
+      ],
+    );
+    expect(rolled.current).toMatchObject({
+      value: '72',
+      observationCount: 3,
+      observedDays: 3,
+    });
+  });
   it('resolves complete local days independently across DST and fractional offsets', () => {
     expect(
       analysisWindow(

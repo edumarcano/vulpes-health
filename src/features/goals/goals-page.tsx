@@ -1,4 +1,9 @@
-import { legacyMetricKeys } from '../../../shared/metrics';
+import {
+  goalEligibleMetricKeys,
+  metricContent,
+  metricGoalCaution,
+  metricRegistry,
+} from '../../../shared/metrics';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Temporal } from '@js-temporal/polyfill';
@@ -22,7 +27,11 @@ import {
   goalTransitions,
   type GoalDefinition,
 } from '../../../shared/goals';
-import { metricUnits, type MetricKey } from '../../../shared/domain';
+import {
+  metricUnits,
+  type MetricKey,
+  type MeasurementMethod,
+} from '../../../shared/domain';
 import { SourcesPageSchema } from '../../../shared/data';
 import { DataChartView } from '../data/data-chart-view';
 import { successEnvelopeSchema } from '../../../shared/api';
@@ -430,6 +439,12 @@ function GoalForm({
 }) {
   const [error, setError] = useState('');
   const [metric, setMetric] = useState<MetricKey>(initial?.metric ?? 'weight');
+  const [direction, setDirection] = useState(
+    initial?.target.direction ?? 'decrease_to',
+  );
+  const [measurementMethod, setMeasurementMethod] = useState<MeasurementMethod>(
+    initial?.method ?? metricRegistry[metric].method,
+  );
   const now = Temporal.Now.zonedDateTimeISO('UTC')
     .startOfDay()
     .add({ days: 1 });
@@ -473,6 +488,11 @@ function GoalForm({
             targetDate: text('date') || null,
             constraints: text('constraints').split('\n').filter(Boolean),
             proposedStrategy: text('strategy') || null,
+            ...(text('maxEvidenceAgeDays').trim()
+              ? { maxEvidenceAgeDays: numeric('maxEvidenceAgeDays') }
+              : initial && 'maxEvidenceAgeDays' in initial
+                ? { maxEvidenceAgeDays: null }
+                : {}),
           });
           if (!parsed.success) {
             setError(parsed.error.issues.map((x) => x.message).join(' '));
@@ -496,15 +516,24 @@ function GoalForm({
           <select
             aria-label="Metric"
             value={metric}
-            onChange={(e) => setMetric(e.target.value as MetricKey)}
+            onChange={(e) => {
+              const next = e.target.value as MetricKey;
+              setMetric(next);
+              setMeasurementMethod(metricRegistry[next].method);
+            }}
           >
-            {legacyMetricKeys.map((x) => (
+            {goalEligibleMetricKeys.map((x) => (
               <option key={x} value={x}>
-                {x.replaceAll('_', ' ')}
+                {metricRegistry[x].label} ({metricUnits[x]})
               </option>
             ))}
           </select>
         </label>
+        <p>{metricContent[metric].definition}</p>
+        <p className="text-sm text-muted-foreground">
+          {metricRegistry[metric].limitation} {metricGoalCaution}
+        </p>
+        <p>Target unit: {metricUnits[metric]}</p>
         <label>
           Source
           <select
@@ -525,7 +554,8 @@ function GoalForm({
           <select
             aria-label="Direction"
             name="direction"
-            defaultValue={initial?.target.direction ?? 'decrease_to'}
+            value={direction}
+            onChange={(e) => setDirection(e.target.value as typeof direction)}
           >
             {['decrease_to', 'increase_to', 'maintain_range'].map((x) => (
               <option key={x} value={x}>
@@ -534,33 +564,38 @@ function GoalForm({
             ))}
           </select>
         </label>
-        {['target', 'lower', 'upper'].map((x) => (
-          <label key={x}>
-            {x}
-            <input
-              name={x}
-              type="number"
-              step="any"
-              defaultValue={
-                initial?.target.direction === 'maintain_range'
-                  ? x === 'lower'
-                    ? initial.target.lower
-                    : x === 'upper'
-                      ? initial.target.upper
+        {(direction === 'maintain_range' ? ['lower', 'upper'] : ['target']).map(
+          (x) => (
+            <label key={x}>
+              {x}
+              <input
+                name={x}
+                type="number"
+                step="any"
+                defaultValue={
+                  initial?.target.direction === 'maintain_range'
+                    ? x === 'lower'
+                      ? initial.target.lower
+                      : x === 'upper'
+                        ? initial.target.upper
+                        : undefined
+                    : x === 'target'
+                      ? initial?.target.value
                       : undefined
-                  : x === 'target'
-                    ? initial?.target.value
-                    : undefined
-              }
-            />
-          </label>
-        ))}
+                }
+              />
+            </label>
+          ),
+        )}
         <label>
           Measurement method
           <select
             aria-label="Measurement method"
             name="method"
-            defaultValue={initial?.method ?? 'device_reported'}
+            value={measurementMethod}
+            onChange={(e) =>
+              setMeasurementMethod(e.target.value as MeasurementMethod)
+            }
           >
             {[
               'device_reported',
@@ -659,6 +694,27 @@ function GoalForm({
             defaultValue={initial?.targetDate ?? ''}
           />
         </label>
+        <label>
+          Maximum evidence age (days, optional)
+          <input
+            name="maxEvidenceAgeDays"
+            type="number"
+            min={1}
+            max={3660}
+            step={1}
+            defaultValue={initial?.maxEvidenceAgeDays ?? ''}
+            aria-describedby="goal-evidence-age-help"
+          />
+        </label>
+        <p
+          id="goal-evidence-age-help"
+          className="text-sm text-muted-foreground"
+        >
+          Leave blank for dated evidence without an age cutoff. If set, the
+          oldest contributing reading must be within this elapsed age before the
+          goal can be described as currently meeting its condition. Changing
+          this policy requires approval.
+        </p>
         <label>
           Constraints, one per line
           <textarea

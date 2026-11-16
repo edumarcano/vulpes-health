@@ -56,6 +56,15 @@ See [M3 analysis evidence](evidence/v0.2.0/m3-analysis.md) for executed checks a
 - **Verify evidence on navigation.** Data accepts the owned operation descriptor and expected result ID, then resolves them on the server. Missing descriptors, stale revisions and method changes show unavailable; requesting current data is deliberate. Account/epoch remounts and cache identities prevent retained results from flashing during account changes.
 - **Invalidate owned views together.** Data mutations and source changes invalidate Data, Goals, conversation and inspection queries. Reads recheck server revisions; no realtime service or persistent analytical cache is introduced.
 
+## v0.2.0 numeric goals (2026-11-15)
+
+- **Share eligibility and exact reads.** Registry-derived runtime eligibility and forward SQL constraints admit 25 resolved metrics and reject four unresolved fields. The goal engine reuses explicit analysis reads; current latest evidence does not scan from year 0001. Latest ties, declared daily dates and exclusive current cutoffs are part of the versioned analysis method.
+- **Separate condition from percentage and freshness.** Directional progress preserves regression/overshoot; maintained ranges have below/within/above outcomes. An approved optional elapsed-age rule can withhold a current-condition claim without changing the goal state. A zero-distance percentage stays undefined while target satisfaction remains determinable.
+- **Preserve approved payloads.** The age field remains optional without a parser default; old canonical records are not rewritten to add it. New measured timestamps are stored inside frozen reference entries, which the existing redaction policy clears. Oversized new baseline evidence fails before proposal registration rather than freezing a truncated dependency list. Historical evidence above the new reference limit can be retained only unchanged for its owned approved target, preserving explicit state controls.
+- **Invalidate model approval when the tool behavior changes.** P4 adds tool-visible goal evidence before P7's full tool expansion. The candidate therefore advances to `vulpes-everyday-v11` now, with unchanged historical v10 evidence intentionally failing availability checks. This brings the planned fail-closed version transition forward; no fresh capability, quality or production approval is invented. P7 will freeze the expanded contract separately.
+
+See [M4 evidence](evidence/v0.2.0/m4-goals.md) for executed results and later group/conversation gates.
+
 ## Public source and licensing
 
 - **License.** Vulpes uses Apache-2.0. Copied source and the Remora agent guidance keep their upstream MIT licenses and notices. The npm package stays `private` to prevent accidental registry publication.

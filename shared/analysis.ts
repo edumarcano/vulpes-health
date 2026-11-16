@@ -17,7 +17,7 @@ import {
   UUIDSchema,
 } from './primitives.js';
 
-export const ANALYSIS_VERSION = 'explicit-analysis-v1';
+export const ANALYSIS_VERSION = 'explicit-analysis-v2';
 export const ANALYSIS_OBSERVATION_BUDGET = 25_000;
 export const ANALYSIS_BATCH_LIMIT = 24;
 export const AnalysisWindowSchema = z.strictObject({
@@ -45,6 +45,7 @@ export const AnalysisOperationSchema = z.discriminatedUnion('operation', [
     operation: z.literal('latest_per_metric'),
     ...seriesFields,
     window: AnalysisWindowSchema.optional(),
+    before: ISOInstantSchema.optional(),
   }),
   z.strictObject({
     operation: z.literal('observed_day_mean'),
@@ -56,6 +57,7 @@ export const AnalysisOperationSchema = z.discriminatedUnion('operation', [
     operation: z.literal('rolling_7d'),
     ...seriesFields,
     window: AnalysisWindowSchema,
+    before: ISOInstantSchema.optional(),
   }),
   z.strictObject({
     operation: z.literal('period_comparison'),

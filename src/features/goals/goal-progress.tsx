@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import type { z } from 'zod';
 import { useAuth } from '@/lib/auth/auth-context';
 import { ownedJson } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,64 @@ import { Card } from '@/components/ui/card';
 import { successEnvelopeSchema } from '../../../shared/api';
 import { GoalProgressResultSchema } from '../../../shared/goal-progress';
 import type { GoalRow } from '../../../shared/goal-views';
+type ProgressValue = Extract<
+  z.infer<typeof GoalProgressResultSchema>,
+  { kind: 'progress' }
+>;
+
+function conditionLabel(value: ProgressValue) {
+  if (value.freshness?.status === 'stale')
+    return 'Current condition not established: evidence exceeds the approved age policy.';
+  if (value.conditionMet === undefined)
+    return 'Current condition unavailable for this retained result.';
+  return value.conditionMet
+    ? 'Currently meeting the target condition with the available evidence.'
+    : 'Not currently meeting the target condition.';
+}
+
+function EvidenceDetails({ value }: { value: ProgressValue }) {
+  const baseline = value.baselineEvidence;
+  const current = value.currentEvidence;
+  const freshness = value.freshness;
+  return (
+    <dl className="text-sm" style={{ overflowWrap: 'anywhere' }}>
+      <dt>Baseline evidence</dt>
+      <dd>
+        {baseline?.provenance === 'user_reported'
+          ? 'User-reported; no measurement date is claimed.'
+          : baseline?.firstMeasuredAt
+            ? `${baseline.firstMeasuredAt} to ${baseline.lastMeasuredAt}`
+            : 'Dates unavailable.'}
+        {baseline &&
+          ` · ${baseline.algorithmVersion} · Data revision ${baseline.dataRevision}`}
+      </dd>
+      <dt>Current evidence</dt>
+      <dd>
+        {current?.firstMeasuredAt
+          ? `${current.firstMeasuredAt} to ${current.lastMeasuredAt}`
+          : 'Dates unavailable.'}
+        {current &&
+          ` · ${current.algorithmVersion} · Data revision ${current.dataRevision} · ${current.observationCount} observations, ${current.observedDays}${current.calendarDays === null ? '' : `/${current.calendarDays}`} observed days`}
+      </dd>
+      <dt>Actual change from baseline</dt>
+      <dd>
+        {value.actualChange === undefined
+          ? 'Unavailable in this retained result.'
+          : `${value.actualChange} ${value.absoluteChangeUnit === 'percentage_points' ? 'percentage points' : value.absoluteChangeUnit}`}
+        {value.relativeChangePercent != null &&
+          ` · Relative change ${value.relativeChangePercent}%`}
+      </dd>
+      <dt>Evidence age</dt>
+      <dd>
+        {freshness
+          ? `${freshness.status} · ${freshness.ageDays === null ? 'Age unavailable' : `${freshness.ageDays.toLocaleString(undefined, { maximumFractionDigits: 2 })} elapsed days`} · ${freshness.maxEvidenceAgeDays === null ? 'No age cutoff' : `Approved maximum ${freshness.maxEvidenceAgeDays} days`} · Evaluated ${freshness.evaluatedAt}`
+          : 'Unavailable in this retained result.'}
+        {freshness?.oldestContributingAt &&
+          ` · Oldest contributing measurement ${freshness.oldestContributingAt}`}
+      </dd>
+    </dl>
+  );
+}
 export function Progress({ value }: { value: unknown }) {
   const p = GoalProgressResultSchema.safeParse(value);
   if (!p.success) return <p>Progress unavailable.</p>;
@@ -24,6 +83,8 @@ export function Progress({ value }: { value: unknown }) {
       <p>
         Baseline: {p.data.baseline} · Current: {p.data.current}
       </p>
+      <p>{conditionLabel(p.data)}</p>
+      <EvidenceDetails value={p.data} />
       {r.kind === 'directional' ? (
         <>
           <p>
@@ -151,6 +212,18 @@ export function GoalListItem({
                 ? 'Insufficient data for progress.'
                 : 'Baseline review required.'}
       </span>
+      {progress.data?.kind === 'progress' && (
+        <div className="text-sm text-muted-foreground mt-2">
+          <p>{conditionLabel(progress.data)}</p>
+          <p>
+            Measured:{' '}
+            {progress.data.currentEvidence?.lastMeasuredAt ??
+              'Date unavailable'}
+            {progress.data.freshness &&
+              ` · Evidence ${progress.data.freshness.status}`}
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

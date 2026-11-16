@@ -1,5 +1,46 @@
 import type { GoalTarget } from '../../shared/domain.js';
 import { Exact } from './measurements.js';
+import { Temporal } from '@js-temporal/polyfill';
+import { GoalFreshnessSchema } from '../../shared/goal-progress.js';
+
+export function goalConditionMet(current: string, target: GoalTarget): boolean {
+  const value = new Exact(current);
+  return target.direction === 'maintain_range'
+    ? value.gte(target.lower) && value.lte(target.upper)
+    : target.direction === 'increase_to'
+      ? value.gte(target.value)
+      : value.lte(target.value);
+}
+export function goalFreshness(
+  oldestContributingAt: string | null,
+  maxEvidenceAgeDays: number | null | undefined,
+  evaluatedAt: string,
+) {
+  const ageDays =
+    oldestContributingAt === null
+      ? null
+      : Math.max(
+          0,
+          Temporal.Instant.from(evaluatedAt)
+            .since(Temporal.Instant.from(oldestContributingAt))
+            .total('seconds') / 86400,
+        );
+  return GoalFreshnessSchema.parse({
+    policyVersion: 'elapsed_measurement_age_v1',
+    status:
+      ageDays === null
+        ? 'unavailable'
+        : maxEvidenceAgeDays == null
+          ? 'dated'
+          : ageDays > maxEvidenceAgeDays
+            ? 'stale'
+            : 'fresh',
+    maxEvidenceAgeDays: maxEvidenceAgeDays ?? null,
+    evaluatedAt,
+    oldestContributingAt,
+    ageDays,
+  });
+}
 
 export function goalProgress(
   baseline: string | null,
