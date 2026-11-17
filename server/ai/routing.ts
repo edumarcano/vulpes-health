@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { DataSummarySchema } from '../../shared/data.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
+import {
+  AgentAnalysisToolResultSchema,
+  AgentGoalProgressToolResultSchema,
+} from '../../shared/agent-tools.js';
+import { GoalGroupProgressSchema } from '../../shared/goal-groups.js';
 
 export const EscalationRequestSchema = z.strictObject({
   task: z.enum(['goal_progress_review', 'multi_metric_comparison']),
@@ -28,10 +33,18 @@ export function qualifiesForFlash(
     return selected.some(
       (item) =>
         GoalProgressResultSchema.safeParse(item!.result).data?.kind ===
-        'progress',
+          'progress' ||
+        AgentGoalProgressToolResultSchema.safeParse(item!.result).data?.progress
+          .kind === 'progress' ||
+        GoalGroupProgressSchema.safeParse(item!.result).success,
     );
   const metrics = new Set<string>();
   for (const item of selected) {
+    const batch = AgentAnalysisToolResultSchema.safeParse(item!.result);
+    if (batch.success)
+      for (const result of batch.data.data.results)
+        if (result.kind === 'series_analysis' && result.current.value !== null)
+          metrics.add(result.series.metric);
     const summary = z
       .object({ kind: z.literal('summary'), data: DataSummarySchema })
       .safeParse(item!.result);

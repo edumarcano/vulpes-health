@@ -39,6 +39,7 @@ import { blocksOf, continuationFor } from './continuation.js';
 import { readToolDefinitions } from './tools.js';
 import { executeToolStep } from './tool-execution.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
+import { evidenceIsCurrent } from '../services/evidence-freshness.js';
 
 export interface AgentDependencies {
   adapter: GenerationAdapter;
@@ -80,6 +81,7 @@ export class VulpesAgent {
     for (const [table, id] of [
       ['data_sources', selected?.source_id],
       ['goals', selected?.goal_id],
+      ['goal_groups', selected?.group_id],
     ] as const) {
       if (!id) continue;
       const result = await this.context.db
@@ -478,10 +480,24 @@ export class VulpesAgent {
             const call = toolCalls[0]!;
             const escalation = EscalationRequestSchema.parse(call.arguments);
             const flash: AgentDependencies['flash'] = dependencies.flash;
-            let evidenceCurrent = true;
+            const currentProfile = await this.context.db
+              .from('profiles')
+              .select('timezone,data_revision')
+              .eq('user_id', this.context.userId)
+              .single();
+            let evidenceCurrent = !currentProfile.error;
             for (const item of routingEvidence.filter((item) =>
               escalation.evidenceIds.includes(item.id),
             )) {
+              if (
+                !currentProfile.data ||
+                !(await evidenceIsCurrent(
+                  this.context,
+                  item.result,
+                  currentProfile.data,
+                ))
+              )
+                evidenceCurrent = false;
               const progress = GoalProgressResultSchema.safeParse(item.result);
               if (progress.success && progress.data.kind === 'progress') {
                 if (
@@ -605,13 +621,14 @@ export class VulpesAgent {
             calls.add(call.callId);
             toolCount++;
             const proposing =
+              call.name === 'prepare_goals' ||
               call.name === 'propose_goal' ||
               call.name === 'propose_goal_revision';
             const toolStep = await this.ledger.prepare(lease, {
               type: 'tool',
               body: Buffer.from(JSON.stringify(call)),
               toolName: call.name,
-              adapterVersion: 'vulpes-tools-v2',
+              adapterVersion: 'vulpes-tools-v3',
               metadata: {
                 endpoint: proposing ? 'tool:proposal' : 'tool:read',
                 headers: {},

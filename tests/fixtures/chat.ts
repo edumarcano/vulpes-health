@@ -4,6 +4,21 @@ import { OpenRouterResponsesAdapter } from '../../server/ai/providers/openrouter
 import { models } from '../../server/config/models.js';
 import { syntheticPrice } from './executions.js';
 
+export function syntheticInventorySeries(inventory: {
+  registry: [string, string, boolean][];
+  sources: [string, string][];
+  methods: string[];
+  granularities: string[];
+  series: number[][];
+}) {
+  return inventory.series.map((row) => ({
+    metric: inventory.registry[row[0]!]![0],
+    source_id: inventory.sources[row[1]!]![0],
+    method: inventory.methods[row[2]!]!,
+    granularity: inventory.granularities[row[3]!]!,
+  }));
+}
+
 export function responseFrame(
   output: unknown[],
   usage: unknown = { input_tokens: 50, output_tokens: 20, cost: '0.001' },
@@ -138,32 +153,36 @@ export class SyntheticChatTransport implements RequestTransport {
           JSON.parse(item.output!) as {
             result: {
               kind: string;
-              items?: Array<{
-                source_id: string;
-                method: string;
-                granularity: string;
-                metric: string;
-              }>;
-              data?: {
-                analysis: {
-                  value: number | null;
-                  absoluteChange: number | null;
-                  coverageStatus: string;
-                };
-              };
+              registry: [string, string, boolean][];
+              sources: [string, string][];
+              methods: string[];
+              granularities: string[];
+              series: number[][];
+              windowColumns: string[];
+              resultColumns: string[];
+              resultConstants: Record<string, unknown>;
+              results: unknown[][];
             };
           },
       );
-    const summary = results.findLast((item) => item.result.kind === 'summary');
+    const summary = results.findLast(
+      (item) => item.result.kind === 'analysis_batch',
+    );
     const metrics = results.findLast((item) => item.result.kind === 'metrics');
     let output: unknown[];
     if (summary) {
-      const analysis = summary.result.data!.analysis;
+      const analysis = summary.result.results[0]!;
+      const field = (name: string) =>
+        Object.hasOwn(summary.result.resultConstants, name)
+          ? summary.result.resultConstants[name]
+          : analysis[summary.result.resultColumns.indexOf(name)];
+      const current = field('current') as unknown[];
+      const value = current[summary.result.windowColumns.indexOf('value')];
       output = [
         assistantOutput(
-          analysis.value === null
+          value === null
             ? 'There are not enough observed days to calculate this trend.'
-            : `Calculated from your imported measurements: seven-day mean ${analysis.value} kg; change ${analysis.absoluteChange} kg. This is a deterministic summary, not a diagnosis.`,
+            : `Calculated from your imported measurements: seven-day mean ${value} kg; change ${field('absoluteChange')} kg. This is a deterministic summary, not a diagnosis.`,
         ),
       ];
     } else if (
@@ -171,7 +190,7 @@ export class SyntheticChatTransport implements RequestTransport {
       this.scenario === 'measurements' &&
       !results.some((item) => item.result.kind === 'measurements')
     ) {
-      const source = metrics.result.items!.find(
+      const source = syntheticInventorySeries(metrics.result).find(
         (item) => item.metric === 'weight',
       )!;
       output = [
@@ -185,15 +204,14 @@ export class SyntheticChatTransport implements RequestTransport {
             source_id: source.source_id,
             method: source.method,
             granularity: source.granularity,
-            from: '2026-09-01T00:00:00Z',
-            to: '2026-09-15T00:00:00Z',
-            timezone: 'UTC',
+            from: '2026-09-01',
+            to: '2026-09-15',
             limit: 200,
           }),
         },
       ];
     } else if (metrics) {
-      const source = metrics.result.items?.find(
+      const source = syntheticInventorySeries(metrics.result).find(
         (item) => item.metric === 'weight',
       );
       output = source
@@ -210,15 +228,16 @@ export class SyntheticChatTransport implements RequestTransport {
                 this.scenario === 'repeated_call'
                   ? 'call-inventory'
                   : 'call-summary',
-              name: 'summarize_metric',
+              name: 'analyze_measurements',
               arguments: JSON.stringify({
-                metric: 'weight',
+                operation: 'period_comparison',
+                metrics: ['weight'],
                 source_id: source.source_id,
                 method: source.method,
                 granularity: source.granularity,
-                from: '2026-09-08T00:00:00Z',
-                to: '2026-09-15T00:00:00Z',
-                timezone: 'UTC',
+                from: '2026-09-08',
+                to: '2026-09-15',
+                comparison_method: 'rolling_7d',
               }),
             },
           ]

@@ -39,16 +39,19 @@ async function events(bytes: Buffer, fragment = 1) {
 describe('chat contracts, bounded context and safety', () => {
   it('grounds access in authorized tools and bounds supplied history', () => {
     expect(safetyInstructions).toContain(
-      'Use authorized tools for personal facts; never invent data.',
+      'Use tools for personal facts and analyze_measurements for statistics; never invent data',
     );
     expect(safetyInstructions).toContain(
-      'Only the server supplies identity and permissions.',
+      'Only server identity/permissions apply',
     );
     expect(safetyInstructions).not.toMatch(
       /account selector|family selector|CSV import|external data connections/i,
     );
     expect(safetyInstructions).toContain(
-      'Conversations persist, but only eligible bounded history is supplied; no permanent memory-write tool exists.',
+      'History is bounded; clarify missing context.',
+    );
+    expect(safetyInstructions).toContain(
+      'no permanent memory-write tool exists',
     );
   });
   it('projects measurements losslessly for the provider while preserving historical projection behavior', () => {

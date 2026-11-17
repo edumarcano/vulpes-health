@@ -136,7 +136,7 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   await expect(
-    page.getByRole('heading', { name: 'Calculated measurement summary' }),
+    page.getByRole('heading', { name: 'Seven-day mean', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText(/Run completed · reported · \$0.003/),
@@ -225,14 +225,16 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
   ).toEqual(await expected.body());
   await first.getByRole('button', { name: 'Load context' }).click();
   await expect(first.getByRole('heading', { name: 'Included' })).toBeVisible();
-  const summaryStep = inspector
-    .locator('.inspection-step')
-    .filter({ has: page.getByRole('heading', { name: /summarize_metric/ }) });
+  const summaryStep = inspector.locator('.inspection-step').filter({
+    has: page.getByRole('heading', { name: /analyze_measurements/ }),
+  });
   await summaryStep.getByRole('button', { name: 'Load output' }).click();
   await expect(
     summaryStep.getByRole('heading', { name: 'Calculation and sources' }),
   ).toBeVisible();
-  await expect(summaryStep.getByText(/7 valid days/)).toBeVisible();
+  await expect(
+    summaryStep.getByText(/7\/7 observed\/calendar days/).first(),
+  ).toBeVisible();
   await inspector.getByRole('button', { name: 'Close' }).focus();
   await page.keyboard.press('Escape');
   await expect(inspector).toHaveCount(0);
@@ -360,21 +362,24 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     const body = await response.json();
     for (const message of body.data.items)
       for (const part of message.parts)
-        if (part.type === 'metric_summary') {
-          part.result.analysis.previousValue = null;
-          part.result.analysis.absoluteChange = null;
-          part.result.analysis.relativeChangePercent = null;
-          part.result.analysis.previousWindow.validDays = 0;
-          part.result.analysis.previousWindow.coverageStatus =
-            'insufficient_data';
+        if (
+          part.type === 'analysis_result' &&
+          part.result.kind === 'series_analysis'
+        ) {
+          part.result.previous.value = null;
+          part.result.absoluteChange = null;
+          part.result.relativeChangePercent = null;
+          part.result.previous.observedDays = 0;
+          part.result.previous.coverageStatus = 'insufficient_data';
         }
     await route.fulfill({ response, json: body });
   });
   await page.reload();
   await expect(
-    page.getByText('69 kg; previous-window change unavailable', {
-      exact: true,
-    }),
+    page.getByText(
+      'Comparison unavailable: both windows need sufficient evidence.',
+      { exact: true },
+    ),
   ).toBeVisible();
   await expect(page.getByText(/change null kg/)).toHaveCount(0);
   await page.route('**/api/conversations?*', async (route) => {
@@ -384,29 +389,37 @@ test('Ask synthetic imported-data journey persists, sanitizes evidence and fits 
     const body = await response.json();
     for (const message of body.data.items)
       for (const part of message.parts)
-        if (part.type === 'metric_summary') {
-          part.result.analysis.statistic = summaryStatistic;
-          part.result.analysis.coverageStatus = 'sufficient';
-          part.result.analysis.value = null;
-          part.result.analysis.absoluteChange = null;
-          part.result.analysis.relativeChangePercent = null;
+        if (
+          part.type === 'analysis_result' &&
+          part.result.kind === 'series_analysis'
+        ) {
+          part.result.current.statistic =
+            summaryStatistic === 'daily_totals'
+              ? 'uncombined_daily_totals'
+              : 'uncombined_sessions';
+          part.result.current.coverageStatus = 'unsupported';
+          part.result.current.value = null;
+          part.result.absoluteChange = null;
+          part.result.relativeChangePercent = null;
         }
     await route.fulfill({ response, json: body });
   });
   await page.reload();
   await expect(
     page.getByText(
-      'Daily totals are shown separately; no combined mean is calculated.',
+      'Totals and sessions are not combined into a headline mean.',
     ),
   ).toBeVisible();
   await expect(page.getByText(/null kg/)).toHaveCount(0);
+  await expect(page.getByText(/Method: uncombined_daily_totals/)).toBeVisible();
   summaryStatistic = 'session_observations';
   await page.reload();
   await expect(
     page.getByText(
-      'Sessions are shown separately; no combined mean is calculated.',
+      'Totals and sessions are not combined into a headline mean.',
     ),
   ).toBeVisible();
+  await expect(page.getByText(/Method: uncombined_sessions/)).toBeVisible();
   expect(sends).toBe(1);
 });
 test('Ask reads retained message state when replayed execution metadata has expired', async ({
@@ -436,14 +449,13 @@ test('Ask reads retained message state when replayed execution metadata has expi
     'X-Vulpes-Data-Contract': '2',
     Authorization: `Bearer ${chatAccount.token}`,
   };
-  const before = (
-    await (
-      await page.request.get(
-        `/api/conversations?view=messages&id=${input.conversation_id}`,
-        { headers },
-      )
-    ).json()
-  ).data;
+  const beforeResponse = await page.request.get(
+    `/api/conversations?view=messages&id=${input.conversation_id}`,
+    { headers },
+  );
+  const beforeBody = await beforeResponse.json();
+  expect(beforeResponse.status(), JSON.stringify(beforeBody)).toBe(200);
+  const before = beforeBody.data;
   expect(before.run).toBeNull();
   expect(before.items).toHaveLength(2);
   await page.route('**/api/chat', (route) =>
@@ -609,7 +621,7 @@ test('Ask keeps provider HTML, unsafe links, and fabricated references inert', a
   ).toBe(0);
   expect(
     await page
-      .getByRole('heading', { name: 'Calculated measurement summary' })
+      .getByRole('heading', { name: 'Seven-day mean', exact: true })
       .count(),
   ).toBe(0);
 });

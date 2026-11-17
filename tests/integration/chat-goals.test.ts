@@ -332,7 +332,7 @@ it('completes import → Ask → inspect → propose → approve → additional 
     expect(bytes.state).toBe('available');
     if (bytes.state === 'available')
       expect(JSON.parse(bytes.bytes.toString())).toMatchObject({
-        projectionVersion: 4,
+        projectionVersion: 5,
         providerResult: { requiresUserConfirmation: true },
       });
     const pair = await new ConversationService(a).read({
@@ -491,8 +491,11 @@ it.each([1, 20])(
     const progress = final.input
       .filter((item: { type: string }) => item.type === 'function_call_output')
       .map((item: { output: string }) => JSON.parse(item.output).result)
-      .find((result: { kind: string }) => result.kind === 'progress');
-    expect(progress).toMatchObject({ baseline: '70', current: '69' });
+      .find((result: { kind: string }) => result.kind === 'goal_progress');
+    expect(progress).toMatchObject({
+      kind: 'goal_progress',
+      progress: { kind: 'progress', baseline: '70', current: '69' },
+    });
     const context = await inspector.evidence({
       view: 'payload',
       run: admitted.result.run.id,
@@ -814,9 +817,14 @@ it('requires explicit approval of chat revisions and never treats conversational
   );
   expect(captured.state).toBe('available');
   if (captured.state === 'available')
-    expect(JSON.parse(captured.bytes.toString()).arguments.rationale).toBe(
-      'Review the requested target adjustment.',
-    );
+    expect(
+      JSON.parse(captured.bytes.toString()).arguments.members[0],
+    ).toMatchObject({
+      kind: 'revise',
+      goal_id: created.goalId,
+      baseline_resolution: 'retain',
+      definition: { target: { direction: 'decrease_to', value: 67 } },
+    });
   const yes = new SyntheticGoalTransport('goal_yes');
   await withApi(yes, async (api) => {
     const events = await stream(

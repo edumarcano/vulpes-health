@@ -4,11 +4,18 @@ import {
   ISOInstantSchema,
   PageSizeSchema,
   UUIDSchema,
+  VersionSchema,
 } from './primitives.js';
 import { RunSummarySchema } from './executions.js';
 import { DataSummarySchema } from './data.js';
 import { GoalProposalReferenceSchema } from './goals.js';
 import { GoalProgressResultSchema } from './goal-progress.js';
+import { AnalysisCardSnapshotSchema } from './agent-tools.js';
+import { EventAnalysisResultSchema } from './analysis.js';
+import {
+  GoalGroupProgressSchema,
+  GoalGroupProposalReferenceSchema,
+} from './goal-groups.js';
 
 export const EvidenceSchema = z.strictObject({
   version: z.literal(1),
@@ -33,7 +40,23 @@ export const ChatPartSchema = z.discriminatedUnion('type', [
     type: z.literal('goal_progress'),
     evidence: EvidenceSchema,
     goalId: UUIDSchema,
+    goalVersion: VersionSchema.optional(),
+    revisionId: UUIDSchema.optional(),
     result: GoalProgressResultSchema,
+  }),
+  z.strictObject({
+    type: z.literal('analysis_result'),
+    evidence: EvidenceSchema,
+    result: z.union([AnalysisCardSnapshotSchema, EventAnalysisResultSchema]),
+  }),
+  z.strictObject({
+    type: z.literal('goal_group_progress'),
+    evidence: EvidenceSchema,
+    result: GoalGroupProgressSchema,
+  }),
+  z.strictObject({
+    type: z.literal('goal_group_proposal'),
+    reference: GoalGroupProposalReferenceSchema,
   }),
 ]);
 export const ChatMessageSchema = z.strictObject({

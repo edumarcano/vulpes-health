@@ -295,7 +295,7 @@ test('Ask goal proposal journey imports, reviews, approves, calculates progress 
     .click();
   const inspector = page.getByRole('dialog', { name: 'Execution inspector' });
   await expect(
-    inspector.getByRole('heading', { name: /propose_goal/ }),
+    inspector.getByRole('heading', { name: /prepare_goals/ }),
   ).toBeVisible();
   await inspector.getByRole('button', { name: 'Close', exact: true }).click();
   const chatUrl = page.url();

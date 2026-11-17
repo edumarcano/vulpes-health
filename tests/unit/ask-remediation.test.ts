@@ -281,7 +281,7 @@ describe('Ask server temporal grounding', () => {
     ).toBe(true);
   });
   it('keeps historical v10 evidence from authorizing the changed v0.2 candidate', () => {
-    expect(everydayTemplateVersion).toBe('vulpes-everyday-v11');
+    expect(everydayTemplateVersion).toBe('vulpes-everyday-v12');
     expect(everydayProductionEvidence?.templateVersion).toBe(
       'vulpes-everyday-v10',
     );

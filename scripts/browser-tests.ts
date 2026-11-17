@@ -19,6 +19,7 @@ try {
   const diagnostics = args.includes('--diagnostic');
   const goalsProof = args.includes('--goals-proof');
   const groupsProof = args.includes('--groups-proof');
+  const conversationProof = args.includes('--conversation-proof');
   const mobileProof = args.includes('--mobile-proof');
   const lifecycleProof = args.includes('--lifecycle-proof');
   const clockProof = args.includes('--clock-proof');
@@ -31,6 +32,7 @@ try {
           '--diagnostic',
           '--goals-proof',
           '--groups-proof',
+          '--conversation-proof',
           '--mobile-proof',
           '--lifecycle-proof',
           '--clock-proof',
@@ -57,6 +59,7 @@ try {
   const lostDeletion = await db.createUser();
   const journey = await db.createUser();
   const refreshDeletion = await db.createUser();
+  const v020Chat = await db.createUser();
   await db.admin('/rest/v1/profiles', 'POST', {
     user_id: journey.id,
     display_name: 'Synthetic release journey',
@@ -90,16 +93,17 @@ try {
       },
     },
   });
-  await db.admin('/rest/v1/profiles', 'POST', {
-    user_id: goalChat.id,
-    display_name: 'Synthetic M4 Ask',
-    consent_versions: {
-      openrouter: {
-        accepted_version: 'openrouter_zdr_v2',
-        accepted_at: new Date().toISOString(),
+  for (const user of [goalChat, v020Chat])
+    await db.admin('/rest/v1/profiles', 'POST', {
+      user_id: user.id,
+      display_name: 'Synthetic M4 Ask',
+      consent_versions: {
+        openrouter: {
+          accepted_version: 'openrouter_zdr_v2',
+          accepted_at: new Date().toISOString(),
+        },
       },
-    },
-  });
+    });
   appId = randomUUID();
   const period = new Date().toISOString().slice(0, 7) + '-01';
   await db.admin('/rest/v1/usage_buckets', 'POST', {
@@ -120,12 +124,13 @@ try {
     period_start: period,
     allocated_ceiling_usd: '1',
   });
-  await db.admin('/rest/v1/usage_buckets', 'POST', {
-    user_id: goalChat.id,
-    scope: 'account',
-    period_start: period,
-    allocated_ceiling_usd: '1',
-  });
+  for (const user of [goalChat, v020Chat])
+    await db.admin('/rest/v1/usage_buckets', 'POST', {
+      user_id: user.id,
+      scope: 'account',
+      period_start: period,
+      allocated_ceiling_usd: '1',
+    });
   await db.admin('/rest/v1/usage_buckets', 'POST', {
     user_id: journey.id,
     scope: 'account',
@@ -150,6 +155,8 @@ try {
     journey.token,
     refreshDeletion.password,
     refreshDeletion.token,
+    v020Chat.password,
+    v020Chat.token,
     status.adminKey,
     encryptionKey,
   ];
@@ -173,10 +180,12 @@ try {
       lostDeletion,
       journey,
       refreshDeletion,
+      v020Chat,
     ]),
     VULPES_TEST_CHAT_OWNER: chat.id,
     VULPES_TEST_GOAL_OWNER: goalChat.id,
     VULPES_TEST_JOURNEY_OWNER: journey.id,
+    VULPES_TEST_V020_OWNER: v020Chat.id,
     VULPES_TEST_MODE: devProof ? 'dev_proof' : 'preview',
     ...(systemChrome ? { VULPES_TEST_BROWSER_CHANNEL: 'chrome' } : {}),
   };
@@ -214,27 +223,29 @@ try {
   const npm = process.env.npm_execpath;
   if (!npm) throw new Error('Run with npm run test:e2e.');
   await run([npm, 'run', 'build']);
-  const filter = groupsProof
-    ? 'goal-groups.spec'
-    : analysisProof
-      ? 'data-analysis.spec|manual entry persists|second-60 manual|chart loading failure|mobile date|measurement-lifecycle'
-      : ingestionProof
-        ? 'imports.spec|share-import.spec'
-        : measurementProof
-          ? 'measurement-lifecycle.spec|release journey'
-          : releaseProof
-            ? 'release journey'
-            : importProof
-              ? 'imports.spec|share-import.spec|measurement-lifecycle.spec|manual entry persists|direct Goals|keyboard confirmation|chart loading failure|Ask synthetic imported-data journey|Ask goal proposal journey|release journey|account lifecycle export'
-              : lifecycleProof
-                ? 'account lifecycle|saves profile|personal spending limit|stale settings|dark navigation'
-                : mobileProof
-                  ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
-                  : goalsProof
-                    ? 'goal-groups.spec|numeric-goals.spec|Ask goal proposal|direct Goals'
-                    : devProof
-                      ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
-                      : null;
+  const filter = conversationProof
+    ? 'chat-v020.spec|ask.spec|chat-goals.spec'
+    : groupsProof
+      ? 'goal-groups.spec'
+      : analysisProof
+        ? 'data-analysis.spec|manual entry persists|second-60 manual|chart loading failure|mobile date|measurement-lifecycle'
+        : ingestionProof
+          ? 'imports.spec|share-import.spec'
+          : measurementProof
+            ? 'measurement-lifecycle.spec|release journey'
+            : releaseProof
+              ? 'release journey'
+              : importProof
+                ? 'imports.spec|share-import.spec|measurement-lifecycle.spec|manual entry persists|direct Goals|keyboard confirmation|chart loading failure|Ask synthetic imported-data journey|Ask goal proposal journey|release journey|account lifecycle export'
+                : lifecycleProof
+                  ? 'account lifecycle|saves profile|personal spending limit|stale settings|dark navigation'
+                  : mobileProof
+                    ? 'Ask synthetic imported-data journey|mobile |Goals request failure|keyboard, skip link|chart loading failure'
+                    : goalsProof
+                      ? 'goal-groups.spec|numeric-goals.spec|Ask goal proposal|direct Goals'
+                      : devProof
+                        ? 'release journey|account lifecycle|direct Goals|Ask |saves profile and explicit consent|manual entry persists|keyboard confirmation|chart loading failure|canonical CSV imports|M2 data journey|mobile |Goals request failure'
+                        : null;
   await run([
     require.resolve('@playwright/test/cli'),
     'test',

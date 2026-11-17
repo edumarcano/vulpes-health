@@ -29,9 +29,7 @@ describe('chat proposal authority and bounded catalogue', () => {
           message: 'Keep baseline and current methods comparable.',
         }),
       );
-    expect(safetyInstructions).toContain(
-      'Calculated baselineMethod equals currentMethod; latest-value tracking uses latest_value',
-    );
+    expect(safetyInstructions).toContain('Server freezes baselines');
     for (const method of ['latest_value', 'daily_median_mean_7d'])
       expect(
         toolArguments.propose_goal.safeParse({
@@ -66,12 +64,12 @@ describe('chat proposal authority and bounded catalogue', () => {
     expect(readToolDefinitions.map((x) => x.name)).toEqual([
       'request_escalation',
       'list_metrics',
+      'analyze_measurements',
       'get_measurements',
-      'summarize_metric',
+      'explain_metrics',
       'list_goals',
       'get_goal_progress',
-      'propose_goal',
-      'propose_goal_revision',
+      'prepare_goals',
     ]);
     expect(
       toolArguments.propose_goal_revision.safeParse({

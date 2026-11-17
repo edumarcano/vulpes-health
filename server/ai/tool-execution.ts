@@ -3,6 +3,17 @@ import { z } from 'zod';
 import { ChatPartSchema, type ChatPart } from '../../shared/chat.js';
 import { DataSummarySchema } from '../../shared/data.js';
 import { GoalProgressResultSchema } from '../../shared/goal-progress.js';
+import {
+  AgentAnalysisToolResultSchema,
+  AgentGoalProgressToolResultSchema,
+  analysisCardSnapshot,
+} from '../../shared/agent-tools.js';
+import {
+  GoalGroupProgressSchema,
+  GoalGroupProposalToolResultSchema,
+} from '../../shared/goal-groups.js';
+import { GoalProposalToolResultSchema } from '../../shared/goals.js';
+import { MAX_PAYLOAD_BYTES } from '../security/encryption.js';
 import type { StreamEvent } from '../../shared/stream.js';
 import type { AuthContext } from '../auth/session.js';
 import { HttpFailure } from '../http/failure.js';
@@ -32,7 +43,9 @@ async function toolOutput(
   stepId: string,
 ) {
   try {
-    return call.name === 'propose_goal' || call.name === 'propose_goal_revision'
+    return call.name === 'prepare_goals' ||
+      call.name === 'propose_goal' ||
+      call.name === 'propose_goal_revision'
       ? await prepareGoalTool(context, call.name, call.arguments, stepId)
       : await executeReadTool(context, call.name, call.arguments);
   } catch (error) {
@@ -77,7 +90,8 @@ export async function executeToolStep(input: {
   const recoverable = ToolErrorResultSchema.safeParse(output).success;
   const proposing =
     !recoverable &&
-    (call.name === 'propose_goal' || call.name === 'propose_goal_revision');
+    (GoalProposalToolResultSchema.safeParse(output).success ||
+      GoalGroupProposalToolResultSchema.safeParse(output).success);
   const evidence = {
     version: 1 as const,
     ownerId: context.userId,
@@ -98,11 +112,33 @@ export async function executeToolStep(input: {
     result: output,
     providerResult: result.result,
   };
+  if (Buffer.byteLength(JSON.stringify(trace)) > MAX_PAYLOAD_BYTES)
+    throw new HttpFailure(
+      413,
+      'response_too_large',
+      'Narrow the selected metrics or interval to retain complete tool evidence.',
+    );
   const events: ToolEvent[] = [];
   const summary = z
     .object({ kind: z.literal('summary'), data: DataSummarySchema })
     .safeParse(output);
   if (summary.success && summary.data.data.dataRevision !== dataRevision)
+    throw new Error('data_changed');
+  const analysis = AgentAnalysisToolResultSchema.safeParse(output);
+  const goalProgress = AgentGoalProgressToolResultSchema.safeParse(output);
+  const groupProgress = GoalGroupProgressSchema.safeParse(output);
+  if (
+    output &&
+    typeof output === 'object' &&
+    'dataRevision' in output &&
+    output.dataRevision !== dataRevision
+  )
+    throw new Error('data_changed');
+  if (
+    (analysis.success && analysis.data.data.dataRevision !== dataRevision) ||
+    (goalProgress.success && goalProgress.data.dataRevision !== dataRevision) ||
+    (groupProgress.success && groupProgress.data.dataRevision !== dataRevision)
+  )
     throw new Error('data_changed');
   if (proposing) {
     const saved = await ledger.checkpointGoal(step, output, trace);
@@ -111,12 +147,81 @@ export async function executeToolStep(input: {
       type: 'card.ready',
       payload: {
         message_id: messageId,
-        card: { type: 'goal_proposal', reference: saved.reference },
+        card: GoalGroupProposalToolResultSchema.safeParse(output).success
+          ? { type: 'goal_group_proposal', reference: saved.reference }
+          : { type: 'goal_proposal', reference: saved.reference },
       },
     });
   } else {
     await ledger.checkpoint(step, Buffer.from(JSON.stringify(trace)));
     await ledger.settle(step, null, 'completed');
+  }
+  const readParts: ChatPart[] = [];
+  if (analysis.success) {
+    for (const item of analysis.data.data.results) {
+      const result =
+        item.kind === 'series_analysis' ? analysisCardSnapshot(item) : item;
+      readParts.push({ type: 'analysis_result', evidence, result });
+      events.push({
+        type: 'card.ready',
+        payload: {
+          message_id: messageId,
+          card: { type: 'analysis_result', evidence, result },
+        },
+      });
+    }
+  }
+  if (goalProgress.success) {
+    const {
+      goalId,
+      goalVersion,
+      revisionId,
+      progress: result,
+    } = goalProgress.data;
+    readParts.push({
+      type: 'goal_progress',
+      evidence,
+      goalId,
+      goalVersion,
+      revisionId,
+      result,
+    });
+    events.push({
+      type: 'card.ready',
+      payload: {
+        message_id: messageId,
+        card: {
+          type: 'goal_progress',
+          evidence,
+          goalId,
+          goalVersion,
+          revisionId,
+          result,
+        },
+      },
+    });
+  }
+  if (groupProgress.success) {
+    readParts.push({
+      type: 'goal_group_progress',
+      evidence,
+      result: groupProgress.data,
+    });
+    events.push({
+      type: 'card.ready',
+      payload: {
+        message_id: messageId,
+        card: {
+          type: 'goal_group_progress',
+          evidence,
+          result: groupProgress.data,
+        },
+      },
+    });
+  }
+  if (readParts.length) {
+    parts.push(...readParts.map((part) => ChatPartSchema.parse(part)));
+    await ledger.checkpointMessage(step.lease, parts);
   }
   if (summary.success) {
     parts.push(
@@ -135,7 +240,12 @@ export async function executeToolStep(input: {
       },
     });
   }
-  if (call.name === 'get_goal_progress' && !recoverable) {
+  if (
+    call.name === 'get_goal_progress' &&
+    !recoverable &&
+    !goalProgress.success &&
+    !groupProgress.success
+  ) {
     const goalId = z
       .strictObject({ goal_id: z.uuid() })
       .parse(call.arguments).goal_id;
