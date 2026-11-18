@@ -88,6 +88,7 @@ async function post(route: string, body: unknown) {
 async function send(
   transport: RequestTransport,
   text = 'Use the selected owned series.',
+  selection?: { groupId: string },
 ) {
   const conversation = randomUUID();
   await new ConversationService(context).mutate({
@@ -113,6 +114,19 @@ async function send(
     client_request_id: randomUUID(),
     message: { id: randomUUID(), text },
     depth: 'auto',
+    ...(selection
+      ? {
+          context_selection: {
+            metric: 'weight',
+            source_id: source,
+            goal_id: null,
+            group_id: selection.groupId,
+            from: '2026-09-01T00:00:00Z',
+            to: '2026-10-01T00:00:00Z',
+            timezone: 'UTC',
+          },
+        }
+      : {}),
   });
   const response = await post('/api/chat', input);
   expect(response.status).toBe(200);
@@ -612,6 +626,72 @@ it('invalidates group cards and the whole follow-up history after an independent
     });
 });
 
+it.each([
+  ['analyze_measurements', false],
+  ['explain_metrics', false],
+  ['analyze_measurements', true],
+  ['explain_metrics', true],
+] as const)(
+  'retains readable exact %s empty or ambiguous series evidence (ambiguous=%s)',
+  async (tool, ambiguous) => {
+    if (ambiguous) {
+      const other = randomUUID();
+      await db.admin('/rest/v1/data_sources', 'POST', {
+        id: other,
+        user_id: owner.id,
+        kind: 'manual',
+        label: 'Synthetic alternate series',
+        source_namespace: randomUUID(),
+      });
+      for (const sourceId of [source, other])
+        await addMeasurement(context, {
+          action: 'add_measurement',
+          client_request_id: randomUUID(),
+          source: { kind: 'existing', id: sourceId },
+          observation: {
+            metric: 'weight',
+            value: '70',
+            unit: 'kg',
+            observed_at: '2026-09-02T12:00:00Z',
+            timezone: 'UTC',
+            local_date: null,
+            granularity: 'instant',
+            method: 'device_reported',
+            quality_flags: [],
+          },
+        });
+    }
+    const transport = new ScriptedTransport(
+      tool,
+      tool === 'analyze_measurements'
+        ? {
+            operation: 'observed_day_mean',
+            metrics: ['weight'],
+            from: '2026-09-01',
+            to: '2026-10-01',
+          }
+        : { metrics: ['weight'], include_reference: true },
+    );
+    const result = await send(transport);
+    const inspector = new InspectionService(context);
+    const step = (await inspector.steps(result.run)).find(
+      (item) => item.tool_name === tool,
+    )!;
+    const capture = await inspector.evidence({
+      view: 'payload',
+      run: result.run,
+      step: step.id,
+      part: 'output',
+    });
+    expect(capture.state).toBe('available');
+    if (capture.state !== 'available')
+      throw new Error('Missing clarification evidence');
+    expect(JSON.parse(capture.bytes.toString()).result.kind).toBe(
+      ambiguous ? 'clarification_required' : 'no_data',
+    );
+  },
+);
+
 it('fits four dated goal calculations with repeating percentages while retaining exact encrypted values', async () => {
   await addMeasurement(context, {
     action: 'add_measurement',
@@ -672,7 +752,9 @@ it('fits four dated goal calculations with repeating percentages while retaining
   const transport = new ScriptedTransport('get_goal_progress', {
     group_id: approved.groupId,
   });
-  const result = await send(transport);
+  const result = await send(transport, 'Read the selected group progress.', {
+    groupId: approved.groupId,
+  });
   expect(transport.requests).toHaveLength(2);
   expect(transport.requests.every((body) => body.length <= 12000)).toBe(true);
   const inspector = new InspectionService(context);

@@ -11,19 +11,64 @@ import { readEncryptionKeys } from '../server/security/encryption.js';
 import { previewCsv, commitImport } from '../server/services/imports.js';
 import {
   verificationFixtures,
+  isV020VerificationFixtureHash,
   type VerificationFixture,
 } from '../server/ai/verification-fixture.js';
 
-// Caller must perform the live opt-in and static preflight before invoking this.
-// The allocation ID is explicitly supplied and is never replaced automatically.
+export type SyntheticBatchPreparation = {
+  fixtureHash: string;
+  seed(context: AuthContext, helper: LocalSupabase): Promise<void>;
+  verify(context: AuthContext): Promise<void>;
+};
+
+export async function resumeSyntheticContext(
+  userId: string,
+  helper: LocalSupabase,
+): Promise<AuthContext> {
+  const db = administrativeClient();
+  const user = await db.auth.admin.getUserById(userId);
+  if (
+    user.error ||
+    !/^pr03-[0-9a-f-]{36}@example\.test$/.test(user.data.user?.email ?? '')
+  )
+    throw new Error('verification_account_unavailable');
+  const password = randomBytes(32).toString('base64url');
+  const changed = await db.auth.admin.updateUserById(userId, { password });
+  if (changed.error) throw new Error('verification_account_unavailable');
+  const login = await helper.request(
+    '/auth/v1/token?grant_type=password',
+    'anon',
+    {
+      method: 'POST',
+      body: JSON.stringify({ email: user.data.user.email, password }),
+    },
+  );
+  if (!login.ok) throw new Error('verification_account_unavailable');
+  const session = (await login.json()) as { access_token?: unknown };
+  if (typeof session.access_token !== 'string')
+    throw new Error('verification_account_unavailable');
+  const context = await verifySession({
+    headers: { authorization: `Bearer ${session.access_token}` },
+  });
+  if (context.userId !== userId)
+    throw new Error('verification_account_unavailable');
+  return context;
+}
+
+// Setup makes only guarded local calls. Caller validates its explicit preparation
+// mode; live dispatch separately requires opt-in and static preflight. The
+// allocation ID is supplied and is never replaced automatically.
 export async function prepareSyntheticBatch(
   batchId: string,
   ceiling: string,
   fixture: VerificationFixture = 'scale',
+  preparation?: SyntheticBatchPreparation,
 ): Promise<{ context: AuthContext; fixtureHash: string }> {
   UUIDSchema.parse(batchId);
   if (!new Decimal(ceiling).isPositive())
     throw new Error('invalid_spend_limit');
+  if (preparation && !isV020VerificationFixtureHash(preparation.fixtureHash))
+    throw new Error('verification_fixture_invalid');
   const local = localStatus();
   process.env.VITE_SUPABASE_URL = local.apiUrl;
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY = local.anonKey;
@@ -34,20 +79,22 @@ export async function prepareSyntheticBatch(
   const period = new Date().toISOString().slice(0, 7) + '-01';
   const selected = verificationFixtures[fixture];
   if (!selected) throw new Error('verification_fixture_invalid');
-  const csv =
-    selected.csv ??
-    (
-      await readFile(
-        new URL(
-          '../docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
-          import.meta.url,
-        ),
-        'utf8',
-      )
-    ).replaceAll('\r\n', '\n');
+  const csv = preparation
+    ? ''
+    : (selected.csv ??
+      (
+        await readFile(
+          new URL(
+            '../docs/spec/v0.1.0/fixtures/measurements-synthetic.csv',
+            import.meta.url,
+          ),
+          'utf8',
+        )
+      ).replaceAll('\r\n', '\n'));
   const displayName = selected.displayLabel;
   const fixtureHash =
-    fixture === 'injection'
+    preparation?.fixtureHash ??
+    (fixture === 'injection'
       ? createHash('sha256')
           .update(
             createHash('sha256').update(csv).digest('hex') +
@@ -56,8 +103,8 @@ export async function prepareSyntheticBatch(
           .digest('hex')
       : fixture === 'empty'
         ? selected.hash
-        : createHash('sha256').update(csv).digest('hex');
-  if (fixtureHash !== selected.hash)
+        : createHash('sha256').update(csv).digest('hex'));
+  if (!preparation && fixtureHash !== selected.hash)
     throw new Error('verification_fixture_invalid');
   const app = await db
     .from('usage_buckets')
@@ -82,34 +129,7 @@ export async function prepareSyntheticBatch(
       !new Decimal(row.ceiling_text).equals(ceiling)
     )
       throw new Error('verification_allocation_mismatch');
-    const user = await db.auth.admin.getUserById(row.user_id);
-    if (
-      user.error ||
-      !/^pr03-[0-9a-f-]{36}@example\.test$/.test(user.data.user?.email ?? '')
-    )
-      throw new Error('verification_account_unavailable');
-    const password = randomBytes(32).toString('base64url');
-    const changed = await db.auth.admin.updateUserById(row.user_id, {
-      password,
-    });
-    if (changed.error) throw new Error('verification_account_unavailable');
-    const login = await helper.request(
-      '/auth/v1/token?grant_type=password',
-      'anon',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email: user.data.user.email, password }),
-      },
-    );
-    if (!login.ok) throw new Error('verification_account_unavailable');
-    const session = (await login.json()) as { access_token?: unknown };
-    if (typeof session.access_token !== 'string')
-      throw new Error('verification_account_unavailable');
-    context = await verifySession({
-      headers: { authorization: `Bearer ${session.access_token}` },
-    });
-    if (context.userId !== row.user_id)
-      throw new Error('verification_account_unavailable');
+    context = await resumeSyntheticContext(row.user_id, helper);
   } else {
     let registered = false;
     try {
@@ -136,7 +156,17 @@ export async function prepareSyntheticBatch(
         headers: { authorization: `Bearer ${user.token}` },
       });
       let revision = 0;
-      if (selected.rows > 0) {
+      if (preparation) {
+        await preparation.seed(context, helper);
+        await preparation.verify(context);
+        const profile = await context.db
+          .from('profiles')
+          .select('data_revision')
+          .eq('user_id', context.userId)
+          .single();
+        if (profile.error) throw new Error('verification_fixture_invalid');
+        revision = profile.data.data_revision;
+      } else if (selected.rows > 0) {
         const preview = await previewCsv(
           context,
           PreviewCsvSchema.parse({
@@ -222,11 +252,13 @@ export async function prepareSyntheticBatch(
     allocation.error ||
     profile.data.display_name !== 'Synthetic verification' ||
     profile.data.data_revision !== allocation.data.data_revision ||
-    sources.data.length !== selected.sources ||
-    (selected.sources > 0 && sources.data[0]?.label !== displayName) ||
-    measurements.count !== selected.rows ||
-    goals.count !== 0
+    (!preparation &&
+      (sources.data.length !== selected.sources ||
+        (selected.sources > 0 && sources.data[0]?.label !== displayName) ||
+        measurements.count !== selected.rows ||
+        goals.count !== 0))
   )
     throw new Error('verification_fixture_invalid');
+  if (preparation) await preparation.verify(context);
   return { context, fixtureHash };
 }

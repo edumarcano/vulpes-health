@@ -9,7 +9,10 @@ import type {
   StepInput,
 } from './execution.js';
 import { executionPolicy } from './policy.js';
-import { isVerificationTransport } from '../providers/openrouter-verification.js';
+import {
+  isVerificationTransport,
+  assertVerificationRequest,
+} from '../providers/openrouter-verification.js';
 
 // Real transports must be issued by their gated factories. Every request still
 // passes durable capture, authorization and settlement through this dispatcher.
@@ -48,6 +51,16 @@ interface StepDispatcher {
 
 const CHECKPOINT_BYTES = 8 * 1024;
 const CHECKPOINT_MS = 250;
+
+function requireIssuedTransport(transport: RequestTransport) {
+  if (
+    transport.mode !== 'mock' &&
+    !isVerificationTransport(transport) &&
+    !isVertexVerificationTransport(transport) &&
+    !isProductionTransport(transport)
+  )
+    throw new Error('live_transport_unavailable');
+}
 
 // Keep a single outstanding read across timed flushes. Closing must abort the
 // source before awaiting return(), since a provider may be waiting for bytes.
@@ -130,6 +143,8 @@ export function createDispatcher(
             );
           state = 'used';
           signal.throwIfAborted();
+          requireIssuedTransport(transport);
+          assertVerificationRequest(transport, { ...binding, ...request });
           const step = await ledger.prepare(lease, {
             ...binding,
             type: 'generation',
@@ -159,13 +174,7 @@ export function createDispatcher(
       };
     },
     async *send(step, signal, cancellationSignal = signal) {
-      if (
-        transport.mode !== 'mock' &&
-        !isVerificationTransport(transport) &&
-        !isVertexVerificationTransport(transport) &&
-        !isProductionTransport(transport)
-      )
-        throw new Error('live_transport_unavailable');
+      requireIssuedTransport(transport);
       signal.throwIfAborted();
       // Never retry this transition after an ambiguous reply. Only true permits a
       // send; a repeated call with the same step cannot execute the transport.

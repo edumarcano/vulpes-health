@@ -1227,6 +1227,7 @@ export async function executeReadTool(
   context: AuthContext,
   name: string,
   args: unknown,
+  clock: () => Temporal.Instant = () => Temporal.Now.instant(),
 ): Promise<unknown> {
   if (
     name === 'summarize_metric' ||
@@ -1270,7 +1271,7 @@ export async function executeReadTool(
           'invalid_arguments',
           'Groups support active or archived status.',
         );
-      const service = new GoalGroupService(context);
+      const service = new GoalGroupService(context, clock);
       const page = await service.list({
         page_size: input.limit,
         ...(input.cursor ? { cursor: input.cursor } : {}),
@@ -1306,7 +1307,7 @@ export async function executeReadTool(
         dataRevision: end.data_revision,
       };
     }
-    const service = new GoalService(context);
+    const service = new GoalService(context, clock);
     if (input.cursor) {
       const anchor = await service.owned(input.cursor);
       if (
@@ -1387,9 +1388,9 @@ export async function executeReadTool(
     const input = parseArguments(toolArguments.get_goal_progress, args);
     if (input.group_id)
       return boundedOutput(
-        await new GoalGroupService(context).progress(input.group_id),
+        await new GoalGroupService(context, clock).progress(input.group_id),
       );
-    const service = new GoalService(context);
+    const service = new GoalService(context, clock);
     const before = await service.revision(input.goal_id!);
     const start = await profile(context);
     // Retained v1 approvals use their original frozen baseline contract. New
@@ -1521,7 +1522,11 @@ export async function executeReadTool(
     return boundedOutput(
       AgentAnalysisToolResultSchema.parse({
         kind: 'analysis_batch',
-        data: await readAnalysis(context, { action: 'analyze', operations }),
+        data: await readAnalysis(
+          context,
+          { action: 'analyze', operations },
+          clock().toString(),
+        ),
       }),
     );
   }
@@ -1696,12 +1701,14 @@ export function prepareGoalTool(
   name: 'propose_goal' | 'propose_goal_revision',
   args: unknown,
   requestId: string,
+  clock?: () => Temporal.Instant,
 ): Promise<z.infer<typeof GoalProposalToolResultSchema>>;
 export function prepareGoalTool(
   context: AuthContext,
   name: string,
   args: unknown,
   requestId: string,
+  clock?: () => Temporal.Instant,
 ): Promise<
   | z.infer<typeof GoalProposalToolResultSchema>
   | z.infer<typeof GoalGroupProposalToolResultSchema>
@@ -1711,6 +1718,7 @@ export async function prepareGoalTool(
   name: string,
   args: unknown,
   requestId: string,
+  clock?: () => Temporal.Instant,
 ) {
   if (name === 'propose_goal' || name === 'propose_goal_revision')
     return legacyPrepareGoalTool(context, name, args, requestId);
@@ -1726,7 +1734,9 @@ export async function prepareGoalTool(
     if (member.kind === 'existing') {
       // Linking an approved goal still supplies an AI-prepared target. Apply the
       // same product floor to its canonical approved definition.
-      const existing = await new GoalService(context).revision(member.goal_id!);
+      const existing = await new GoalService(context, clock).revision(
+        member.goal_id!,
+      );
       const definition = GoalRevisionPayloadSchema.parse(
         existing.revision.payload,
       ).definition;
@@ -1751,7 +1761,7 @@ export async function prepareGoalTool(
       const retained =
         member.kind === 'revise' && member.baseline_resolution === 'retain'
           ? GoalRevisionPayloadSchema.parse(
-              (await new GoalService(context).revision(member.goal_id!))
+              (await new GoalService(context, clock).revision(member.goal_id!))
                 .revision.payload,
             ).definition
           : undefined;
@@ -1791,7 +1801,9 @@ export async function prepareGoalTool(
       GoalGroupProposalToolResultSchema.parse({
         kind: 'goal_group_proposal',
         request,
-        payload: await new GoalGroupService(context).prepareProposal(request),
+        payload: await new GoalGroupService(context, clock).prepareProposal(
+          request,
+        ),
       }),
     );
   }
@@ -1820,7 +1832,7 @@ export async function prepareGoalTool(
     GoalProposalToolResultSchema.parse({
       kind: 'goal_proposal',
       request,
-      payload: await new GoalService(context).prepareProposal(request),
+      payload: await new GoalService(context, clock).prepareProposal(request),
     }),
   );
 }

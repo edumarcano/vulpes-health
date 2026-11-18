@@ -88,7 +88,6 @@ export async function selectedGroupContext(
       currentVersion: member.goal?.version ?? null,
       currentRevisionId: member.currentRevisionId,
       currentState: member.goal?.state ?? null,
-      reviewedPayload: compactPayload(member.reviewedPayload),
     })),
   };
 }

@@ -3,18 +3,61 @@ import { UUIDSchema } from '../../../shared/primitives.js';
 import type { AuthContext } from '../../auth/session.js';
 import { administrativeClient } from '../../db/administrative.js';
 import { models } from '../../config/models.js';
+import {
+  assertEvaluationBinding,
+  assertEvaluationBody,
+  assessEvaluationBinding,
+  type EvaluationBinding,
+} from '../../config/evaluation-binding.js';
+import { priceFingerprint } from '../live-preflight.js';
+import type { StepInput } from '../ledger/execution.js';
 import { everydayCapabilityEvidence } from '../../config/everyday-verification.js';
 import {
   everydayAdapterVersion,
   everydayTemplateVersion,
 } from '../../config/everyday-versions.js';
 import { assessEverydayPreflight } from '../live-preflight.js';
-import { verificationFixtures } from '../verification-fixture.js';
+import { isVerificationFixtureHash } from '../verification-fixture.js';
 import type { RequestTransport } from '../ledger/dispatcher.js';
 
-const issued = new WeakSet<object>();
+const issued = new WeakMap<object, EvaluationBinding | null>();
 export function isVerificationTransport(value: object): boolean {
   return issued.has(value);
+}
+export function assertVerificationRequest(
+  transport: object,
+  request: Pick<
+    StepInput,
+    | 'provider'
+    | 'model'
+    | 'price'
+    | 'body'
+    | 'requestedEffort'
+    | 'adapterVersion'
+  >,
+) {
+  const binding = issued.get(transport);
+  if (!binding) return;
+  assertEvaluationBinding(binding);
+  if (
+    request.provider !== binding.config.provider ||
+    request.model !== binding.config.modelId ||
+    request.requestedEffort !== binding.config.reasoning.effort ||
+    request.adapterVersion !== binding.adapterVersion ||
+    priceFingerprint(request.price) !== binding.priceHash
+  )
+    throw new Error('evaluation_dispatch_mismatch');
+  assertEvaluationBody(binding, request.body);
+}
+export function assertEvaluationTransport(
+  transport: RequestTransport,
+  binding: EvaluationBinding,
+) {
+  assertEvaluationBinding(binding);
+  if (transport.mode === 'mock') return;
+  const issuedBinding = issued.get(transport);
+  if (!issuedBinding || issuedBinding.bindingHash !== binding.bindingHash)
+    throw new Error('evaluation_transport_mismatch');
 }
 
 // The only live transport is issued after the static model/price/privacy checks
@@ -28,24 +71,32 @@ export async function issueVerificationTransport(
   allowSpend: boolean,
   env: NodeJS.ProcessEnv = process.env,
   send: typeof fetch = fetch,
+  binding?: EvaluationBinding,
 ): Promise<RequestTransport> {
   if (!allowSpend) throw new Error('live_opt_in_required');
   UUIDSchema.parse(batchId);
+  if (binding) assertEvaluationBinding(binding);
   const config = models.everyday;
-  const readiness = assessEverydayPreflight({
-    enabled: env.VULPES_LIVE_AI_ENABLED === 'true',
-    mode: 'verification',
-    model: config.modelId,
-    effort: config.reasoning.effort,
-    adapterVersion: everydayAdapterVersion,
-    templateVersion: everydayTemplateVersion,
-    maxInputTokens: config.maxInputTokens,
-    maxOutputTokens: config.maxOutputTokens,
-    price: config.price,
-    capabilities: everydayCapabilityEvidence,
-    smoke: null,
-    maxCostUSD: ceiling,
-  });
+  const readiness = binding
+    ? assessEvaluationBinding(
+        binding,
+        env.VULPES_LIVE_AI_ENABLED === 'true',
+        ceiling,
+      )
+    : assessEverydayPreflight({
+        enabled: env.VULPES_LIVE_AI_ENABLED === 'true',
+        mode: 'verification',
+        model: config.modelId,
+        effort: config.reasoning.effort,
+        adapterVersion: everydayAdapterVersion,
+        templateVersion: everydayTemplateVersion,
+        maxInputTokens: config.maxInputTokens,
+        maxOutputTokens: config.maxOutputTokens,
+        price: config.price,
+        capabilities: everydayCapabilityEvidence,
+        smoke: null,
+        maxCostUSD: ceiling,
+      });
   if (readiness.state !== 'ready') throw new Error(readiness.reason);
   if (
     env.VITE_SUPABASE_URL !== 'http://127.0.0.1:54321' ||
@@ -84,9 +135,7 @@ export async function issueVerificationTransport(
     profile.data.display_name !== 'Synthetic verification' ||
     profile.data.data_revision !== row.data_revision ||
     row.fixture_hash !== fixtureHash ||
-    !Object.values(verificationFixtures).some(
-      (fixture) => fixture.hash === fixtureHash,
-    ) ||
+    !isVerificationFixtureHash(fixtureHash) ||
     bucket.data.user_id !== context.userId ||
     bucket.data.scope !== 'account' ||
     bucket.data.period_start !== row.period_start ||
@@ -114,6 +163,7 @@ export async function issueVerificationTransport(
   const transport: RequestTransport = {
     mode: 'verification',
     async *send(body, signal) {
+      if (binding) assertEvaluationBody(binding, body);
       const response = await send('https://openrouter.ai/api/v1/responses', {
         method: 'POST',
         redirect: 'error',
@@ -138,6 +188,6 @@ export async function issueVerificationTransport(
       for await (const chunk of response.body) yield chunk;
     },
   };
-  issued.add(transport);
+  issued.set(transport, binding ?? null);
   return Object.freeze(transport);
 }

@@ -1,0 +1,62 @@
+{
+  "luna-low": {
+    "capabilities": {
+      "version": 1,
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna",
+      "effort": "low",
+      "adapterVersion": "openrouter-responses-v2",
+      "templateVersion": "vulpes-everyday-v12",
+      "priceId": "openrouter-evaluation-20261117-conservative",
+      "priceHash": "22a883f90b4155b1832709b860e899eccfca7f7f265bf81b5dec845fccd30c0b",
+      "inputBoundTokens": 12000,
+      "outputBoundTokens": 3072,
+      "streaming": true,
+      "tools": true,
+      "zdr": true,
+      "checkedAt": "2026-11-17T19:22:20Z",
+      "sourceURL": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna/endpoints"
+    },
+    "privacy": null
+  },
+  "luna-medium": {
+    "capabilities": {
+      "version": 1,
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna",
+      "effort": "medium",
+      "adapterVersion": "openrouter-responses-v2",
+      "templateVersion": "vulpes-everyday-v12",
+      "priceId": "openrouter-evaluation-20261117-conservative",
+      "priceHash": "22a883f90b4155b1832709b860e899eccfca7f7f265bf81b5dec845fccd30c0b",
+      "inputBoundTokens": 12000,
+      "outputBoundTokens": 3072,
+      "streaming": true,
+      "tools": true,
+      "zdr": true,
+      "checkedAt": "2026-11-17T19:22:20Z",
+      "sourceURL": "https://openrouter.ai/api/v1/models/openai/gpt-6-luna/endpoints"
+    },
+    "privacy": null
+  },
+  "haiku-low": {
+    "capabilities": {
+      "version": 1,
+      "provider": "openrouter",
+      "model": "anthropic/claude-haiku-5.5",
+      "effort": "low",
+      "adapterVersion": "openrouter-responses-v2",
+      "templateVersion": "vulpes-everyday-v12",
+      "priceId": "openrouter-haiku-5.5-20261117-conservative",
+      "priceHash": "325e6f26c1c63c33b42b9677fdb3e91d3f1f41f34422e4776b3270a7f5fdee6b",
+      "inputBoundTokens": 12000,
+      "outputBoundTokens": 3072,
+      "streaming": true,
+      "tools": true,
+      "zdr": true,
+      "checkedAt": "2026-11-17T19:22:20Z",
+      "sourceURL": "https://openrouter.ai/api/v1/models/anthropic/claude-haiku-5.5/endpoints"
+    },
+    "privacy": null
+  }
+}

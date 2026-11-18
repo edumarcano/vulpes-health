@@ -24,13 +24,35 @@ export interface ContextGroup {
   turns: GenerationRequest['turns'];
   continuation: GenerationRequest['continuation'];
 }
+export interface ContinuationTarget {
+  family: 'openrouter_responses' | 'vertex_generate_content';
+  model: string;
+}
 export function boundContext(
   essential: GenerationRequest,
   groups: ContextGroup[],
   maxBytes: number,
+  target?: ContinuationTarget,
 ) {
   const excluded: { referenceId: string; reason: string }[] = [];
-  const selected = [...groups];
+  const first = groups.find((group) => group.continuation)?.continuation;
+  const continuationTarget = target ?? first;
+  const selected = groups.map((group) => {
+    const continuation = group.continuation;
+    if (
+      continuation &&
+      continuationTarget &&
+      (continuation.family !== continuationTarget.family ||
+        continuation.model !== continuationTarget.model)
+    ) {
+      excluded.push({
+        referenceId: group.id,
+        reason: 'provider_continuation_not_transferable',
+      });
+      return { ...group, continuation: null };
+    }
+    return group;
+  });
   const compose = (): GenerationRequest => {
     let offset = 1;
     const blocks = selected.flatMap((g) => {
@@ -48,7 +70,11 @@ export function boundContext(
         ...selected.flatMap((g) => g.turns),
         ...essential.turns.slice(1),
       ],
-      continuation: continuationFor(blocks),
+      continuation: continuationFor(
+        blocks,
+        continuationTarget?.family,
+        continuationTarget?.model,
+      ),
     };
   };
   while (
@@ -78,6 +104,8 @@ export async function buildContext(
   runId: string,
   tools: GenerationRequest['tools'],
   maxBytes: number,
+  target?: ContinuationTarget,
+  evaluationClock?: () => Temporal.Instant,
 ) {
   const profile = await context.db
     .from('profiles')
@@ -274,7 +302,7 @@ export async function buildContext(
     }
     if (previousAnalysisScope) break;
   }
-  const now = Temporal.Now.instant();
+  const now = evaluationClock?.() ?? Temporal.Now.instant();
   const clock = {
     instant: now.toString(),
     localDate: now
@@ -294,7 +322,7 @@ export async function buildContext(
           clock,
           selection: input.context_selection,
           selectedGoal,
-          selectedGroup,
+          selectedGroup: selectedGroup?.group ?? null,
           ...(previousAnalysisScope ? { previousAnalysisScope } : {}),
         }),
       },
@@ -303,7 +331,7 @@ export async function buildContext(
     tools,
     continuation: null,
   };
-  const bounded = boundContext(essential, groups, maxBytes);
+  const bounded = boundContext(essential, groups, maxBytes, target);
   const manifest: ContextManifest = {
     captureVersion: 2,
     templateVersion,

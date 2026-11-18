@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 import { ChatPartSchema, type ChatPart } from '../../shared/chat.js';
 import { DataSummarySchema } from '../../shared/data.js';
@@ -41,13 +42,14 @@ async function toolOutput(
   context: AuthContext,
   call: ToolCall,
   stepId: string,
+  clock?: () => Temporal.Instant,
 ) {
   try {
     return call.name === 'prepare_goals' ||
       call.name === 'propose_goal' ||
       call.name === 'propose_goal_revision'
-      ? await prepareGoalTool(context, call.name, call.arguments, stepId)
-      : await executeReadTool(context, call.name, call.arguments);
+      ? await prepareGoalTool(context, call.name, call.arguments, stepId, clock)
+      : await executeReadTool(context, call.name, call.arguments, clock);
   } catch (error) {
     if (error instanceof ToolValidationFailure)
       return ToolErrorResultSchema.parse({
@@ -80,12 +82,13 @@ export async function executeToolStep(input: {
   messageId: string;
   parts: ChatPart[];
   signal: AbortSignal;
+  clock?: (() => Temporal.Instant) | undefined;
 }) {
   const { context, ledger, step, call, dataRevision, messageId, signal } =
     input;
   let parts = [...input.parts];
   signal.throwIfAborted();
-  const output = await toolOutput(context, call, step.id);
+  const output = await toolOutput(context, call, step.id, input.clock);
   signal.throwIfAborted();
   const recoverable = ToolErrorResultSchema.safeParse(output).success;
   const proposing =
