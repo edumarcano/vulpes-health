@@ -21,6 +21,7 @@
     "hosting:security": "tsx scripts/verify-hosted-security.ts",
     "build:hosted": "tsx scripts/build-hosted.ts",
     "verify:luna": "tsx scripts/verify-luna.ts",
+    "evaluate:v020": "tsx scripts/evaluate-v020.ts",
     "budget:provision": "tsx scripts/provision-pilot-budget.ts",
     "evidence:release": "tsx scripts/release-evidence.ts",
     "test:spec": "python docs/spec/v0.1.0/scripts/validate_spec_package.py",
