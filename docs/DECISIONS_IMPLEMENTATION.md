@@ -2,6 +2,20 @@
 
 The [product and architecture decisions](spec/v0.1.0/DECISIONS.md) are authoritative. This log records the implementation choices that shape ongoing operation, each with its reason. Dated blow-by-blow history is in [Git](https://github.com/edumarcano/vulpes-health/blob/e57c821/docs/DECISIONS_IMPLEMENTATION.md).
 
+## v0.2.0 evaluation preparation (2026-11-17)
+
+| Decision | Reason and boundary |
+| --- | --- |
+| Immutable evaluation-only catalog binding | One candidate supplies agent admission, serializer, bounds, ledger model/effort/price and issued transport identity. Reuse Responses and existing ledger controls; no environment model override, extra provider, production activation or general routing engine. |
+| Versioned scenario fixtures and explicit clocks | Correct impossible rolling coverage and month oracles before live comparison. Real RENPHO parents exercise missing-panel fields; independent canonical histories exercise arithmetic. Original v1 evidence remains historical. |
+| Provider group identity with server-bound member versions | Sending complete reviewed group payloads exceeded the unchanged context bound in a real rehearsal. Context now sends group identity, while its encrypted manifest binds the complete reviewed/current member version vector. Tools retrieve the exact approved terms and current evidence. |
+| Durable request claims and isolated rehearsal state | Create-only claims follow ledger capture and precede paid fetch. Uncertain claims stop dispatch and preserve holds. Offline and live owners/conversations have distinct deterministic identities; rehearsal cannot contaminate a comparison. |
+| Strict privacy evidence beyond a ZDR boolean | Current OpenRouter defaults may permit Safety Retention. Evaluation requires verified strict endpoint routing or actual account/guardrail evidence; preparation leaves that evidence absent and dispatch unavailable. Public prices/capabilities do not confer owner approval. |
+
+See [M5 preparation](evidence/v0.2.0/m5-preparation.md) for executable modes, current sources, the proposed matrix and the H1/H2/H3 boundaries.
+
+P8 is published as two dependent review boundaries: [candidate/fixture foundation](evidence/v0.2.0/m5-foundation.md), then the runner and reports. This separates provider/state preparation from execution authorization without changing the approved milestone scope or gates.
+
 ## v0.2.0 M0 decisions (2026-11-13)
 
 The [v0.2.0 specification](spec/v0.2.0/VULPES_V0.2.0_SPEC.md) supersedes conflicting v0.1.0 scope decisions. These are selected implementation directions, not shipped v0.2.0 features. See the [M0 readiness record](evidence/v0.2.0/m0-readiness.md) for alternatives, source inventory, measured probes and remaining gates.
