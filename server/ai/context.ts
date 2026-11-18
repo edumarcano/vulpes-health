@@ -11,6 +11,13 @@ import type { ChatSendRequest } from '../../shared/api.js';
 import type { ContextManifest } from '../../shared/domain.js';
 import { blocksOf, continuationFor } from './continuation.js';
 import { Temporal } from '@js-temporal/polyfill';
+import { z } from 'zod';
+import { AgentAnalysisArgumentsSchema } from '../../shared/agent-tools.js';
+import {
+  runEvidenceIsCurrent,
+  selectedGoalContext,
+  selectedGroupContext,
+} from '../services/evidence-freshness.js';
 
 export interface ContextGroup {
   id: string;
@@ -83,80 +90,12 @@ export async function buildContext(
       'context_unavailable',
       'Context could not be loaded.',
     );
-  const goals = await context.db
-    .from('goals')
-    .select('id')
-    .eq('user_id', context.userId)
-    .neq('state', 'draft')
-    .neq('state', 'archived')
-    .not('current_revision_id', 'is', null)
-    .limit(1);
-  if (goals.error)
-    throw new HttpFailure(
-      503,
-      'context_unavailable',
-      'Goal context could not be loaded.',
-    );
-  if (!goals.data.length)
-    tools = tools.filter((tool) => tool.name !== 'propose_goal_revision');
-  let selectedGoal: unknown = null;
-  if (input.context_selection?.goal_id) {
-    const goal = await context.db
-      .from('goals')
-      .select('id,title,state,version,review_status,current_revision_id')
-      .eq('user_id', context.userId)
-      .eq('id', input.context_selection.goal_id)
-      .single();
-    if (goal.error)
-      throw new HttpFailure(
-        404,
-        'goal_not_found',
-        'The selected goal was not found.',
-      );
-    selectedGoal = {
-      id: goal.data.id,
-      state: 'unavailable',
-      reason: 'No approved goal revision is available.',
-    };
-    if (goal.data.state !== 'draft' && goal.data.current_revision_id) {
-      const revision = await context.db
-        .from('goal_revisions')
-        .select('id,revision_number,payload,approved_proposal_id')
-        .eq('user_id', context.userId)
-        .eq('goal_id', goal.data.id)
-        .eq('id', goal.data.current_revision_id)
-        .maybeSingle();
-      if (revision.error)
-        throw new HttpFailure(
-          503,
-          'context_unavailable',
-          'The selected revision could not be read.',
-        );
-      if (revision.data) {
-        const approval = await context.db
-          .from('action_proposals')
-          .select('state')
-          .eq('user_id', context.userId)
-          .eq('id', revision.data.approved_proposal_id)
-          .maybeSingle();
-        if (approval.error)
-          throw new HttpFailure(
-            503,
-            'context_unavailable',
-            'The selected approval could not be checked.',
-          );
-        if (approval.data?.state === 'approved')
-          selectedGoal = {
-            ...goal.data,
-            revision: {
-              id: revision.data.id,
-              revisionNumber: revision.data.revision_number,
-              payload: revision.data.payload,
-            },
-          };
-      }
-    }
-  }
+  const selectedGoal = input.context_selection?.goal_id
+    ? await selectedGoalContext(context, input.context_selection.goal_id)
+    : null;
+  const selectedGroup = input.context_selection?.group_id
+    ? await selectedGroupContext(context, input.context_selection.group_id)
+    : null;
   const history = await context.db
     .from('messages')
     .select('*')
@@ -173,6 +112,11 @@ export async function buildContext(
       'History could not be loaded.',
     );
   const groups: ContextGroup[] = [];
+  const historyValidation = {
+    checked: new Map<string, boolean>(),
+    visiting: new Set<string>(),
+    remaining: 100,
+  };
   const exclusions: { referenceId: string; reason: string }[] = [];
   const ids = [
     ...new Set(
@@ -274,6 +218,21 @@ export async function buildContext(
       exclusions.push({ referenceId: id, reason: 'continuation_invalid' });
       continue;
     }
+    if (
+      !(await runEvidenceIsCurrent(
+        context,
+        id,
+        profile.data,
+        saved.data,
+        historyValidation,
+      ))
+    ) {
+      exclusions.push({
+        referenceId: id,
+        reason: 'evidence_changed_or_unverifiable',
+      });
+      continue;
+    }
     if (saved.data.continuation?.family === 'vertex_generate_content')
       exclusions.push({
         referenceId: id,
@@ -287,6 +246,33 @@ export async function buildContext(
           ? null
           : saved.data.continuation,
     });
+  }
+  let previousAnalysisScope: {
+    runId: string;
+    selection: z.infer<typeof AgentAnalysisArgumentsSchema>;
+  } | null = null;
+  // Retain a validated selection when the complete transcript cannot fit. This
+  // supplies no old numerical answer; follow-ups must read the selected facts.
+  for (const group of groups.toReversed()) {
+    for (const turn of group.turns.toReversed()) {
+      if (turn.type !== 'tool_call' || turn.name !== 'analyze_measurements')
+        continue;
+      const selection = AgentAnalysisArgumentsSchema.safeParse(turn.arguments);
+      const result = group.turns.find(
+        (item) => item.type === 'tool_result' && item.callId === turn.callId,
+      );
+      if (
+        selection.success &&
+        result?.type === 'tool_result' &&
+        z
+          .object({ result: z.object({ kind: z.literal('analysis_batch') }) })
+          .safeParse(result.result).success
+      ) {
+        previousAnalysisScope = { runId: group.id, selection: selection.data };
+        break;
+      }
+    }
+    if (previousAnalysisScope) break;
   }
   const now = Temporal.Now.instant();
   const clock = {
@@ -308,6 +294,8 @@ export async function buildContext(
           clock,
           selection: input.context_selection,
           selectedGoal,
+          selectedGroup,
+          ...(previousAnalysisScope ? { previousAnalysisScope } : {}),
         }),
       },
       { type: 'message', role: 'user', text: input.message.text },
@@ -372,6 +360,16 @@ export async function buildContext(
       contentHash: requestHash(input.context_selection),
       tokenEstimate: Buffer.byteLength(JSON.stringify(input.context_selection)),
     });
+  if (previousAnalysisScope)
+    manifest.included.push({
+      reference: {
+        id: `analysis-scope:${previousAnalysisScope.runId}`,
+        kind: 'context_selection',
+        label: 'Previous validated analysis selection; reread facts',
+      },
+      contentHash: requestHash(previousAnalysisScope),
+      tokenEstimate: Buffer.byteLength(JSON.stringify(previousAnalysisScope)),
+    });
   if (selectedGoal !== null)
     manifest.included.push({
       reference: {
@@ -381,6 +379,16 @@ export async function buildContext(
       },
       contentHash: requestHash(selectedGoal),
       tokenEstimate: Buffer.byteLength(JSON.stringify(selectedGoal)),
+    });
+  if (selectedGroup !== null)
+    manifest.included.push({
+      reference: {
+        id: `group:${selectedGroup.group.id}`,
+        kind: 'goal_context',
+        label: 'Selected goal group and reviewed member versions',
+      },
+      contentHash: requestHash(selectedGroup),
+      tokenEstimate: Buffer.byteLength(JSON.stringify(selectedGroup)),
     });
   manifest.included.push({
     reference: {

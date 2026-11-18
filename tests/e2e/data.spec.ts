@@ -4,10 +4,11 @@ import { LocalSupabase } from '../helpers/local-supabase';
 
 async function clearReadings() {
   const db = new LocalSupabase();
-  for (const account of accounts)
+  for (const account of accounts.slice(0, 2))
     for (const table of [
       'audit_events',
       'measurements',
+      'weigh_in_events',
       'import_batches',
       'private_payloads',
       'data_sources',
@@ -29,11 +30,55 @@ test.afterEach(async () => {
 test('mobile date presets describe their bounded range and reflect custom dates', async ({
   page,
 }) => {
+  await new LocalSupabase().admin(
+    `/rest/v1/profiles?user_id=eq.${accounts[0]!.id}`,
+    'PATCH',
+    { timezone: 'America/New_York' },
+  );
+  const fixedNow = new Date('2026-11-18T01:00:00Z');
+  await page.clock.setFixedTime(fixedNow);
+  let releaseSources!: () => void;
+  const sourcesGate = new Promise<void>((resolve) => {
+    releaseSources = resolve;
+  });
+  let held = false;
+  let hold = true;
+  await page.route('**/api/data?*', async (route) => {
+    if (
+      route.request().method() !== 'GET' ||
+      new URL(route.request().url()).searchParams.get('view') !== 'sources'
+    )
+      return route.continue();
+    const response = await route.fetch();
+    if (hold) {
+      hold = false;
+      expect((await response.json()).data.timezone).toBe('America/New_York');
+      held = true;
+      await sourcesGate;
+    }
+    await route.fulfill({ response }).catch(() => undefined);
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect.poll(() => held).toBe(true);
+  expect(await page.evaluate(() => Date.now())).toBe(fixedNow.getTime());
   const preset = page.getByRole('button', { name: '365D', exact: true });
-  await preset.click();
-  await expect(preset).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
-  await expect(preset).toHaveAttribute('aria-pressed', 'false');
+  try {
+    await expect(preset).toBeDisabled();
+    releaseSources();
+    await expect(preset).toBeEnabled();
+    await preset.click();
+    await expect(preset).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByLabel('From date', { exact: true })).toHaveValue(
+      '2025-11-18',
+    );
+    await expect(page.getByLabel('Through date', { exact: true })).toHaveValue(
+      '2026-11-17',
+    );
+    await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
+    await expect(preset).toHaveAttribute('aria-pressed', 'false');
+  } finally {
+    releaseSources();
+  }
 });
 async function range(page: Page) {
   await page.getByLabel('From date', { exact: true }).fill('2026-09-01');

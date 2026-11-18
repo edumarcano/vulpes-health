@@ -1,5 +1,11 @@
 import type { RequestTransport } from '../../server/ai/ledger/dispatcher.js';
-import { responseFrame, assistantOutput } from './chat.js';
+import {
+  responseFrame,
+  assistantOutput,
+  syntheticInventorySeries,
+} from './chat.js';
+import { Temporal } from '@js-temporal/polyfill';
+import { GoalDefinitionSchema } from '../../shared/goals.js';
 
 // Scripted provider boundary, never imported by production composition.
 export class SyntheticGoalTransport implements RequestTransport {
@@ -58,7 +64,7 @@ export class SyntheticGoalTransport implements RequestTransport {
         return;
       }
       const wanted = text.match(/source:([0-9a-f-]{36})/i)?.[1];
-      const series = inventory.items.find(
+      const series = syntheticInventorySeries(inventory).find(
         (x: { metric: string; source_id: string }) =>
           x.metric === 'weight' && (!wanted || x.source_id === wanted),
       );
@@ -69,33 +75,33 @@ export class SyntheticGoalTransport implements RequestTransport {
         return;
       }
       yield responseFrame([
-        call('propose_goal', {
-          definition: {
-            schemaVersion: 1,
-            title: 'Synthetic chat goal',
-            metric: 'weight',
-            unit: 'kg',
-            sourceId: series.source_id,
-            method: series.method,
-            granularity: series.granularity,
-            target: { direction: 'decrease_to', value: 68 },
-            baselineMethod: 'daily_median_mean_7d',
-            currentMethod: 'daily_median_mean_7d',
-            baselineFrom: '2026-09-01T00:00:00Z',
-            baselineTo: '2026-09-08T00:00:00Z',
-            reportedBaseline: null,
-            timezone: 'UTC',
-            targetDate: null,
-            constraints: ['Keep the selected source'],
-            proposedStrategy: 'Review observed trends',
-          },
+        call('prepare_goals', {
+          members: [
+            {
+              kind: 'create',
+              definition: {
+                title: 'Synthetic chat goal',
+                metric: 'weight',
+                source_id: series.source_id,
+                method: series.method,
+                granularity: series.granularity,
+                target: { direction: 'decrease_to', value: 68 },
+                baseline_method: 'daily_median_mean_7d',
+                baseline_from: '2026-09-01',
+                baseline_to: '2026-09-08',
+                target_date: null,
+                constraints: ['Keep the selected source'],
+                strategy: 'Review observed trends',
+              },
+            },
+          ],
         }),
       ]);
       return;
     }
     const goals = results.findLast((x) => x.kind === 'goals');
     if (!goals) {
-      yield responseFrame([call('list_goals', {})]);
+      yield responseFrame([call('list_goals', { kind: 'single' })]);
       return;
     }
     const goal = goals.items.find(
@@ -106,22 +112,51 @@ export class SyntheticGoalTransport implements RequestTransport {
       return;
     }
     if (this.scenario === 'goal_revise') {
+      const definition = GoalDefinitionSchema.parse(goal.definition);
+      const localDate = (instant: string | null) => {
+        if (!instant)
+          throw new Error(
+            'Synthetic computed baseline requires its approved interval.',
+          );
+        return Temporal.Instant.from(instant)
+          .toZonedDateTimeISO(definition.timezone)
+          .toPlainDate()
+          .toString();
+      };
       yield responseFrame([
-        call('propose_goal_revision', {
-          goal_id: goal.id,
-          expected_version: goal.version,
-          changes: { target: { direction: 'decrease_to', value: 67 } },
-          baseline_resolution: 'retain',
-          rationale: 'Review the requested target adjustment.',
+        call('prepare_goals', {
+          members: [
+            {
+              kind: 'revise',
+              goal_id: goal.id,
+              expected_version: goal.version,
+              baseline_resolution: 'retain',
+              definition: {
+                title: definition.title,
+                metric: definition.metric,
+                source_id: definition.sourceId,
+                method: definition.method,
+                granularity: definition.granularity,
+                target: { direction: 'decrease_to', value: 67 },
+                baseline_method: definition.baselineMethod,
+                ...(definition.baselineMethod === 'user_reported'
+                  ? { reported_baseline: definition.reportedBaseline }
+                  : {
+                      baseline_from: localDate(definition.baselineFrom),
+                      baseline_to: localDate(definition.baselineTo),
+                    }),
+                target_date: definition.targetDate,
+                constraints: definition.constraints,
+                strategy: definition.proposedStrategy,
+                max_evidence_age_days: definition.maxEvidenceAgeDays,
+              },
+            },
+          ],
         }),
       ]);
       return;
     }
-    if (
-      results.some((x) =>
-        ['progress', 'insufficient_data', 'unavailable'].includes(x.kind),
-      )
-    ) {
+    if (results.some((x) => x.kind === 'goal_progress')) {
       yield responseFrame([
         assistantOutput(
           'The deterministic goal progress is saved with its calculation status.',

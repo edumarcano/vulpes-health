@@ -9,6 +9,7 @@ import {
   syntheticChatDependencies,
 } from '../tests/fixtures/chat.js';
 import { SyntheticGoalTransport } from '../tests/fixtures/chat-goals.js';
+import { SyntheticV020Transport } from '../tests/fixtures/chat-v020.js';
 import { z } from 'zod';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,6 +19,7 @@ import { publicAuthConfig } from '../shared/auth.js';
 const id = process.env.VULPES_TEST_CHAT_OWNER;
 const goalOwner = process.env.VULPES_TEST_GOAL_OWNER;
 const journeyOwner = process.env.VULPES_TEST_JOURNEY_OWNER;
+const v020Owner = process.env.VULPES_TEST_V020_OWNER;
 if (
   !id ||
   process.env.VULPES_LIVE_AI_ENABLED !== 'false' ||
@@ -79,7 +81,10 @@ async function staticFile(
   }
 }
 const allowed = (userId: string) =>
-  userId === id || userId === goalOwner || userId === journeyOwner;
+  userId === id ||
+  userId === goalOwner ||
+  userId === journeyOwner ||
+  userId === v020Owner;
 const conversations = createConversationsHandler((context) =>
   allowed(context.userId) ? syntheticChatDependencies() : null,
 );
@@ -102,27 +107,35 @@ const server = createServer((req, res) => {
       'goal_revise',
       'goal_progress',
       'goal_yes',
+      'v020_panel',
+      'v020_group_create',
+      'v020_group_progress',
     ])
     .catch('complete')
     .parse(req.headers['x-vulpes-test-scenario']);
   const goal = z
     .enum(['goal_create', 'goal_revise', 'goal_progress', 'goal_yes'])
     .safeParse(scenario);
+  const v020 = z
+    .enum(['v020_panel', 'v020_group_create', 'v020_group_progress'])
+    .safeParse(scenario);
   const chat = createChatHandler((context) =>
     allowed(context.userId)
       ? syntheticChatDependencies(
-          goal.success
-            ? new SyntheticGoalTransport(goal.data)
-            : new SyntheticChatTransport(
-                scenario as
-                  | 'complete'
-                  | 'truncated'
-                  | 'missing_usage'
-                  | 'malformed'
-                  | 'unsafe_text'
-                  | 'markdown'
-                  | 'slow',
-              ),
+          v020.success
+            ? new SyntheticV020Transport(v020.data)
+            : goal.success
+              ? new SyntheticGoalTransport(goal.data)
+              : new SyntheticChatTransport(
+                  scenario as
+                    | 'complete'
+                    | 'truncated'
+                    | 'missing_usage'
+                    | 'malformed'
+                    | 'unsafe_text'
+                    | 'markdown'
+                    | 'slow',
+                ),
         )
       : null,
   );

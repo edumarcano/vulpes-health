@@ -35,6 +35,7 @@ import {
   GoalProposalReferenceSchema,
 } from '../../../shared/goals.js';
 import { ChatPartSchema } from '../../../shared/chat.js';
+import { GoalGroupProposalToolResultSchema } from '../../../shared/goal-groups.js';
 import {
   priceUsage,
   reserveMaximum,
@@ -528,7 +529,7 @@ export class ExecutionService {
   async checkpoint(
     step: PreparedStep,
     bytes: Uint8Array,
-    message?: { id: string; parts: Json[] },
+    message?: { id: string; parts: unknown[] },
   ) {
     if (bytes.byteLength > MAX_PAYLOAD_BYTES)
       throw new HttpFailure(
@@ -548,11 +549,15 @@ export class ExecutionService {
       p_fence: step.lease.fence,
       p_step: step.id,
       p_output: output,
-      ...(message ? { p_message: message } : {}),
+      ...(message
+        ? { p_message: z.json().parse(JSON.parse(JSON.stringify(message))) }
+        : {}),
     });
   }
   async checkpointGoal(step: PreparedStep, output: unknown, trace: unknown) {
-    const result = GoalProposalToolResultSchema.parse(output);
+    const result = z
+      .union([GoalProposalToolResultSchema, GoalGroupProposalToolResultSchema])
+      .parse(output);
     const bytes = Buffer.from(JSON.stringify(trace));
     if (bytes.length > MAX_PAYLOAD_BYTES)
       throw new HttpFailure(
@@ -681,13 +686,17 @@ export class ExecutionService {
       ),
     });
   }
-  async checkpointMessage(lease: RunLease, parts: Json[]) {
+  async checkpointMessage(lease: RunLease, parts: unknown[]) {
     return this.rpc('checkpoint_message_v1', {
       p_owner: this.context.userId,
       p_run: lease.runId,
       p_executor: lease.executor,
       p_fence: lease.fence,
-      p_parts: parts,
+      p_parts: z
+        .json()
+        .parse(
+          JSON.parse(JSON.stringify(z.array(ChatPartSchema).parse(parts))),
+        ),
     });
   }
   async usageTotals(runId: string) {

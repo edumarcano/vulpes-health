@@ -2,7 +2,7 @@ import { GoalMutationSchema } from './goals.js';
 import { GoalGroupMutationSchema } from './goal-groups.js';
 import { z } from 'zod';
 import { SettingsPatchSchema } from './auth.js';
-import { LegacyMetricKeySchema } from './metrics.js';
+import { MetricKeySchema } from './domain.js';
 import {
   AddMeasurementSchema,
   CorrectMeasurementSchema,
@@ -63,9 +63,10 @@ export const ChatSendRequestSchema = z.strictObject({
   depth: AnalysisDepthSchema,
   context_selection: z
     .strictObject({
-      metric: LegacyMetricKeySchema,
+      metric: MetricKeySchema,
       source_id: UUIDSchema.nullable(),
       goal_id: UUIDSchema.nullable(),
+      group_id: UUIDSchema.nullable().optional(),
       from: ISOInstantSchema,
       to: ISOInstantSchema,
       timezone: IanaTimezoneSchema,

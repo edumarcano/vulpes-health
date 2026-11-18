@@ -36,6 +36,7 @@ import {
   syntheticChatDependencies,
   responseFrame,
   assistantOutput,
+  syntheticInventorySeries,
 } from '../fixtures/chat.js';
 import { readPayload } from '../../server/security/private-payloads.js';
 import {
@@ -43,6 +44,7 @@ import {
   readEncryptionKeys,
 } from '../../server/security/encryption.js';
 import { executeReadTool, providerToolResult } from '../../server/ai/tools.js';
+import { AgentGoalProgressToolResultSchema } from '../../shared/agent-tools.js';
 import { InspectionService } from '../../server/services/inspection.js';
 import {
   VulpesAgent,
@@ -648,7 +650,8 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
             .filter((x: { type: string }) => x.type === 'function_call_output')
             .map((x: { output: string }) => JSON.parse(x.output));
           const summaries = results.filter(
-            (x: { result: { kind: string } }) => x.result.kind === 'summary',
+            (x: { result: { kind: string } }) =>
+              x.result.kind === 'analysis_batch',
           );
           const metrics = results.find(
             (x: { result: { kind: string } }) => x.result.kind === 'metrics',
@@ -660,7 +663,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
             name,
             arguments: JSON.stringify(args),
           });
-          if (summaries.length === 2)
+          if (summaries.length === 1)
             yield responseFrame([
               call(
                 'request_escalation',
@@ -675,28 +678,25 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
                 'handoff',
               ),
             ]);
-          else if (metrics)
-            yield responseFrame(
-              ['weight', 'body_fat_percent'].map((metric) => {
-                const item = metrics.result.items.find(
-                  (x: { metric: string }) => x.metric === metric,
-                );
-                return call(
-                  'summarize_metric',
-                  {
-                    metric,
-                    source_id: item.source_id,
-                    method: item.method,
-                    granularity: item.granularity,
-                    from: '2026-09-01T00:00:00Z',
-                    to: '2026-09-15T00:00:00Z',
-                    timezone: 'UTC',
-                  },
-                  metric,
-                );
-              }),
-            );
-          else yield responseFrame([call('list_metrics', {}, 'inventory')]);
+          else if (metrics) {
+            const item = syntheticInventorySeries(metrics.result).find(
+              (x: { metric: string }) => x.metric === 'weight',
+            )!;
+            yield responseFrame([
+              call(
+                'analyze_measurements',
+                {
+                  operation: 'period_comparison',
+                  metrics: ['weight', 'body_fat_percent'],
+                  source_id: item.source_id,
+                  from: '2026-09-08',
+                  to: '2026-09-15',
+                  comparison_method: 'rolling_7d',
+                },
+                'comparison',
+              ),
+            ]);
+          } else yield responseFrame([call('list_metrics', {}, 'inventory')]);
         },
       };
       const flash: RequestTransport = {
@@ -871,7 +871,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       for (const step of await rows(
         'ai_steps',
         `run_id=eq.${events[0]!.run_id}&order=sequence`,
-      ))
+      )) {
         if (step.continuation_payload_id) {
           const payload = await readPayload(
             a,
@@ -890,6 +890,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
             });
           }
         }
+      }
       expect(
         events.at(-1)?.type,
         JSON.stringify({ last: events.at(-1), saved }),
@@ -902,7 +903,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
         events
           .filter((e) => e.type === 'tool.result')
           .map((e) => e.payload.tool_name),
-      ).toEqual(['list_metrics', 'get_measurements', 'summarize_metric']);
+      ).toEqual(['list_metrics', 'get_measurements', 'analyze_measurements']);
       expect(
         events
           .filter((e) => e.type === 'text.delta')
@@ -922,7 +923,7 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       expect(output.state).toBe('available');
       if (output.state !== 'available') throw new Error();
       const stored = JSON.parse(output.bytes.toString());
-      expect(stored.projectionVersion).toBe(4);
+      expect(stored.projectionVersion).toBe(5);
       expect(stored.result.items).toHaveLength(14);
       const query = {
         view: 'payload' as const,
@@ -1417,9 +1418,13 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       expect(saved.items).toHaveLength(2);
       expect(
         saved.items[1].parts.find(
-          (part: { type: string }) => part.type === 'metric_summary',
-        ).result.analysis,
-      ).toMatchObject({ value: 69, previousValue: 69.7, absoluteChange: -0.7 });
+          (part: { type: string }) => part.type === 'analysis_result',
+        ).result,
+      ).toMatchObject({
+        current: { value: '69' },
+        previous: { value: '69.7' },
+        absoluteChange: '-0.7',
+      });
       await api(`/api/conversations?view=messages&id=${id}`);
       expect(transport.requests).toHaveLength(3);
       expect(
@@ -1435,18 +1440,34 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
         await api('/api/chat', send(id, 'What metric were we discussing?')),
       );
       expect(followup.at(-1)?.type).toBe('run.completed');
-      expect(transport.requests[3]!.toString()).toContain(
-        'How has my imported weight changed?',
-      );
-      expect(transport.requests[3]!.toString()).toContain(
-        'synthetic-opaque-continuation',
-      );
+      const followupRequest = JSON.parse(transport.requests[3]!.toString());
+      const scope = followupRequest.input
+        .filter((item: { role: string }) => item.role === 'system')
+        .map((item: { content: string }) => {
+          try {
+            return JSON.parse(item.content).previousAnalysisScope;
+          } catch {
+            return undefined;
+          }
+        })
+        .find(Boolean);
+      expect(scope).toMatchObject({
+        runId,
+        selection: {
+          operation: 'period_comparison',
+          metrics: ['weight'],
+          source_id: p.source_id,
+          from: '2026-09-08',
+          to: '2026-09-15',
+        },
+      });
       const message = (
         await rows('messages', `run_id=eq.${runId}&role=eq.assistant`)
       )[0]!;
       const forged = JSON.parse(JSON.stringify(message.content_parts));
       for (const part of forged)
-        if (part.type === 'metric_summary') part.evidence.stepId = randomUUID();
+        if (part.type === 'analysis_result')
+          part.evidence.stepId = randomUUID();
       await db.admin(`/rest/v1/messages?id=eq.${message.id}`, 'PATCH', {
         content_parts: forged,
       });
@@ -1455,8 +1476,9 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       ).data;
       expect(
         unresolved.items
+          .filter((m: { id: string }) => m.id === message.id)
           .flatMap((m: { parts: unknown[] }) => m.parts)
-          .some((part: { type: string }) => part.type === 'metric_summary'),
+          .some((part: { type: string }) => part.type === 'analysis_result'),
       ).toBe(false);
       await addMeasurement(a, {
         action: 'add_measurement',
@@ -1916,8 +1938,13 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
               type: 'function_call',
               id: `item-${requests}-${i}`,
               call_id: `call-${requests}-${i}`,
-              name: 'list_metrics',
-              arguments: '{}',
+              // A small read isolates the request/tool ceilings from full-registry
+              // payload capacity, which has its own real-data acceptance case.
+              name: 'explain_metrics',
+              arguments: JSON.stringify({
+                metrics: ['weight'],
+                include_reference: false,
+              }),
             })),
           );
         },
@@ -2097,8 +2124,15 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       current_revision_id: revision,
     });
     expect(
-      await executeReadTool(a, 'get_goal_progress', { goal_id: id }),
-    ).toEqual({ kind: 'unavailable', reason: 'unsupported_baseline' });
+      AgentGoalProgressToolResultSchema.parse(
+        await executeReadTool(a, 'get_goal_progress', { goal_id: id }),
+      ),
+    ).toMatchObject({
+      kind: 'goal_progress',
+      goalId: id,
+      revisionId: revision,
+      progress: { kind: 'unavailable', reason: 'unsupported_baseline' },
+    });
     await db.admin(`/rest/v1/goals?id=eq.${id}`, 'PATCH', {
       baseline_snapshot: {
         schemaVersion: 1,
@@ -2109,7 +2143,9 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       },
     });
     expect(
-      await executeReadTool(a, 'get_goal_progress', { goal_id: id }),
+      AgentGoalProgressToolResultSchema.parse(
+        await executeReadTool(a, 'get_goal_progress', { goal_id: id }),
+      ).progress,
     ).toMatchObject({
       kind: 'progress',
       current: '69',
@@ -2119,7 +2155,9 @@ describe('synthetic HTTP → PostgreSQL → tool → continuation → SSE', () =
       review_status: 'needs_review',
     });
     expect(
-      await executeReadTool(a, 'get_goal_progress', { goal_id: id }),
+      AgentGoalProgressToolResultSchema.parse(
+        await executeReadTool(a, 'get_goal_progress', { goal_id: id }),
+      ).progress,
     ).toEqual({ kind: 'unavailable', reason: 'needs_review' });
     await expect(
       executeReadTool(b, 'get_goal_progress', { goal_id: id }),

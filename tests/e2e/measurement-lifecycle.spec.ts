@@ -8,10 +8,11 @@ const canonical = readFileSync(
 );
 async function clear() {
   const db = new LocalSupabase();
-  for (const a of accounts)
+  for (const a of accounts.slice(0, 2))
     for (const table of [
       'audit_events',
       'measurements',
+      'weigh_in_events',
       'import_batches',
       'private_payloads',
       'data_sources',

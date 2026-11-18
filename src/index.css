@@ -739,6 +739,13 @@ summary {
   z-index: 1;
 }
 @media (max-width: 767px) {
+  .ask-page .composer-area {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .ask-page .composer {
+    padding: 12px;
+    gap: 8px;
+  }
   .main-ask {
     padding-top: 1.25rem;
   }
@@ -991,6 +998,27 @@ summary {
 
   .chat-canvas-header button[aria-label='New conversation'] span {
     display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .ask-page .conversation-viewport {
+    padding: 12px;
+  }
+  .ask-page .chat-message {
+    padding: 8px;
+  }
+  .ask-page .chat-evidence,
+  .ask-page [aria-label='Group proposal'],
+  .ask-page .summary-card {
+    padding: 12px;
+  }
+  .ask-page :is(.chat-evidence, [aria-label='Group proposal']) [data-slot='button'] {
+    max-width: 100%;
+    padding-inline: 12px;
+    line-height: 1.25;
+    overflow-wrap: normal;
+    white-space: normal;
   }
 }
 

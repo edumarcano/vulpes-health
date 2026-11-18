@@ -267,7 +267,12 @@ export class InspectionService {
           const call = ToolCallSchema.parse(parsed);
           if (
             call.name !== step.tool_name ||
-            !Object.hasOwn(toolArguments, call.name)
+            (!Object.hasOwn(toolArguments, call.name) &&
+              ![
+                'summarize_metric',
+                'propose_goal',
+                'propose_goal_revision',
+              ].includes(call.name))
           )
             throw new Error('invalid_tool');
           // Captured arguments can legitimately have been rejected. Integrity
@@ -277,7 +282,13 @@ export class InspectionService {
           const result = z
             .strictObject({
               projectionVersion: z
-                .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+                .union([
+                  z.literal(1),
+                  z.literal(2),
+                  z.literal(3),
+                  z.literal(4),
+                  z.literal(5),
+                ])
                 .optional(),
               evidence: EvidenceSchema,
               result: z.json(),
@@ -294,6 +305,13 @@ export class InspectionService {
             .object({
               kind: z.enum([
                 'goal_proposal',
+                'goal_group_proposal',
+                'goal_progress',
+                'group_progress',
+                'analysis_batch',
+                'metric_explanations',
+                'groups',
+                'goal_groups',
                 'metrics',
                 'goals',
                 'measurements',
@@ -312,21 +330,30 @@ export class InspectionService {
           const kinds: Record<string, string[]> = {
             request_escalation: ['routing'],
             list_metrics: ['metrics'],
-            list_goals: ['goals'],
+            list_goals: ['goals', 'groups', 'goal_groups'],
             get_measurements: [
               'measurements',
               'no_data',
               'clarification_required',
             ],
             summarize_metric: ['summary', 'no_data', 'clarification_required'],
-            get_goal_progress: ['unavailable', 'insufficient_data', 'progress'],
+            get_goal_progress: [
+              'unavailable',
+              'insufficient_data',
+              'progress',
+              'goal_progress',
+              'group_progress',
+            ],
+            analyze_measurements: ['analysis_batch'],
+            explain_metrics: ['metric_explanations'],
+            prepare_goals: ['goal_proposal', 'goal_group_proposal'],
             propose_goal: ['goal_proposal'],
             propose_goal_revision: ['goal_proposal'],
           };
           if (output.kind === 'tool_error') {
             ToolErrorResultSchema.parse(result.result);
             if (
-              ![3, 4].includes(result.projectionVersion ?? 1) ||
+              ![3, 4, 5].includes(result.projectionVersion ?? 1) ||
               !step.tool_name ||
               step.tool_name === 'request_escalation' ||
               !Object.hasOwn(kinds, step.tool_name)

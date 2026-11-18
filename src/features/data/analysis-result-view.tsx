@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { SeriesAnalysisResult } from '../../../shared/analysis';
+import type { AnalysisCardSnapshot } from '../../../shared/agent-tools';
 import { metricRegistry } from '../../../shared/metrics';
 import { displayExact } from './format';
 
@@ -10,12 +11,16 @@ export function AnalysisResultView({
   sourceLabel,
   evidenceLink = true,
 }: {
-  result: SeriesAnalysisResult;
+  result: SeriesAnalysisResult | AnalysisCardSnapshot;
   sourceLabel?: string | undefined;
   evidenceLink?: boolean;
 }) {
   const navigate = useNavigate();
   const current = result.current;
+  const exclusionCount =
+    'exclusionCount' in result
+      ? result.exclusionCount
+      : result.exclusions.length;
   const label =
     current.statistic === 'rolling_7d'
       ? 'Seven-day mean'
@@ -159,10 +164,10 @@ export function AnalysisResultView({
           {displayExact(current.sampleStatistics.max)} bpm).
         </p>
       )}
-      {result.exclusions.length > 0 && (
+      {exclusionCount > 0 && (
         <p role="status">
-          {result.exclusions.length} conflicting daily observations excluded.
-          Review the measurement table.
+          {exclusionCount} conflicting daily observations excluded. Review the
+          measurement table.
         </p>
       )}
       <details>

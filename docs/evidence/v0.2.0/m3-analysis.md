@@ -3,6 +3,12 @@
 **Date:** 2026-11-15. **Base:** `952b8920091e808f2cf589fc2db117128b782a32`.
 P1 services are locally verified. This record distinguishes local service proof from later Data/Ask integration and external acceptance. Provider requests/spend: **0 / $0**.
 
+## Data preset integration follow-up (2026-11-17)
+
+The integrated browser suite exposed a timezone-loading race: a preset could use temporary UTC before the owned New York timezone arrived, then lose its selected state at the UTC/local-day boundary. Presets now remain disabled while owned source/timezone metadata is pending or unavailable. Stored timestamps and analytics are unchanged.
+
+A deterministic browser test held the actual owned response at that boundary. It reproduced the enabled preset before repair, then passed its disabled-to-enabled transition, exact New York 365-day dates and custom-range state after repair. All twelve focused mobile/resilience journeys passed. The fix ships in the common parent layer so later stack layers do not depend on a pending release-preparation patch.
+
 ## Contract
 
 `POST /api/data` accepts strict `analyze` and `resolve_analysis` read actions. A bounded batch contains explicit latest-event, latest-per-metric, observed-day-mean, rolling-seven-day, endpoint-difference or period-comparison operations. `GET view=inventory` discovers owned series with revision-bound paging and the complete static registry.

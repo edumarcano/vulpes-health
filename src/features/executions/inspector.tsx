@@ -15,6 +15,9 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { successEnvelopeSchema } from '../../../shared/api';
 import { ContextManifestSchema } from '../../../shared/domain';
 import { DataSummarySchema } from '../../../shared/data';
+import { AgentAnalysisToolResultSchema } from '../../../shared/agent-tools';
+import type { AnalysisBatch } from '../../../shared/analysis';
+import { AnalysisResultView } from '../data/analysis-result-view';
 import {
   InspectionOverviewSchema,
   InspectionPayloadSchema,
@@ -65,6 +68,7 @@ function Evidence({
   let formatted: string | null = null;
   let context: ReturnType<typeof ContextManifestSchema.safeParse> | null = null;
   let summary: z.infer<typeof DataSummarySchema> | null = null;
+  let analysis: AnalysisBatch | null = null;
   if (data?.state === 'available') {
     try {
       raw = new TextDecoder('utf-8', { fatal: true }).decode(
@@ -89,6 +93,10 @@ function Evidence({
             })
             .safeParse(parsed);
           if (result.success) summary = result.data.result.data;
+          const batch = z
+            .object({ result: AgentAnalysisToolResultSchema })
+            .safeParse(parsed);
+          if (batch.success) analysis = batch.data.result.data;
         }
       } catch {
         /* An observed stream need not be JSON. */
@@ -217,6 +225,23 @@ function Evidence({
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+          {analysis && (
+            <section>
+              <h5>Calculation and sources</h5>
+              {analysis.results.map((result) =>
+                result.kind === 'series_analysis' ? (
+                  <AnalysisResultView key={result.id} result={result} />
+                ) : (
+                  <p key={result.id}>
+                    Latest event · source {result.sourceId} ·{' '}
+                    {result.event?.event.observed_at ?? 'Unavailable'} ·{' '}
+                    {result.event?.observations.length ?? 0} observations ·
+                    result {result.id}
+                  </p>
+                ),
+              )}
             </section>
           )}
           {raw !== null && <pre className="inspection-raw">{raw}</pre>}

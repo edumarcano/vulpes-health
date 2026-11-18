@@ -37,6 +37,12 @@ import { StreamDecoder, isTerminalEvent } from '../../../shared/stream';
 import { AdmissionResultSchema } from '../../../shared/executions';
 import { askReducer, initialAskState } from './state';
 import { ProposalPart, ProgressPart } from './goal-parts';
+import {
+  AnalysisPart,
+  GroupProgressPart,
+  GroupProposalPart,
+} from './result-parts';
+import { chatPartFromCard, evidencePartAvailable } from './result-state';
 import { InspectionBoundary } from '../executions/inspection-boundary';
 const LazyMarkdownText = lazy(() =>
   import('./markdown-text').then((m) => ({ default: m.MarkdownText })),
@@ -344,20 +350,14 @@ function AskThread({
                         ],
                       },
                 );
-              if (
-                event.type === 'card.ready' &&
-                event.payload.card.type === 'goal_proposal' &&
-                'reference' in event.payload.card
-              ) {
-                const part = ChatPartSchema.parse({
-                  type: 'goal_proposal',
-                  reference: event.payload.card.reference,
-                });
-                items = items.map((m) =>
-                  m.id === event.payload.message_id
-                    ? { ...m, parts: [...m.parts, part] }
-                    : m,
-                );
+              if (event.type === 'card.ready') {
+                const part = chatPartFromCard(event.payload.card);
+                if (part)
+                  items = items.map((m) =>
+                    m.id === event.payload.message_id
+                      ? { ...m, parts: [...m.parts, part] }
+                      : m,
+                  );
               }
               return {
                 ...old,
@@ -431,7 +431,7 @@ function AskThread({
       query.isPending ||
       latest?.conversation.archived === true ||
       query.isError,
-    isSendDisabled: busy,
+    isSendDisabled: busy || send.isPending,
     onNew: async (message: AppendMessage) => {
       await send.mutateAsync(
         message.content
@@ -454,15 +454,7 @@ function AskThread({
       content: message.parts.map((part) => {
         if (part.type === 'text')
           return { type: 'text' as const, text: part.text };
-        if (part.type === 'goal_proposal')
-          return { type: 'data' as const, name: 'goal_proposal', data: part };
-        if (
-          message.contextState !== 'eligible' ||
-          part.evidence.ownerId !== session?.user.id ||
-          part.evidence.runId !== message.runId ||
-          (part.type === 'metric_summary' &&
-            part.result.dataRevision !== part.evidence.dataRevision)
-        )
+        if (!evidencePartAvailable(part, message, session?.user.id))
           return {
             type: 'text' as const,
             text: 'Evidence is unavailable or was invalidated.',
@@ -528,6 +520,9 @@ function AskThread({
                           metric_summary: SummaryPart,
                           goal_proposal: ProposalPart,
                           goal_progress: ProgressPart,
+                          analysis_result: AnalysisPart,
+                          goal_group_progress: GroupProgressPart,
+                          goal_group_proposal: GroupProposalPart,
                         },
                       },
                     }}

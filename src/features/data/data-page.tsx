@@ -563,6 +563,7 @@ function OwnedDataPage() {
               variant="ghost"
               size="sm"
               aria-pressed={isQuickRange(r)}
+              disabled={sources.isPending || sources.isError}
               onClick={() => applyQuickRange(r)}
             >
               {r}
