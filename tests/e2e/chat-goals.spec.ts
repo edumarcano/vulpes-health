@@ -38,7 +38,9 @@ async function say(page: Page, text: string) {
     response.status(),
     response.status() === 200 ? '' : (await response.text()).slice(-1000),
   ).toBe(200);
-  expect(await response.finished()).toBeNull();
+  await expect(
+    page.locator('.chat-user').getByText(text, { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByText('Response saved.', { exact: true }),
   ).toBeVisible();
