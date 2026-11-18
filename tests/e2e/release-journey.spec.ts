@@ -20,14 +20,25 @@ test('release journey preserves full-panel evidence, reviewed goals and groups t
     Authorization: `Bearer ${tokens[6]!.token}`,
   };
   async function post(path: string, data: unknown) {
-    const response = await page.request.post(path, { headers, data });
-    expect(response.status(), await response.text()).toBe(200);
-    return (await response.json()).data;
+    return test.step(
+      `Synthetic production POST ${path}`,
+      async () => {
+        const response = await page.request.post(path, { headers, data });
+        expect(response.status(), await response.text()).toBe(200);
+        return (await response.json()).data;
+      },
+      { timeout: 45_000 },
+    );
   }
   async function rows(table: string) {
-    return (await (
-      await db.admin(`/rest/v1/${table}?user_id=eq.${account.id}`, 'GET')
-    ).json()) as Record<string, unknown>[];
+    return test.step(
+      `Read owned synthetic ${table}`,
+      async () =>
+        (await (
+          await db.admin(`/rest/v1/${table}?user_id=eq.${account.id}`, 'GET')
+        ).json()) as Record<string, unknown>[],
+      { timeout: 15_000 },
+    );
   }
   async function renpho(csv: Buffer | string, source?: string) {
     const preview = await post('/api/data', {
@@ -109,25 +120,59 @@ test('release journey preserves full-panel evidence, reviewed goals and groups t
   expect(sends).toBe(0);
   await page.goto('/ask');
   await expect(page.getByLabel('Analysis depth')).toHaveCount(0);
-  const created = page.waitForResponse(
-    (r) =>
-      r.url().endsWith('/api/conversations') &&
-      r.request().postDataJSON()?.action === 'create',
-  );
-  await page
-    .getByRole('button', { name: 'New conversation', exact: true })
-    .click();
-  const conversation = (await (await created).json()).data.id;
-  await expect(page).toHaveURL(new RegExp('conversation=' + conversation));
+  async function startConversation() {
+    return test.step(
+      'Create and enter the owned synthetic conversation',
+      async () => {
+        const created = page.waitForResponse(
+          (r) =>
+            r.url().endsWith('/api/conversations') &&
+            r.request().method() === 'POST' &&
+            r.request().postDataJSON()?.action === 'create',
+        );
+        await page
+          .getByRole('button', { name: 'New conversation', exact: true })
+          .click();
+        const response = await created;
+        expect(response.status()).toBe(200);
+        const conversation = (await response.json()).data.id;
+        await expect(page).toHaveURL(
+          new RegExp('conversation=' + conversation),
+        );
+        await expect(
+          page.getByLabel('Message Ask Vulpes', { exact: true }),
+        ).toBeEnabled();
+      },
+      { timeout: 15_000 },
+    );
+  }
+  await startConversation();
   async function say(text: string) {
-    await expect(
-      page.getByLabel('Message Ask Vulpes', { exact: true }),
-    ).toBeEnabled();
-    await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(text);
-    await page.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(
-      page.getByText('Response saved.', { exact: true }),
-    ).toBeVisible();
+    await test.step(
+      'Send and save the next explicit synthetic Ask turn',
+      async () => {
+        const sent = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/chat') &&
+            response.request().method() === 'POST' &&
+            response.request().postDataJSON()?.action === 'send',
+        );
+        await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(text);
+        await page.getByRole('button', { name: 'Send', exact: true }).click();
+        const response = await sent;
+        expect(
+          response.status(),
+          response.status() === 200 ? '' : (await response.text()).slice(-1000),
+        ).toBe(200);
+        await expect(
+          page.locator('.chat-user').getByText(text, { exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByText('Response saved.', { exact: true }),
+        ).toBeVisible();
+      },
+      { timeout: 30_000 },
+    );
   }
   await say('How has my imported weight changed?');
   const firstConversationUrl = page.url();
@@ -322,9 +367,7 @@ test('release journey preserves full-panel evidence, reviewed goals and groups t
   expect(sends).toBe(2);
   scenario = 'v020_group_progress';
   await page.goto('/ask');
-  await page
-    .getByRole('button', { name: 'New conversation', exact: true })
-    .click();
+  await startConversation();
   await say(`Show current group progress, group:${groupId}`);
   const groupProgress = page.getByRole('region', {
     name: 'Group progress',
@@ -479,11 +522,17 @@ test('release journey preserves full-panel evidence, reviewed goals and groups t
   expect(scrubbedBaseline).not.toEqual(muscleBaseline);
   expect(sends).toBe(3);
   await page.goto('/settings');
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download account JSON' }).click();
-  const file = await (await download).path();
-  expect(file).toBeTruthy();
-  const exported = JSON.parse(readFileSync(file!, 'utf8'));
+  const exported = await test.step(
+    'Download the owned synthetic account export',
+    async () => {
+      const download = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Download account JSON' }).click();
+      const file = await (await download).path();
+      expect(file).toBeTruthy();
+      return JSON.parse(readFileSync(file!, 'utf8'));
+    },
+    { timeout: 20_000 },
+  );
   expect(Object.keys(exported.sections).sort()).toEqual(
     [...accountExportSections].sort(),
   );
