@@ -8,13 +8,13 @@ Backups and maintenance are manual. No background scheduler is configured. Any c
 
 ## Provider and budgets
 
-| Item | Current setting |
-|---|---|
-| Model | Luna only. Flash, Argon and decision scoring are unavailable. |
-| Privacy | Per-request ZDR routing and `openrouter_zdr_v2` consent, including the documented exception for provider screening and flagged-content retention |
-| Dedicated key cap | $0.50 with no reset |
-| Pilot allocation | $0.10 per app and per account each month, $0.04 per run |
-| Missing monthly bucket | Denies admission |
+| Item                   | Current setting                                                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Model                  | Luna only. Flash, Argon and decision scoring are unavailable.                                                                                    |
+| Privacy                | Per-request ZDR routing and `openrouter_zdr_v2` consent, including the documented exception for provider screening and flagged-content retention |
+| Dedicated key cap      | $0.50 with no reset                                                                                                                              |
+| Pilot allocation       | $0.10 per app and per account each month, $0.04 per run                                                                                          |
+| Missing monthly bucket | Denies admission                                                                                                                                 |
 
 The allocations were recorded for the pilot and may have changed. Check the actual remaining balances and holds before use, and never reset holds or buy credit to continue.
 
@@ -48,13 +48,13 @@ The owner adopts a manual reminder for backups. Missing keys, current evidence o
 
 Pushes to `main` deploy to the existing Vercel project at `https://vulpes-health.vercel.app` through Vercel's Git integration. Preview deployments are disabled, so verify pull requests on localhost with local Supabase and synthetic data.
 
-| Control | Behavior |
-|---|---|
-| Release gate | Vercel requires the `Main / Release gate` check before assigning production domains. It succeeds only after all three main CI jobs succeed. |
+| Control          | Behavior                                                                                                                                                                                                                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Release gate     | Vercel requires the `Main / Release gate` check before assigning production domains. It succeeds only after all three main CI jobs succeed.                                                                                                     |
 | Build validation | The build checks production configuration, source metadata, approved inference and the complete set of required migrations. It rejects preview environments, other branches, wrong project or origin bindings and missing server configuration. |
-| Bindings | `vercel.json` binds the production project, Supabase origin, `iad1` region and Luna pilot mode. Credentials stay in Vercel's Production environment. |
-| Migrations | A deployment does not apply migrations, reset data or call a model. Review and apply required migrations before merging dependent code. |
-| Logging | The build emits JSON stage markers and allowlisted error codes. Unknown errors use `hosted_build_unexpected`. Never log raw exceptions, environment values or database or provider responses. |
+| Bindings         | `vercel.json` binds the production project, Supabase origin, `iad1` region and Luna pilot mode. Credentials stay in Vercel's Production environment.                                                                                            |
+| Migrations       | A deployment does not apply migrations, reset data or call a model. Review and apply required migrations before merging dependent code.                                                                                                         |
+| Logging          | The build emits JSON stage markers and allowlisted error codes. Unknown errors use `hosted_build_unexpected`. Never log raw exceptions, environment values or database or provider responses.                                                   |
 
 Repository changes alone do not prove that Vercel enforces these settings. Vercel owns promotion order and retries.
 
@@ -64,7 +64,19 @@ After a deployment, check `/api/status`, sign-in, routing and the affected featu
 
 The build compares every repository migration version with the hosted `schema_version_v1` inventory. `hosted_schema_incompatible` rejects missing versions or duplicate inventory entries. Passing CI does not establish hosted schema compatibility.
 
-An upgrade requires compatible retained data and a fresh encrypted backup with its keys and independent copy. Recovery must cover both schema and application: an old application cannot undo revoked writer grants. During authorized maintenance, stop writes and AI dispatch and reconcile in-flight work before applying missing forward migrations without a database reset. Verify the complete inventory, then retry the same validated main commit with a passing `Main / Release gate`. See [import constraints](data-imports.md) and [hosted recovery](hosted-recovery.md).
+An upgrade requires compatible retained data and a fresh encrypted backup with its keys and independent copy. Recovery must cover both schema and application: an old application cannot undo revoked writer grants. The checklist below prepares an environment-specific rollout. It does not authorize hosted mutation, deployment, paid inference, a retained reset or restored access.
+
+| Step               | Required target evidence and action                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identify           | Record the named environment, currently serving application/worker, schema inventory and inference binding. Compare all repository migrations, grants and constraints; ledger inclusion alone does not prove absence of drift.                                                                                                                                                                                                                             |
+| Preflight          | Check retained values against new constraints, owner/source relationships, pending single/group proposals, member goal versions/revision IDs, interrupted imports and active runs. Resolve incompatible records through an approved correction/export/discard decision; do not rewrite them silently.                                                                                                                                                      |
+| Preserve           | Obtain a fresh approved encrypted backup, independent copy, deletion journal and separate keys. Reconcile Auth, consent, budget allocations, reservations, durable route cost blocks and unsettled original-month charges. Account JSON export is not a transactional backup.                                                                                                                                                                              |
+| Fence              | Under the named rollout authorization, stop incompatible writes and paid dispatch. Reconcile lost responses through owned import status and approval receipts first. Deliberately expire or invalidate incompatible drafts; never infer consent or clear uncertain holds.                                                                                                                                                                                  |
+| Rehearse and apply | Rehearse populated and fresh migration replay on synthetic data first. Apply every missing forward migration in filename order. The M3/M4 chain is `20261115000100_analysis_reads.sql`, `20261115000200_numeric_goals.sql`, `20261115000300_goal_groups.sql`, `20261115000400_group_lifecycle.sql`, then `20261115000500_group_tool_checkpoint.sql`; earlier import migrations remain prerequisites. Never edit applied migrations or reset retained data. |
+| Coordinate         | Verify the complete inventory and approved schema/application pair before the validated main commit passes `Main / Release gate`. A breaking client/schema transition needs an authorized maintenance window. Keep the previous immutable artifact and compatible recovery tools/keys; redeploying an old app does not reverse schema effects.                                                                                                             |
+| Verify             | Check retained records/approved single and group goals, isolation, budgets/holds, expired writers, interrupted-import status, waiting/active worker continuity and no automatic inference. Old data mutation clients must receive `409 client_upgrade_required`. Use a separately authorized synthetic account for hosted capacity; local timings do not establish hosting limits.                                                                         |
+
+Hosted mutation and recovery commands stay unfilled until the exact target, candidate, backup custody, expected data effects and action are approved. Existing local restore tooling does not supply hosted restoration or restored-access approval. See [import constraints](data-imports.md), [release readiness](release-readiness.md) and [hosted recovery](hosted-recovery.md).
 
 Hosted checks confirm sign-in, retained records and approved goals. A synthetic account exercises full-panel and large imports, overlap without duplicates, event inspection/correction/deletion and both exports. Reopening the installed app verifies the client update. These checks require no paid inference; [M1 evidence](../evidence/v0.2.0/m1-imports.md) records the verified boundary.
 

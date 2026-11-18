@@ -8,10 +8,10 @@ const tokens = JSON.parse(
   process.env.VULPES_TEST_ACCOUNTS_JSON ?? '[]',
 ) as Array<{ token: string }>;
 
-test('release journey signs in, imports, asks, inspects, approves, reimports, exports and deletes', async ({
+test('release journey preserves full-panel evidence, reviewed goals and groups through imports, corrections and deletion', async ({
   page,
 }, info) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await restrictNetwork(page);
   const account = accounts[6]!;
   const db = new LocalSupabase();
@@ -19,6 +19,60 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
     'X-Vulpes-Data-Contract': '2',
     Authorization: `Bearer ${tokens[6]!.token}`,
   };
+  async function post(path: string, data: unknown) {
+    return test.step(
+      `Synthetic production POST ${path}`,
+      async () => {
+        const response = await page.request.post(path, { headers, data });
+        expect(response.status(), await response.text()).toBe(200);
+        return (await response.json()).data;
+      },
+      { timeout: 45_000 },
+    );
+  }
+  async function rows(table: string) {
+    return test.step(
+      `Read owned synthetic ${table}`,
+      async () =>
+        (await (
+          await db.admin(`/rest/v1/${table}?user_id=eq.${account.id}`, 'GET')
+        ).json()) as Record<string, unknown>[],
+      { timeout: 15_000 },
+    );
+  }
+  async function renpho(csv: Buffer | string, source?: string) {
+    const preview = await post('/api/data', {
+      action: 'preview_csv',
+      schema_version: 2,
+      client_request_id: randomUUID(),
+      csv_base64: Buffer.from(csv).toString('base64'),
+      source: source
+        ? { kind: 'existing', id: source }
+        : {
+            kind: 'new',
+            label: 'Synthetic release full panel',
+            origin_app: null,
+            device_label: null,
+          },
+      mapping: {
+        schema_version: 1,
+        format: 'renpho',
+        timezone: 'UTC',
+        profile: null,
+        single_profile: true,
+        timezone_confirmed: true,
+        review_requested: false,
+      },
+    });
+    const committed = await post('/api/data', {
+      action: 'commit_import',
+      schema_version: 2,
+      client_request_id: randomUUID(),
+      batch_id: preview.batch_id,
+      payload_hash: preview.payload_hash,
+    });
+    return { source: preview.source_id as string, preview, committed };
+  }
   let sends = 0;
   page.on('request', (r) => {
     if (r.url().endsWith('/api/chat') && r.postDataJSON()?.action === 'send')
@@ -66,27 +120,62 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
   expect(sends).toBe(0);
   await page.goto('/ask');
   await expect(page.getByLabel('Analysis depth')).toHaveCount(0);
-  const created = page.waitForResponse(
-    (r) =>
-      r.url().endsWith('/api/conversations') &&
-      r.request().postDataJSON()?.action === 'create',
-  );
-  await page
-    .getByRole('button', { name: 'New conversation', exact: true })
-    .click();
-  const conversation = (await (await created).json()).data.id;
-  await expect(page).toHaveURL(new RegExp('conversation=' + conversation));
+  async function startConversation() {
+    return test.step(
+      'Create and enter the owned synthetic conversation',
+      async () => {
+        const created = page.waitForResponse(
+          (r) =>
+            r.url().endsWith('/api/conversations') &&
+            r.request().method() === 'POST' &&
+            r.request().postDataJSON()?.action === 'create',
+        );
+        await page
+          .getByRole('button', { name: 'New conversation', exact: true })
+          .click();
+        const response = await created;
+        expect(response.status()).toBe(200);
+        const conversation = (await response.json()).data.id;
+        await expect(page).toHaveURL(
+          new RegExp('conversation=' + conversation),
+        );
+        await expect(
+          page.getByLabel('Message Ask Vulpes', { exact: true }),
+        ).toBeEnabled();
+      },
+      { timeout: 15_000 },
+    );
+  }
+  await startConversation();
   async function say(text: string) {
-    await expect(
-      page.getByLabel('Message Ask Vulpes', { exact: true }),
-    ).toBeEnabled();
-    await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(text);
-    await page.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(
-      page.getByText('Response saved.', { exact: true }),
-    ).toBeVisible();
+    await test.step(
+      'Send and save the next explicit synthetic Ask turn',
+      async () => {
+        const sent = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/chat') &&
+            response.request().method() === 'POST' &&
+            response.request().postDataJSON()?.action === 'send',
+        );
+        await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(text);
+        await page.getByRole('button', { name: 'Send', exact: true }).click();
+        const response = await sent;
+        expect(
+          response.status(),
+          response.status() === 200 ? '' : (await response.text()).slice(-1000),
+        ).toBe(200);
+        await expect(
+          page.locator('.chat-user').getByText(text, { exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByText('Response saved.', { exact: true }),
+        ).toBeVisible();
+      },
+      { timeout: 30_000 },
+    );
   }
   await say('How has my imported weight changed?');
+  const firstConversationUrl = page.url();
   await expect(
     page.getByText(/seven-day mean 69 kg; change -0.7 kg/),
   ).toBeVisible();
@@ -113,12 +202,105 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
     path: info.outputPath('release-inspector.png'),
   });
   await inspector.getByRole('button', { name: 'Close', exact: true }).click();
+  const fullPanel = readFileSync(
+    'docs/spec/v0.2.0/fixtures/renpho-v1/full-panel.csv',
+  );
+  const panel = await renpho(fullPanel);
+  expect(panel.committed.inserted).toBe(24);
+  await renpho('Date,Time,Weight(lb)\n2026.09.02,08:00:00,149\n', panel.source);
+  await page.goto('/data');
+  await page.getByLabel('Source', { exact: true }).selectOption(panel.source);
+  await page.getByLabel('Analysis timezone', { exact: true }).fill('UTC');
+  await page.getByLabel('From date', { exact: true }).fill('2026-09-01');
+  await page.getByLabel('Through date', { exact: true }).fill('2026-09-30');
+  const latest = page.getByRole('region', {
+    name: 'Latest weigh-in',
+    exact: true,
+  });
+  await expect(latest).toContainText('1 observations from this event only');
+  await expect(latest).not.toContainText('Body fat');
+  await expect(
+    page.getByRole('region', { name: 'Latest per metric', exact: true }),
+  ).toContainText('2026-09-01T08:00:00');
+  await expect(
+    page.getByRole('region', { name: 'Metric guidance', exact: true }),
+  ).toContainText('Manufacturer reference unavailable');
+  await page.getByLabel('Source', { exact: true }).selectOption(source);
+  await page
+    .getByLabel('Method', { exact: true })
+    .selectOption('device_reported');
+  await page.getByLabel('From date', { exact: true }).fill('2026-09-08');
+  await page.getByLabel('Through date', { exact: true }).fill('2026-09-14');
+  await page
+    .getByLabel('Compare with', { exact: true })
+    .selectOption('previous_period');
+  const summary = page.getByRole('region', {
+    name: 'Deterministic summary',
+    exact: true,
+  });
+  await expect(summary).toContainText('69 kg');
+  await expect(summary).toContainText('Previous: 69.7 kg');
+  await expect(summary).toContainText('-0.7 kg');
+  await expect(summary).toContainText('7/7 observed/calendar days');
+  await page
+    .getByRole('button', { name: 'Open result evidence', exact: true })
+    .click();
+  const historicalEvidenceUrl = page.url();
+  await page.goto('/goals');
+  await page.getByRole('button', { name: 'New Goal', exact: true }).click();
+  const sheet = page.getByRole('dialog');
+  await sheet
+    .getByLabel('Metric', { exact: true })
+    .selectOption('renpho.muscle_mass');
+  await sheet
+    .getByLabel('Title', { exact: true })
+    .fill('Synthetic release muscle');
+  await sheet.getByLabel('Source', { exact: true }).selectOption(panel.source);
+  await sheet
+    .getByLabel('Measurement method', { exact: true })
+    .selectOption('device_estimate');
+  await sheet
+    .getByLabel('Direction', { exact: true })
+    .selectOption('increase_to');
+  await sheet.getByLabel('target', { exact: true }).fill('49');
+  await sheet
+    .getByLabel('Baseline method', { exact: true })
+    .selectOption('latest_value');
+  await sheet
+    .getByLabel('Baseline from', { exact: true })
+    .fill('2026-09-01T00:00:00Z');
+  await sheet
+    .getByLabel('Baseline to', { exact: true })
+    .fill('2026-09-02T00:00:00Z');
+  await sheet
+    .getByRole('button', { name: 'Review proposal', exact: true })
+    .click();
+  const muscleReview = page.getByRole('region', {
+    name: 'Review goal proposal',
+    exact: true,
+  });
+  await expect(muscleReview).toContainText('47.62719885');
+  await expect(muscleReview).toContainText('2026-09-01T08:00:00');
+  expect(await rows('goals')).toHaveLength(0);
+  await muscleReview
+    .getByRole('button', { name: 'Approve goal proposal', exact: true })
+    .click();
+  await expect(muscleReview).toContainText('approved');
+  const muscle = (await rows('goals'))[0]!;
+  const muscleRevision = (await rows('goal_revisions')).find(
+    (row) => row.goal_id === muscle.id,
+  )!;
+  const muscleBaseline = (muscleRevision.payload as { baseline: unknown })
+    .baseline;
+  expect(sends).toBe(1);
+  await page.goto(firstConversationUrl);
+  let scenario = 'goal_create';
   await page.route('**/api/chat', (route) =>
     route.continue({
       headers: {
         'X-Vulpes-Data-Contract': '2',
         ...route.request().headers(),
-        'x-vulpes-test-scenario': 'goal_create',
+        'x-vulpes-test-scenario': scenario,
       },
     }),
   );
@@ -130,7 +312,7 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
     await (
       await db.admin(`/rest/v1/goals?user_id=eq.${account.id}`, 'GET')
     ).json(),
-  ).toHaveLength(0);
+  ).toHaveLength(1);
   await review
     .getByRole('button', { name: 'Approve goal proposal', exact: true })
     .click();
@@ -143,6 +325,77 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
     page.getByRole('heading', { name: 'Revision history', exact: true }),
   ).toBeVisible();
   const goalUrl = page.url();
+  await page.getByRole('button', { name: 'New Group', exact: true }).click();
+  const groupEditor = page.getByRole('dialog');
+  await groupEditor
+    .getByLabel('Group name', { exact: true })
+    .fill('Synthetic release group');
+  const linkedGoals = await rows('goals');
+  expect(linkedGoals).toHaveLength(2);
+  for (const goal of linkedGoals) {
+    await groupEditor
+      .getByRole('button', { name: 'Add approved goal', exact: true })
+      .click();
+    await groupEditor
+      .getByRole('combobox', { name: 'Approved goal', exact: true })
+      .selectOption(String(goal.id));
+    await groupEditor
+      .getByRole('button', { name: 'Use current approved goal', exact: true })
+      .click();
+  }
+  await groupEditor
+    .getByRole('button', { name: 'Review complete group', exact: true })
+    .click();
+  const groupReview = page.getByRole('region', {
+    name: 'Review group proposal',
+    exact: true,
+  });
+  await expect(groupReview).toContainText('Synthetic release muscle');
+  expect(await rows('goal_groups')).toHaveLength(0);
+  const groupDecision = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/approvals') &&
+      response.request().method() === 'POST',
+  );
+  await groupReview
+    .getByRole('button', { name: 'Approve group proposal', exact: true })
+    .click();
+  const groupResponse = await groupDecision;
+  expect(groupResponse.status()).toBe(200);
+  const groupId = (await groupResponse.json()).data.groupId as string;
+  expect(await rows('goal_groups')).toHaveLength(1);
+  expect(sends).toBe(2);
+  scenario = 'v020_group_progress';
+  await page.goto('/ask');
+  await startConversation();
+  await say(`Show current group progress, group:${groupId}`);
+  const groupProgress = page.getByRole('region', {
+    name: 'Group progress',
+    exact: true,
+  });
+  await expect(groupProgress).toContainText('Synthetic release muscle');
+  await expect(groupProgress).toContainText(
+    'Each member keeps its own units, evidence dates and calculation.',
+  );
+  expect(sends).toBe(3);
+  const beforeOverlap = (await rows('measurements'))
+    .map((row) => row.id)
+    .sort();
+  const overlap = await renpho(fullPanel, panel.source);
+  expect(overlap.committed).toEqual(panel.committed);
+  expect((await rows('measurements')).map((row) => row.id).sort()).toEqual(
+    beforeOverlap,
+  );
+  const enrichment = await renpho(
+    'Date,Time,Weight(lb),Body Fat Percentage(%)\n2026.09.02,08:00:00,149,21\n',
+    panel.source,
+  );
+  expect(enrichment.committed.inserted).toBe(1);
+  expect(enrichment.committed.duplicate).toBe(1);
+  expect(
+    (await rows('goal_revisions')).find((row) => row.id === muscleRevision.id)
+      ?.payload,
+  ).toEqual(muscleRevision.payload);
   const today = new Date().toISOString().slice(0, 10);
   const csv =
     'observed_at,metric,value,unit,source,granularity,external_record_id,local_date,timezone,method\n' +
@@ -194,27 +447,101 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
     page.getByRole('region', { name: 'Goal progress', exact: true }),
   ).toContainText('Current: 68.8');
   await page.reload();
-  await expect(
-    page.getByRole('region', { name: 'Goal progress', exact: true }),
-  ).toContainText('Current: 68.8');
-  expect(sends).toBe(2);
+  const weightProgress = page.getByRole('region', {
+    name: 'Goal progress',
+    exact: true,
+  });
+  await expect(weightProgress).toContainText('Current: 68.8');
+  const exactProgressResponse = await page.request.get(
+    '/api/goals?view=progress&id=' + new URL(goalUrl).searchParams.get('goal'),
+    { headers },
+  );
+  expect(exactProgressResponse.status()).toBe(200);
+  const exactProgress = (await exactProgressResponse.json()).data;
+  expect(exactProgress.relativeChangePercent.length).toBeGreaterThan(1000);
+  await expect(weightProgress).toContainText('Relative change -1.291%');
+  expect(await weightProgress.textContent()).not.toMatch(/[+-]?\d+\.\d{20,}/);
+  expect((await weightProgress.textContent())!.length).toBeLessThan(2500);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(sends).toBe(3);
   await page.screenshot({
     path: info.outputPath('release-progress.png'),
     fullPage: true,
   });
+  const muscleReading = (await rows('measurements')).find(
+    (row) =>
+      row.source_id === panel.source && row.metric_key === 'renpho.muscle_mass',
+  )!;
+  expect(await rows('conversations')).toHaveLength(2);
+  expect((await rows('messages')).length).toBeGreaterThanOrEqual(4);
+  const corrected = await post('/api/data', {
+    action: 'correct_measurement',
+    measurement_id: muscleReading.id,
+    expected_version: muscleReading.version,
+    client_request_id: randomUUID(),
+    changes: {
+      value: '48',
+      unit: 'kg',
+      observed_at: '2026-09-01T08:00:00Z',
+      timezone: 'UTC',
+      local_date: null,
+    },
+  });
+  expect(corrected.outcome).toBe('corrected');
+  expect(await rows('conversations')).toEqual([]);
+  expect(await rows('messages')).toEqual([]);
+  expect(
+    (await rows('goals')).find((row) => row.id === muscle.id)?.review_status,
+  ).toBe('needs_review');
+  await page.goto(historicalEvidenceUrl);
+  await expect(page.getByRole('alert')).toContainText(
+    'Original result unavailable',
+  );
+  await page.goto('/goals?group=' + groupId);
+  await expect(
+    page.getByRole('region', { name: 'Group progress', exact: true }),
+  ).toContainText('The all-members condition is unavailable.');
+  const removed = await post('/api/data', {
+    action: 'delete_measurement',
+    measurement_id: muscleReading.id,
+    expected_version: corrected.version,
+    client_request_id: randomUUID(),
+  });
+  expect(removed.outcome).toBe('deleted');
+  expect(
+    (await rows('measurements')).some((row) => row.id === muscleReading.id),
+  ).toBe(false);
+  const scrubbedBaseline = (
+    (await rows('goal_revisions')).find((row) => row.id === muscleRevision.id)
+      ?.payload as { baseline: unknown }
+  ).baseline;
+  expect(scrubbedBaseline).not.toEqual(muscleBaseline);
+  expect(sends).toBe(3);
   await page.goto('/settings');
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download account JSON' }).click();
-  const file = await (await download).path();
-  expect(file).toBeTruthy();
-  const exported = JSON.parse(readFileSync(file!, 'utf8'));
+  const exported = await test.step(
+    'Download the owned synthetic account export',
+    async () => {
+      const download = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Download account JSON' }).click();
+      const file = await (await download).path();
+      expect(file).toBeTruthy();
+      return JSON.parse(readFileSync(file!, 'utf8'));
+    },
+    { timeout: 20_000 },
+  );
   expect(Object.keys(exported.sections).sort()).toEqual(
     [...accountExportSections].sort(),
   );
   expect(exported.sections.measurements.length).toBeGreaterThan(14);
-  expect(exported.sections.goals).toHaveLength(1);
-  expect(exported.sections.conversations).toHaveLength(1);
-  expect(exported.sections.messages.length).toBeGreaterThanOrEqual(4);
+  expect(exported.sections.goals).toHaveLength(2);
+  expect(exported.sections.goal_groups).toHaveLength(1);
+  expect(exported.sections.goal_group_members).toHaveLength(2);
+  expect(exported.sections.conversations).toEqual([]);
+  expect(exported.sections.messages).toEqual([]);
   await page
     .getByLabel('Current password', { exact: true })
     .fill(account.password);
@@ -258,11 +585,13 @@ test('release journey signs in, imports, asks, inspects, approves, reimports, ex
     }),
   ).toBeVisible();
   await page.screenshot({ path: info.outputPath('release-deleted.png') });
-  expect(sends).toBe(2);
+  expect(sends).toBe(3);
   for (const table of [
     'profiles',
     'measurements',
     'goals',
+    'goal_groups',
+    'goal_group_members',
     'conversations',
     'messages',
     'ai_runs',

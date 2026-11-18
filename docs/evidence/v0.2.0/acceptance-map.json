@@ -1,0 +1,701 @@
+{
+  "schemaVersion": 2,
+  "releaseVersion": "0.2.0",
+  "rows": [
+    {
+      "id": "AT-01",
+      "checks": [
+        "unit",
+        "spec",
+        "integrationThreads",
+        "browser"
+      ],
+      "scope": "CSV recognition, independent fixture outputs, layout errors and review.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-02",
+      "checks": [
+        "unit",
+        "spec",
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "All 24 supported panel fields, original/canonical values and owned event links.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-03",
+      "checks": [
+        "unit",
+        "spec",
+        "integrationThreads",
+        "dbTests"
+      ],
+      "scope": "Exact decimals, unavailable markers, valid zeros, timezone/DST and source-format boundaries.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-04",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Two authenticated synthetic owners; API/database person, source and filename isolation.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-05",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "dbTests",
+        "importUpgrade"
+      ],
+      "scope": "Overlap/enrichment/reordering identity, exact counts and original preservation.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-06",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Preview binding, replay, concurrency, cancellation and stale revision transaction controls.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-07",
+      "checks": [
+        "integrationThreads",
+        "importUpgrade"
+      ],
+      "scope": "1,000 fully populated events, capacity boundaries and synthetic local timing/staging measurements.",
+      "external": "Hosting throughput and request/body/time constraints require separately approved target verification.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-08",
+      "checks": [
+        "integrationThreads",
+        "browser",
+        "pwa"
+      ],
+      "scope": "Instrumented zero-dispatch import, navigation, direct goals and static suggestions.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-09",
+      "checks": [
+        "browser",
+        "pwa"
+      ],
+      "scope": "Automated share-target/file-picker receiver controls; emulation is separate from physical dispatch.",
+      "external": "Physical Android/browser installation, actual RENPHO share and file-picker acceptance remain not_run.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-10",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "browser",
+        "pwa"
+      ],
+      "scope": "Cold/invalid/expired share, offline service and inactive-worker recovery states.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-11",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "browser",
+        "pwa"
+      ],
+      "scope": "Handoff retention/expiry/consumption, owner switching, tabs and worker update controls.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-12",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "browser"
+      ],
+      "scope": "Independent latest-event/latest-series and observed-day/sample/selected-period arithmetic.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-13",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "browser"
+      ],
+      "scope": "Exact periods, percentages/mass, zero denominators, sparse coverage and dated series.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-14",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "browser"
+      ],
+      "scope": "Stable deterministic result identities shared by UI/tools; revision and historical evidence invalidation.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-15",
+      "checks": [
+        "unit",
+        "spec",
+        "integrationThreads",
+        "browser"
+      ],
+      "scope": "All metric definitions and reference applicability/version/refusal/export controls.",
+      "external": "An applicable production manufacturer reference and its reviewed reuse basis remain unresolved; synthetic reference fixtures do not satisfy that release gate.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-16",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "25 numeric goal metrics, denied raw-only metrics, three target modes and frozen/reviewed baseline lifecycle.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-17",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "dbTests",
+        "browser",
+        "importUpgrade"
+      ],
+      "scope": "Owned groups, all-member progress, atomic reviewed approvals and child/group conflict controls.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-18",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Real VulpesAgent with scripted offline providers: full panels, periods, follow-ups, references and exact pending single/group preparation within enforced bounds.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-19",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "evaluations",
+        "browser"
+      ],
+      "scope": "Injection, unavailable facts/references, diagnosis/unsafe targets and approval-bypass controls.",
+      "external": "Live model safety/answer behavior and human semantic review require the separately approved current candidate evaluation.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-20",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions",
+        "providers",
+        "browser"
+      ],
+      "scope": "Exact sent bytes/private evidence, context/version exclusions, usage/accounting, cancellation/expiry and budget denial.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-21",
+      "checks": [],
+      "scope": "Offline runner preparation and synthetic controls are recorded separately from live comparative evidence.",
+      "external": "Authorized baseline-versus-peer application-path results, repetitions, held-out cases, bounded spend and human answer/usefulness review remain not_run.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-22",
+      "checks": [
+        "unit",
+        "providers"
+      ],
+      "scope": "Unavailable-role denial and deterministic policy/configuration binding controls.",
+      "external": "Owner model/effort/routing selection and fresh final configuration capability/privacy/safety/accounting verification remain not_run.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-23",
+      "checks": [
+        "browser",
+        "pwa"
+      ],
+      "scope": "Desktop/narrow themes, focus, labels, all-metric/import/reference/single/group/evidence and failure-state browser controls.",
+      "external": "Physical device/browser versions, real keyboard/PWA share and assistive-technology coverage remain not_run.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-24",
+      "checks": [
+        "format",
+        "lint",
+        "typecheck",
+        "unit",
+        "integrationThreads",
+        "dbLint",
+        "dbTests",
+        "dbTypes",
+        "bundle",
+        "browser"
+      ],
+      "scope": "Strict schemas, two-owner API/RLS isolation, bounded queries, concurrency, safe rendering/export and bundle secret canaries.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-25",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "importUpgrade",
+        "cleanup",
+        "restore"
+      ],
+      "scope": "Export/deletion/correction cover events, annotations, groups, staging, results and encrypted traces; expiry denies before cleanup.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "AT-26",
+      "checks": [
+        "integrationThreads",
+        "cleanup",
+        "restore",
+        "executions",
+        "providers"
+      ],
+      "scope": "Synthetic service failure, private logging, encrypted restore/deletion-journal/accounting replay and no unapproved inference.",
+      "external": "Hosted backup custody, recovery/cutover and deployment service controls need separately approved target verification.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-27",
+      "checks": [
+        "start",
+        "importUpgrade",
+        "dbLint",
+        "dbTests",
+        "dbTypes",
+        "integrationThreads",
+        "restore"
+      ],
+      "scope": "Fresh/populated isolated import/group migration rehearsal, stale clients, control/owner preservation and budget reconciliation.",
+      "external": "The actual hosted forward cutover, backup/export custody and application/schema recovery target remain separately gated.",
+      "applicability": "required"
+    },
+    {
+      "id": "AT-28",
+      "checks": [
+        "format",
+        "spec",
+        "unit"
+      ],
+      "scope": "Complete versioned acceptance mapping and exact candidate/config/content digests; current documentation consistency.",
+      "external": "Final model decision, release documentation/version and deployment/device acceptance must agree before the final release claim.",
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-01",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-02",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-03",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-04",
+      "checks": [
+        "bundle",
+        "build"
+      ],
+      "scope": "Built public assets: secret canaries, source-map exclusion and server/provider/test-harness boundary scan. Hosted preview configuration remains a separate gate.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-05",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-06",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-07",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "SEC-08",
+      "checks": [
+        "integrationThreads",
+        "dbTests",
+        "browser"
+      ],
+      "scope": "Real local Auth, API, PostgREST RLS and browser isolation; synthetic accounts only.",
+      "external": "Hosted deep-link/API rewrite and CSP/header behavior requires an approved synthetic deployment.",
+      "applicability": "required"
+    },
+    {
+      "id": "COST-01",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "COST-02",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "COST-03",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "COST-04",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "COST-05",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "COST-06",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "COST-07",
+      "checks": [
+        "unit",
+        "integrationThreads",
+        "executions"
+      ],
+      "scope": "Persistent paired reservations, conservative holds, loopback exact dispatch and simulated normalized usage; no provider billing.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "TRACE-01",
+      "checks": [
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "TRACE-02",
+      "checks": [
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "TRACE-03",
+      "checks": [
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "TRACE-04",
+      "checks": [
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "TRACE-05",
+      "checks": [
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "TRACE-06",
+      "checks": [
+        "integrationThreads",
+        "executions",
+        "browser"
+      ],
+      "scope": "Owned inspector and loopback request equality, encrypted payload expiry and safe unknown metadata.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "OPS-01",
+      "checks": [
+        "pwa",
+        "browser"
+      ],
+      "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "OPS-02",
+      "checks": [
+        "integrationThreads",
+        "browser",
+        "importUpgrade",
+        "cleanup"
+      ],
+      "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "OPS-03",
+      "checks": [
+        "integrationThreads",
+        "browser",
+        "importUpgrade",
+        "cleanup"
+      ],
+      "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "OPS-04",
+      "checks": [
+        "restore",
+        "dbTests"
+      ],
+      "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+      "external": "Separate local encrypted restore passes do not establish hosted backup rotation/key custody/cutover recovery.",
+      "applicability": "required"
+    },
+    {
+      "id": "OPS-05",
+      "checks": [
+        "restore",
+        "integrationThreads"
+      ],
+      "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+      "external": "Local operator reset/session revocation does not verify human identity/credential handoff or an invited nonoperator hosted flow.",
+      "applicability": "required"
+    },
+    {
+      "id": "OPS-06",
+      "checks": [
+        "providers"
+      ],
+      "scope": "Real local account HTTP/database/browser and operational CLI workflows.",
+      "external": "No current configuration-bound live smoke for configured generation roles; all unavailable, decision disabled.",
+      "applicability": "required"
+    },
+    {
+      "id": "MOD-01",
+      "checks": [
+        "lint",
+        "unit",
+        "integrationThreads",
+        "providers"
+      ],
+      "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "MOD-02",
+      "checks": [
+        "lint",
+        "unit",
+        "integrationThreads",
+        "providers"
+      ],
+      "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "MOD-03",
+      "checks": [
+        "lint",
+        "unit",
+        "integrationThreads",
+        "providers"
+      ],
+      "scope": "Decision scoring remains disabled while synthetic Everyday tool loop, Data and goal services operate.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "MOD-04",
+      "checks": [
+        "lint",
+        "unit",
+        "integrationThreads",
+        "providers"
+      ],
+      "scope": "Manual/CSV/fixture-only Health Connect normalization equivalence; native Android delivery remains out of scope.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "MOD-05",
+      "checks": [
+        "lint",
+        "unit",
+        "integrationThreads",
+        "providers"
+      ],
+      "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+      "external": null,
+      "applicability": "required"
+    },
+    {
+      "id": "MOD-06",
+      "checks": [
+        "integrationThreads",
+        "browser",
+        "restore"
+      ],
+      "scope": "Provider-disabled services, normalized adapter fixtures and enforced dependency boundaries.",
+      "external": null,
+      "applicability": "required"
+    }
+  ]
+}

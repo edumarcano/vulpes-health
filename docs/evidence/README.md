@@ -6,15 +6,17 @@ Records keep their original wording, including failed runs and uncertain charges
 
 ## Current records
 
-| Topic | Records |
-|---|---|
-| Owner use and recovery | [Hosted Luna activation and device report](owner-pilot-step4.md), [owner data readiness and handoff](owner-pilot-step5.md), [personal-use transition](personal-use-transition.md) |
-| Provider verification | [Luna v7 live checks](luna-owner-pilot-live.md) with [machine-readable results](luna-owner-pilot-live.json), [v8 failure and v9 technical checks](luna-v8-v9-verification.md), [v10 technical checks](luna-v10-technical.md) |
-| Local release report | [m6-local.json](release/m6-local.json), [acceptance map](release/acceptance-map.json) and the reviewed synthetic screenshots in `release/` |
-| Imports | [RENPHO import](renpho-import.md) |
-| v0.2.0 M0 | [Readiness decisions and evidence](v0.2.0/m0-readiness.md), [reproducible probes](v0.2.0/m0-readiness.md#reproducing-the-probes) |
-| Hosted checks | [Temporary-account checks, 2026-11-10](temporary-account-2026-11-10.md) |
-| Independent audit | [Audit report](v010-independent-audit.md) and [F-01 to F-12 remediation closure](audit-remediation-closure.md) |
+| Topic                      | Records                                                                                                                                                                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner use and recovery     | [Hosted Luna activation and device report](owner-pilot-step4.md), [owner data readiness and handoff](owner-pilot-step5.md), [personal-use transition](personal-use-transition.md)                                            |
+| Provider verification      | [Luna v7 live checks](luna-owner-pilot-live.md) with [machine-readable results](luna-owner-pilot-live.json), [v8 failure and v9 technical checks](luna-v8-v9-verification.md), [v10 technical checks](luna-v10-technical.md) |
+| Local release report       | [m6-local.json](release/m6-local.json), [acceptance map](release/acceptance-map.json) and the reviewed synthetic screenshots in `release/`                                                                                   |
+| Imports                    | [RENPHO import](renpho-import.md)                                                                                                                                                                                            |
+| v0.2.0 M0                  | [Readiness decisions and evidence](v0.2.0/m0-readiness.md), [reproducible probes](v0.2.0/m0-readiness.md#reproducing-the-probes)                                                                                             |
+| v0.2.0 evaluation preparation | [Runner, current model sources and approval boundaries](v0.2.0/m5-preparation.md) |
+| v0.2.0 release preparation | [Local preparation and remaining gates](v0.2.0/m6-preparation.md), [candidate acceptance map](v0.2.0/acceptance-map.json)                                                                                                    |
+| Hosted checks              | [Temporary-account checks, 2026-11-10](temporary-account-2026-11-10.md)                                                                                                                                                      |
+| Independent audit          | [Audit report](v010-independent-audit.md) and [F-01 to F-12 remediation closure](audit-remediation-closure.md)                                                                                                               |
 
 ## Older history
 

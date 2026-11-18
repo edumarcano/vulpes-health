@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { successEnvelopeSchema } from '../../../shared/api';
 import { GoalProgressResultSchema } from '../../../shared/goal-progress';
 import type { GoalRow } from '../../../shared/goal-views';
+import { displayExact } from '../data/format';
 type ProgressValue = Extract<
   z.infer<typeof GoalProgressResultSchema>,
   { kind: 'progress' }
@@ -50,9 +51,9 @@ function EvidenceDetails({ value }: { value: ProgressValue }) {
       <dd>
         {value.actualChange === undefined
           ? 'Unavailable in this retained result.'
-          : `${value.actualChange} ${value.absoluteChangeUnit === 'percentage_points' ? 'percentage points' : value.absoluteChangeUnit}`}
+          : `${displayExact(value.actualChange)} ${value.absoluteChangeUnit === 'percentage_points' ? 'percentage points' : value.absoluteChangeUnit}`}
         {value.relativeChangePercent != null &&
-          ` · Relative change ${value.relativeChangePercent}%`}
+          ` · Relative change ${displayExact(value.relativeChangePercent)}%`}
       </dd>
       <dt>Evidence age</dt>
       <dd>
@@ -81,7 +82,8 @@ export function Progress({ value }: { value: unknown }) {
     <section aria-label="Goal progress">
       <h3>Progress</h3>
       <p>
-        Baseline: {p.data.baseline} · Current: {p.data.current}
+        Baseline: {displayExact(p.data.baseline)} · Current:{' '}
+        {displayExact(p.data.current)}
       </p>
       <p>{conditionLabel(p.data)}</p>
       <EvidenceDetails value={p.data} />
@@ -198,15 +200,15 @@ export function GoalListItem({
             ? 'Current value unavailable.'
             : progress.data?.kind === 'progress'
               ? result?.kind === 'directional'
-                ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Enough data for this method.`
+                ? `Current: ${displayExact(progress.data.current)} ${String(goal.canonical_unit)} · Enough data for this method.`
                 : result?.kind === 'undefined'
                   ? 'Progress is undefined because the target equals the baseline.'
                   : result?.kind === 'within_range'
-                    ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Within the target range.`
+                    ? `Current: ${displayExact(progress.data.current)} ${String(goal.canonical_unit)} · Within the target range.`
                     : result?.kind === 'below_range'
-                      ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Below the target range.`
+                      ? `Current: ${displayExact(progress.data.current)} ${String(goal.canonical_unit)} · Below the target range.`
                       : result?.kind === 'above_range'
-                        ? `Current: ${progress.data.current} ${String(goal.canonical_unit)} · Above the target range.`
+                        ? `Current: ${displayExact(progress.data.current)} ${String(goal.canonical_unit)} · Above the target range.`
                         : 'Progress unavailable.'
               : progress.data?.kind === 'insufficient_data'
                 ? 'Insufficient data for progress.'
