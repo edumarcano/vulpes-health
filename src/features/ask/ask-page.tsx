@@ -431,7 +431,7 @@ function AskThread({
       query.isPending ||
       latest?.conversation.archived === true ||
       query.isError,
-    isSendDisabled: busy,
+    isSendDisabled: busy || send.isPending,
     onNew: async (message: AppendMessage) => {
       await send.mutateAsync(
         message.content

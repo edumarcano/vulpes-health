@@ -9,7 +9,7 @@ const canonical = readFileSync(
 const wide = readFileSync('docs/spec/v0.1.0/fixtures/wide-synthetic.csv');
 async function clear() {
   const db = new LocalSupabase();
-  for (const a of accounts)
+  for (const a of accounts.slice(0, 2))
     for (const table of [
       'audit_events',
       'measurements',

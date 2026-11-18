@@ -10,7 +10,7 @@ import { Decimal } from 'decimal.js';
 import { UUIDSchema } from '../shared/primitives.js';
 import { ChatSendRequestSchema } from '../shared/api.js';
 import { ConversationQuerySchema } from '../shared/chat.js';
-import { DataSummarySchema } from '../shared/data.js';
+import { AnalysisBatchSchema } from '../shared/analysis.js';
 import { models } from '../server/config/models.js';
 import { VerifiedPriceSchema } from '../server/ai/ledger/pricing.js';
 import { VulpesAgent } from '../server/ai/VulpesAgent.js';
@@ -299,7 +299,7 @@ export async function runLiveEveryday(
     conversation_id: conversation,
     message: {
       id: attemptId,
-      text: 'Using the imported synthetic scale records, calculate the seven-day weight mean and change for the half-open interval 2026-09-08 through 2026-09-15 UTC. Use summarize_metric and explain its coverage.',
+      text: 'Using the imported synthetic scale records, calculate the seven-day weight mean and change for the half-open interval 2026-09-08 through 2026-09-15 UTC. Use analyze_measurements with period_comparison and rolling_7d, and explain its coverage.',
     },
     depth: vertexRole ? 'auto' : 'everyday',
   });
@@ -482,7 +482,7 @@ export async function runLiveEveryday(
       overview.run.state !== 'completed' ||
       overview.run.traceState !== 'available' ||
       generation.length < 2 ||
-      !toolSteps.some((step) => step.toolName === 'summarize_metric')
+      !toolSteps.some((step) => step.toolName === 'analyze_measurements')
     )
       throw new Error('verification_tool_loop_incomplete');
     for (const step of toolSteps) {
@@ -494,15 +494,21 @@ export async function runLiveEveryday(
       });
       if (evidence.state !== 'available')
         throw new Error('verification_tool_evidence_unavailable');
-      if (step.toolName === 'summarize_metric') {
+      if (step.toolName === 'analyze_measurements') {
         const payload = JSON.parse(evidence.bytes.toString('utf8')) as {
           result?: { data?: unknown };
         };
-        const summary = DataSummarySchema.parse(payload.result?.data);
+        const batch = AnalysisBatchSchema.parse(payload.result?.data);
+        const summary = batch.results[0];
         if (
-          summary.analysis.coverageStatus !== 'sufficient' ||
-          summary.analysis.value !== 69 ||
-          summary.analysis.absoluteChange !== -0.7
+          batch.results.length !== 1 ||
+          summary?.kind !== 'series_analysis' ||
+          summary.operation !== 'period_comparison' ||
+          summary.series.metric !== 'weight' ||
+          summary.unit !== 'kg' ||
+          summary.current.coverageStatus !== 'sufficient' ||
+          summary.current.value !== '69' ||
+          summary.absoluteChange !== '-0.7'
         )
           throw new Error('verification_calculation_mismatch');
       }

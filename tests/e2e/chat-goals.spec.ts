@@ -25,8 +25,20 @@ async function scenario(page: Page, value: string) {
   );
 }
 async function say(page: Page, text: string) {
+  const sent = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/chat') &&
+      response.request().method() === 'POST' &&
+      response.request().postDataJSON()?.action === 'send',
+  );
   await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(text);
   await page.getByRole('button', { name: 'Send', exact: true }).click();
+  const response = await sent;
+  expect(
+    response.status(),
+    response.status() === 200 ? '' : (await response.text()).slice(-1000),
+  ).toBe(200);
+  expect(await response.finished()).toBeNull();
   await expect(
     page.getByText('Response saved.', { exact: true }),
   ).toBeVisible();
@@ -170,14 +182,53 @@ test('Ask goal proposal approval synchronizes existing progress without reload o
   });
   await scenario(page, 'goal_progress');
   await start(page);
+  let releaseRefresh!: () => void;
+  const refreshGate = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  let holdCompletedRefresh = true;
+  let refreshHeld = false;
+  await page.route('**/api/conversations?*', async (route) => {
+    if (
+      route.request().method() !== 'GET' ||
+      new URL(route.request().url()).searchParams.get('view') !== 'messages'
+    )
+      return route.continue();
+    const response = await route.fetch();
+    if (
+      holdCompletedRefresh &&
+      (await response.json()).data?.run?.state === 'completed'
+    ) {
+      holdCompletedRefresh = false;
+      refreshHeld = true;
+      await refreshGate;
+    }
+    await route.fulfill({ response }).catch(() => undefined);
+  });
   await say(page, 'Show goal progress.');
   const progress = page.getByRole('region', {
     name: 'Goal progress',
     exact: true,
   });
   await expect(progress).toContainText('50%');
+  await expect.poll(() => refreshHeld).toBe(true);
+  const nextText = 'Propose revising my target to 67 kg.';
+  await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(nextText);
+  try {
+    await expect(
+      page.getByLabel('Message Ask Vulpes', { exact: true }),
+    ).toHaveValue(nextText);
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeDisabled();
+  } finally {
+    releaseRefresh();
+  }
+  await expect(
+    page.getByRole('button', { name: 'Send', exact: true }),
+  ).toBeEnabled();
   await scenario(page, 'goal_revise');
-  await say(page, 'Propose revising my target to 67 kg.');
+  await say(page, nextText);
   const pending = page
     .getByRole('region', { name: 'Review goal proposal' })
     .filter({ hasText: 'pending' });

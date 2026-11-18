@@ -94,7 +94,10 @@ test('v0.2 conversation shares exact event evidence and atomically reviewed grou
     await page.getByLabel('Message Ask Vulpes', { exact: true }).fill(text);
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     const response = await sent;
-    expect(response.status(), (await response.text()).slice(-1000)).toBe(200);
+    if (response.status() !== 200)
+      throw new Error(
+        `Chat returned ${response.status()}: ${(await response.text()).slice(-1000)}`,
+      );
     await expect(
       page.getByText('Response saved.', { exact: true }),
     ).toBeVisible();

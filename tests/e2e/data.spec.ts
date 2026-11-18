@@ -4,10 +4,11 @@ import { LocalSupabase } from '../helpers/local-supabase';
 
 async function clearReadings() {
   const db = new LocalSupabase();
-  for (const account of accounts)
+  for (const account of accounts.slice(0, 2))
     for (const table of [
       'audit_events',
       'measurements',
+      'weigh_in_events',
       'import_batches',
       'private_payloads',
       'data_sources',
