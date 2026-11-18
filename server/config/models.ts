@@ -163,6 +163,56 @@ export const models = {
   },
 } as const satisfies Record<ModelRole, ModelConfig>;
 
+// Evaluation declarations never participate in production role selection.
+const evaluationPrice = {
+  ...models.everyday.price,
+  id: 'openrouter-evaluation-20261117-conservative',
+  checkedAt: '2026-11-17T19:22:20Z',
+} as const;
+function freezeEvaluationCatalog<T>(value: T): T {
+  if (value && typeof value === 'object') {
+    for (const child of Object.values(value)) freezeEvaluationCatalog(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+export const evaluationCandidates = freezeEvaluationCatalog(
+  structuredClone({
+    'luna-low': {
+      ...models.everyday,
+      price: evaluationPrice,
+      enabledByDefault: false,
+      evaluationOnly: true,
+    },
+    'luna-medium': {
+      ...models.everyday,
+      price: evaluationPrice,
+      reasoning: { effort: 'medium' },
+      enabledByDefault: false,
+      evaluationOnly: true,
+    },
+    'haiku-low': {
+      ...models.everyday,
+      modelId: 'anthropic/claude-haiku-5.5',
+      enabledByDefault: false,
+      evaluationOnly: true,
+      price: {
+        ...evaluationPrice,
+        id: 'openrouter-haiku-5.5-20261117-conservative',
+        sourceURL:
+          'https://openrouter.ai/api/v1/models/anthropic/claude-haiku-5.5/endpoints',
+      },
+    },
+  } as const satisfies Record<
+    string,
+    Extract<ModelConfig, { apiFamily: 'openrouter_responses' }> & {
+      evaluationOnly: true;
+      enabledByDefault: false;
+    }
+  >),
+);
+export type EvaluationCandidateId = keyof typeof evaluationCandidates;
+
 export const RoleAvailabilitySchema = z.discriminatedUnion('state', [
   z.strictObject({
     state: z.literal('available'),

@@ -4,6 +4,7 @@ import {
   type RoutingEvidence,
 } from './routing.js';
 import { randomUUID } from 'node:crypto';
+import { Temporal } from '@js-temporal/polyfill';
 import { z } from 'zod';
 import type { ChatSendRequest } from '../../shared/api.js';
 import type { ChatPart } from '../../shared/chat.js';
@@ -11,6 +12,12 @@ import type { StreamEvent } from '../../shared/stream.js';
 import type { RunSummary } from '../../shared/executions.js';
 import type { AuthContext } from '../auth/session.js';
 import { models } from '../config/models.js';
+import {
+  assertEvaluationBinding,
+  type EvaluationBinding,
+} from '../config/evaluation-binding.js';
+import { priceFingerprint } from './live-preflight.js';
+import { assertEvaluationTransport } from './providers/openrouter-verification.js';
 import { ConversationService } from '../services/conversations.js';
 import { HttpFailure } from '../http/failure.js';
 import {
@@ -47,6 +54,8 @@ export interface AgentDependencies {
   price: VerifiedPrice;
   maxRunCostUSD: string;
   verificationRole?: 'intermediate' | 'advanced';
+  evaluationBinding?: EvaluationBinding;
+  evaluationClock?: () => Temporal.Instant;
   flash?: {
     adapter: GenerationAdapter;
     transport: RequestTransport;
@@ -65,6 +74,34 @@ export class VulpesAgent {
     private readonly context: AuthContext,
     private readonly dependencies: AgentDependencies | null = null,
   ) {
+    const binding = dependencies?.evaluationBinding;
+    if (dependencies?.evaluationClock && !binding)
+      throw new Error('evaluation_binding_required');
+    if (binding && dependencies) {
+      assertEvaluationBinding(binding);
+      const adapterBinding = (
+        dependencies.adapter as GenerationAdapter & {
+          evaluationBinding?: EvaluationBinding;
+        }
+      ).evaluationBinding;
+      if (
+        dependencies.flash ||
+        dependencies.verificationRole ||
+        dependencies.adapter.family !== binding.config.apiFamily ||
+        adapterBinding?.bindingHash !== binding.bindingHash ||
+        priceFingerprint(dependencies.price) !== binding.priceHash
+      )
+        throw new Error('evaluation_dependency_mismatch');
+      assertEvaluationTransport(dependencies.transport, binding);
+    } else if (
+      dependencies &&
+      'evaluationBinding' in dependencies.adapter &&
+      dependencies.adapter.evaluationBinding
+    ) {
+      throw new Error('evaluation_binding_required');
+    }
+    if (binding && dependencies)
+      this.dependencies = Object.freeze({ ...dependencies });
     this.ledger = new ExecutionService(context, {
       maxRunCostUSD: dependencies?.maxRunCostUSD ?? '0',
     });
@@ -131,7 +168,8 @@ export class VulpesAgent {
         'Ask Vulpes inference is unavailable until provider verification and activation gates pass.',
       );
     const initialRole = this.dependencies?.verificationRole ?? 'everyday';
-    const initialModel = models[initialRole];
+    const initialModel =
+      this.dependencies?.evaluationBinding?.config ?? models[initialRole];
     const consentVersion =
       initialRole === 'everyday'
         ? 'openrouter_zdr_v2'
@@ -204,6 +242,12 @@ export class VulpesAgent {
         let dependencies: AgentDependencies = this.dependencies;
         let role: 'everyday' | 'intermediate' | 'advanced' =
           dependencies.verificationRole ?? 'everyday';
+        let config:
+          | typeof models.everyday
+          | typeof models.intermediate
+          | typeof models.advanced
+          | EvaluationBinding['config'] =
+          dependencies.evaluationBinding?.config ?? models[role];
         const routingEvidence: RoutingEvidence[] = [];
         if (!dependencies) throw new Error('inference_unavailable');
         const context = await buildContext(
@@ -215,10 +259,10 @@ export class VulpesAgent {
             : readToolDefinitions.filter(
                 (t) => t.name !== 'request_escalation',
               ),
-          Math.min(
-            models[role].maxInputTokens,
-            dependencies.price.inputBoundTokens,
-          ) - 1000,
+          Math.min(config.maxInputTokens, dependencies.price.inputBoundTokens) -
+            1000,
+          { family: dependencies.adapter.family, model: config.modelId },
+          dependencies.evaluationClock,
         );
         if (role !== 'everyday')
           context.manifest.consentVersion =
@@ -243,12 +287,12 @@ export class VulpesAgent {
           type: 'route.selected',
           payload: {
             role,
-            provider: models[role].provider,
-            model: models[role].modelId,
+            provider: config.provider,
+            model: config.modelId,
             effort:
-              role === 'everyday'
-                ? models.everyday.reasoning.effort
-                : models[role].thinking.level,
+              'reasoning' in config
+                ? config.reasoning.effort
+                : config.thinking.level,
             reason:
               role === 'everyday'
                 ? 'Everyday selected for this bounded conversation. Goal changes require explicit confirmation.'
@@ -263,7 +307,7 @@ export class VulpesAgent {
           while (
             Buffer.byteLength(JSON.stringify(request)) >
               Math.min(
-                models[role].maxInputTokens,
+                config.maxInputTokens,
                 dependencies.price.inputBoundTokens,
               ) -
                 1000 &&
@@ -296,7 +340,7 @@ export class VulpesAgent {
             request.tools.length &&
             Buffer.byteLength(JSON.stringify(request)) >
               Math.min(
-                models[role].maxInputTokens,
+                config.maxInputTokens,
                 dependencies.price.inputBoundTokens,
               ) -
                 1000
@@ -316,7 +360,7 @@ export class VulpesAgent {
           if (
             Buffer.byteLength(JSON.stringify(request)) >
             Math.min(
-              models[role].maxInputTokens,
+              config.maxInputTokens,
               dependencies.price.inputBoundTokens,
             ) -
               1000
@@ -341,8 +385,8 @@ export class VulpesAgent {
           const dispatch = dispatcher.bind(
             lease,
             {
-              provider: role === 'everyday' ? 'openrouter' : 'vertex_ai',
-              model: models[role].modelId,
+              provider: config.provider,
+              model: config.modelId,
               price: dependencies.price,
               context: context.manifest,
             },
@@ -436,6 +480,19 @@ export class VulpesAgent {
               ...completion.metadata,
             },
           );
+          const candidate = dependencies.evaluationBinding;
+          if (
+            candidate &&
+            ((completion.metadata?.effectiveModel != null &&
+              completion.metadata.effectiveModel !==
+                candidate.config.modelId) ||
+              (completion.metadata?.effectiveEffort != null &&
+                completion.metadata.effectiveEffort !==
+                  candidate.config.reasoning.effort))
+          ) {
+            active = null;
+            throw new Error('evaluation_effective_identity_mismatch');
+          }
           if (text)
             request.turns.push({ type: 'message', role: 'assistant', text });
           for (const call of toolCalls)
@@ -580,6 +637,7 @@ export class VulpesAgent {
             if (permitted && flash) {
               await this.ledger.handoff(lease, step.id, escalation.task);
               role = 'intermediate';
+              config = models.intermediate;
               dependencies = {
                 ...flash,
                 maxRunCostUSD: dependencies.maxRunCostUSD,
@@ -655,6 +713,7 @@ export class VulpesAgent {
               messageId,
               parts,
               signal,
+              clock: dependencies.evaluationClock,
             });
             parts = executed.parts;
             const { evidence, result } = executed;

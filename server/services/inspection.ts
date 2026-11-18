@@ -344,8 +344,16 @@ export class InspectionService {
               'goal_progress',
               'group_progress',
             ],
-            analyze_measurements: ['analysis_batch'],
-            explain_metrics: ['metric_explanations'],
+            analyze_measurements: [
+              'analysis_batch',
+              'no_data',
+              'clarification_required',
+            ],
+            explain_metrics: [
+              'metric_explanations',
+              'no_data',
+              'clarification_required',
+            ],
             prepare_goals: ['goal_proposal', 'goal_group_proposal'],
             propose_goal: ['goal_proposal'],
             propose_goal_revision: ['goal_proposal'],

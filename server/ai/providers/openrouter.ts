@@ -3,6 +3,11 @@ import { Decimal } from 'decimal.js';
 import { models } from '../../config/models.js';
 import { everydayAdapterVersion } from '../../config/everyday-versions.js';
 import {
+  assertEvaluationBinding,
+  evaluationProviderSettings,
+  type EvaluationBinding,
+} from '../../config/evaluation-binding.js';
+import {
   normalizeUsage,
   requireGenerationCapabilities,
   GenerationCompletionSchema,
@@ -66,10 +71,16 @@ function mappedTurns(request: GenerationRequest): unknown[] {
   }
   return input;
 }
-export function serializeEveryday(input: GenerationRequest): Uint8Array {
+export function serializeEveryday(
+  input: GenerationRequest,
+  binding?: EvaluationBinding,
+): Uint8Array {
+  if (binding) assertEvaluationBinding(binding);
+  const config = binding?.config ?? models.everyday;
   if (
-    input.continuation?.model &&
-    input.continuation.model !== models.everyday.modelId
+    input.continuation &&
+    (input.continuation.family !== 'openrouter_responses' ||
+      (input.continuation.model && input.continuation.model !== config.modelId))
   )
     throw new Error('incompatible_continuation');
   const request = requireGenerationCapabilities(
@@ -81,7 +92,7 @@ export function serializeEveryday(input: GenerationRequest): Uint8Array {
   );
   return Buffer.from(
     JSON.stringify({
-      model: models.everyday.modelId,
+      model: config.modelId,
       input: mappedTurns(request),
       tools: request.tools.map((tool) => ({
         type: 'function',
@@ -90,9 +101,9 @@ export function serializeEveryday(input: GenerationRequest): Uint8Array {
       })),
       stream: true,
       store: false,
-      reasoning: models.everyday.reasoning,
-      max_output_tokens: models.everyday.maxOutputTokens,
-      provider: { zdr: true },
+      reasoning: config.reasoning,
+      max_output_tokens: config.maxOutputTokens,
+      provider: binding ? evaluationProviderSettings(binding) : { zdr: true },
       plugins: [],
       parallel_tool_calls: false,
     }),
@@ -150,11 +161,15 @@ function providerUsage(
 export class OpenRouterResponsesAdapter implements GenerationAdapter {
   readonly family = 'openrouter_responses';
   readonly capabilities = { streaming: true, tools: true };
+  constructor(readonly evaluationBinding?: EvaluationBinding) {
+    if (evaluationBinding) assertEvaluationBinding(evaluationBinding);
+  }
   async *generate(
     request: GenerationRequest,
     options: { signal: AbortSignal; dispatch: PaidRequestDispatcher },
   ): AsyncIterable<GenerationEvent> {
-    const body = serializeEveryday(request);
+    const config = this.evaluationBinding?.config ?? models.everyday;
+    const body = serializeEveryday(request, this.evaluationBinding);
     const decoder = new TextDecoder('utf-8', { fatal: true });
     let buffer = '';
     let text = '';
@@ -270,7 +285,7 @@ export class OpenRouterResponsesAdapter implements GenerationAdapter {
             : []),
         ],
         'openrouter_responses',
-        models.everyday.modelId,
+        config.modelId,
       );
       terminal = true;
       out.push({
@@ -302,8 +317,9 @@ export class OpenRouterResponsesAdapter implements GenerationAdapter {
           },
           redactedHeaders: ['authorization'],
         },
-        adapterVersion: everydayAdapterVersion,
-        requestedEffort: models.everyday.reasoning.effort,
+        adapterVersion:
+          this.evaluationBinding?.adapterVersion ?? everydayAdapterVersion,
+        requestedEffort: config.reasoning.effort,
       },
       options.signal,
     )) {

@@ -58,3 +58,70 @@ export const verificationFixtures = {
   },
 } as const;
 export type VerificationFixture = keyof typeof verificationFixtures;
+
+// Compile-time trust root: changing a reviewed suite or input requires updating
+// these hashes and its fixture tests. Production imports do not read docs files.
+export const v020FixtureFiles = Object.freeze({
+  'evaluation-plan-v2.json':
+    'f7d602d4905b006d79ccbc387b3155a8a0f403cc55939e198a834f97ea5c8cc7',
+  'evaluation-data-v2.json':
+    'f8a90461d115ee7b9466faa8940e1957e277803f92ffd45239c5b3b447a32d33',
+  'renpho-v1/full-panel.csv':
+    'a775c4c48293f6883b1450e27c6a452a1635935220ce0e2d9fb9259f6d46827c',
+  'renpho-v1/untrusted-annotations.csv':
+    '8098625b5f68688631721217b742ecf3a88bb45a4cd9cdb2d8ee3f9f0e5c94c7',
+  'renpho-v1/expected-values.json':
+    'de760c60dbee4ece5c482526643683ba53075b146cf33aafc9978af9a75f0059',
+} as const);
+const v020Variants: Record<string, readonly string[]> = {
+  E01: ['default'],
+  E02: ['default'],
+  E03: ['default'],
+  E04: ['fresh_weight_scaled_1_25'],
+  E05: ['default'],
+  E06: ['default'],
+  E07: ['fresh_weight_scaled_1_25'],
+  E08: ['default'],
+  E09: ['default'],
+  E10: ['default'],
+  E12: ['default'],
+  E13: ['complete', 'missing', 'stale', 'regressing'],
+  E14: ['default'],
+  E15: ['default'],
+  E16: ['foreign_ids_answer', 'foreign_ids_direct_control'],
+  E17: ['harmful_target', 'diagnosis', 'emergency'],
+  E18: ['default'],
+  E19: ['bounded_live_observation', 'deterministic_cancellation_control'],
+  E20: ['missing_consent', 'allocation_exhausted'],
+};
+export function v020VerificationFixtureHash(
+  caseId: string,
+  variantId: string,
+): string {
+  if (
+    !Object.hasOwn(v020Variants, caseId) ||
+    !v020Variants[caseId]!.includes(variantId)
+  )
+    throw new Error(
+      caseId === 'E11'
+        ? 'blocked_reference_evidence'
+        : 'verification_fixture_invalid',
+    );
+  return hash(
+    JSON.stringify({ version: 2, files: v020FixtureFiles, caseId, variantId }),
+  );
+}
+export function isV020VerificationFixtureHash(value: string): boolean {
+  return Object.entries(v020Variants).some(([caseId, variants]) =>
+    variants.some(
+      (variantId) => v020VerificationFixtureHash(caseId, variantId) === value,
+    ),
+  );
+}
+export function isVerificationFixtureHash(value: string): boolean {
+  return (
+    Object.values(verificationFixtures).some(
+      (fixture) => fixture.hash === value,
+    ) || isV020VerificationFixtureHash(value)
+  );
+}
