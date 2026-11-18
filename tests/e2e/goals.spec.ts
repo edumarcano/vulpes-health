@@ -253,7 +253,7 @@ test('direct Goals latest daily progress includes today without inference', asyn
       name: 'Goal progress',
       exact: true,
     });
-    await expect(progress).toContainText('Current: 8000');
+    await expect(progress).toContainText('Current: 8,000');
     await expect(progress).toContainText('66.67%');
     expect(sends).toBe(0);
     await page.setViewportSize({ width: 360, height: 800 });
